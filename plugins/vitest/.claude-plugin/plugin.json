@@ -1,0 +1,12 @@
+{
+  "name": "vitest",
+  "version": "1.0.0",
+  "description": "Vitest TDD workflow, test conventions and patterns",
+  "author": {
+    "name": "FabienSalles"
+  },
+  "repository": "https://github.com/FabienSalles/claude-marketplace",
+  "license": "MIT",
+  "keywords": ["vitest", "tdd", "testing", "conventions"],
+  "skills": "./skills/"
+}

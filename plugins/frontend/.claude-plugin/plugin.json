@@ -1,0 +1,12 @@
+{
+  "name": "frontend",
+  "version": "1.0.0",
+  "description": "Frontend clean architecture (hexagonal), Container/Presentation patterns",
+  "author": {
+    "name": "FabienSalles"
+  },
+  "repository": "https://github.com/FabienSalles/claude-marketplace",
+  "license": "MIT",
+  "keywords": ["frontend", "react", "clean-architecture", "hexagonal"],
+  "skills": "./skills/"
+}

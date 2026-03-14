@@ -1,0 +1,95 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "fabien-skills-marketplace",
+  "description": "Collection de skills, hooks, agents et commands pour Claude Code — PHP, TypeScript, Astro, NestJS, Frontend, Vitest, Tooling",
+  "owner": {
+    "name": "FabienSalles",
+    "email": "fabien@conveycode.com"
+  },
+  "metadata": {
+    "version": "1.0.0",
+    "description": "Curated collection of 45 skills, 4 hooks, 1 agent and 1 command for Claude Code by FabienSalles"
+  },
+  "plugins": [
+    {
+      "name": "php",
+      "source": "./plugins/php",
+      "description": "PHP 8.2/8.3, conventions, DDD, TDD, Symfony, Twig, Composer, OOP, refactoring, SQL, security",
+      "version": "1.0.0",
+      "author": { "name": "FabienSalles" },
+      "category": "development",
+      "license": "MIT",
+      "keywords": ["php", "symfony", "ddd", "tdd", "conventions"]
+    },
+    {
+      "name": "typescript",
+      "source": "./plugins/typescript",
+      "description": "TypeScript conventions, typing, DDD events, functional programming, OOP, refactoring, security",
+      "version": "1.0.0",
+      "author": { "name": "FabienSalles" },
+      "category": "development",
+      "license": "MIT",
+      "keywords": ["typescript", "ddd", "functional", "conventions"]
+    },
+    {
+      "name": "astro",
+      "source": "./plugins/astro",
+      "description": "Astro 5.x — components, routing, collections, i18n, SEO, Tailwind, React islands, transitions",
+      "version": "1.0.0",
+      "author": { "name": "FabienSalles" },
+      "category": "development",
+      "license": "MIT",
+      "keywords": ["astro", "ssg", "i18n", "seo", "tailwind"]
+    },
+    {
+      "name": "nest",
+      "source": "./plugins/nest",
+      "description": "NestJS architectural conventions, DDD with NestJS",
+      "version": "1.0.0",
+      "author": { "name": "FabienSalles" },
+      "category": "development",
+      "license": "MIT",
+      "keywords": ["nestjs", "ddd", "conventions"]
+    },
+    {
+      "name": "frontend",
+      "source": "./plugins/frontend",
+      "description": "Frontend clean architecture (hexagonal), Container/Presentation patterns",
+      "version": "1.0.0",
+      "author": { "name": "FabienSalles" },
+      "category": "development",
+      "license": "MIT",
+      "keywords": ["frontend", "react", "clean-architecture", "hexagonal"]
+    },
+    {
+      "name": "vitest",
+      "source": "./plugins/vitest",
+      "description": "Vitest TDD workflow, test conventions and patterns",
+      "version": "1.0.0",
+      "author": { "name": "FabienSalles" },
+      "category": "testing",
+      "license": "MIT",
+      "keywords": ["vitest", "tdd", "testing", "conventions"]
+    },
+    {
+      "name": "tooling",
+      "source": "./plugins/tooling",
+      "description": "Docker, Drizzle ORM, pnpm workspaces, Zod schemas, Claude Code plugin conventions, npx skills conventions",
+      "version": "1.0.0",
+      "author": { "name": "FabienSalles" },
+      "category": "development",
+      "license": "MIT",
+      "keywords": ["docker", "drizzle", "pnpm", "zod"]
+    },
+    {
+      "name": "common",
+      "source": "./plugins/common",
+      "description": "Shared hooks, agents, and commands across projects",
+      "version": "1.0.0",
+      "author": { "name": "FabienSalles" },
+      "category": "productivity",
+      "license": "MIT",
+      "keywords": ["hooks", "agents", "commands"]
+    }
+  ]
+}

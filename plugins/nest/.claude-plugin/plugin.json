@@ -1,0 +1,12 @@
+{
+  "name": "nest",
+  "version": "1.0.0",
+  "description": "NestJS architectural conventions, DDD with NestJS",
+  "author": {
+    "name": "FabienSalles"
+  },
+  "repository": "https://github.com/FabienSalles/claude-marketplace",
+  "license": "MIT",
+  "keywords": ["nestjs", "ddd", "conventions"],
+  "skills": "./skills/"
+}

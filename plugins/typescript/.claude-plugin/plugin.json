@@ -1,0 +1,12 @@
+{
+  "name": "typescript",
+  "version": "1.0.0",
+  "description": "TypeScript conventions, typing, DDD events, functional programming, OOP, refactoring, security",
+  "author": {
+    "name": "FabienSalles"
+  },
+  "repository": "https://github.com/FabienSalles/claude-marketplace",
+  "license": "MIT",
+  "keywords": ["typescript", "ddd", "functional", "conventions"],
+  "skills": "./skills/"
+}

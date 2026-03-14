@@ -1,0 +1,290 @@
+name: Validate Marketplace
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate-structure:
+    name: Validate structure
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate marketplace.json exists and is valid JSON
+        run: |
+          jq empty .claude-plugin/marketplace.json
+          echo "✓ marketplace.json is valid JSON"
+
+      - name: Validate each plugin has plugin.json
+        run: |
+          errors=0
+          for plugin_dir in plugins/*/; do
+            plugin_name=$(basename "$plugin_dir")
+            plugin_json="$plugin_dir.claude-plugin/plugin.json"
+            if [[ ! -f "$plugin_json" ]]; then
+              echo "✗ Missing: $plugin_json"
+              errors=$((errors + 1))
+            else
+              if ! jq empty "$plugin_json" 2>/dev/null; then
+                echo "✗ Invalid JSON: $plugin_json"
+                errors=$((errors + 1))
+              else
+                echo "✓ $plugin_name — plugin.json valid"
+              fi
+            fi
+          done
+          if [[ $errors -gt 0 ]]; then
+            echo "::error::$errors plugin.json errors found"
+            exit 1
+          fi
+
+      - name: Validate SKILL.md frontmatter
+        run: |
+          errors=0
+          total=0
+          for skill_md in $(find plugins -name "SKILL.md" | sort); do
+            total=$((total + 1))
+            skill_dir=$(dirname "$skill_md")
+            skill_name=$(basename "$skill_dir")
+
+            # Check frontmatter exists (starts with ---)
+            if ! head -1 "$skill_md" | grep -q '^---$'; then
+              echo "✗ Missing frontmatter: $skill_md"
+              errors=$((errors + 1))
+              continue
+            fi
+
+            # Extract frontmatter
+            frontmatter=$(sed -n '/^---$/,/^---$/p' "$skill_md" | sed '1d;$d')
+
+            # Check name field
+            fm_name=$(echo "$frontmatter" | grep '^name:' | sed 's/^name: *//')
+            if [[ -z "$fm_name" ]]; then
+              echo "✗ Missing name in frontmatter: $skill_md"
+              errors=$((errors + 1))
+              continue
+            fi
+
+            # Validate name format: lowercase alphanumeric + hyphens, max 64 chars
+            if ! echo "$fm_name" | grep -qE '^[a-z0-9-]+$'; then
+              echo "✗ Invalid name format '$fm_name': $skill_md (must match ^[a-z0-9-]+$)"
+              errors=$((errors + 1))
+            fi
+            if [[ ${#fm_name} -gt 64 ]]; then
+              echo "✗ Name too long (${#fm_name} > 64): $skill_md"
+              errors=$((errors + 1))
+            fi
+
+            # Check description field
+            fm_desc=$(echo "$frontmatter" | grep '^description:' | sed 's/^description: *//')
+            if [[ -z "$fm_desc" ]]; then
+              echo "✗ Missing description in frontmatter: $skill_md"
+              errors=$((errors + 1))
+              continue
+            fi
+
+            # Validate name matches directory name (Agent Skills spec requirement)
+            if [[ "$fm_name" != "$skill_name" ]]; then
+              echo "✗ Name mismatch: frontmatter '$fm_name' != directory '$skill_name': $skill_md"
+              errors=$((errors + 1))
+            fi
+
+            echo "✓ $skill_name — frontmatter valid"
+          done
+
+          echo ""
+          echo "Validated $total skills, $errors errors"
+          if [[ $errors -gt 0 ]]; then
+            exit 1
+          fi
+
+      - name: Validate marketplace references exist
+        run: |
+          errors=0
+          for source in $(jq -r '.plugins[].source' .claude-plugin/marketplace.json); do
+            if [[ ! -d "$source" ]]; then
+              echo "✗ marketplace.json references non-existent: $source"
+              errors=$((errors + 1))
+            else
+              echo "✓ $source exists"
+            fi
+          done
+          if [[ $errors -gt 0 ]]; then
+            echo "::error::$errors broken marketplace references"
+            exit 1
+          fi
+
+  test-setup-script:
+    name: Test setup.sh
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Test --all creates symlinks
+        run: |
+          export CLAUDE_HOME=$(mktemp -d)
+          ./setup.sh --all
+
+          # Count skill symlinks
+          skill_count=$(find "$CLAUDE_HOME/skills" -maxdepth 1 -type l | wc -l)
+          echo "Created $skill_count skill symlinks"
+          if [[ $skill_count -lt 40 ]]; then
+            echo "::error::Expected at least 40 skill symlinks, got $skill_count"
+            exit 1
+          fi
+
+          # Check hooks
+          hook_count=$(find "$CLAUDE_HOME/hooks" -maxdepth 1 -type l | wc -l)
+          echo "Created $hook_count hook symlinks"
+          if [[ $hook_count -lt 4 ]]; then
+            echo "::error::Expected at least 4 hook symlinks, got $hook_count"
+            exit 1
+          fi
+
+          # Check agents
+          if [[ ! -L "$CLAUDE_HOME/agents/ui-engineer.md" ]]; then
+            echo "::error::Agent symlink not created"
+            exit 1
+          fi
+
+          # Check commands
+          if [[ ! -L "$CLAUDE_HOME/commands/feature-dev.md" ]]; then
+            echo "::error::Command symlink not created"
+            exit 1
+          fi
+
+          echo "✓ --all: all symlinks created"
+
+      - name: Test --pack installs only selected pack
+        run: |
+          export CLAUDE_HOME=$(mktemp -d)
+          ./setup.sh --pack php
+
+          # Only PHP skills should exist
+          php_count=$(find "$CLAUDE_HOME/skills" -maxdepth 1 -type l -name "php-*" | wc -l)
+          total_count=$(find "$CLAUDE_HOME/skills" -maxdepth 1 -type l | wc -l)
+
+          echo "PHP symlinks: $php_count, Total: $total_count"
+          if [[ $php_count -ne $total_count ]]; then
+            echo "::error::Expected only PHP skills, got non-PHP skills too"
+            exit 1
+          fi
+          echo "✓ --pack php: only PHP skills installed"
+
+      - name: Test --remove removes symlinks
+        run: |
+          export CLAUDE_HOME=$(mktemp -d)
+          ./setup.sh --all
+          ./setup.sh --remove php
+
+          # PHP skills should be gone
+          php_count=$(find "$CLAUDE_HOME/skills" -maxdepth 1 -type l -name "php-*" 2>/dev/null | wc -l)
+          if [[ $php_count -ne 0 ]]; then
+            echo "::error::PHP skills still exist after --remove"
+            exit 1
+          fi
+
+          # Other skills should remain
+          remaining=$(find "$CLAUDE_HOME/skills" -maxdepth 1 -type l | wc -l)
+          echo "Remaining skills after removing php: $remaining"
+          if [[ $remaining -lt 25 ]]; then
+            echo "::error::Too few skills remaining, --remove may have removed too much"
+            exit 1
+          fi
+          echo "✓ --remove php: only PHP skills removed"
+
+      - name: Test --status runs without error
+        run: |
+          export CLAUDE_HOME=$(mktemp -d)
+          ./setup.sh --all
+          ./setup.sh --status
+          echo "✓ --status: runs successfully"
+
+      - name: Test symlinks point to existing files
+        run: |
+          export CLAUDE_HOME=$(mktemp -d)
+          ./setup.sh --all
+
+          errors=0
+          for link in $(find "$CLAUDE_HOME" -type l); do
+            target=$(readlink -f "$link")
+            if [[ ! -e "$target" ]]; then
+              echo "✗ Broken symlink: $link → $target"
+              errors=$((errors + 1))
+            fi
+          done
+
+          if [[ $errors -gt 0 ]]; then
+            echo "::error::$errors broken symlinks found"
+            exit 1
+          fi
+          echo "✓ All symlinks point to existing targets"
+
+      - name: Test ts alias
+        run: |
+          export CLAUDE_HOME=$(mktemp -d)
+          ./setup.sh --pack ts
+
+          ts_count=$(find "$CLAUDE_HOME/skills" -maxdepth 1 -type l -name "ts-*" -o -name "ddd-ts-*" | wc -l)
+          echo "TypeScript symlinks: $ts_count"
+          if [[ $ts_count -lt 7 ]]; then
+            echo "::error::Expected at least 7 TypeScript skills"
+            exit 1
+          fi
+          echo "✓ ts alias works"
+
+  test-plugin-validate:
+    name: Test claude plugin validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Claude Code
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Validate marketplace manifest
+        run: |
+          claude plugin validate .
+          echo "✓ Marketplace manifest valid"
+
+      - name: Validate each plugin
+        run: |
+          errors=0
+          for plugin_dir in plugins/*/; do
+            plugin_name=$(basename "$plugin_dir")
+            if claude plugin validate "$plugin_dir" 2>&1; then
+              echo "✓ $plugin_name — plugin valid"
+            else
+              echo "✗ $plugin_name — validation failed"
+              errors=$((errors + 1))
+            fi
+            echo ""
+          done
+          if [[ $errors -gt 0 ]]; then
+            echo "::error::$errors plugins failed validation"
+            exit 1
+          fi
+
+  test-npx-skills:
+    name: Test npx skills discovery
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Test skills discovery
+        run: |
+          npx skills add . --list 2>&1 | tee /tmp/skills-output.txt
+          skill_count=$(grep -c "SKILL.md" /tmp/skills-output.txt || echo "0")
+          echo "Discovered $skill_count skills"
+          if [[ $skill_count -lt 40 ]]; then
+            echo "::warning::Expected at least 40 skills discovered, got $skill_count"
+          fi
+          echo "✓ npx skills add --list completed"

@@ -1,0 +1,12 @@
+{
+  "name": "php",
+  "version": "1.0.0",
+  "description": "PHP 8.2/8.3 features, code conventions, DDD, TDD, Symfony, Twig, Composer, OOP, refactoring, SQL, security audit",
+  "author": {
+    "name": "FabienSalles"
+  },
+  "repository": "https://github.com/FabienSalles/claude-marketplace",
+  "license": "MIT",
+  "keywords": ["php", "symfony", "ddd", "tdd", "conventions"],
+  "skills": "./skills/"
+}

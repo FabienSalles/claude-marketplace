@@ -1,0 +1,12 @@
+{
+  "name": "astro",
+  "version": "1.0.0",
+  "description": "Astro 5.x — components, routing, collections, i18n, SEO, Tailwind, React islands, transitions",
+  "author": {
+    "name": "FabienSalles"
+  },
+  "repository": "https://github.com/FabienSalles/claude-marketplace",
+  "license": "MIT",
+  "keywords": ["astro", "ssg", "i18n", "seo", "tailwind"],
+  "skills": "./skills/"
+}

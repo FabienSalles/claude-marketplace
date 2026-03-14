@@ -1,0 +1,12 @@
+{
+  "name": "tooling",
+  "version": "1.0.0",
+  "description": "Docker, Drizzle ORM, pnpm workspaces, Zod schemas, Claude Code plugin conventions, npx skills conventions",
+  "author": {
+    "name": "FabienSalles"
+  },
+  "repository": "https://github.com/FabienSalles/claude-marketplace",
+  "license": "MIT",
+  "keywords": ["docker", "drizzle", "pnpm", "zod", "claude-plugin", "skills"],
+  "skills": "./skills/"
+}
