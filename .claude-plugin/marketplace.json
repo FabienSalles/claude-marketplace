@@ -1,14 +1,11 @@
 {
-  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
-  "name": "fabien-skills-marketplace",
-  "description": "Collection de skills, hooks, agents et commands pour Claude Code — PHP, TypeScript, Astro, NestJS, Frontend, Vitest, Tooling",
+  "name": "fabien-claude-marketplace",
   "owner": {
-    "name": "FabienSalles",
-    "email": "fabien@conveycode.com"
+    "name": "FabienSalles"
   },
   "metadata": {
     "version": "1.0.0",
-    "description": "Curated collection of 45 skills, 4 hooks, 1 agent and 1 command for Claude Code by FabienSalles"
+    "description": "Curated collection of skills, hooks, agents and commands for Claude Code by FabienSalles"
   },
   "plugins": [
     {

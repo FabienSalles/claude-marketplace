@@ -57,8 +57,8 @@ jobs:
               continue
             fi
 
-            # Extract frontmatter
-            frontmatter=$(sed -n '/^---$/,/^---$/p' "$skill_md" | sed '1d;$d')
+            # Extract frontmatter (only first --- block, using awk to avoid matching code blocks)
+            frontmatter=$(awk '/^---$/{if(++n==2) exit; next} n==1' "$skill_md")
 
             # Check name field
             fm_name=$(echo "$frontmatter" | grep '^name:' | sed 's/^name: *//')
@@ -69,8 +69,8 @@ jobs:
             fi
 
             # Validate name format: lowercase alphanumeric + hyphens, max 64 chars
-            if ! echo "$fm_name" | grep -qE '^[a-z0-9-]+$'; then
-              echo "✗ Invalid name format '$fm_name': $skill_md (must match ^[a-z0-9-]+$)"
+            if ! echo "$fm_name" | grep -qE '^[a-z0-9.-]+$'; then
+              echo "✗ Invalid name format '$fm_name': $skill_md (must match ^[a-z0-9.-]+$)"
               errors=$((errors + 1))
             fi
             if [[ ${#fm_name} -gt 64 ]]; then
@@ -100,6 +100,32 @@ jobs:
           if [[ $errors -gt 0 ]]; then
             exit 1
           fi
+
+      - name: Validate README skill counts match actual files
+        run: |
+          errors=0
+          # Parse README table: lines matching "| **pack** | N |"
+          while IFS='|' read -r _ pack count _ ; do
+            pack=$(echo "$pack" | sed 's/[* ]//g')
+            count=$(echo "$count" | tr -d ' ')
+            # Skip non-numeric (common pack uses —)
+            if ! echo "$count" | grep -qE '^[0-9]+$'; then
+              continue
+            fi
+            actual=$(find "plugins/$pack" -name "SKILL.md" 2>/dev/null | wc -l)
+            if [[ "$actual" -ne "$count" ]]; then
+              echo "✗ README says $pack has $count skills, but found $actual"
+              errors=$((errors + 1))
+            else
+              echo "✓ $pack: $count skills (matches)"
+            fi
+          done < <(grep -E '^\| \*\*' README.md)
+
+          if [[ $errors -gt 0 ]]; then
+            echo "::error::$errors README skill count mismatches"
+            exit 1
+          fi
+          echo "All README counts match actual files"
 
       - name: Validate marketplace references exist
         run: |

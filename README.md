@@ -1,6 +1,6 @@
 # Claude Marketplace
 
-Collection de **43 skills**, **4 hooks**, **1 agent** et **1 command** pour [Claude Code](https://claude.ai/claude-code), organisés en packs thématiques.
+Collection de skills, hooks, agents et commands pour [Claude Code](https://claude.ai/claude-code), organisés en packs thématiques.
 
 ## Packs disponibles
 
@@ -12,7 +12,7 @@ Collection de **43 skills**, **4 hooks**, **1 agent** et **1 command** pour [Cla
 | **nest** | 2 | NestJS architectural conventions, DDD with NestJS |
 | **frontend** | 2 | Clean architecture (hexagonal), Container/Presentation patterns |
 | **vitest** | 2 | TDD workflow, test conventions and patterns |
-| **tooling** | 4 | Docker, Drizzle ORM, pnpm workspaces, Zod schemas |
+| **tooling** | 6 | Docker, Drizzle ORM, pnpm workspaces, Zod schemas, Claude Code plugin conventions, npx skills conventions |
 | **common** | — | Hooks, agents et commands partagés |
 
 ## Installation
@@ -91,7 +91,7 @@ claude-marketplace/
 │   ├── nest/                           # 2 skills NestJS
 │   ├── frontend/                       # 2 skills Frontend
 │   ├── vitest/                         # 2 skills Vitest
-│   ├── tooling/                        # 4 skills (Docker, Drizzle, pnpm, Zod)
+│   ├── tooling/                        # 6 skills (Docker, Drizzle, pnpm, Zod, plugin conventions, npx skills)
 │   └── common/                         # Hooks, agents, commands
 │       ├── hooks/
 │       │   ├── fix-permissions.sh      # Fix file permissions after Write
