@@ -11,7 +11,7 @@
     {
       "name": "php",
       "source": "./plugins/php",
-      "description": "PHP 8.2/8.3, conventions, DDD, TDD, Symfony, Twig, Composer, OOP, refactoring, SQL, security",
+      "description": "PHP 8.2/8.3, conventions, DDD, TDD, Symfony, Twig, Composer, OOP, refactoring, SQL",
       "version": "1.0.0",
       "author": { "name": "FabienSalles" },
       "category": "development",
@@ -87,6 +87,19 @@
       "category": "productivity",
       "license": "MIT",
       "keywords": ["hooks", "agents", "commands"]
+    },
+    {
+      "name": "security-audit",
+      "source": {
+        "source": "github",
+        "repo": "netresearch/security-audit-skill"
+      },
+      "description": "Security audit patterns (OWASP, CWE, CVSS) with 80+ checkpoints — by Netresearch",
+      "version": "1.0.0",
+      "author": { "name": "Netresearch" },
+      "category": "security",
+      "license": "MIT",
+      "keywords": ["security", "owasp", "cvss", "php", "audit"]
     }
   ]
 }

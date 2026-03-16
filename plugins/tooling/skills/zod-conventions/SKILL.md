@@ -1,7 +1,7 @@
 ---
 name: zod-conventions
-description: This skill should be used when creating Zod schemas, inferring types, composing schemas, or integrating Zod with NestJS validation pipes. Provides Zod conventions for the monorepo.
-version: "1.0"
+description: "ACTIVATE when creating Zod schemas, inferring types, composing schemas, or integrating Zod with NestJS validation. ACTIVATE for 'Zod', 'z.object', 'z.infer', 'ZodValidationPipe', 'schema validation'. Covers: FooSchema naming convention, packages/shared location, schema composition (extend/pick/omit/merge), z.coerce for HTTP values, NestJS ZodValidationPipe integration, error formatting with safeParse+flatten. DO NOT use for: general TypeScript types (see ts-conventions), domain validation logic."
+version: "1.1"
 ---
 
 # Zod Conventions

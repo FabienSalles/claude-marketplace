@@ -1,7 +1,7 @@
 ---
 name: pnpm-workspace
-description: This skill should be used when configuring the monorepo structure, cross-package imports, workspace scripts, or pnpm workspace protocol. Provides pnpm monorepo conventions.
-version: "1.0"
+description: "ACTIVATE when configuring monorepo structure, cross-package imports, workspace scripts, or pnpm workspace protocol. ACTIVATE for 'pnpm workspace', 'workspace:*', 'monorepo', 'pnpm --filter', 'packages/shared'. Covers: workspace structure (packages/shared + apps/api + apps/web), workspace:* protocol, build order (shared first), filtering commands, shared vs per-package dependencies. DO NOT use for: individual package configuration, npm/yarn workspaces."
+version: "1.1"
 ---
 
 # pnpm Workspace Conventions

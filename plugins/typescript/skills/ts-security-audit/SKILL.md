@@ -1,14 +1,12 @@
 ---
 name: ts-security-audit
-description: This skill should be used when conducting security assessments, identifying vulnerabilities, or CVSS scoring in TypeScript/Node.js projects. Covers OWASP Top 10, CWE Top 25, and Node.js-specific patterns.
-version: "1.0"
+description: "ACTIVATE when conducting security assessments, code review for vulnerabilities, or CVSS scoring in TypeScript/Node.js/NestJS projects. ACTIVATE for 'security audit', 'vulnerability', 'injection', 'XSS', 'OWASP'. Covers: SQL injection prevention (Drizzle), XSS prevention, JWT security, password hashing, command/path injection, secrets management, CSRF, security checklist. DO NOT use for: general code quality, performance optimization, authentication flow design."
+version: "1.1"
 ---
 
 # Security Audit (TypeScript / Node.js)
 
 Security audit patterns for TypeScript/Node.js/NestJS projects.
-
-> **See also**: `php-security-audit` for PHP-specific patterns and the full reference library.
 
 ## Standards
 

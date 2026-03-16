@@ -1,45 +1,23 @@
 ---
 name: php-8.3
-description: This skill should be used when writing PHP code. Provides PHP 8.3 specific features and conventions.
-version: "1.0"
+description: "ACTIVATE when writing PHP class constants in a PHP 8.3+ project. Covers: mandatory typed class constants. DO NOT use for: general PHP syntax, PHP 8.2 features (see php-8.2)."
+version: "1.1"
 ---
 
 # PHP 8.3 Conventions
 
-This skill documents PHP 8.3 specific features to use in all PHP projects.
+The key project convention: always type class constants.
 
 ## Typed Constants
 
-**Always type class constants.** PHP 8.3 introduced typed class constants for better type safety.
-
 ```php
-// ❌ AVOID - Untyped constants
+// AVOID
 private const TRANSLATION_DOMAIN = 'messages';
 private const MAX_ITEMS = 100;
-private const ENABLED = true;
 
-// ✅ CORRECT - Typed constants
+// CORRECT
 private const string TRANSLATION_DOMAIN = 'messages';
 private const int MAX_ITEMS = 100;
-private const bool ENABLED = true;
 ```
 
-### Syntax
-
-```php
-[visibility] const [type] NAME = value;
-```
-
-### Supported Types
-
-All scalar types and class/interface types are supported:
-- `string`, `int`, `float`, `bool`
-- `array`
-- Class names, interface names
-- `mixed`
-
-## Quick Reference
-
-| Rule | Example |
-|------|---------|
-| Typed constants | `private const string NAME = 'value';` |
+Supported types: `string`, `int`, `float`, `bool`, `array`, class/interface names, `mixed`.

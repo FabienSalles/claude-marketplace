@@ -1,12 +1,12 @@
 ---
 name: php-sql-conventions
-description: This skill should be used when writing SQL queries in PHP code, using Doctrine DBAL, or working with database queries. Provides conventions for SQL query structure, direction, and formatting.
-version: "1.0"
+description: "ACTIVATE when writing SQL queries in PHP code, using Doctrine DBAL, or formatting database queries. ACTIVATE for 'SQL', 'query', 'DBAL', 'JOIN', 'SELECT'. Covers: query direction convention (start from known entity), nowdoc formatting for SQL, column listing, JOIN ordering. DO NOT use for: Doctrine ORM/DQL, database migrations, general PHP code conventions."
+version: "1.1"
 ---
 
 # SQL Conventions
 
-This skill documents SQL conventions for queries written in PHP code (Doctrine DBAL).
+Conventions for SQL queries written in PHP code (Doctrine DBAL).
 
 ## Query Direction
 

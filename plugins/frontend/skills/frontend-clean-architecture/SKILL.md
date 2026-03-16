@@ -1,7 +1,7 @@
 ---
 name: frontend-clean-architecture
-description: This skill should be used when creating or modifying frontend features on projects that follow domain/infrastructure layered architecture. Enforces hexagonal architecture principles for frontend.
-version: "1.0"
+description: "ACTIVATE when creating or modifying frontend features in projects with domain/infrastructure layered architecture. ACTIVATE for 'frontend architecture', 'domain layer', 'hexagonal frontend', 'features/ folder', 'repository interface', 'mapper'. Covers: features/<feature>/domain + infrastructure structure, strict dependency direction (domain never imports infrastructure), domain models/repositories/services/referentials, API repositories, mappers, hooks as orchestrators. DO NOT use for: projects without this architecture (ask user first), general React patterns (see frontend-component-patterns)."
+version: "1.1"
 ---
 
 # Frontend Clean Architecture

@@ -1,14 +1,14 @@
 ---
 name: php-refactoring
-description: This skill should be used when refactoring code, redesigning classes, or extracting value objects. Provides methodological principles for safe, well-informed refactoring.
-version: "1.0"
+description: "ACTIVATE when the user wants to refactor, redesign, extract classes/value objects, or restructure PHP code. ACTIVATE for 'refactor', 'extract', 'redesign', 'simplify', or 'clean up' requests. Covers: mandatory end-to-end flow analysis before refactoring, consumer-driven value object design, imports as coupling signals. DO NOT use for: writing new features from scratch (see php-tdd-workflow), general OOP principles (see php-oop)."
+version: "1.1"
 ---
 
 # Refactoring Methodology
 
-## 1. Analyze the Complete Business Flow Before Refactoring
+## 1. Trace the Complete Business Flow BEFORE Refactoring
 
-**Before touching any code, trace the data flow end-to-end.** A local refactoring that ignores the global flow produces incomplete abstractions.
+A local refactoring that ignores the global flow produces incomplete abstractions. Before touching any code, trace the data flow end-to-end.
 
 ### Problem
 

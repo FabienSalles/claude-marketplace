@@ -1,7 +1,7 @@
 ---
 name: ts-oop
-description: This skill should be used when designing classes, value objects, collections, or refactoring object-oriented code. Provides OOP design principles for clean, well-structured TypeScript code.
-version: "1.0"
+description: "ACTIVATE when designing TypeScript classes, value objects, collections, or when the user asks about object design, encapsulation, Tell Don't Ask, or Symbol.iterator. Covers: Tell Don't Ask with TS examples, collection over named properties, Whole Object pattern, iterable collections via Symbol.iterator, self-descriptive value objects with branded types. DO NOT use for: functional DDD modeling (see ddd-ts-fp), refactoring methodology (see ts-refactoring)."
+version: "1.1"
 ---
 
 # OOP Design Principles (TypeScript)

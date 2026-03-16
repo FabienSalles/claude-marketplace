@@ -1,7 +1,7 @@
 ---
 name: drizzle-conventions
-description: This skill should be used when defining database schemas, writing queries, creating migrations, or implementing repositories with Drizzle ORM. Provides Drizzle conventions and patterns.
-version: "1.0"
+description: "ACTIVATE when defining database schemas, writing queries, creating migrations, or implementing repositories with Drizzle ORM. ACTIVATE for 'Drizzle', 'pgTable', 'drizzle-kit', 'db.query', 'db.select', '$inferSelect', 'migration'. Covers: schema definition with pgTable, relations, type inference ($inferSelect/$inferInsert), Query API vs Select API vs raw SQL decision tree, repository pattern with toDomain/toPersistence, migration workflow (always drizzle-kit generate first, never manual journal). DO NOT use for: Doctrine/PHP queries (see php-sql-conventions), general SQL formatting."
+version: "1.1"
 ---
 
 # Drizzle Conventions

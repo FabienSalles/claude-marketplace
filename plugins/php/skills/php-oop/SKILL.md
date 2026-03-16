@@ -1,211 +1,101 @@
 ---
 name: php-oop
-description: This skill should be used when designing classes, value objects, collections, or refactoring object-oriented code. Provides OOP design principles for clean, well-structured PHP code.
-version: "1.0"
+description: "ACTIVATE when designing PHP classes, value objects, collections, or when the user asks about object design, encapsulation, or 'Tell Don't Ask'. Covers: Tell Don't Ask with concrete PHP examples, collection over named properties, Whole Object pattern, IteratorAggregate, self-describing value objects. DO NOT use for: refactoring methodology (see php-refactoring), DDD domain modeling (see php-ddd-conventions)."
+version: "1.1"
 ---
 
 # OOP Design Principles
 
+Project-specific OOP conventions. These focus on patterns where Claude tends to produce "ask" code instead of "tell" code.
+
 ## 1. Tell Don't Ask
 
-**The object that owns the data exposes the behavior.** Calling code must not extract data to make decisions on behalf of the object.
-
-### Problem
+The object that owns the data exposes the behavior. Do not extract data to make decisions externally.
 
 ```php
-// ❌ AVOID - The controller queries the object and decides
-$requiredFields = $identityDocument->getRequiredFieldNames();
-
-foreach ($requiredFields as $fieldName) {
+// AVOID: caller queries and decides
+foreach ($identityDocument->getRequiredFieldNames() as $fieldName) {
     $file = $identityDocument->getFileByFieldName($fieldName);
-
-    if ($file !== null) {
-        continue;
-    }
-
-    $existing = $existingFiles->find($fieldName);
-
-    if ($existing === null) {
-        continue;
-    }
-
+    if ($file !== null) { continue; }
     // ... re-download logic
 }
-```
 
-### Solution
-
-```php
-// ✅ CORRECT - The object exposes behavior
+// CORRECT: object exposes behavior
 foreach ($identityDocument->getMissingExistingFiles() as $fieldName => $existingFile) {
-    // The object already determined which files are missing
+    // Object already determined which files are missing
 }
 ```
 
 ## 2. Collection Over Separate Named Properties
 
-**When elements share the same nature and undergo the same processing**, prefer an indexed collection over separate named properties.
-
-### Problem
+When elements share the same type and processing, use an indexed collection — even if the count is known and fixed.
 
 ```php
-// ❌ AVOID - Separate properties = N identical code paths
-final class FormData
-{
+// AVOID: N separate properties = N identical code paths
+final class FormData {
     private ?File $frontFile = null;
     private ?File $backFile = null;
     private ?File $passportFile = null;
-
-    public function getFileByFieldName(string $name): ?File
-    {
-        return match ($name) {
-            'front_file' => $this->frontFile,
-            'back_file' => $this->backFile,
-            'passport_file' => $this->passportFile,
-        };
-    }
 }
-```
 
-### Solution
-
-```php
-// ✅ CORRECT - One collection, one loop
-final class FormData
-{
+// CORRECT: one collection
+final class FormData {
     /** @param array<string, File> $files */
     private array $files = [];
-
-    public function addFile(string $fieldName, File $file): void
-    {
-        $this->files[$fieldName] = $file;
-    }
-
-    public function getFiles(): array
-    {
-        return $this->files;
-    }
+    public function addFile(string $fieldName, File $file): void { ... }
 }
 ```
 
-**Criterion:** if elements share the same type and undergo the same processing (upload, validation, display), use a collection, even if the count is known and fixed.
+## 3. Whole Object — Pass the Object, Not Its Primitives
 
-## 3. Whole Object — Pass the Entire Object Instead of Its Primitives
-
-**When multiple parameters come from the same object, pass the object.** Extracting primitives on the caller side is a sign of *feature envy*.
-
-### Problem
+When multiple parameters come from the same object, pass the object. Extracting primitives is feature envy.
 
 ```php
-// ❌ AVOID - The caller destructures the object
-$collection->add(
-    documentType: $document->type,
-    documentName: $document->originalFileName,
-    downloadUrl: $url,
-);
+// AVOID: caller destructures
+$collection->add(documentType: $document->type, documentName: $document->originalFileName, downloadUrl: $url);
+
+// CORRECT: pass whole object
+$collection->addFromDocument(document: $document, downloadUrl: $url);
 ```
-
-### Solution
-
-```php
-// ✅ CORRECT - The object is passed as a whole
-$collection->addFromDocument(
-    document: $document,
-    downloadUrl: $url,
-);
-```
-
-The receiving method extracts what it needs itself. This encapsulates the knowledge of `$document`'s structure.
 
 ## 4. Iterable Collections (`IteratorAggregate`)
 
-**Implement `IteratorAggregate` when the collection will be iterated**, to keep the internal property private while allowing `foreach`.
-
-### Problem
+Implement `IteratorAggregate` to allow `foreach` while keeping internals private.
 
 ```php
-// ❌ AVOID - Public property to allow iteration
-final class FilesCollection
-{
-    public array $files = [];
-}
-
-// Direct access to internal array
-foreach ($collection->files as $name => $file) { ... }
-$collection->files[$name] = $file; // uncontrolled mutation
-```
-
-### Solution
-
-```php
-// ✅ CORRECT - Iterable with private property
 /** @implements \IteratorAggregate<string, FileInfo> */
 final class FilesCollection implements \IteratorAggregate
 {
-    /** @param array<string, FileInfo> $files */
-    public function __construct(
-        private array $files = [],
-    ) {
-    }
+    public function __construct(private array $files = []) {}
 
-    public function add(string $name, FileInfo $file): void
-    {
-        $this->files[$name] = $file;
-    }
+    public function add(string $name, FileInfo $file): void { $this->files[$name] = $file; }
 
-    /** @return \ArrayIterator<string, FileInfo> */
-    public function getIterator(): \ArrayIterator
-    {
-        return new \ArrayIterator($this->files);
-    }
+    public function getIterator(): \ArrayIterator { return new \ArrayIterator($this->files); }
 }
 
-// Clean usage
-foreach ($collection as $name => $file) { ... }
+// Usage: foreach ($collection as $name => $file) { ... }
 ```
 
 ## 5. Self-Describing Value Objects
 
-**Include the type or identity in the value object** so that consumers do not need external mappings to interpret it.
-
-### Problem
+Include the type/identity in the value object so consumers need no external mapping.
 
 ```php
-// ❌ AVOID - The consumer needs an external mapping
-final class UploadFile
-{
+// AVOID: consumer needs external fieldName -> fileType mapping
+final class UploadFile {
     public function __construct(
         public readonly string $content,
         public readonly string $originalFileName,
-    ) {
-    }
+    ) {}
 }
 
-// The controller must maintain a fieldName → fileType mapping
-foreach ($fileTypeMapping as $fieldName => $fileType) {
-    $request = new UploadRequest($fileType, $expirationDate);
-    $repository->upload($files[$fieldName], $request);
-}
-```
-
-### Solution
-
-```php
-// ✅ CORRECT - The object carries its own type
-final class UploadFile
-{
+// CORRECT: object carries its own type
+final class UploadFile {
     public function __construct(
         public readonly FileTypeEnum $type,
         public readonly string $content,
         public readonly string $originalFileName,
-    ) {
-    }
-}
-
-// The consumer needs no mapping
-foreach ($files as $file) {
-    $request = new UploadRequest($file->type, $expirationDate);
-    $repository->upload($file, $request);
+    ) {}
 }
 ```
 

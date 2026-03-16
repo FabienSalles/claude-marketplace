@@ -6,7 +6,7 @@ Collection de skills, hooks, agents et commands pour [Claude Code](https://claud
 
 | Pack | Skills | Description |
 |------|--------|-------------|
-| **php** | 14 | PHP 8.2/8.3, conventions, DDD, TDD, Symfony, Twig, Composer, OOP, refactoring, SQL, security |
+| **php** | 13 | PHP 8.2/8.3, conventions, DDD, TDD, Symfony, Twig, Composer, OOP, refactoring, SQL |
 | **typescript** | 8 | Conventions, typing, DDD events, functional programming, OOP, refactoring, security |
 | **astro** | 11 | Astro 5.x — components, routing, collections, i18n, SEO, Tailwind, React islands, transitions |
 | **nest** | 2 | NestJS architectural conventions, DDD with NestJS |
@@ -14,6 +14,7 @@ Collection de skills, hooks, agents et commands pour [Claude Code](https://claud
 | **vitest** | 2 | TDD workflow, test conventions and patterns |
 | **tooling** | 6 | Docker, Drizzle ORM, pnpm workspaces, Zod schemas, Claude Code plugin conventions, npx skills conventions |
 | **common** | — | Hooks, agents et commands partagés |
+| **security-audit** *(externe)* | — | [netresearch/security-audit-skill](https://github.com/netresearch/security-audit-skill) — OWASP, CWE, CVSS |
 
 ## Installation
 
@@ -85,7 +86,7 @@ skillkit install FabienSalles/claude-marketplace
 claude-marketplace/
 ├── .claude-plugin/marketplace.json     # Manifest racine
 ├── plugins/
-│   ├── php/                            # 14 skills PHP
+│   ├── php/                            # 13 skills PHP
 │   ├── typescript/                     # 8 skills TypeScript
 │   ├── astro/                          # 11 skills Astro 5.x
 │   ├── nest/                           # 2 skills NestJS

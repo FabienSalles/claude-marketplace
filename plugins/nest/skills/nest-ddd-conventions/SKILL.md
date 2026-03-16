@@ -1,7 +1,7 @@
 ---
 name: nest-ddd-conventions
-description: This skill should be used when writing domain code in NestJS. Enforces Domain-Driven Design principles by forbidding infrastructure dependencies in the domain layer.
-version: "1.0"
+description: "ACTIVATE when writing domain layer code in a NestJS project, defining ports/adapters, or structuring bounded contexts as NestJS modules. ACTIVATE for 'domain layer', 'DDD NestJS', 'port', 'adapter', 'bounded context', 'domain purity'. Covers: strict domain layer purity (no NestJS decorators, no ORM, no HTTP in domain), directory structure (domain/application/infrastructure), ports and adapters pattern with Symbol tokens, dependency direction rules. DO NOT use for: NestJS module/controller setup (see nest-conventions), general TypeScript DDD (see ddd-ts-fp)."
+version: "1.1"
 ---
 
 # DDD Conventions (NestJS)

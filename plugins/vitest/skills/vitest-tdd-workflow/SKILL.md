@@ -1,7 +1,7 @@
 ---
 name: vitest-tdd-workflow
-description: This skill should be used when developing new features, implementing user stories, using "/feature-dev", or when the user mentions "TDD", "test first", "red-green-refactor", or "iterations". Provides the project's TDD workflow with Vitest.
-version: "1.0"
+description: "ACTIVATE when building new features, endpoints, or user stories using TDD with Vitest. ACTIVATE for '/feature-dev', 'TDD', 'test first', 'red-green-refactor', 'iterations' in a TypeScript/NestJS context. Covers: cross-layer TDD iterations (Controller/Domain/Repository), working app at each GREEN, bug-fix-first-test workflow, mocks-hiding-bugs pitfall. DO NOT use for: test writing conventions (see vitest-test-conventions), PHP TDD (see php-tdd-workflow)."
+version: "1.1"
 ---
 
 # TDD Workflow (Vitest)

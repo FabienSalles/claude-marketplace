@@ -1,7 +1,7 @@
 ---
 name: ts-conventions
-description: This skill should be used when writing TypeScript types, generics, branded types, or configuring strict mode. Provides TypeScript-specific typing conventions and patterns.
-version: "1.0"
+description: "ACTIVATE when writing TypeScript types, generics, branded types, discriminated unions, or configuring tsconfig. ACTIVATE for 'type vs interface', 'enum alternative', 'branded type', 'satisfies', 'strict mode'. Covers: strict mode policy, no-any/no-enum rules, type over interface, discriminated unions, satisfies operator, branded types for ID safety, utility types. DO NOT use for: code formatting (see ts-code-conventions), functional patterns (see ts-functional)."
+version: "1.1"
 ---
 
 # TypeScript Conventions
@@ -36,6 +36,24 @@ function parse(input: unknown): string {
 
   throw new Error('Invalid input');
 }
+```
+
+## No Inline `typeof import(...)` — Use `import type`
+
+```typescript
+// ❌ AVOID - Inline typeof import is unreadable and bypasses proper imports
+const service = new MyService(
+  mock as unknown as InstanceType<
+    typeof import('../path/to/repository').Repository
+  >,
+);
+
+// ✅ CORRECT - Import the type at the top of the file
+import type { Repository } from '../path/to/repository';
+
+const service = new MyService(
+  mock as unknown as Repository,
+);
 ```
 
 ## No `enum` — Use `as const`
@@ -212,6 +230,7 @@ if (tenant === null) {
 |------|-----------|
 | Strict mode | `strict: true`, always |
 | No `any` | Use `unknown` + narrowing |
+| No `typeof import(...)` | Use `import type` at top of file |
 | No `enum` | Use `as const` + type union |
 | type vs interface | `type` by default, `interface` for merging/extends |
 | Exclusive states | Discriminated unions |

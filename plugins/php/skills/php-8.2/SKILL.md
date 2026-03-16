@@ -1,90 +1,33 @@
 ---
 name: php-8.2
-description: This skill should be used when writing PHP code. Provides PHP 8.2 specific features and conventions.
-version: "1.0"
+description: "ACTIVATE when writing PHP classes, DTOs, or value objects in a PHP 8.2+ project. Covers: mandatory readonly class usage (class-level, not per-property). DO NOT use for: general PHP syntax, PHP 8.3 features (see php-8.3)."
+version: "1.1"
 ---
 
 # PHP 8.2 Conventions
 
-This skill documents PHP 8.2 specific features to use in all PHP projects.
+The key project convention: always use `readonly class` instead of per-property `readonly`.
 
 ## Readonly Classes
 
-**Always prefer `readonly class` over individual `readonly` properties.** PHP 8.2 introduced readonly classes, which make all promoted properties readonly implicitly.
-
 ```php
-// ❌ AVOID - readonly on each property
+// AVOID: readonly on each property
 final class OrderSummary
 {
     public function __construct(
         private readonly string $orderUuid,
         private readonly string $buyerUuid,
-        private readonly int $buyerAge,
-    ) {
-    }
+    ) {}
 }
 
-// ✅ CORRECT - readonly on the class
+// CORRECT: readonly on the class
 final readonly class OrderSummary
 {
     public function __construct(
         private string $orderUuid,
         private string $buyerUuid,
-        private int $buyerAge,
-    ) {
-    }
+    ) {}
 }
 ```
 
-### When to Use
-
-- Use `readonly class` when **all** properties should be readonly (most DTOs, value objects, services)
-- Keep per-property `readonly` only when some properties need to be mutable
-
-### Benefits
-
-- **Less noise**: No need to repeat `readonly` on each property
-- **Stronger guarantee**: Prevents accidentally adding a mutable property
-- **Cleaner constructors**: Promoted properties are shorter
-
-## Disjunctive Normal Form (DNF) Types
-
-PHP 8.2 allows combining union and intersection types:
-
-```php
-// ✅ PHP 8.2 - DNF types
-function process((Countable&Iterator)|null $input): void
-```
-
-## `true`, `false`, `null` as Standalone Types
-
-```php
-// ✅ PHP 8.2 - Standalone false/true/null types
-function alwaysFails(): false
-{
-    return false;
-}
-```
-
-## Enum Constants in `const` Expressions
-
-```php
-// ✅ PHP 8.2
-enum Status: string
-{
-    case Active = 'active';
-    case Inactive = 'inactive';
-
-    const DEFAULTS = [self::Active, self::Inactive];
-}
-```
-
-## Quick Reference
-
-| Rule | Example |
-|------|---------|
-| Readonly class | `final readonly class Dto` |
-| Readonly class constructor | No `readonly` on promoted properties |
-| Mutable exception | Use per-property `readonly` only when needed |
-| DNF types | `(A&B)|null` |
-| Standalone types | `true`, `false`, `null` |
+Use `readonly class` when all properties should be readonly (most DTOs, value objects, services). Keep per-property `readonly` only when some properties need to be mutable.

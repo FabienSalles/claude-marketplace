@@ -1,7 +1,7 @@
 ---
 name: frontend-component-patterns
-description: This skill should be used when creating or refactoring React components on projects that follow Container/Presentation patterns and domain service extraction.
-version: "1.0"
+description: "ACTIVATE when creating or refactoring React components, splitting large components, extracting hooks, or deciding Container vs Presentation. ACTIVATE for 'component split', 'Container/Presentation', 'extract hook', 'god component', 'prop drilling'. Covers: Container vs Presentation criteria, when to extract custom hooks (3+ related states), when to split markup (150+ lines), when to move logic to domain service, form section props convention, spotlight/opacity pattern. DO NOT use for: projects not using Container/Presentation (ask first), general React hooks API."
+version: "1.1"
 ---
 
 # Frontend Component Patterns

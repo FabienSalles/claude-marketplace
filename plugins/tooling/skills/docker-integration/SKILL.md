@@ -1,7 +1,7 @@
 ---
 name: docker-integration
-description: This skill should be used when integrating a new Docker image, writing a docker-compose.yml service, or adding an external tool/service to a Docker stack. Ensures the official configuration is always read before writing your own.
-version: "1.0"
+description: "ACTIVATE when integrating a new Docker image, writing docker-compose.yml services, or adding external tools to a Docker stack. ACTIVATE for 'docker-compose', 'Docker image', 'container setup', 'service integration'. Covers: mandatory RTFM checklist before writing any docker-compose line (volumes, ports, env vars, healthchecks, internal architecture), image inspection commands, common anti-patterns that cause silent failures. DO NOT use for: Dockerfile writing, CI/CD pipeline configuration, Kubernetes."
+version: "1.1"
 ---
 
 # Docker Integration - RTFM First

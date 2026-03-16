@@ -1,16 +1,12 @@
 ---
 name: php-twig-conventions
-description: This skill should be used when working with Twig templates, Twig components (twig:*), translations in Twig, or when encountering translation issues. Provides conventions for Twig templating in Symfony projects.
-version: "1.0"
+description: "ACTIVATE when writing or modifying Twig templates, using Twig components (twig:*), handling translations in Twig, or debugging translation issues. ACTIVATE whenever 'trans_default_domain', 'twig component', or 'translation not working' appears. Covers: trans_default_domain isolation in Twig components (critical pitfall), ClockInterface for dates in templates. DO NOT use for: Twig syntax basics, Symfony controller rendering, CSS/HTML questions."
+version: "1.1"
 ---
 
 # Twig Conventions
 
-This skill documents important Twig conventions and common pitfalls to avoid in Symfony projects.
-
-## Purpose
-
-Prevent common mistakes when working with Twig templates, especially regarding translations and component isolation.
+Two critical pitfalls that produce silent bugs in Twig templates.
 
 ## Critical Concepts
 

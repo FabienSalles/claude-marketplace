@@ -1,7 +1,7 @@
 ---
 name: nest-conventions
-description: This skill should be used when creating NestJS modules, controllers, services, guards, pipes, or configuring dependency injection. Provides NestJS architectural conventions.
-version: "1.0"
+description: "ACTIVATE when creating NestJS modules, controllers, services, guards, pipes, or configuring dependency injection. ACTIVATE for 'NestJS', '@Module', '@Controller', '@Injectable', 'guard', 'pipe', 'DI token'. Covers: module-per-bounded-context structure, thin controllers, ZodValidationPipe, guards for auth, exception filters, Symbol token-based DI for interfaces, constructor injection only. DO NOT use for: domain layer code (see nest-ddd-conventions), Zod schema design (see zod-conventions)."
+version: "1.1"
 ---
 
 # NestJS Conventions

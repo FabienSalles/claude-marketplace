@@ -1,7 +1,7 @@
 ---
 name: claude-plugin-conventions
-description: This skill should be used when creating a Claude Code plugin, writing plugin.json or marketplace.json, structuring hooks.json, or validating plugin manifests. Covers official schemas, naming rules, and distribution best practices.
-version: "1.0"
+description: "ACTIVATE when creating a Claude Code plugin, writing plugin.json, marketplace.json, hooks.json, or structuring plugin directories. ACTIVATE for 'Claude plugin', 'plugin.json', 'marketplace.json', 'hooks.json', 'CLAUDE_PLUGIN_ROOT'. Covers: plugin directory structure, plugin.json/marketplace.json schemas, hooks.json format (matcher + hook types), CLAUDE_PLUGIN_ROOT portability, distribution best practices, validation commands. DO NOT use for: SKILL.md writing conventions (see npx-skills-conventions), general Claude Code usage."
+version: "1.1"
 ---
 
 # Claude Code Plugin & Marketplace Conventions

@@ -1,7 +1,7 @@
 ---
 name: astro-seo
-description: This skill should be used when implementing SEO meta tags, Open Graph, Twitter cards, structured data, or canonical URLs in Astro. Covers head management patterns.
-version: "1.0"
+description: "ACTIVATE when implementing SEO meta tags, Open Graph, Twitter cards, JSON-LD structured data, or canonical URLs in Astro. ACTIVATE for 'SEO', 'meta tags', 'og:image', 'structured data', 'JSON-LD', 'canonical'. Covers: reusable SEO component, Open Graph/Twitter card meta, JSON-LD structured data (Organization, Person, BlogPosting, Breadcrumbs), multilingual SEO with hreflang, blog post SEO. DO NOT use for: sitemap configuration (see astro-sitemap), general HTML head management."
+version: "1.1"
 ---
 
 # Astro SEO Patterns
@@ -12,15 +12,6 @@ Patterns for search engine optimization and social sharing in Astro.
 
 ```astro
 ---
-// src/layouts/Layout.astro
-interface Props {
-  title: string;
-  description?: string;
-  image?: string;
-  canonicalUrl?: string;
-  noindex?: boolean;
-}
-
 const {
   title,
   description = "Default site description",
@@ -35,18 +26,9 @@ const ogImage = new URL(image, siteUrl).toString();
 ---
 
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-  <!-- Primary Meta -->
   <title>{title}</title>
   <meta name="description" content={description} />
-  <meta name="author" content="Author Name" />
-
-  <!-- Robots -->
   {noindex && <meta name="robots" content="noindex, nofollow" />}
-
-  <!-- Canonical -->
   <link rel="canonical" href={currentUrl} />
 
   <!-- Open Graph -->
@@ -55,292 +37,19 @@ const ogImage = new URL(image, siteUrl).toString();
   <meta property="og:title" content={title} />
   <meta property="og:description" content={description} />
   <meta property="og:image" content={ogImage} />
-  <meta property="og:site_name" content="Site Name" />
 
   <!-- Twitter -->
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:url" content={currentUrl} />
   <meta name="twitter:title" content={title} />
-  <meta name="twitter:description" content={description} />
   <meta name="twitter:image" content={ogImage} />
-
-  <!-- Favicon -->
-  <link rel="icon" type="image/x-icon" href="/favicon.ico" />
-  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
-  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
-  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
-
-  <!-- RSS -->
-  <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml" />
 </head>
 ```
 
-## SEO Component
+> **When creating a reusable SEO component or blog post SEO page**, read `references/seo-components-and-structured-data.md` for the complete SEO.astro component with article support.
 
-```astro
----
-// src/components/SEO.astro
-interface Props {
-  title: string;
-  description: string;
-  image?: string;
-  article?: {
-    publishedTime: Date;
-    modifiedTime?: Date;
-    authors?: string[];
-    tags?: string[];
-  };
-  noindex?: boolean;
-}
+> **When adding JSON-LD structured data** (Organization, Person, BlogPosting, Breadcrumbs), read `references/seo-components-and-structured-data.md` for all schema.org patterns.
 
-const {
-  title,
-  description,
-  image = '/og-default.png',
-  article,
-  noindex = false,
-} = Astro.props;
-
-const siteUrl = Astro.site?.toString().replace(/\/$/, '') || '';
-const canonicalUrl = `${siteUrl}${Astro.url.pathname}`;
-const ogImage = image.startsWith('http') ? image : `${siteUrl}${image}`;
----
-
-<!-- Primary -->
-<title>{title}</title>
-<meta name="description" content={description} />
-<link rel="canonical" href={canonicalUrl} />
-{noindex && <meta name="robots" content="noindex, nofollow" />}
-
-<!-- Open Graph -->
-<meta property="og:url" content={canonicalUrl} />
-<meta property="og:title" content={title} />
-<meta property="og:description" content={description} />
-<meta property="og:image" content={ogImage} />
-<meta property="og:type" content={article ? 'article' : 'website'} />
-
-{article && (
-  <>
-    <meta property="article:published_time" content={article.publishedTime.toISOString()} />
-    {article.modifiedTime && (
-      <meta property="article:modified_time" content={article.modifiedTime.toISOString()} />
-    )}
-    {article.authors?.map(author => (
-      <meta property="article:author" content={author} />
-    ))}
-    {article.tags?.map(tag => (
-      <meta property="article:tag" content={tag} />
-    ))}
-  </>
-)}
-
-<!-- Twitter -->
-<meta name="twitter:card" content="summary_large_image" />
-<meta name="twitter:title" content={title} />
-<meta name="twitter:description" content={description} />
-<meta name="twitter:image" content={ogImage} />
-```
-
-### Usage
-
-```astro
----
-import SEO from '../components/SEO.astro';
-import Layout from '../layouts/Layout.astro';
-
-const post = await getEntry('blog', Astro.params.slug);
----
-
-<html>
-  <head>
-    <SEO
-      title={post.data.title}
-      description={post.data.description}
-      image={post.data.heroImage}
-      article={{
-        publishedTime: post.data.pubDate,
-        tags: post.data.tags,
-      }}
-    />
-  </head>
-  <body>
-    <!-- ... -->
-  </body>
-</html>
-```
-
-## Blog Post SEO
-
-```astro
----
-// src/pages/blog/[...slug].astro
-import { getCollection, getEntry } from 'astro:content';
-
-export async function getStaticPaths() {
-  const posts = await getCollection('blog');
-  return posts.map(post => ({
-    params: { slug: post.slug },
-    props: { post },
-  }));
-}
-
-const { post } = Astro.props;
-const { title, description, pubDate, categories } = post.data;
----
-
-<head>
-  <title>{title} | Blog</title>
-  <meta name="description" content={description} />
-
-  <!-- Article specific -->
-  <meta property="og:type" content="article" />
-  <meta property="article:published_time" content={pubDate.toISOString()} />
-  {categories.map(cat => (
-    <meta property="article:tag" content={cat} />
-  ))}
-
-  <!-- Keywords from categories -->
-  <meta name="keywords" content={categories.join(', ')} />
-</head>
-```
-
-## JSON-LD Structured Data
-
-### Organization
-
-```astro
-<script type="application/ld+json" set:html={JSON.stringify({
-  "@context": "https://schema.org",
-  "@type": "Organization",
-  "name": "Company Name",
-  "url": Astro.site,
-  "logo": `${Astro.site}logo.png`,
-  "sameAs": [
-    "https://linkedin.com/company/example",
-    "https://twitter.com/example"
-  ]
-})} />
-```
-
-### Person (Portfolio/CV)
-
-```astro
----
-const person = {
-  "@context": "https://schema.org",
-  "@type": "Person",
-  "name": "Fabien Salles",
-  "url": Astro.site,
-  "jobTitle": "Technical Coach",
-  "sameAs": [
-    "https://linkedin.com/in/fabiensalles",
-    "https://github.com/fabiensalles"
-  ]
-};
----
-
-<script type="application/ld+json" set:html={JSON.stringify(person)} />
-```
-
-### Blog Post (Article)
-
-```astro
----
-const article = {
-  "@context": "https://schema.org",
-  "@type": "BlogPosting",
-  "headline": post.data.title,
-  "description": post.data.description,
-  "datePublished": post.data.pubDate.toISOString(),
-  "author": {
-    "@type": "Person",
-    "name": "Fabien Salles"
-  },
-  "publisher": {
-    "@type": "Organization",
-    "name": "Fabien Salles",
-    "logo": {
-      "@type": "ImageObject",
-      "url": `${Astro.site}logo.png`
-    }
-  }
-};
----
-
-<script type="application/ld+json" set:html={JSON.stringify(article)} />
-```
-
-### Breadcrumbs
-
-```astro
----
-const breadcrumbs = {
-  "@context": "https://schema.org",
-  "@type": "BreadcrumbList",
-  "itemListElement": [
-    {
-      "@type": "ListItem",
-      "position": 1,
-      "name": "Home",
-      "item": Astro.site
-    },
-    {
-      "@type": "ListItem",
-      "position": 2,
-      "name": "Blog",
-      "item": `${Astro.site}blog/`
-    },
-    {
-      "@type": "ListItem",
-      "position": 3,
-      "name": post.data.title
-    }
-  ]
-};
----
-
-<script type="application/ld+json" set:html={JSON.stringify(breadcrumbs)} />
-```
-
-## Sitemap Integration
-
-```javascript
-// astro.config.mjs
-import sitemap from '@astrojs/sitemap';
-
-export default defineConfig({
-  site: 'https://example.com',
-  integrations: [
-    sitemap({
-      filter: (page) => !page.includes('/draft/'),
-      changefreq: 'weekly',
-      priority: 0.7,
-    }),
-  ],
-});
-```
-
-## Multilingual SEO
-
-```astro
----
-const currentPath = Astro.url.pathname;
-const isEnglish = currentPath.startsWith('/en');
-const alternateLang = isEnglish ? 'fr' : 'en';
-const alternatePath = isEnglish
-  ? currentPath.replace('/en', '')
-  : `/en${currentPath}`;
----
-
-<head>
-  <html lang={isEnglish ? 'en' : 'fr'}>
-
-  <!-- Alternate language versions -->
-  <link rel="alternate" hreflang="fr" href={`${Astro.site}${currentPath.replace('/en', '')}`} />
-  <link rel="alternate" hreflang="en" href={`${Astro.site}/en${currentPath}`} />
-  <link rel="alternate" hreflang="x-default" href={`${Astro.site}${currentPath.replace('/en', '')}`} />
-</head>
-```
+> **When implementing multilingual SEO with hreflang**, read `references/seo-components-and-structured-data.md` for hreflang and og:locale patterns.
 
 ## Quick Reference
 

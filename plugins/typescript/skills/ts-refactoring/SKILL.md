@@ -1,7 +1,7 @@
 ---
 name: ts-refactoring
-description: This skill should be used when refactoring code, redesigning classes, or extracting value objects. Provides methodological principles for safe, well-informed refactoring.
-version: "1.0"
+description: "ACTIVATE when the user wants to refactor, redesign, extract classes/value objects, or restructure TypeScript code. ACTIVATE for 'refactor', 'extract', 'redesign', 'simplify', 'clean up'. Covers: mandatory end-to-end flow analysis before refactoring, consumer-driven value object design, imports as coupling signals, value object completeness checklist. DO NOT use for: writing new features, general OOP patterns (see ts-oop)."
+version: "1.1"
 ---
 
 # Refactoring Methodology (TypeScript)

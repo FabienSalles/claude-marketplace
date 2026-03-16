@@ -1,19 +1,12 @@
 ---
 name: php-prg-pattern
-description: This skill should be used when implementing form handling, POST requests, or any action that modifies data. Provides the Post/Redirect/Get pattern to prevent duplicate submissions.
-version: "1.0"
+description: "ACTIVATE when implementing form handling, POST endpoints, or any controller that modifies data. ACTIVATE for 'form submission', 'POST redirect', 'PRG', 'duplicate submission'. Covers: POST success -> always redirect, POST error -> re-render (no redirect), flash messages after redirect. DO NOT use for: FormType design (see php-symfony-form), API endpoints returning JSON."
+version: "1.1"
 ---
 
 # Post/Redirect/Get (PRG) Pattern
 
-The PRG pattern prevents duplicate form submissions when users refresh the page after a POST request.
-
-## The Problem
-
-Without PRG, after a successful form submission:
-1. User submits form (POST)
-2. Server processes and returns HTML response
-3. User refreshes page → **Browser re-sends POST** → Duplicate action!
+POST success -> redirect. POST error -> re-render with errors. This prevents duplicate submissions on page refresh.
 
 ## The Solution
 

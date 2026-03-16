@@ -1,14 +1,12 @@
 ---
 name: php-test-conventions
-description: This skill should be used when writing tests, creating test classes, using PHPUnit, Prophecy, or test factories. Provides conventions for test organization, naming, and patterns.
-version: "1.0"
+description: "ACTIVATE when writing or modifying PHPUnit tests, creating test classes, using Prophecy, test factories, or data providers. ACTIVATE for 'test naming', 'test doubles', 'DAMP', 'spy vs mock', 'test organization'. Covers: DAMP over DRY, Spy over Mock (AAA), exception test naming, what NOT to test, factory methods, assertion patterns. DO NOT use for: TDD workflow/iteration process (see php-tdd-workflow), Symfony form testing setup."
+version: "1.1"
 ---
 
 # Test Conventions
 
-This skill documents general test writing conventions for PHP/Symfony projects.
-
-> **Note**: For project-specific directory structure and patterns, check for a local `test-conventions` or `test-structure` skill in the project.
+> For TDD workflow and iteration process, see `php-tdd-workflow`.
 
 ## Test Types
 

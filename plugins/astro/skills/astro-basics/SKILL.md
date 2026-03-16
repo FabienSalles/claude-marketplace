@@ -1,7 +1,7 @@
 ---
 name: astro-basics
-description: This skill should be used when creating Astro components, layouts, pages, or working with Astro project structure. Provides core patterns for Astro 5.x development.
-version: "1.0"
+description: "ACTIVATE when creating Astro components, layouts, pages, or setting up Astro project structure. ACTIVATE for 'Astro component', 'slot', 'layout', 'Astro.props', 'class:list'. Covers: component anatomy (frontmatter/template/style/script), layout pattern with slot, props patterns, scoped vs global styles, script patterns (build-time vs client-side), path aliases. DO NOT use for: content collections (see astro-content-collections), routing (see astro-routing), React islands (see astro-react)."
+version: "1.1"
 ---
 
 # Astro Basics
@@ -30,7 +30,6 @@ public/             # Static assets (copied to dist/)
 ---
 // 1. Imports
 import Layout from '@layouts/Layout.astro';
-import { getCollection } from 'astro:content';
 
 // 2. Props interface
 interface Props {
@@ -43,202 +42,28 @@ const posts = await getCollection('blog');
 
 // 4. Props destructuring
 const { title, description = '' } = Astro.props;
-
-// 5. Computed values
-const sortedPosts = posts.sort((a, b) =>
-  b.data.pubDate.valueOf() - a.data.pubDate.valueOf()
-);
 ---
 
-<!-- 6. Template -->
+<!-- 5. Template -->
 <Layout title={title}>
   <h1>{title}</h1>
   <slot />
 </Layout>
 
-<!-- 7. Scoped styles (optional) -->
+<!-- 6. Scoped styles (optional) -->
 <style>
   h1 { color: var(--accent-color); }
 </style>
 
-<!-- 8. Client-side script (optional) -->
+<!-- 7. Client-side script (optional) -->
 <script>
   console.log('Runs in browser');
 </script>
 ```
 
-## Layout Pattern
+> **When implementing layouts, props patterns, named slots, style scoping, or script patterns**, read `references/component-patterns.md` for complete BaseLayout, slot, style, and script examples.
 
-**BaseLayout.astro** - HTML skeleton with `<slot />`:
-
-```astro
----
-interface Props {
-  title: string;
-  description?: string;
-}
-const { title, description = '' } = Astro.props;
----
-
-<!doctype html>
-<html lang="fr">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content={description} />
-    <title>{title}</title>
-  </head>
-  <body>
-    <slot />
-  </body>
-</html>
-
-<style is:global>
-  @import '@styles/global.scss';
-</style>
-```
-
-## Props Patterns
-
-### Required vs Optional
-
-```astro
----
-interface Props {
-  title: string;           // Required
-  description?: string;    // Optional
-  tags?: string[];         // Optional array
-}
-
-const {
-  title,
-  description = 'Default description',
-  tags = []
-} = Astro.props;
----
-```
-
-### Class List
-
-```astro
-<div class:list={['base-class', { active: isActive, disabled: !enabled }]}>
-  Content
-</div>
-```
-
-## Slot Patterns
-
-### Default Slot
-
-```astro
-<!-- Parent -->
-<Card>
-  <p>This goes into the default slot</p>
-</Card>
-
-<!-- Card.astro -->
-<div class="card">
-  <slot />
-</div>
-```
-
-### Named Slots
-
-```astro
-<!-- Parent -->
-<Card>
-  <span slot="header">Title</span>
-  <p>Body content</p>
-  <span slot="footer">Footer</span>
-</Card>
-
-<!-- Card.astro -->
-<div class="card">
-  <header><slot name="header" /></header>
-  <main><slot /></main>
-  <footer><slot name="footer" /></footer>
-</div>
-```
-
-## Style Scoping
-
-### Scoped (default)
-
-```astro
-<style>
-  /* Only applies to this component */
-  h1 { color: blue; }
-</style>
-```
-
-### Global
-
-```astro
-<style is:global>
-  /* Applies globally */
-  body { margin: 0; }
-</style>
-```
-
-### External Import
-
-```astro
-<style is:global>
-  @import '@styles/component.scss';
-</style>
-```
-
-## Script Patterns
-
-### Build-time Only (frontmatter)
-
-```astro
----
-// Runs only at build time
-import fs from 'node:fs';
-const data = JSON.parse(fs.readFileSync('data.json', 'utf-8'));
----
-```
-
-### Client-side Script
-
-```astro
-<script>
-  // Runs in browser, bundled
-  document.querySelector('button').addEventListener('click', () => {
-    console.log('clicked');
-  });
-</script>
-```
-
-### Pass Data to Client
-
-```astro
----
-const config = { apiUrl: 'https://api.example.com' };
----
-
-<script define:vars={{ config }}>
-  console.log(config.apiUrl);
-</script>
-```
-
-## Path Aliases (tsconfig.json)
-
-```json
-{
-  "compilerOptions": {
-    "baseUrl": ".",
-    "paths": {
-      "@/*": ["src/*"],
-      "@components/*": ["src/components/*"],
-      "@layouts/*": ["src/layouts/*"],
-      "@styles/*": ["src/styles/*"],
-      "@lib/*": ["src/lib/*"]
-    }
-  }
-}
-```
+> **When setting up path aliases** (tsconfig.json), read `references/component-patterns.md` for the standard alias configuration.
 
 ## Quick Reference
 
