@@ -1,5 +1,5 @@
 {
-  "description": "Shared hooks for development workflow: file permissions, git tracking, skill reminders, and git mv enforcement",
+  "description": "Shared hooks for development workflow: file permissions, git tracking, skill reminders, command audit trail, CI reminders, test-file edit warnings, clock-bypass detection, and git mv enforcement",
   "hooks": {
     "PostToolUse": [
       {
@@ -21,6 +21,16 @@
             "timeout": 10
           }
         ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/audit-trail.sh",
+            "timeout": 10
+          }
+        ]
       }
     ],
     "PreToolUse": [
@@ -35,11 +45,41 @@
         ]
       },
       {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/warn-clock-bypass.py",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/warn-test-file-edit.sh",
+            "timeout": 10
+          }
+        ]
+      },
+      {
         "matcher": "Bash",
         "hooks": [
           {
             "type": "command",
             "command": "${CLAUDE_PLUGIN_ROOT}/hooks/warn-use-git-mv.sh",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/remind-ci-before-commit.sh",
             "timeout": 10
           }
         ]

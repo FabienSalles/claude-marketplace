@@ -47,6 +47,54 @@ Key points:
 - **Spy** (`shouldHaveBeenCalled`): Verify exact URL/parameters **after** the act
 - This separation ensures AAA pattern is respected: no assertions before act
 
+## Guzzle HTTP Client — Mocking Strategy
+
+**IMPORTANT**: Never register a single shared `MockHandler` in the DI container — it creates shared state across all tests. Use one of these two approaches instead:
+
+### Option A — MockHandler directly in the test (functional/integration tests)
+
+Create a `MockHandler` per test and inject a fresh `GuzzleHttp\Client` into the container:
+
+```php
+$mockHandler = new MockHandler([new Response(200, [], $json)]);
+self::getContainer()->set('spi.my_http_client', new Client(['handler' => HandlerStack::create($mockHandler)]));
+```
+
+### Option B — Prophecy spy (unit tests)
+
+Mock the `GuzzleHttp\ClientInterface` or a facade wrapping it:
+
+```php
+$httpClient = $this->prophesize(ClientInterface::class);
+$httpClient->request('GET', '/api/v1/resource', Argument::any())->willReturn($response);
+
+$sut = new MyService($httpClient->reveal());
+
+$sut->__invoke();
+
+$httpClient->request('GET', '/api/v1/resource', Argument::any())->shouldHaveBeenCalled();
+```
+
+### Service Config (spi.yaml)
+
+In production, use `eres_authentication.guzzle.handler_stack` from the authentication bundle (adds Keycloak auth header). No `MockHandler` in `when@test`:
+
+```yaml
+spi.my_http_client:
+    class: GuzzleHttp\Client
+    arguments:
+        -   base_uri: '%env(CLIENT_SCHEME)%%env(HOSTNAME_MY_SERVICE)%'
+            handler: '@eres_authentication.guzzle.handler_stack'
+            headers:
+                Accept: 'application/json'
+
+when@test:
+    services:
+        _defaults:
+            public: true
+        # No shared MockHandler — inject per test instead
+```
+
 ## When to Use Which Approach
 
 | Data format | Approach |
