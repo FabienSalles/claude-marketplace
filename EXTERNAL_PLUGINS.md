@@ -11,7 +11,6 @@ Dans Claude Code :
 ```
 /plugin marketplace add anthropics/claude-plugins-official
 /plugin marketplace add atournayre/claude-marketplace
-/plugin marketplace add jarrodwatts/claude-hud
 ```
 
 ## Étape 2 — Installer les plugins
@@ -19,8 +18,6 @@ Dans Claude Code :
 ### Marketplace : `claude-plugins-official` (Anthropic)
 
 ```
-/plugin install atlassian@claude-plugins-official
-/plugin install autofix-bot@claude-plugins-official
 /plugin install coderabbit@claude-plugins-official
 /plugin install feature-dev@claude-plugins-official
 /plugin install figma@claude-plugins-official
@@ -42,12 +39,6 @@ Dans Claude Code :
 /plugin install symfony@atournayre-claude-plugin-marketplace
 ```
 
-### Marketplace : `claude-hud`
-
-```
-/plugin install claude-hud@claude-hud
-```
-
 ## Étape 3 — Composants additionnels installés manuellement
 
 Ces éléments ne viennent d'aucun marketplace et sont placés directement dans `~/.claude/` :
@@ -66,7 +57,7 @@ cat ~/.claude/plugins/installed_plugins.json | jq 'keys'
 cat ~/.claude/plugins/known_marketplaces.json | jq 'keys'
 ```
 
-Le nombre attendu : **3 marketplaces**, **17 plugins**.
+Le nombre attendu : **2 marketplaces**, **14 plugins** (11 depuis `claude-plugins-official` + 3 depuis `atournayre`).
 
 ## Maintenance
 
