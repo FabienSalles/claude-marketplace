@@ -31,7 +31,7 @@ declare -A PACK_DESCRIPTIONS=(
   [frontend]="Frontend clean architecture (hexagonal), Container/Presentation patterns"
   [vitest]="Vitest TDD workflow, test conventions and patterns"
   [tooling]="Docker, Drizzle ORM, pnpm workspaces, Zod schemas"
-  [common]="Shared hooks, agents, and commands"
+  [common]="Shared hooks, agents, commands and skills"
 )
 
 # ─────────────────────────────────────────────
@@ -51,7 +51,9 @@ print_pack() {
   local desc="${PACK_DESCRIPTIONS[$pack]}"
   local skill_count
   if [[ "$pack" == "common" ]]; then
-    skill_count="hooks+agents+commands"
+    local common_skills
+    common_skills="$(find "$SCRIPT_DIR/plugins/common/skills" -maxdepth 1 -mindepth 1 -type d 2>/dev/null | wc -l)"
+    skill_count="hooks+agents+commands+${common_skills} skills"
   else
     skill_count="$(find "$SCRIPT_DIR/plugins/$pack/skills" -maxdepth 1 -mindepth 1 -type d 2>/dev/null | wc -l) skills"
   fi
@@ -88,6 +90,15 @@ is_pack_installed() {
       local name
       name=$(basename "$f")
       if [[ -L "$CLAUDE_HOME/commands/$name" ]]; then
+        found=1
+        break
+      fi
+    done
+    for skill_dir in "$SCRIPT_DIR/plugins/common/skills/"*/; do
+      [[ -d "$skill_dir" ]] || continue
+      local skill_name
+      skill_name=$(basename "$skill_dir")
+      if [[ -L "$CLAUDE_HOME/skills/$skill_name" ]]; then
         found=1
         break
       fi
@@ -162,6 +173,23 @@ install_pack() {
       ((++count))
     done
 
+    # Install common skills
+    mkdir -p "$CLAUDE_HOME/skills"
+    for skill_dir in "$SCRIPT_DIR/plugins/common/skills/"*/; do
+      [[ -d "$skill_dir" ]] || continue
+      local skill_name
+      skill_name=$(basename "$skill_dir")
+      if [[ -L "$CLAUDE_HOME/skills/$skill_name" ]]; then
+        continue
+      fi
+      if [[ -d "$CLAUDE_HOME/skills/$skill_name" && ! -L "$CLAUDE_HOME/skills/$skill_name" ]]; then
+        echo -e "    ${YELLOW}⚠${NC} $skill_name exists as directory, skipping (use --remove first)"
+        continue
+      fi
+      ln -sf "$skill_dir" "$CLAUDE_HOME/skills/$skill_name"
+      ((++count))
+    done
+
     echo -e "  ${GREEN}✓${NC} ${BOLD}common${NC}: $count items linked"
   else
     mkdir -p "$CLAUDE_HOME/skills"
@@ -221,6 +249,15 @@ remove_pack() {
       name=$(basename "$f")
       if [[ -L "$CLAUDE_HOME/commands/$name" ]]; then
         rm "$CLAUDE_HOME/commands/$name"
+        ((++count))
+      fi
+    done
+    for skill_dir in "$SCRIPT_DIR/plugins/common/skills/"*/; do
+      [[ -d "$skill_dir" ]] || continue
+      local skill_name
+      skill_name=$(basename "$skill_dir")
+      if [[ -L "$CLAUDE_HOME/skills/$skill_name" ]]; then
+        rm "$CLAUDE_HOME/skills/$skill_name"
         ((++count))
       fi
     done

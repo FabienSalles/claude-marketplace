@@ -1,14 +1,15 @@
 {
   "name": "common",
   "version": "1.0.0",
-  "description": "Shared hooks, agents, and commands across projects",
+  "description": "Shared hooks, agents, commands and skills across projects",
   "author": {
     "name": "FabienSalles"
   },
   "repository": "https://github.com/FabienSalles/claude-marketplace",
   "license": "MIT",
-  "keywords": ["hooks", "agents", "commands"],
+  "keywords": ["hooks", "agents", "commands", "skills"],
   "agents": "./agents/ui-engineer.md",
   "hooks": "./hooks/hooks.json",
-  "commands": "./commands/feature-dev.md"
+  "commands": "./commands/",
+  "skills": "./skills/"
 }
