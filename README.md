@@ -13,7 +13,7 @@ Collection de skills, hooks, agents et commands pour [Claude Code](https://claud
 | **frontend** | 2 | Clean architecture (hexagonal), Container/Presentation patterns |
 | **vitest** | 2 | TDD workflow, test conventions and patterns |
 | **tooling** | 6 | Docker, Drizzle ORM, pnpm workspaces, Zod schemas, Claude Code plugin conventions, npx skills conventions |
-| **common** | 4 | Hooks, agents, commands et skills partagés (planning, contexte, research, etc.) |
+| **common** | — | Hooks, agents, commands partagés, skills partagés (planning, contexte, research, etc.) + statusline (barre de progression contexte) + `skillListingBudgetFraction` à 0.04 dans `~/.claude/settings.json` |
 | **security-audit** *(externe)* | — | [netresearch/security-audit-skill](https://github.com/netresearch/security-audit-skill) — OWASP, CWE, CVSS |
 
 ## Installation
@@ -93,7 +93,7 @@ claude-marketplace/
 │   ├── frontend/                       # 2 skills Frontend
 │   ├── vitest/                         # 2 skills Vitest
 │   ├── tooling/                        # 6 skills (Docker, Drizzle, pnpm, Zod, plugin conventions, npx skills)
-│   └── common/                         # Hooks, agents, commands et skills partagés
+│   └── common/                         # Hooks, agents, commands
 │       ├── hooks/
 │       │   ├── audit-trail.sh          # Append tool calls to audit log
 │       │   ├── fix-drizzle-journal-timestamp.sh
@@ -106,16 +106,8 @@ claude-marketplace/
 │       │   └── warn-use-git-mv.sh      # Block mv, suggest git mv
 │       ├── agents/
 │       │   └── ui-engineer.md          # UI/Frontend specialist agent
-│       ├── commands/
-│       │   ├── business-first-dev.md   # 5-phase business-first feature workflow
-│       │   ├── deep-review.md          # Adversarial 3-agent code review
-│       │   ├── feature-tdd-dev.md      # TDD feature development workflow
-│       │   └── research.md             # Objective research workflow
-│       └── skills/
-│           ├── context-window-management/
-│           ├── crispi-planning/
-│           ├── expert-persona-skills/
-│           └── product-research/
+│       └── commands/
+│           └── feature-dev.md          # TDD feature development workflow
 ├── setup.sh                            # Script d'installation (symlinks)
 └── README.md
 ```

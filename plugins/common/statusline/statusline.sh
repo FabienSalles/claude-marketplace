@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+input=$(cat)
+
+cwd=$(echo "$input" | jq -r '.workspace.current_dir // .cwd // empty')
+model=$(echo "$input" | jq -r '.model.display_name // empty')
+used_pct=$(echo "$input" | jq -r '.context_window.used_percentage // empty')
+git_worktree=$(echo "$input" | jq -r '.workspace.git_worktree // empty')
+
+# Shorten home directory to ~
+home="$HOME"
+short_cwd="${cwd/#$home/\~}"
+
+# Get git branch from the cwd
+branch=""
+if [ -n "$cwd" ] && git -C "$cwd" rev-parse --git-dir > /dev/null 2>&1; then
+  branch=$(git -C "$cwd" -c core.fsmonitor="" symbolic-ref --short HEAD 2>/dev/null || git -C "$cwd" rev-parse --short HEAD 2>/dev/null)
+fi
+
+# Build the status line
+parts=()
+
+# Directory part
+parts+=("$(printf '\033[34m%s\033[0m' "$short_cwd")")
+
+# Git branch
+if [ -n "$branch" ]; then
+  parts+=("$(printf '\033[33m %s\033[0m' "$branch")")
+elif [ -n "$git_worktree" ]; then
+  parts+=("$(printf '\033[33m %s\033[0m' "$git_worktree")")
+fi
+
+# Model
+if [ -n "$model" ]; then
+  parts+=("$(printf '\033[36m%s\033[0m' "$model")")
+fi
+
+# Context usage (visual progress bar)
+if [ -n "$used_pct" ]; then
+  used_int=$(printf '%.0f' "$used_pct")
+  if [ "$used_int" -ge 80 ]; then
+    ctx_color='\033[31m'
+  elif [ "$used_int" -ge 50 ]; then
+    ctx_color='\033[33m'
+  else
+    ctx_color='\033[32m'
+  fi
+  bar_width=10
+  filled=$(( used_int * bar_width / 100 ))
+  [ "$filled" -gt "$bar_width" ] && filled=$bar_width
+  empty=$(( bar_width - filled ))
+  bar=""
+  for ((i=0; i<filled; i++)); do bar+="█"; done
+  for ((i=0; i<empty; i++)); do bar+="░"; done
+  parts+=("$(printf "${ctx_color}ctx:[%s] %d%%\033[0m" "$bar" "$used_int")")
+fi
+
+# Rate limits
+five_pct=$(echo "$input" | jq -r '.rate_limits.five_hour.used_percentage // empty')
+if [ -n "$five_pct" ]; then
+  five_int=$(printf '%.0f' "$five_pct")
+  parts+=("$(printf '\033[35m5h:%d%%\033[0m' "$five_int")")
+fi
+
+# Join parts with separator
+printf '%s' "${parts[0]}"
+for part in "${parts[@]:1}"; do
+  printf ' \033[2m|\033[0m %s' "$part"
+done
+printf '\n'

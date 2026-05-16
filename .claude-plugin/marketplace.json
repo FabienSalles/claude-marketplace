@@ -81,12 +81,12 @@
     {
       "name": "common",
       "source": "./plugins/common",
-      "description": "Shared hooks, agents, commands and skills across projects",
+      "description": "Shared hooks, agents, commands, skills across projects and statusline (context progress bar)",
       "version": "1.0.0",
       "author": { "name": "FabienSalles" },
       "category": "productivity",
       "license": "MIT",
-      "keywords": ["hooks", "agents", "commands"]
+      "keywords": ["hooks", "agents", "commands", "statusline"]
     },
     {
       "name": "security-audit",
