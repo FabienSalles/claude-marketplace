@@ -1,6 +1,6 @@
 ---
 name: php-tdd-workflow
-description: "ACTIVATE when the user wants to build, implement, or develop any new feature, endpoint, or user story using TDD, test-first, or red-green-refactor methodology. ACTIVATE for the '/feature-dev' command. ACTIVATE whenever 'TDD', 'test first', 'red-green-refactor', or 'itérations' appears alongside building something new. Covers: breaking features into small cross-layer TDD iterations, the red-green-refactor cycle, keeping the app working after each step, bug-fix-first-test workflow. DO NOT use for: writing a single test for existing code, test naming conventions (see php-test-conventions), general PHP/Symfony questions."
+description: "ACTIVATE when the user wants to build, implement, or develop any new feature, endpoint, or user story using TDD, test-first, or red-green-refactor methodology. ACTIVATE for the '/feature-tdd-dev' command. ACTIVATE whenever 'TDD', 'test first', 'red-green-refactor', or 'itérations' appears alongside building something new. Covers: breaking features into small cross-layer TDD iterations, the red-green-refactor cycle, keeping the app working after each step, bug-fix-first-test workflow. DO NOT use for: writing a single test for existing code, test naming conventions (see php-test-conventions), general PHP/Symfony questions."
 version: "1.1"
 ---
 

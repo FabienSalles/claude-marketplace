@@ -177,10 +177,12 @@ jobs:
           fi
 
           # Check commands
-          if [[ ! -L "$CLAUDE_HOME/commands/feature-dev.md" ]]; then
-            echo "::error::Command symlink not created"
+          cmd_count=$(find "$CLAUDE_HOME/commands" -maxdepth 1 -type l 2>/dev/null | wc -l)
+          if [[ $cmd_count -lt 1 ]]; then
+            echo "::error::Command symlinks not created"
             exit 1
           fi
+          echo "Created $cmd_count command symlinks"
 
           echo "✓ --all: all symlinks created"
 
