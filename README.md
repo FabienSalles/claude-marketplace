@@ -13,7 +13,7 @@ Collection de skills, hooks, agents et commands pour [Claude Code](https://claud
 | **frontend** | 2 | Clean architecture (hexagonal), Container/Presentation patterns |
 | **vitest** | 2 | TDD workflow, test conventions and patterns |
 | **tooling** | 6 | Docker, Drizzle ORM, pnpm workspaces, Zod schemas, Claude Code plugin conventions, npx skills conventions |
-| **common** | — | Hooks, agents et commands partagés |
+| **common** | 4 | Hooks, agents, commands et skills partagés (planning, contexte, research, etc.) |
 | **security-audit** *(externe)* | — | [netresearch/security-audit-skill](https://github.com/netresearch/security-audit-skill) — OWASP, CWE, CVSS |
 
 ## Installation
@@ -93,16 +93,29 @@ claude-marketplace/
 │   ├── frontend/                       # 2 skills Frontend
 │   ├── vitest/                         # 2 skills Vitest
 │   ├── tooling/                        # 6 skills (Docker, Drizzle, pnpm, Zod, plugin conventions, npx skills)
-│   └── common/                         # Hooks, agents, commands
+│   └── common/                         # Hooks, agents, commands et skills partagés
 │       ├── hooks/
+│       │   ├── audit-trail.sh          # Append tool calls to audit log
+│       │   ├── fix-drizzle-journal-timestamp.sh
 │       │   ├── fix-permissions.sh      # Fix file permissions after Write
 │       │   ├── git-add-empty.sh        # Auto git add -N new files
+│       │   ├── remind-ci-before-commit.sh
 │       │   ├── remind-skills.py        # Remind skills on PHP/Twig edits
+│       │   ├── warn-clock-bypass.py
+│       │   ├── warn-test-file-edit.sh
 │       │   └── warn-use-git-mv.sh      # Block mv, suggest git mv
 │       ├── agents/
 │       │   └── ui-engineer.md          # UI/Frontend specialist agent
-│       └── commands/
-│           └── feature-dev.md          # TDD feature development workflow
+│       ├── commands/
+│       │   ├── business-first-dev.md   # 5-phase business-first feature workflow
+│       │   ├── deep-review.md          # Adversarial 3-agent code review
+│       │   ├── feature-tdd-dev.md      # TDD feature development workflow
+│       │   └── research.md             # Objective research workflow
+│       └── skills/
+│           ├── context-window-management/
+│           ├── crispi-planning/
+│           ├── expert-persona-skills/
+│           └── product-research/
 ├── setup.sh                            # Script d'installation (symlinks)
 └── README.md
 ```
