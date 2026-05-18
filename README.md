@@ -13,14 +13,30 @@ Collection de skills, hooks, agents et commands pour [Claude Code](https://claud
 | **frontend** | 2 | Clean architecture (hexagonal), Container/Presentation patterns |
 | **vitest** | 2 | TDD workflow, test conventions and patterns |
 | **tooling** | 6 | Docker, Drizzle ORM, pnpm workspaces, Zod schemas, Claude Code plugin conventions, npx skills conventions |
-| **common** | — | Hooks, agents, commands partagés, skills partagés (planning, contexte, research, etc.) + statusline (barre de progression contexte) + `skillListingBudgetFraction` à 0.04 dans `~/.claude/settings.json` |
+| **common** | — | Hooks, agents, commands partagés, skills partagés (planning, contexte, research, etc.) + `skillListingBudgetFraction` à 0.06 dans `~/.claude/settings.json` |
+| **statusline** | — | Statusline Claude Code — cwd, branche git, modèle, barre de progression du contexte, quota rate limit 5h |
 | **security-audit** *(externe)* | — | [netresearch/security-audit-skill](https://github.com/netresearch/security-audit-skill) — OWASP, CWE, CVSS |
 
 ## Installation
 
+### Mode utilisateur (`/plugin`)
+
+Méthode recommandée pour les utilisateurs finaux. Aucun clone, aucun script.
+
+```text
+# Dans Claude Code
+/plugin marketplace add FabienSalles/claude-marketplace
+/plugin install statusline@fabien-claude-marketplace
+/plugin install common@fabien-claude-marketplace
+/plugin install php@fabien-claude-marketplace
+# etc.
+```
+
+Chaque plugin est indépendant — installe uniquement ce dont tu as besoin (ex. juste le `statusline` sans le reste).
+
 ### Mode développeur (symlinks)
 
-Méthode recommandée pour le développement actif. Les modifications sont immédiatement actives.
+Méthode recommandée pour le développement actif du marketplace. Les modifications sont immédiatement actives.
 
 ```bash
 git clone https://github.com/FabienSalles/claude-marketplace.git
@@ -67,6 +83,33 @@ Compatible nativement (même format `SKILL.md`).
 skillkit install FabienSalles/claude-marketplace
 ```
 
+## Statusline
+
+Plugin dédié, installable sans rien d'autre :
+
+```text
+/plugin marketplace add FabienSalles/claude-marketplace
+/plugin install statusline@fabien-claude-marketplace
+```
+
+Ce qu'il affiche (séparé par ` | `) :
+
+| Segment | Couleur | Contenu |
+|---|---|---|
+| `~/path` | bleu | répertoire courant (HOME remplacé par `~`) |
+|  `branch` | jaune | branche git (fallback : nom du worktree) |
+| `Model name` | cyan | modèle Claude actif |
+| `ctx:[████░░░░░░] 42%` | vert / jaune / rouge | progression du contexte (vert <50 %, jaune ≥50 %, rouge ≥80 %) |
+| `5h:67%` | magenta | quota de la fenêtre rate limit 5h |
+
+Exemple de rendu :
+
+```
+~/projects/foo |  main | Opus 4.7 | ctx:[████░░░░░░] 42% | 5h:67%
+```
+
+Pré-requis : `jq` (déjà présent sur la plupart des Mac via Homebrew). Source : [`plugins/statusline/statusline.sh`](plugins/statusline/statusline.sh).
+
 ## Gestion des packs
 
 ```bash
@@ -93,22 +136,25 @@ claude-marketplace/
 │   ├── frontend/                       # 2 skills Frontend
 │   ├── vitest/                         # 2 skills Vitest
 │   ├── tooling/                        # 6 skills (Docker, Drizzle, pnpm, Zod, plugin conventions, npx skills)
-│   └── common/                         # Hooks, agents, commands
-│       ├── hooks/
-│       │   ├── audit-trail.sh          # Append tool calls to audit log
-│       │   ├── fix-drizzle-journal-timestamp.sh
-│       │   ├── fix-permissions.sh      # Fix file permissions after Write
-│       │   ├── git-add-empty.sh        # Auto git add -N new files
-│       │   ├── remind-ci-before-commit.sh
-│       │   ├── remind-skills.py        # Remind skills on PHP/Twig edits
-│       │   ├── warn-clock-bypass.py
-│       │   ├── warn-test-file-edit.sh
-│       │   └── warn-use-git-mv.sh      # Block mv, suggest git mv
-│       ├── agents/
-│       │   └── ui-engineer.md          # UI/Frontend specialist agent
-│       └── commands/
-│           └── feature-dev.md          # TDD feature development workflow
-├── setup.sh                            # Script d'installation (symlinks)
+│   ├── common/                         # Hooks, agents, commands, skills partagés
+│   │   ├── hooks/
+│   │   │   ├── audit-trail.sh          # Append tool calls to audit log
+│   │   │   ├── fix-drizzle-journal-timestamp.sh
+│   │   │   ├── fix-permissions.sh      # Fix file permissions after Write
+│   │   │   ├── git-add-empty.sh        # Auto git add -N new files
+│   │   │   ├── remind-ci-before-commit.sh
+│   │   │   ├── remind-skills.py        # Remind skills on PHP/Twig edits
+│   │   │   ├── warn-clock-bypass.py
+│   │   │   ├── warn-test-file-edit.sh
+│   │   │   └── warn-use-git-mv.sh      # Block mv, suggest git mv
+│   │   ├── agents/
+│   │   │   └── ui-engineer.md          # UI/Frontend specialist agent
+│   │   └── commands/
+│   │       └── feature-dev.md          # TDD feature development workflow
+│   └── statusline/                     # Plugin statusline autonome
+│       ├── .claude-plugin/plugin.json  # Déclare le champ statusLine
+│       └── statusline.sh               # Script (cwd, git, modèle, ctx, rate limit)
+├── setup.sh                            # Script d'installation (symlinks, mode dev)
 └── README.md
 ```
 

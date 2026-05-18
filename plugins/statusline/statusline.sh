@@ -1,19 +1,25 @@
 #!/usr/bin/env bash
 input=$(cat)
 
-cwd=$(echo "$input" | jq -r '.workspace.current_dir // .cwd // empty')
-model=$(echo "$input" | jq -r '.model.display_name // empty')
-used_pct=$(echo "$input" | jq -r '.context_window.used_percentage // empty')
-git_worktree=$(echo "$input" | jq -r '.workspace.git_worktree // empty')
+# Single jq pass extracts every field we need (TAB-separated)
+IFS=$'\t' read -r cwd model used_pct git_worktree five_pct < <(
+  jq -r '[
+    .workspace.current_dir // .cwd // "",
+    .model.display_name // "",
+    (.context_window.used_percentage // "" | tostring),
+    .workspace.git_worktree // "",
+    (.rate_limits.five_hour.used_percentage // "" | tostring)
+  ] | @tsv' <<< "$input"
+)
 
 # Shorten home directory to ~
-home="$HOME"
-short_cwd="${cwd/#$home/\~}"
+short_cwd="${cwd/#$HOME/\~}"
 
 # Get git branch from the cwd
 branch=""
 if [ -n "$cwd" ] && git -C "$cwd" rev-parse --git-dir > /dev/null 2>&1; then
-  branch=$(git -C "$cwd" -c core.fsmonitor="" symbolic-ref --short HEAD 2>/dev/null || git -C "$cwd" rev-parse --short HEAD 2>/dev/null)
+  branch=$(git -C "$cwd" -c core.fsmonitor="" symbolic-ref --short HEAD 2>/dev/null \
+           || git -C "$cwd" rev-parse --short HEAD 2>/dev/null)
 fi
 
 # Build the status line
@@ -55,7 +61,6 @@ if [ -n "$used_pct" ]; then
 fi
 
 # Rate limits
-five_pct=$(echo "$input" | jq -r '.rate_limits.five_hour.used_percentage // empty')
 if [ -n "$five_pct" ]; then
   five_int=$(printf '%.0f' "$five_pct")
   parts+=("$(printf '\033[35m5h:%d%%\033[0m' "$five_int")")

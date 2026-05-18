@@ -1,0 +1,15 @@
+{
+  "name": "statusline",
+  "version": "1.0.0",
+  "description": "Claude Code statusline — cwd, git branch, model, context progress bar, 5h rate limit",
+  "author": {
+    "name": "FabienSalles"
+  },
+  "repository": "https://github.com/FabienSalles/claude-marketplace",
+  "license": "MIT",
+  "keywords": ["statusline", "context", "progress-bar"],
+  "statusLine": {
+    "type": "command",
+    "command": "${CLAUDE_PLUGIN_ROOT}/statusline.sh"
+  }
+}

@@ -21,7 +21,7 @@ BOLD='\033[1m'
 # ─────────────────────────────────────────────
 # Available packs
 # ─────────────────────────────────────────────
-PACKS=(php typescript astro nest frontend vitest tooling common)
+PACKS=(php typescript astro nest frontend vitest tooling common statusline)
 
 declare -A PACK_DESCRIPTIONS=(
   [php]="PHP 8.2/8.3, conventions, DDD, TDD, Symfony, Twig, Composer, OOP, refactoring, SQL, security"
@@ -31,7 +31,8 @@ declare -A PACK_DESCRIPTIONS=(
   [frontend]="Frontend clean architecture (hexagonal), Container/Presentation patterns"
   [vitest]="Vitest TDD workflow, test conventions and patterns"
   [tooling]="Docker, Drizzle ORM, pnpm workspaces, Zod schemas"
-  [common]="Shared hooks, agents, commands, skills and statusline (context progress bar)"
+  [common]="Shared hooks, agents, commands, skills"
+  [statusline]="Claude Code statusline — cwd, git branch, model, context progress bar, 5h rate limit"
 )
 
 # ─────────────────────────────────────────────
@@ -54,6 +55,8 @@ print_pack() {
     local common_skills
     common_skills="$(find "$SCRIPT_DIR/plugins/common/skills" -maxdepth 1 -mindepth 1 -type d 2>/dev/null | wc -l)"
     skill_count="hooks+agents+commands+${common_skills} skills"
+  elif [[ "$pack" == "statusline" ]]; then
+    skill_count="statusline script"
   else
     skill_count="$(find "$SCRIPT_DIR/plugins/$pack/skills" -maxdepth 1 -mindepth 1 -type d 2>/dev/null | wc -l) skills"
   fi
@@ -65,11 +68,14 @@ is_pack_installed() {
   local pack="$1"
   local found=0
 
-  if [[ "$pack" == "common" ]]; then
-    # Check statusline symlink
+  if [[ "$pack" == "statusline" ]]; then
     if [[ -L "$CLAUDE_HOME/statusline-command.sh" ]]; then
       found=1
     fi
+    return $((1 - found))
+  fi
+
+  if [[ "$pack" == "common" ]]; then
     # Check if any common symlink exists
     for f in "$SCRIPT_DIR/plugins/common/hooks/"*.sh "$SCRIPT_DIR/plugins/common/hooks/"*.py; do
       [[ -f "$f" ]] || continue
@@ -130,6 +136,37 @@ is_pack_installed() {
 install_pack() {
   local pack="$1"
   local count=0
+
+  if [[ "$pack" == "statusline" ]]; then
+    local settings_file="$CLAUDE_HOME/settings.json"
+    if [[ ! -f "$settings_file" ]]; then
+      mkdir -p "$CLAUDE_HOME"
+      echo '{}' > "$settings_file"
+    fi
+
+    local statusline_src="$SCRIPT_DIR/plugins/statusline/statusline.sh"
+    local statusline_dst="$CLAUDE_HOME/statusline-command.sh"
+    if [[ ! -f "$statusline_src" ]]; then
+      echo -e "  ${RED}✗${NC} ${BOLD}statusline${NC}: $statusline_src missing"
+      return
+    fi
+    if [[ ! -L "$statusline_dst" ]]; then
+      if [[ -f "$statusline_dst" ]]; then
+        mv "$statusline_dst" "${statusline_dst}.bak.$(date +%s)"
+      fi
+      ln -sf "$statusline_src" "$statusline_dst"
+      ((++count))
+    fi
+
+    if ! jq -e '.statusLine' "$settings_file" > /dev/null 2>&1; then
+      cp "$settings_file" "${settings_file}.bak.$(date +%s)"
+      jq '. + {"statusLine": {"type": "command", "command": "~/.claude/statusline-command.sh"}}' "$settings_file" > "${settings_file}.tmp" && mv "${settings_file}.tmp" "$settings_file"
+      echo -e "    ${BLUE}ℹ${NC} statusLine registered in $settings_file (backup saved)"
+    fi
+
+    echo -e "  ${GREEN}✓${NC} ${BOLD}statusline${NC}: $count items linked"
+    return
+  fi
 
   if [[ "$pack" == "common" ]]; then
     # Install hooks
@@ -200,34 +237,14 @@ install_pack() {
       echo '{}' > "$settings_file"
     fi
 
-    # Install statusline (symlink + register in settings.json)
-    local statusline_src="$SCRIPT_DIR/plugins/common/statusline/statusline.sh"
-    local statusline_dst="$CLAUDE_HOME/statusline-command.sh"
-    if [[ -f "$statusline_src" ]]; then
-      if [[ ! -L "$statusline_dst" ]]; then
-        # Replace existing regular file (back it up first)
-        if [[ -f "$statusline_dst" ]]; then
-          mv "$statusline_dst" "${statusline_dst}.bak.$(date +%s)"
-        fi
-        ln -sf "$statusline_src" "$statusline_dst"
-        ((++count))
-      fi
-
-      if ! jq -e '.statusLine' "$settings_file" > /dev/null 2>&1; then
-        cp "$settings_file" "${settings_file}.bak.$(date +%s)"
-        jq '. + {"statusLine": {"type": "command", "command": "~/.claude/statusline-command.sh"}}' "$settings_file" > "${settings_file}.tmp" && mv "${settings_file}.tmp" "$settings_file"
-        echo -e "    ${BLUE}ℹ${NC} statusLine registered in $settings_file (backup saved)"
-      fi
-    fi
-
     # Register skillListingBudgetFraction if not already configured.
     # Default 0.01 = ~10k chars on a 1M context model, which gets exhausted once
     # several packs are installed (descriptions get dropped from the listing).
-    # 0.04 = ~40k chars on 1M, fits all marketplace skills with margin.
+    # 0.06 = ~60k chars on 1M, fits all marketplace skills with margin.
     if ! jq -e '.skillListingBudgetFraction' "$settings_file" > /dev/null 2>&1; then
       cp "$settings_file" "${settings_file}.bak.$(date +%s)"
-      jq '. + {"skillListingBudgetFraction": 0.04}' "$settings_file" > "${settings_file}.tmp" && mv "${settings_file}.tmp" "$settings_file"
-      echo -e "    ${BLUE}ℹ${NC} skillListingBudgetFraction (0.04) registered in $settings_file (backup saved)"
+      jq '. + {"skillListingBudgetFraction": 0.06}' "$settings_file" > "${settings_file}.tmp" && mv "${settings_file}.tmp" "$settings_file"
+      echo -e "    ${BLUE}ℹ${NC} skillListingBudgetFraction (0.06) registered in $settings_file (backup saved)"
     fi
 
     echo -e "  ${GREEN}✓${NC} ${BOLD}common${NC}: $count items linked"
@@ -259,6 +276,16 @@ install_pack() {
 remove_pack() {
   local pack="$1"
   local count=0
+
+  if [[ "$pack" == "statusline" ]]; then
+    if [[ -L "$CLAUDE_HOME/statusline-command.sh" ]]; then
+      rm "$CLAUDE_HOME/statusline-command.sh"
+      ((++count))
+      echo -e "    ${BLUE}ℹ${NC} statusline-command.sh removed (statusLine entry in settings.json left for manual cleanup)"
+    fi
+    echo -e "  ${RED}✗${NC} ${BOLD}statusline${NC}: $count items removed"
+    return
+  fi
 
   if [[ "$pack" == "common" ]]; then
     for f in "$SCRIPT_DIR/plugins/common/hooks/"*.sh "$SCRIPT_DIR/plugins/common/hooks/"*.py; do
@@ -301,13 +328,6 @@ remove_pack() {
         ((++count))
       fi
     done
-
-    # Remove statusline symlink (settings.json is left intact — user can clean it manually)
-    if [[ -L "$CLAUDE_HOME/statusline-command.sh" ]]; then
-      rm "$CLAUDE_HOME/statusline-command.sh"
-      ((++count))
-      echo -e "    ${BLUE}ℹ${NC} statusline-command.sh removed (statusLine entry in settings.json left for manual cleanup)"
-    fi
     echo -e "  ${RED}✗${NC} ${BOLD}common${NC}: $count items removed"
   else
     for skill_dir in "$SCRIPT_DIR/plugins/$pack/skills/"*/; do
