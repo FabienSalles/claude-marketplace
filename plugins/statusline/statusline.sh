@@ -1,16 +1,22 @@
 #!/usr/bin/env bash
 input=$(cat)
 
-# Single jq pass extracts every field we need (TAB-separated)
-IFS=$'\t' read -r cwd model used_pct git_worktree five_pct < <(
-  jq -r '[
-    .workspace.current_dir // .cwd // "",
-    .model.display_name // "",
-    (.context_window.used_percentage // "" | tostring),
-    .workspace.git_worktree // "",
-    (.rate_limits.five_hour.used_percentage // "" | tostring)
-  ] | @tsv' <<< "$input"
-)
+# Single jq pass extracts every field we need (one per line).
+# Avoids @tsv + `IFS=$'\t' read`, which collapses consecutive tabs since tab
+# is whitespace in IFS — that silently shifts every field after an empty one.
+{
+  IFS= read -r cwd
+  IFS= read -r model
+  IFS= read -r used_pct
+  IFS= read -r git_worktree
+  IFS= read -r five_pct
+} < <(jq -r '
+  .workspace.current_dir // .cwd // "",
+  .model.display_name // "",
+  (.context_window.used_percentage // "" | tostring),
+  .workspace.git_worktree // "",
+  (.rate_limits.five_hour.used_percentage // "" | tostring)
+' <<< "$input")
 
 # Shorten home directory to ~
 short_cwd="${cwd/#$HOME/\~}"
