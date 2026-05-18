@@ -31,7 +31,7 @@ Méthode recommandée pour les utilisateurs finaux. Aucun clone, aucun script.
 # etc.
 ```
 
-Chaque plugin est indépendant — installe uniquement ce dont tu as besoin. **Cas particulier `statusline`** : Claude Code ne supporte pas la clé `statusLine` dans `plugin.json`, donc `/plugin install statusline` livre le script mais ne l'active pas — voir [section Statusline](#statusline) pour l'auto-config via `setup.sh` ou la config manuelle.
+Chaque plugin est indépendant — installe uniquement ce dont tu as besoin. **Cas particulier `statusline`** : Claude Code ne supporte pas la clé `statusLine` dans `plugin.json`, donc après `/plugin install statusline` il faut activer la barre avec `/statusline:setup` (slash command livrée par le plugin) — voir [section Statusline](#statusline).
 
 ### Mode développeur (symlinks)
 
@@ -94,12 +94,18 @@ cd claude-marketplace
 ./setup.sh --pack statusline
 ```
 
-**Avec `/plugin install` (config manuelle requise)** — Claude Code ne supporte pas la clé `statusLine` dans `plugin.json`, donc le plugin ne peut livrer que le script. Après installation, ajoute manuellement dans `~/.claude/settings.json` :
+**Avec `/plugin install` + `/statusline:setup` (auto-config via slash command)** — Claude Code ne supporte pas la clé `statusLine` dans `plugin.json`, mais le plugin livre une slash command qui crée un symlink stable et écrit `settings.json` automatiquement (même résultat que `setup.sh --pack statusline`, mais sans cloner le repo) :
 
 ```text
 /plugin marketplace add FabienSalles/claude-marketplace
 /plugin install statusline@fabien-claude-marketplace
+/statusline:setup
 ```
+
+Le symlink `~/.claude/statusline-command.sh` pointe vers `${CLAUDE_PLUGIN_ROOT}/statusline.sh` ; après une mise à jour du plugin (le path du cache change), relance `/statusline:setup` pour rafraîchir le symlink.
+
+**Config 100 % manuelle** — si tu préfères pointer ton `settings.json` directement vers le script du cache :
+
 ```json
 {
   "statusLine": {
@@ -117,13 +123,15 @@ Ce qu'il affiche (séparé par ` | `) :
 |  `branch` | jaune | branche git (fallback : nom du worktree) |
 | `Model name` | cyan | modèle Claude actif |
 | `ctx:[████░░░░░░] 42%` | vert / jaune / rouge | progression du contexte (vert <50 %, jaune ≥50 %, rouge ≥80 %) |
-| `5h:67%` | magenta | quota de la fenêtre rate limit 5h |
+| `5h:67% · 1h42` | magenta | quota rate limit 5h + temps restant avant reset (le `· HhMM` n'apparaît que si `rate_limits.five_hour.resets_at` est fourni) |
 
 Exemple de rendu :
 
 ```
-~/projects/foo |  main | Opus 4.7 | ctx:[████░░░░░░] 42% | 5h:67%
+~/projects/foo |  main | Opus 4.7 | ctx:[████░░░░░░] 42% | 5h:67% · 1h42
 ```
+
+Astuce : ajoute `"refreshInterval": 60` à côté de `statusLine` dans ton `~/.claude/settings.json` pour rafraîchir la barre toutes les minutes (sinon elle ne se met à jour qu'aux événements — le temps restant peut alors paraître figé).
 
 Pré-requis : `jq` (déjà présent sur la plupart des Mac via Homebrew). Source : [`plugins/statusline/statusline.sh`](plugins/statusline/statusline.sh).
 

@@ -10,12 +10,14 @@ input=$(cat)
   IFS= read -r used_pct
   IFS= read -r git_worktree
   IFS= read -r five_pct
+  IFS= read -r five_resets_at
 } < <(jq -r '
   .workspace.current_dir // .cwd // "",
   .model.display_name // "",
   (.context_window.used_percentage // "" | tostring),
   .workspace.git_worktree // "",
-  (.rate_limits.five_hour.used_percentage // "" | tostring)
+  (.rate_limits.five_hour.used_percentage // "" | tostring),
+  (.rate_limits.five_hour.resets_at // "" | tostring)
 ' <<< "$input")
 
 # Shorten home directory to ~
@@ -66,10 +68,21 @@ if [ -n "$used_pct" ]; then
   parts+=("$(printf "${ctx_color}ctx:[%s] %d%%\033[0m" "$bar" "$used_int")")
 fi
 
-# Rate limits
+# Rate limits (with time-until-reset when resets_at is provided)
 if [ -n "$five_pct" ]; then
   five_int=$(printf '%.0f' "$five_pct")
-  parts+=("$(printf '\033[35m5h:%d%%\033[0m' "$five_int")")
+  five_time=""
+  if [ -n "$five_resets_at" ]; then
+    diff=$(( five_resets_at - $(date +%s) ))
+    if [ "$diff" -gt 0 ]; then
+      five_time=$(printf '%dh%02d' "$(( diff / 3600 ))" "$(( (diff % 3600) / 60 ))")
+    fi
+  fi
+  if [ -n "$five_time" ]; then
+    parts+=("$(printf '\033[35m5h:%d%% · %s\033[0m' "$five_int" "$five_time")")
+  else
+    parts+=("$(printf '\033[35m5h:%d%%\033[0m' "$five_int")")
+  fi
 fi
 
 # Join parts with separator
