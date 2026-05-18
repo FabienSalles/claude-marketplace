@@ -7,9 +7,5 @@
   },
   "repository": "https://github.com/FabienSalles/claude-marketplace",
   "license": "MIT",
-  "keywords": ["statusline", "context", "progress-bar"],
-  "statusLine": {
-    "type": "command",
-    "command": "${CLAUDE_PLUGIN_ROOT}/statusline.sh"
-  }
+  "keywords": ["statusline", "context", "progress-bar"]
 }

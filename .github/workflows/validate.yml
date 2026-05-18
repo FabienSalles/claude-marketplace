@@ -130,7 +130,8 @@ jobs:
       - name: Validate marketplace references exist
         run: |
           errors=0
-          for source in $(jq -r '.plugins[].source' .claude-plugin/marketplace.json); do
+          # Only validate local paths; remote sources (e.g. GitHub) are objects.
+          for source in $(jq -r '.plugins[] | select(.source | type == "string") | .source' .claude-plugin/marketplace.json); do
             if [[ ! -d "$source" ]]; then
               echo "✗ marketplace.json references non-existent: $source"
               errors=$((errors + 1))

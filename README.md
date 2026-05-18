@@ -26,13 +26,12 @@ Méthode recommandée pour les utilisateurs finaux. Aucun clone, aucun script.
 ```text
 # Dans Claude Code
 /plugin marketplace add FabienSalles/claude-marketplace
-/plugin install statusline@fabien-claude-marketplace
 /plugin install common@fabien-claude-marketplace
 /plugin install php@fabien-claude-marketplace
 # etc.
 ```
 
-Chaque plugin est indépendant — installe uniquement ce dont tu as besoin (ex. juste le `statusline` sans le reste).
+Chaque plugin est indépendant — installe uniquement ce dont tu as besoin. **Cas particulier `statusline`** : Claude Code ne supporte pas la clé `statusLine` dans `plugin.json`, donc `/plugin install statusline` livre le script mais ne l'active pas — voir [section Statusline](#statusline) pour l'auto-config via `setup.sh` ou la config manuelle.
 
 ### Mode développeur (symlinks)
 
@@ -85,11 +84,29 @@ skillkit install FabienSalles/claude-marketplace
 
 ## Statusline
 
-Plugin dédié, installable sans rien d'autre :
+Plugin dédié, installable sans rien d'autre. Deux chemins selon que tu veux la config automatique ou manuelle :
+
+**Avec `setup.sh` (auto-config recommandée)** — crée le symlink ET enregistre `statusLine` dans `~/.claude/settings.json` :
+
+```bash
+git clone https://github.com/FabienSalles/claude-marketplace.git
+cd claude-marketplace
+./setup.sh --pack statusline
+```
+
+**Avec `/plugin install` (config manuelle requise)** — Claude Code ne supporte pas la clé `statusLine` dans `plugin.json`, donc le plugin ne peut livrer que le script. Après installation, ajoute manuellement dans `~/.claude/settings.json` :
 
 ```text
 /plugin marketplace add FabienSalles/claude-marketplace
 /plugin install statusline@fabien-claude-marketplace
+```
+```json
+{
+  "statusLine": {
+    "type": "command",
+    "command": "~/.claude/plugins/cache/FabienSalles-claude-marketplace/plugins/statusline/statusline.sh"
+  }
+}
 ```
 
 Ce qu'il affiche (séparé par ` | `) :
