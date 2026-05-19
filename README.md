@@ -32,7 +32,7 @@ Each row links to the plugin's own README with the full skill catalog and direct
 | [**frontend**](plugins/frontend/README.md) | 3 | Clean architecture (hexagonal), Container/Presentation patterns, best-practices for editing existing UI |
 | [**vitest**](plugins/vitest/README.md) | 2 | TDD workflow + test conventions |
 | [**tooling**](plugins/tooling/README.md) | 6 | Docker, Drizzle ORM, pnpm workspaces, Zod, Claude plugin conventions, npx skills |
-| [**common**](plugins/common/README.md) | 4 skills + 4 commands + 9 hooks + 1 agent | Shared workflow tools: planning, context window, research, persona, TDD/feature-dev commands, code-review/test hooks |
+| [**common**](plugins/common/README.md) | 4 skills + 4 commands + 8 hooks + 1 agent | Shared workflow tools: planning, context window, research, persona, TDD/feature-dev commands, code-review/test hooks |
 | [**statusline**](plugins/statusline/README.md) | — | Colored statusline: cwd, branch, model, context %, 5h rate-limit usage + reset countdown |
 | **security-audit** *(external)* | — | [netresearch/security-audit-skill](https://github.com/netresearch/security-audit-skill) — OWASP, CWE, CVSS |
 
@@ -122,7 +122,7 @@ claude-marketplace/
 │   ├── frontend/                       # README + 3 skills
 │   ├── vitest/                         # README + 2 skills
 │   ├── tooling/                        # README + 6 skills + 1 hook
-│   ├── common/                         # README + 4 skills + 4 commands + 9 hooks + 1 agent
+│   ├── common/                         # README + 4 skills + 4 commands + 8 hooks + 1 agent
 │   └── statusline/                     # README + script + /statusline:setup
 ├── setup.sh                            # Registers this dir as a local marketplace, toggles packs
 ├── EXTERNAL_PLUGINS.md                 # Plugins from other marketplaces (checklist)

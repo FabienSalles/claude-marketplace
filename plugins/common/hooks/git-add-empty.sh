@@ -19,8 +19,11 @@ fi
 file_dir=$(dirname "$file_path")
 git_root=$(git -C "$file_dir" rev-parse --show-toplevel 2>/dev/null) || exit 0
 
-# Get relative path from git root
-relative_path=$(realpath --relative-to="$git_root" "$file_path")
+# Get relative path from git root (portable: macOS BSD realpath has no --relative-to;
+# pwd -P resolves symlinks so /tmp vs /private/tmp lines up on both sides)
+abs_file="$(cd "$file_dir" && pwd -P)/$(basename "$file_path")"
+abs_git_root="$(cd "$git_root" && pwd -P)"
+relative_path="${abs_file#"$abs_git_root"/}"
 
 # Check if file is new (not tracked by git)
 if git -C "$git_root" ls-files --error-unmatch "$relative_path" > /dev/null 2>&1; then
