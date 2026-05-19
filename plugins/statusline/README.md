@@ -2,14 +2,12 @@
 
 Claude Code statusline — directory, git branch, model, context progress bar, and 5h rate-limit usage with time-to-reset.
 
-<!--
-  TODO: replace this placeholder with the colored screenshot once provided.
-  Suggested path: docs/statusline-preview.png
-  Example: ![Statusline preview](../../docs/statusline-preview.png)
--->
+![Statusline preview](../../docs/statusline-preview.png)
+
+Plain-text fallback (no terminal colors):
 
 ```
-~/projects/foo |  main | Opus 4.7 | ctx:[████░░░░░░] 42% | 5h:67% · 1h42
+~/projects/github/claude-marketplace |  main | Opus 4.7 (1M context) | ctx:[██░░░░░░░░] 29% | 5h:5% · 4h14
 ```
 
 ## Install

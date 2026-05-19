@@ -72,9 +72,7 @@ cd claude-marketplace
 
 ## Statusline
 
-```
-~/projects/foo |  main | Opus 4.7 | ctx:[████░░░░░░] 42% | 5h:67% · 1h42
-```
+![Statusline preview](docs/statusline-preview.png)
 
 Claude Code does not accept the `statusLine` key in `plugin.json`, so a small slash command finishes the wiring after `/plugin install statusline`:
 
