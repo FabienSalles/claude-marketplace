@@ -87,16 +87,16 @@ msg = {
     "hookSpecificOutput": {
         "hookEventName": "PreToolUse",
         "additionalContext": (
-            f"\u26a0\ufe0f **`{pattern}` d\u00e9tect\u00e9 dans du code de production ({lang})**\n\n"
-            "Le code de production doit utiliser une abstraction Clock injectable "
-            "pour obtenir la date/heure courante.\n\n"
-            f"**R\u00e8gle :** `{pattern}` est interdit dans les repositories, services, "
-            "use cases, controllers et features. Il est autoris\u00e9 uniquement dans :\n"
-            "- L'impl\u00e9mentation concr\u00e8te de la Clock (SystemClock, RealClock...)\n"
-            "- Les tests\n"
-            "- Les mod\u00e8les de domaine / DTOs / value objects\n\n"
-            "**Action :** injecte la Clock via le constructeur ou le container DI "
-            "du projet."
+            f"\u26a0\ufe0f **`{pattern}` detected in production code ({lang})**\n\n"
+            "Production code must use an injectable Clock abstraction to obtain "
+            "the current date/time.\n\n"
+            f"**Rule:** `{pattern}` is forbidden in repositories, services, "
+            "use cases, controllers, and features. It is allowed only in:\n"
+            "- The concrete Clock implementation (SystemClock, RealClock, ...)\n"
+            "- Tests\n"
+            "- Domain models / DTOs / value objects\n\n"
+            "**Action:** inject the Clock via the constructor or through the "
+            "project's DI container."
         ),
     }
 }

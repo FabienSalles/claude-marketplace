@@ -11,7 +11,7 @@ if echo "$COMMAND" | grep -qE 'git\s+commit'; then
 {
   "hookSpecificOutput": {
     "hookEventName": "PreToolUse",
-    "additionalContext": "⚠️ **RAPPEL CI AVANT COMMIT**\n\nAs-tu lancé la pipeline qualité complète AVANT ce commit ?\n\n1. **Coding style** : phpcs / php-cs-fixer / eslint / prettier\n2. **Analyse statique** : phpstan / typescript strict\n3. **Tests** : phpunit / vitest\n\nSi un projet a un Makefile, utilise `make php/qa` ou équivalent.\nSi les checks n'ont pas été lancés, annule ce commit et lance-les d'abord."
+    "additionalContext": "⚠️ **CI REMINDER BEFORE COMMIT**\n\nDid you run the full quality pipeline BEFORE this commit?\n\n1. **Coding style**: phpcs / php-cs-fixer / eslint / prettier\n2. **Static analysis**: phpstan / typescript strict\n3. **Tests**: phpunit / vitest\n\nIf the project has a Makefile, use `make php/qa` or the equivalent.\nIf the checks have not been run, cancel this commit and run them first."
   }
 }
 EOF

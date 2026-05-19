@@ -156,7 +156,7 @@ foreach ($items as $item) {
     $results[] = new PricedItem($item, $price - $discount);
 }
 
-// ✅ CORRECT - if/else quand les deux branches ont une complexite comparable
+// ✅ CORRECT - if/else when both branches have comparable complexity
 foreach ($fieldNames as $index => $fieldName) {
     if ($index === $lastIndex) {
         $form->get($fieldName)->addError(new FormError($errorMessage));
@@ -165,7 +165,7 @@ foreach ($fieldNames as $index => $fieldName) {
     }
 }
 
-// ❌ AVOID - continue quand les deux branches sont aussi simples
+// ❌ AVOID - continue when both branches are equally simple
 foreach ($fieldNames as $index => $fieldName) {
     if ($index !== $lastIndex) {
         $form->get($fieldName)->addError(new FormError(''));

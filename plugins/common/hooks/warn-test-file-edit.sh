@@ -17,7 +17,7 @@ if [ "$IS_TEST" = true ]; then
 {
   "hookSpecificOutput": {
     "hookEventName": "PreToolUse",
-    "additionalContext": "⚠️ **ATTENTION : Modification d'un fichier de test**\n\nTu t'apprêtes à modifier un fichier de test. L'utilisateur t'a-t-il explicitement demandé de modifier les tests ?\n\n- Si NON : concentre-toi sur le code de production uniquement.\n- Si OUI (TDD, fix test, ajout test) : continue."
+    "additionalContext": "⚠️ **HEADS-UP: Editing a test file**\n\nYou are about to modify a test file. Did the user explicitly ask you to modify tests?\n\n- If NO: focus on production code only.\n- If YES (TDD, fix test, add test): proceed."
   }
 }
 EOF

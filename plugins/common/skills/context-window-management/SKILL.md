@@ -27,7 +27,7 @@ Never keep large outputs only in context. Write them to files:
 ### 2. Suggest Fresh Sessions
 
 When you notice degradation, proactively suggest:
-> "Le contexte est devenu long. Je recommande de sauvegarder la progression et de continuer dans une session fraîche."
+> "The context has grown long. I recommend saving the current progress and continuing in a fresh session."
 
 Before suggesting, ensure you've saved:
 - Current progress (what's done, what remains)

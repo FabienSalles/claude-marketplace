@@ -17,63 +17,63 @@ import sys
 
 
 def get_php_reminder():
-    return """**RAPPEL SKILLS - Fichier PHP**
+    return """**SKILLS REMINDER - PHP file**
 
-Avant de modifier ce fichier PHP, as-tu consulté les skills appropriés ?
+Before editing this PHP file, did you consult the relevant skills?
 
-**Skills de code :**
-| Niveau | Skill | Contenu |
-|--------|-------|---------|
+**Code skills:**
+| Level | Skill | Content |
+|-------|-------|---------|
 | **User** | `~/.claude/skills/code-conventions/` | PER Coding Style, PSR-12 |
-| **User** | `~/.claude/skills/sql-conventions/` | Conventions SQL (queries, heredocs) |
+| **User** | `~/.claude/skills/sql-conventions/` | SQL conventions (queries, heredocs) |
 | **Organization** | `projects/org/.claude/skills/code-conventions/` | Organization conventions |
-| **Projet** | `.claude/skills/code-conventions/` | Conventions projet |
+| **Project** | `.claude/skills/code-conventions/` | Project conventions |
 
-Points critiques :
-- **PER Coding Style** : heredocs indentés +1 niveau, espacement autour des structures de contrôle
-- **SQL** : Commencer par l'entité connue, heredoc Format 2 (paramètre séparé)
-- **PSR-12** : Standards de formatage PHP"""
+Critical points:
+- **PER Coding Style**: heredocs indented +1 level, spacing around control structures
+- **SQL**: start from the known entity, heredoc Format 2 (separate parameter)
+- **PSR-12**: PHP formatting standards"""
 
 
 def get_test_reminder():
-    return """**RAPPEL SKILLS - Fichier de Test PHP**
+    return """**SKILLS REMINDER - PHP test file**
 
-Avant de modifier ce test, as-tu consulté les skills appropriés ?
+Before editing this test, did you consult the relevant skills?
 
-**Skills de test :**
-| Niveau | Skill | Contenu |
-|--------|-------|---------|
+**Test skills:**
+| Level | Skill | Content |
+|-------|-------|---------|
 | **User** | `~/.claude/skills/test-conventions/` | DAMP, test doubles, AAA |
 | **User** | `~/.claude/skills/tdd-workflow/` | Red-Green-Refactor |
-| **Projet** | `.claude/skills/test-conventions/` | Conventions projet |
+| **Project** | `.claude/skills/test-conventions/` | Project conventions |
 
-**Skills de code (s'appliquent aussi) :**
-| Niveau | Skill |
-|--------|-------|
+**Code skills (also apply):**
+| Level | Skill |
+|-------|-------|
 | **User** | `~/.claude/skills/code-conventions/` |
 | **Organization** | `projects/org/.claude/skills/code-conventions/` |
-| **Projet** | `.claude/skills/code-conventions/` |
+| **Project** | `.claude/skills/code-conventions/` |
 
-Points critiques :
-- **PER Coding Style** : heredocs indentés +1 niveau
-- **DAMP** : Clarté sur DRY dans les tests
-- **AAA** : Arrange-Act-Assert sans commentaires"""
+Critical points:
+- **PER Coding Style**: heredocs indented +1 level
+- **DAMP**: clarity over DRY in tests
+- **AAA**: Arrange-Act-Assert without comments"""
 
 
 def get_twig_reminder():
-    return """**RAPPEL SKILLS - Template Twig**
+    return """**SKILLS REMINDER - Twig template**
 
-Avant de modifier ce template, as-tu consulté les skills Twig ?
+Before editing this template, did you consult the Twig skills?
 
-| Niveau | Skill | Contenu |
-|--------|-------|---------|
-| **User** | `~/.claude/skills/twig-conventions/` | Translations, composants |
-| **User** | `~/.claude/skills/theme-bundle-conventions/` | Si projet utilise `acme/ui-bundle` |
+| Level | Skill | Content |
+|-------|-------|---------|
+| **User** | `~/.claude/skills/twig-conventions/` | Translations, components |
+| **User** | `~/.claude/skills/theme-bundle-conventions/` | If the project uses `acme/ui-bundle` |
 
-Points critiques :
-- **Translations** : Composants `<twig:*>` n'héritent PAS de `trans_default_domain`
-- **Breadcrumbs** : Utiliser `params:` et non `parameters:`
-- **Icons** : Ajouter dans theme-bundle, pas dans le projet"""
+Critical points:
+- **Translations**: `<twig:*>` components do NOT inherit `trans_default_domain`
+- **Breadcrumbs**: use `params:`, not `parameters:`
+- **Icons**: add them in theme-bundle, not in the project"""
 
 
 def main():

@@ -13,7 +13,7 @@ if echo "$COMMAND" | grep -qE '^mv\s+' && ! echo "$COMMAND" | grep -qE '^git\s+m
     cat << 'EOF'
 {
   "decision": "block",
-  "reason": "Utilise `git mv` au lieu de `mv` pour renommer/déplacer des fichiers dans un repo git.\n\nProblème : Le fichier ne sera pas tracké correctement par git.\n\nSolution : git mv source destination"
+  "reason": "Use `git mv` instead of `mv` to rename/move files in a git repo.\n\nProblem: the file will not be tracked correctly by git.\n\nSolution: git mv source destination"
 }
 EOF
     exit 2

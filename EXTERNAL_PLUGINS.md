@@ -1,21 +1,21 @@
-# Plugins externes à installer
+# External plugins to install
 
-Ce fichier liste les plugins Claude Code provenant de marketplaces **externes** à ce repo. Il sert de checklist pour reproduire la configuration sur un nouvel environnement.
+This file lists Claude Code plugins coming from marketplaces **external** to this repo. It serves as a checklist for reproducing the setup on a new machine.
 
-> Les skills de ce repo (`plugins/php/`, `plugins/typescript/`, etc.) sont installés via `./setup.sh`. Les plugins listés ici sont **indépendants** et doivent être installés via la commande `/plugin` de Claude Code.
+> Skills from this repo (`plugins/php/`, `plugins/typescript/`, etc.) are installed via `./setup.sh`. The plugins below are **independent** and must be installed through the Claude Code `/plugin` command.
 
-## Étape 1 — Enregistrer les marketplaces
+## Step 1 — Register the marketplaces
 
-Dans Claude Code :
+In Claude Code:
 
 ```
 /plugin marketplace add anthropics/claude-plugins-official
 /plugin marketplace add atournayre/claude-marketplace
 ```
 
-## Étape 2 — Installer les plugins
+## Step 2 — Install the plugins
 
-### Marketplace : `claude-plugins-official` (Anthropic)
+### Marketplace: `claude-plugins-official` (Anthropic)
 
 ```
 /plugin install coderabbit@claude-plugins-official
@@ -31,7 +31,7 @@ Dans Claude Code :
 /plugin install typescript-lsp@claude-plugins-official
 ```
 
-### Marketplace : `atournayre-claude-plugin-marketplace`
+### Marketplace: `atournayre-claude-plugin-marketplace`
 
 ```
 /plugin install doc@atournayre-claude-plugin-marketplace
@@ -39,32 +39,32 @@ Dans Claude Code :
 /plugin install symfony@atournayre-claude-plugin-marketplace
 ```
 
-## Étape 3 — Composants additionnels installés manuellement
+## Step 3 — Additional components installed manually
 
-Ces éléments ne viennent d'aucun marketplace et sont placés directement dans `~/.claude/` :
+These items do not come from any marketplace and are placed directly under `~/.claude/`:
 
-| Composant | Emplacement | Source / Provenance |
+| Component | Location | Source / Provenance |
 |---|---|---|
-| BMAD (méthode + agents) | `~/.claude/commands/bmad/` (sous-dirs : `bmm/`, `cis/`, `core/`) | À documenter — provenance externe non-marketplace |
-| `eres-sync.md` | `~/.claude/commands/eres-sync.md` | Script perso de synchronisation Eres |
+| BMAD (method + agents) | `~/.claude/commands/bmad/` (subdirs: `bmm/`, `cis/`, `core/`) | To document — non-marketplace external source |
+| `eres-sync.md` | `~/.claude/commands/eres-sync.md` | Personal Eres sync script |
 
-## Étape 4 — Vérification
+## Step 4 — Verification
 
-Après installation, vérifier :
+After installation, verify:
 
 ```bash
 cat ~/.claude/plugins/installed_plugins.json | jq 'keys'
 cat ~/.claude/plugins/known_marketplaces.json | jq 'keys'
 ```
 
-Le nombre attendu : **2 marketplaces**, **14 plugins** (11 depuis `claude-plugins-official` + 3 depuis `atournayre`).
+Expected count: **2 marketplaces**, **14 plugins** (11 from `claude-plugins-official` + 3 from `atournayre`).
 
 ## Maintenance
 
-Pour mettre à jour ce fichier après ajout/suppression d'un plugin :
+To refresh this file after adding/removing a plugin:
 
 ```bash
 jq -r '.plugins | keys[]' ~/.claude/plugins/installed_plugins.json | sort
 ```
 
-La sortie permet de comparer la liste vivante avec ce document et de détecter une dérive.
+The output lets you diff the live list against this document and detect drift.

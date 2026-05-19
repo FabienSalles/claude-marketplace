@@ -5,205 +5,205 @@ argument-hint: Optional feature name or initial context
 
 # Business-First Feature Development
 
-Harness de developpement guide par le metier. Inspire du Harness Engineering (Fowler), du Context Engineering (Karpathy), et du Spec-Driven Development (OpenSpec, Spec Kit).
+Business-driven development harness. Inspired by Harness Engineering (Fowler), Context Engineering (Karpathy), and Spec-Driven Development (OpenSpec, Spec Kit).
 
-**Principe** : Comprendre le metier AVANT de toucher au code. Produire une spec validee qui contraint l'implementation.
+**Principle**: Understand the business BEFORE touching the code. Produce a validated spec that constrains the implementation.
 
-**Quand utiliser ce workflow** :
-- Le besoin est flou ou incomplet
-- Tu ne connais pas le domaine metier
-- Les edge cases ne sont pas identifies
-- Les iterations d'implementation ne sont pas connues a l'avance
-- Le projet ne suit pas un workflow TDD strict
+**When to use this workflow**:
+- The requirement is fuzzy or incomplete
+- You do not know the business domain
+- Edge cases are not identified
+- Implementation iterations are not known up front
+- The project does not follow a strict TDD workflow
 
-**Quand utiliser /feature-tdd-dev a la place** :
-- L'US est bien specifiee avec des criteres d'acceptation clairs
-- Le workflow TDD est etabli (red-green-refactor)
-- Les iterations sont connues
+**When to use /feature-tdd-dev instead**:
+- The user story is well-specified with clear acceptance criteria
+- The TDD workflow is established (red-green-refactor)
+- Iterations are known
 
 ---
 
-## Phase 1 : Comprendre
+## Phase 1: Understand
 
-**But** : Extraire les connaissances metier que tu n'as pas. AUCUNE exploration de code ici.
+**Goal**: Extract the business knowledge you don't have. NO code exploration here.
 
-**Round 1 -- Le Besoin** (toujours pose, adapte au contexte fourni) :
+**Round 1 — The Need** (always asked, adapted to the provided context):
 
-Poser ces questions en texte libre conversationnel. Adapter selon ce que l'utilisateur a deja fourni -- ne pas reposer ce qui est deja clair.
+Ask the following questions conversationally in free text. Adapt based on what the user has already given — don't re-ask anything already clear.
 
-1. Qui utilise cette fonctionnalite ? (persona : CGP, client, admin, batch...)
-2. Quel est le flux complet ? (etape par etape, ce que l'utilisateur voit et fait)
-3. Quelles regles metier s'appliquent ? (validations, calculs, conditions, limites)
-4. Vocabulaire metier ? (termes FR/EN a aligner sur l'UL wiki)
-5. Cas limites metier connus ? (pas techniques -- les vrais cas business : client sans contrat, montant zero, multi-beneficiaires...)
-6. Qu'est-ce qui est explicitement hors scope ?
+1. Who uses this feature? (persona: advisor, customer, admin, batch process...)
+2. What is the full flow? (step by step, what the user sees and does)
+3. Which business rules apply? (validations, computations, conditions, limits)
+4. Business vocabulary? (FR/EN terms to align with the wiki UL)
+5. Known business edge cases? (not technical — actual business cases: customer without contract, zero amount, multi-beneficiaries...)
+6. What is explicitly out of scope?
 
-**ATTENDRE les reponses avant de continuer.**
+**WAIT for the answers before continuing.**
 
-**Round 2 -- Le Systeme** (apres Round 1, questions adaptees aux reponses) :
+**Round 2 — The System** (after Round 1, questions adapted to the answers):
 
-**Principe** : Ne poser que les questions auxquelles tu ne peux PAS repondre en explorant le code. Les questions techniques (quel pattern ? quel FormType ? quelle route ?) seront resolues en Phase 2 par exploration du code. Ici, on cherche uniquement les informations externes au code.
+**Principle**: Only ask questions you can NOT answer by exploring the code. Technical questions (which pattern? which FormType? which route?) will be resolved in Phase 2 by code exploration. Here we only look for information external to the code.
 
-1. Maquette ou design Figma existant ?
-2. **Adherences inter-projets** : la feature est-elle 100% autonome dans ce repo, ou depend-elle d'autres projets ? (ex: client d'API ici, endpoint/service dans un autre repo). Si oui, quels repos scanner pour recuperer le contexte ? (contracts, DTOs, endpoints)
-3. D'ou viennent les donnees ? (nouvelle API a creer, donnees en dur, source externe)
-4. Contraintes non deductibles du code ? (deadlines, contraintes legales, decisions d'equipe)
-5. Quelque chose que tu sais et que je ne peux pas trouver dans le code ?
+1. Existing mockup or Figma design?
+2. **Cross-project couplings**: is the feature 100% self-contained in this repo, or does it depend on other projects? (e.g., API client here, endpoint/service in another repo). If so, which repos should we scan to gather context? (contracts, DTOs, endpoints)
+3. Where does the data come from? (new API to create, hard-coded data, external source)
+4. Constraints not derivable from the code? (deadlines, legal constraints, team decisions)
+5. Anything you know that I cannot find in the code?
 
-**ATTENDRE les reponses avant de continuer.**
+**WAIT for the answers before continuing.**
 
-**Synthese** : Presenter un resume structure :
+**Synthesis**: Present a structured summary:
 
 ```
-## Comprehension du besoin
+## Requirement understanding
 
 ### Ubiquitous Language (FR -> EN)
-| Terme FR | Terme EN | Definition |
-|----------|----------|------------|
+| FR term | EN term | Definition |
+|---------|---------|------------|
 
-### Flux utilisateur
-1. L'utilisateur fait X
-2. Le systeme fait Y
+### User flow
+1. The user does X
+2. The system does Y
 3. ...
 
-### Regles metier
-- RM1: Si [condition] alors [resultat]
-- RM2: ...
+### Business rules
+- BR1: If [condition] then [result]
+- BR2: ...
 
-### Sources de donnees
-- [Systeme] -> [endpoint/table] -> [donnees]
+### Data sources
+- [System] -> [endpoint/table] -> [data]
 
-### Perimetre
+### Scope
 - IN: ...
 - OUT: ...
 ```
 
-**GATE** : Demander "Cette comprehension est-elle correcte ? Qu'est-ce qui manque ?"
+**GATE**: Ask "Is this understanding correct? What is missing?"
 
-Iterer sur la synthese jusqu'a confirmation explicite. **NE PAS passer a la Phase 2 sans validation.**
-
----
-
-## Phase 2 : Explorer
-
-**But** : Explorer le code GUIDE par la comprehension metier validee.
-
-**Principe** : Les agents explorateurs recoivent la synthese metier de Phase 1 en input. Ils cherchent "comment le code gere [concept metier X]", pas "quels patterns existent en general".
-
-**Actions** :
-
-1. Lancer 1-2 agents explorateurs (subagent_type: Explore) avec des prompts derives de Phase 1 :
-   - "Comment [concept metier A] est implemente ? Trace controller -> domain -> SPI -> config YAML."
-   - "Quel est le pattern HTTP client pour [systeme B] ? Trace Guzzle client, repository interface, serializer."
-2. Lire les fichiers identifies par les agents
-3. Presenter les resultats MAPPES aux concepts metier :
-   - "Pour [concept X], le pattern existant est : [controller] -> [interface domain] -> [implementation SPI]"
-   - "Pour [concept Y], rien n'existe encore -- a creer en suivant le pattern de [concept Z]"
-
-**GATE** : Checkpoint rapide -- "Ces patterns correspondent a ce que tu attends ?"
+Iterate on the synthesis until explicit confirmation. **DO NOT move to Phase 2 without validation.**
 
 ---
 
-## Phase 3 : Specifier
+## Phase 2: Explore
 
-**But** : Produire UNE specification d'implementation concrete, validee, persistee en fichier.
+**Goal**: Explore the code GUIDED by the validated business understanding.
 
-**Principe** : Pas de multiples architectes. L'architecture est dictee par les conventions DDD/hexagonale du projet et les skills charges. Produire un document actionnable.
+**Principle**: Explorer agents receive the Phase 1 business synthesis as input. They look for "how the code handles [business concept X]", not "what patterns exist in general".
 
-**Persister** le document dans `.claude/plans/<feature>-spec.md` :
+**Actions**:
+
+1. Launch 1-2 explorer agents (subagent_type: Explore) with prompts derived from Phase 1:
+   - "How is [business concept A] implemented? Trace controller -> domain -> SPI -> YAML config."
+   - "What is the HTTP client pattern for [system B]? Trace Guzzle client, repository interface, serializer."
+2. Read the files identified by the agents.
+3. Present the results MAPPED to business concepts:
+   - "For [concept X], the existing pattern is: [controller] -> [domain interface] -> [SPI implementation]"
+   - "For [concept Y], nothing exists yet — to be created following the pattern of [concept Z]"
+
+**GATE**: Quick checkpoint — "Do these patterns match what you expect?"
+
+---
+
+## Phase 3: Specify
+
+**Goal**: Produce ONE concrete, validated implementation specification, persisted to a file.
+
+**Principle**: No multiple architects. The architecture is dictated by the project's DDD/hexagonal conventions and the loaded skills. Produce an actionable document.
+
+**Persist** the document at `.claude/plans/<feature>-spec.md`:
 
 ```markdown
-# Spec : [Nom de la feature]
+# Spec: [Feature name]
 
-## Contexte metier
-[Resume valide de Phase 1]
+## Business context
+[Validated summary from Phase 1]
 
-## Patterns existants
-[Resultats mappes de Phase 2]
+## Existing patterns
+[Mapped results from Phase 2]
 
 ## Implementation
 
-### Fichiers a creer
-- `src/Domain/[BoundedContext]/...` : [description, signatures de methodes]
-- `src/Infrastructure/[BoundedContext]/...` : [description]
-- `src/Api/[BoundedContext]/...` : [description]
+### Files to create
+- `src/Domain/[BoundedContext]/...`: [description, method signatures]
+- `src/Infrastructure/[BoundedContext]/...`: [description]
+- `src/Api/[BoundedContext]/...`: [description]
 
-### Fichiers a modifier
-- `config/services.yaml` : [wiring exact des services]
-- `config/routes/...` : [routes si necessaire]
+### Files to modify
+- `config/services.yaml`: [exact wiring of services]
+- `config/routes/...`: [routes if needed]
 
-### Templates/JS (si applicable)
-- `templates/...` : [description]
-- `assets/...` : [description]
+### Templates/JS (if applicable)
+- `templates/...`: [description]
+- `assets/...`: [description]
 
-### Traductions
-- `translations/...` : [cles a ajouter]
+### Translations
+- `translations/...`: [keys to add]
 
 ### Tests
-- Unit: [quoi tester, quels cas]
-- Integration: [quoi tester]
-- Acceptance: [quoi tester, optionnel]
+- Unit: [what to test, which cases]
+- Integration: [what to test]
+- Acceptance: [what to test, optional]
 
 ## Ubiquitous Language
-[Table UL de Phase 1]
+[UL table from Phase 1]
 ```
 
-**GATE** : "Valides-tu cette specification ? Qu'est-ce que tu changerais ?"
+**GATE**: "Do you validate this specification? What would you change?"
 
-La spec validee devient le **contrat d'implementation**. Toute deviation doit revenir a la spec. Si un changement est necessaire pendant l'implementation, mettre a jour la spec AVANT d'implementer.
-
----
-
-## Phase 4 : Implementer
-
-**But** : Construire la feature en suivant la spec, avec des checkpoints reguliers.
-
-**Actions** :
-
-1. **Proposer le decoupage** en iterations base sur la spec. Le nombre depend du scope :
-   - Petite feature : 1-2 iterations
-   - Feature moyenne : 3-4 iterations
-   - Grande feature : 5+ iterations (envisager de decouper en PRs)
-
-2. **Pour chaque iteration** :
-   a. Annoncer ce qui sera construit
-   b. Implementer selon la specification
-   c. Lancer le CI (`make php/qa`, `make php/tests`, ou equivalent du projet)
-   d. **Checkpoint** : "Iteration N terminee. Resultat : [resume]. CI : [statut]. Tu veux revoir avant de continuer ?"
-
-3. **Si correction** : mettre a jour la spec puis appliquer la correction
-
-**Strategie de test** -- TDD par defaut, permissif sur la typologie :
-- **Toujours en TDD (test-first).** Ecrire le test AVANT le code de production, dans la meme iteration. Activer le skill `php-tdd-workflow` ou `vitest-tdd-workflow` selon le projet.
-- Adapter la **typologie de tests** au projet :
-  - Projet avec tests etablis -> suivre les patterns et types de tests existants (unit, integration, functional)
-  - Projet nouveau -> demander "Quel niveau de tests pour cette feature ?"
-- Ne pas forcer un type de test particulier. Si le projet ne teste que les FormTypes en integration, ne pas inventer des tests unitaires ou fonctionnels non demandes.
-- **Eviter les tests d'implementation** (ex: compter le nombre de choix d'un formulaire). Tester le comportement : soumission valide, soumission invalide, regles metier.
+The validated spec becomes the **implementation contract**. Any deviation must come back to the spec. If a change is needed during implementation, update the spec FIRST.
 
 ---
 
-## Phase 5 : Verifier et Resumer
+## Phase 4: Implement
 
-**But** : S'assurer que l'implementation respecte la spec.
+**Goal**: Build the feature following the spec, with regular checkpoints.
 
-**Actions** :
+**Actions**:
 
-1. Lancer le CI complet
-2. Checklist de verification :
-   - [ ] Regles metier implementees vs spec
-   - [ ] Nommage UL respecte
-   - [ ] Services YAML wires
-   - [ ] Tests couvrent les regles metier
-3. Resume : fichiers crees/modifies, regles metier couvertes, prochaines etapes
+1. **Propose the breakdown** into iterations based on the spec. The count depends on the scope:
+   - Small feature: 1-2 iterations
+   - Medium feature: 3-4 iterations
+   - Large feature: 5+ iterations (consider splitting into multiple PRs)
+
+2. **For each iteration**:
+   a. Announce what will be built.
+   b. Implement according to the specification.
+   c. Run the CI (`make php/qa`, `make php/tests`, or the project equivalent).
+   d. **Checkpoint**: "Iteration N done. Result: [summary]. CI: [status]. Want to review before continuing?"
+
+3. **If correction needed**: update the spec, then apply the correction.
+
+**Testing strategy** — TDD by default, permissive on the typology:
+- **Always TDD (test-first).** Write the test BEFORE the production code, in the same iteration. Activate the `php-tdd-workflow` or `vitest-tdd-workflow` skill depending on the project.
+- Adapt the **test typology** to the project:
+  - Project with established tests -> follow existing patterns and test types (unit, integration, functional)
+  - New project -> ask "What level of tests do you want for this feature?"
+- Do not force a particular test type. If the project only tests FormTypes in integration, do not invent unrequested unit or functional tests.
+- **Avoid implementation tests** (e.g., counting the number of options in a form). Test behavior: valid submission, invalid submission, business rules.
 
 ---
 
-## Regles
+## Phase 5: Verify and Summarize
 
-- **Jamais de code avant Phase 2.** Phase 1 est purement conversationnelle.
-- **Jamais de Phase 2 sans validation Phase 1.** L'utilisateur doit confirmer la comprehension.
-- **Une seule approche architecturale.** Pas 3 alternatives -- l'architecture est dictee par le projet.
-- **La spec est le contrat.** Toute deviation = mise a jour de la spec d'abord.
-- **Checkpoints obligatoires.** L'utilisateur peut toujours corriger entre les iterations.
-- **Adapter, pas imposer.** Le workflow s'adapte au projet (tests, iterations, conventions).
+**Goal**: Ensure the implementation matches the spec.
+
+**Actions**:
+
+1. Run the full CI.
+2. Verification checklist:
+   - [ ] Business rules implemented vs spec
+   - [ ] UL naming respected
+   - [ ] YAML services wired
+   - [ ] Tests cover the business rules
+3. Summary: files created/modified, business rules covered, next steps.
+
+---
+
+## Rules
+
+- **Never write code before Phase 2.** Phase 1 is purely conversational.
+- **Never move to Phase 2 without Phase 1 validation.** The user must confirm the understanding.
+- **Only one architectural approach.** Not three alternatives — the architecture is dictated by the project.
+- **The spec is the contract.** Any deviation = update the spec first.
+- **Checkpoints are mandatory.** The user can always correct between iterations.
+- **Adapt, don't impose.** The workflow adapts to the project (tests, iterations, conventions).
