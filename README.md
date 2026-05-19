@@ -64,11 +64,37 @@ cd claude-marketplace
 ./setup.sh --remove php     # uninstall a pack
 ```
 
-### Other install paths
+### Via `npx skills add`
 
-- `npx skills add FabienSalles/claude-marketplace` — works with the `npx skills` ecosystem
-- `claude plugin install FabienSalles/claude-marketplace/plugins/<name>` — single plugin via the official CLI
-- `skillkit install FabienSalles/claude-marketplace` — `SKILL.md` is the same format
+Works with the [`npx skills`](https://github.com/anthropics/skills) ecosystem. Same `SKILL.md` format, no Claude Code required.
+
+```bash
+# List available skills
+npx skills add FabienSalles/claude-marketplace --list
+
+# Install everything
+npx skills add FabienSalles/claude-marketplace
+```
+
+### Via `claude plugin install`
+
+Install a single plugin through the official Claude Code CLI (without going through `/plugin marketplace add`).
+
+```bash
+# Install one plugin
+claude plugin install FabienSalles/claude-marketplace/plugins/php
+
+# Validate a plugin manifest
+claude plugin validate plugins/php
+```
+
+### Via `skillkit`
+
+Natively compatible — same `SKILL.md` format.
+
+```bash
+skillkit install FabienSalles/claude-marketplace
+```
 
 ## Statusline
 
