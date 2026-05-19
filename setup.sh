@@ -3,11 +3,17 @@ set -euo pipefail
 
 # ─────────────────────────────────────────────
 # Claude Marketplace — Setup Script
-# Creates symlinks from marketplace packs to ~/.claude/
+# Registers this directory as a local Claude Code marketplace and toggles
+# packs (plugins) on/off via ~/.claude/settings.json.
+#
+# No symlinks: Claude Code resolves ${CLAUDE_PLUGIN_ROOT} from the registered
+# directory, so edits in plugins/*/ are picked up live.
 # ─────────────────────────────────────────────
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CLAUDE_HOME="${CLAUDE_HOME:-$HOME/.claude}"
+SETTINGS="$CLAUDE_HOME/settings.json"
+MARKETPLACE_KEY="fabien-claude-marketplace"
 
 # Colors
 RED='\033[0;31m'
@@ -15,7 +21,7 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 CYAN='\033[0;36m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 BOLD='\033[1m'
 
 # ─────────────────────────────────────────────
@@ -35,6 +41,8 @@ declare -A PACK_DESCRIPTIONS=(
   [statusline]="Claude Code statusline — cwd, git branch, model, context progress bar, 5h rate limit"
 )
 
+STATUSLINE_CMD="$SCRIPT_DIR/plugins/statusline/statusline.sh"
+
 # ─────────────────────────────────────────────
 # Helpers
 # ─────────────────────────────────────────────
@@ -50,296 +58,132 @@ print_header() {
 print_pack() {
   local pack="$1"
   local desc="${PACK_DESCRIPTIONS[$pack]}"
-  local skill_count
+  local detail
   if [[ "$pack" == "common" ]]; then
     local common_skills
-    common_skills="$(find "$SCRIPT_DIR/plugins/common/skills" -maxdepth 1 -mindepth 1 -type d 2>/dev/null | wc -l)"
-    skill_count="hooks+agents+commands+${common_skills} skills"
+    common_skills="$(find "$SCRIPT_DIR/plugins/common/skills" -maxdepth 1 -mindepth 1 -type d 2>/dev/null | wc -l | tr -d ' ')"
+    detail="hooks+agents+commands+${common_skills} skills"
   elif [[ "$pack" == "statusline" ]]; then
-    skill_count="statusline script"
+    detail="statusline script"
   else
-    skill_count="$(find "$SCRIPT_DIR/plugins/$pack/skills" -maxdepth 1 -mindepth 1 -type d 2>/dev/null | wc -l) skills"
+    detail="$(find "$SCRIPT_DIR/plugins/$pack/skills" -maxdepth 1 -mindepth 1 -type d 2>/dev/null | wc -l | tr -d ' ') skills"
   fi
-  echo -e "  ${BOLD}$pack${NC} ($skill_count)"
+  echo -e "  ${BOLD}$pack${NC} ($detail)"
   echo -e "    ${desc}"
+}
+
+ensure_settings() {
+  if [[ ! -f "$SETTINGS" ]]; then
+    mkdir -p "$CLAUDE_HOME"
+    echo '{}' > "$SETTINGS"
+  fi
+}
+
+backup_settings() {
+  cp "$SETTINGS" "${SETTINGS}.bak.$(date +%s)"
+}
+
+jq_inplace() {
+  local tmp="${SETTINGS}.tmp"
+  jq "$@" "$SETTINGS" > "$tmp" && mv "$tmp" "$SETTINGS"
+}
+
+# Register the marketplace once. Idempotent.
+ensure_marketplace_registered() {
+  ensure_settings
+  local current_path
+  current_path=$(jq -r --arg k "$MARKETPLACE_KEY" '.extraKnownMarketplaces[$k].source.path // empty' "$SETTINGS")
+  if [[ "$current_path" == "$SCRIPT_DIR" ]]; then
+    return 0
+  fi
+  backup_settings
+  jq_inplace --arg k "$MARKETPLACE_KEY" --arg p "$SCRIPT_DIR" \
+    '.extraKnownMarketplaces[$k] = {"source": {"source": "directory", "path": $p}}'
+  echo -e "    ${BLUE}ℹ${NC} Marketplace registered: ${BOLD}$MARKETPLACE_KEY${NC} → $SCRIPT_DIR"
+}
+
+# Register skillListingBudgetFraction once. Idempotent.
+ensure_skill_budget() {
+  if jq -e '.skillListingBudgetFraction' "$SETTINGS" > /dev/null 2>&1; then
+    return 0
+  fi
+  backup_settings
+  jq_inplace '. + {"skillListingBudgetFraction": 0.06}'
+  echo -e "    ${BLUE}ℹ${NC} skillListingBudgetFraction (0.06) registered"
 }
 
 is_pack_installed() {
   local pack="$1"
-  local found=0
-
+  ensure_settings
   if [[ "$pack" == "statusline" ]]; then
-    if [[ -L "$CLAUDE_HOME/statusline-command.sh" ]]; then
-      found=1
-    fi
-    return $((1 - found))
+    local cmd
+    cmd=$(jq -r '.statusLine.command // empty' "$SETTINGS")
+    [[ "$cmd" == "$STATUSLINE_CMD" ]]
+    return $?
   fi
-
-  if [[ "$pack" == "common" ]]; then
-    # Check if any common symlink exists
-    for f in "$SCRIPT_DIR/plugins/common/hooks/"*.sh "$SCRIPT_DIR/plugins/common/hooks/"*.py; do
-      [[ -f "$f" ]] || continue
-      local name
-      name=$(basename "$f")
-      if [[ -L "$CLAUDE_HOME/hooks/$name" ]]; then
-        found=1
-        break
-      fi
-    done
-    for f in "$SCRIPT_DIR/plugins/common/agents/"*.md; do
-      [[ -f "$f" ]] || continue
-      local name
-      name=$(basename "$f")
-      if [[ -L "$CLAUDE_HOME/agents/$name" ]]; then
-        found=1
-        break
-      fi
-    done
-    for f in "$SCRIPT_DIR/plugins/common/commands/"*.md; do
-      [[ -f "$f" ]] || continue
-      local name
-      name=$(basename "$f")
-      if [[ -L "$CLAUDE_HOME/commands/$name" ]]; then
-        found=1
-        break
-      fi
-    done
-    for skill_dir in "$SCRIPT_DIR/plugins/common/skills/"*/; do
-      [[ -d "$skill_dir" ]] || continue
-      local skill_name
-      skill_name=$(basename "$skill_dir")
-      if [[ -L "$CLAUDE_HOME/skills/$skill_name" ]]; then
-        found=1
-        break
-      fi
-    done
-  else
-    # Check if any skill symlink from this pack exists
-    for skill_dir in "$SCRIPT_DIR/plugins/$pack/skills/"*/; do
-      [[ -d "$skill_dir" ]] || continue
-      local skill_name
-      skill_name=$(basename "$skill_dir")
-      if [[ -L "$CLAUDE_HOME/skills/$skill_name" ]]; then
-        found=1
-        break
-      fi
-    done
-  fi
-
-  return $((1 - found))
+  local key="${pack}@${MARKETPLACE_KEY}"
+  local val
+  val=$(jq -r --arg k "$key" '.enabledPlugins[$k] // empty' "$SETTINGS")
+  [[ "$val" == "true" ]]
 }
-
-# ─────────────────────────────────────────────
-# Install a pack
-# ─────────────────────────────────────────────
 
 install_pack() {
   local pack="$1"
-  local count=0
+  ensure_settings
 
   if [[ "$pack" == "statusline" ]]; then
-    local settings_file="$CLAUDE_HOME/settings.json"
-    if [[ ! -f "$settings_file" ]]; then
-      mkdir -p "$CLAUDE_HOME"
-      echo '{}' > "$settings_file"
-    fi
-
-    local statusline_src="$SCRIPT_DIR/plugins/statusline/statusline.sh"
-    local statusline_dst="$CLAUDE_HOME/statusline-command.sh"
-    if [[ ! -f "$statusline_src" ]]; then
-      echo -e "  ${RED}✗${NC} ${BOLD}statusline${NC}: $statusline_src missing"
+    if [[ ! -f "$STATUSLINE_CMD" ]]; then
+      echo -e "  ${RED}✗${NC} ${BOLD}statusline${NC}: $STATUSLINE_CMD missing"
       return
     fi
-    if [[ ! -L "$statusline_dst" ]]; then
-      if [[ -f "$statusline_dst" ]]; then
-        mv "$statusline_dst" "${statusline_dst}.bak.$(date +%s)"
-      fi
-      ln -sf "$statusline_src" "$statusline_dst"
-      ((++count))
+    local current
+    current=$(jq -r '.statusLine.command // empty' "$SETTINGS")
+    if [[ "$current" != "$STATUSLINE_CMD" ]]; then
+      backup_settings
+      jq_inplace --arg c "$STATUSLINE_CMD" \
+        '.statusLine = {"type": "command", "command": $c}'
     fi
-
-    if ! jq -e '.statusLine' "$settings_file" > /dev/null 2>&1; then
-      cp "$settings_file" "${settings_file}.bak.$(date +%s)"
-      jq '. + {"statusLine": {"type": "command", "command": "~/.claude/statusline-command.sh"}}' "$settings_file" > "${settings_file}.tmp" && mv "${settings_file}.tmp" "$settings_file"
-      echo -e "    ${BLUE}ℹ${NC} statusLine registered in $settings_file (backup saved)"
-    fi
-
-    echo -e "  ${GREEN}✓${NC} ${BOLD}statusline${NC}: $count items linked"
+    echo -e "  ${GREEN}✓${NC} ${BOLD}statusline${NC}: settings.statusLine → $STATUSLINE_CMD"
     return
   fi
 
+  ensure_marketplace_registered
   if [[ "$pack" == "common" ]]; then
-    # Install hooks
-    mkdir -p "$CLAUDE_HOME/hooks"
-    for f in "$SCRIPT_DIR/plugins/common/hooks/"*.sh "$SCRIPT_DIR/plugins/common/hooks/"*.py; do
-      [[ -f "$f" ]] || continue
-      local name
-      name=$(basename "$f")
-      if [[ -L "$CLAUDE_HOME/hooks/$name" ]]; then
-        continue
-      fi
-      ln -sf "$f" "$CLAUDE_HOME/hooks/$name"
-      ((++count))
-    done
-
-    # Install hooks.json
-    if [[ -f "$SCRIPT_DIR/plugins/common/hooks/hooks.json" ]]; then
-      ln -sf "$SCRIPT_DIR/plugins/common/hooks/hooks.json" "$CLAUDE_HOME/hooks/hooks.json"
-      ((++count))
-    fi
-
-    # Install agents
-    mkdir -p "$CLAUDE_HOME/agents"
-    for f in "$SCRIPT_DIR/plugins/common/agents/"*.md; do
-      [[ -f "$f" ]] || continue
-      local name
-      name=$(basename "$f")
-      if [[ -L "$CLAUDE_HOME/agents/$name" ]]; then
-        continue
-      fi
-      ln -sf "$f" "$CLAUDE_HOME/agents/$name"
-      ((++count))
-    done
-
-    # Install commands
-    mkdir -p "$CLAUDE_HOME/commands"
-    for f in "$SCRIPT_DIR/plugins/common/commands/"*.md; do
-      [[ -f "$f" ]] || continue
-      local name
-      name=$(basename "$f")
-      if [[ -L "$CLAUDE_HOME/commands/$name" ]]; then
-        continue
-      fi
-      ln -sf "$f" "$CLAUDE_HOME/commands/$name"
-      ((++count))
-    done
-
-    # Install common skills
-    mkdir -p "$CLAUDE_HOME/skills"
-    for skill_dir in "$SCRIPT_DIR/plugins/common/skills/"*/; do
-      [[ -d "$skill_dir" ]] || continue
-      local skill_name
-      skill_name=$(basename "$skill_dir")
-      if [[ -L "$CLAUDE_HOME/skills/$skill_name" ]]; then
-        continue
-      fi
-      if [[ -d "$CLAUDE_HOME/skills/$skill_name" && ! -L "$CLAUDE_HOME/skills/$skill_name" ]]; then
-        echo -e "    ${YELLOW}⚠${NC} $skill_name exists as directory, skipping (use --remove first)"
-        continue
-      fi
-      ln -sf "$skill_dir" "$CLAUDE_HOME/skills/$skill_name"
-      ((++count))
-    done
-
-    # Ensure settings.json exists before any registration step below
-    local settings_file="$CLAUDE_HOME/settings.json"
-    if [[ ! -f "$settings_file" ]]; then
-      echo '{}' > "$settings_file"
-    fi
-
-    # Register skillListingBudgetFraction if not already configured.
-    # Default 0.01 = ~10k chars on a 1M context model, which gets exhausted once
-    # several packs are installed (descriptions get dropped from the listing).
-    # 0.06 = ~60k chars on 1M, fits all marketplace skills with margin.
-    if ! jq -e '.skillListingBudgetFraction' "$settings_file" > /dev/null 2>&1; then
-      cp "$settings_file" "${settings_file}.bak.$(date +%s)"
-      jq '. + {"skillListingBudgetFraction": 0.06}' "$settings_file" > "${settings_file}.tmp" && mv "${settings_file}.tmp" "$settings_file"
-      echo -e "    ${BLUE}ℹ${NC} skillListingBudgetFraction (0.06) registered in $settings_file (backup saved)"
-    fi
-
-    echo -e "  ${GREEN}✓${NC} ${BOLD}common${NC}: $count items linked"
-  else
-    mkdir -p "$CLAUDE_HOME/skills"
-    for skill_dir in "$SCRIPT_DIR/plugins/$pack/skills/"*/; do
-      [[ -d "$skill_dir" ]] || continue
-      local skill_name
-      skill_name=$(basename "$skill_dir")
-      if [[ -L "$CLAUDE_HOME/skills/$skill_name" ]]; then
-        continue
-      fi
-      # Remove existing non-symlink directory if present
-      if [[ -d "$CLAUDE_HOME/skills/$skill_name" && ! -L "$CLAUDE_HOME/skills/$skill_name" ]]; then
-        echo -e "    ${YELLOW}⚠${NC} $skill_name exists as directory, skipping (use --remove first)"
-        continue
-      fi
-      ln -sf "$skill_dir" "$CLAUDE_HOME/skills/$skill_name"
-      ((++count))
-    done
-    echo -e "  ${GREEN}✓${NC} ${BOLD}$pack${NC}: $count skills linked"
+    ensure_skill_budget
   fi
-}
 
-# ─────────────────────────────────────────────
-# Remove a pack
-# ─────────────────────────────────────────────
+  local key="${pack}@${MARKETPLACE_KEY}"
+  local current
+  current=$(jq -r --arg k "$key" '.enabledPlugins[$k] // empty' "$SETTINGS")
+  if [[ "$current" != "true" ]]; then
+    backup_settings
+    jq_inplace --arg k "$key" '.enabledPlugins[$k] = true'
+  fi
+  echo -e "  ${GREEN}✓${NC} ${BOLD}$pack${NC}: enabled (${key})"
+}
 
 remove_pack() {
   local pack="$1"
-  local count=0
+  ensure_settings
 
   if [[ "$pack" == "statusline" ]]; then
-    if [[ -L "$CLAUDE_HOME/statusline-command.sh" ]]; then
-      rm "$CLAUDE_HOME/statusline-command.sh"
-      ((++count))
-      echo -e "    ${BLUE}ℹ${NC} statusline-command.sh removed (statusLine entry in settings.json left for manual cleanup)"
+    if jq -e '.statusLine' "$SETTINGS" > /dev/null 2>&1; then
+      backup_settings
+      jq_inplace 'del(.statusLine)'
+      echo -e "  ${RED}✗${NC} ${BOLD}statusline${NC}: settings.statusLine removed"
+    else
+      echo -e "  ${YELLOW}⚠${NC} ${BOLD}statusline${NC}: was not installed"
     fi
-    echo -e "  ${RED}✗${NC} ${BOLD}statusline${NC}: $count items removed"
     return
   fi
 
-  if [[ "$pack" == "common" ]]; then
-    for f in "$SCRIPT_DIR/plugins/common/hooks/"*.sh "$SCRIPT_DIR/plugins/common/hooks/"*.py; do
-      [[ -f "$f" ]] || continue
-      local name
-      name=$(basename "$f")
-      if [[ -L "$CLAUDE_HOME/hooks/$name" ]]; then
-        rm "$CLAUDE_HOME/hooks/$name"
-        ((++count))
-      fi
-    done
-    if [[ -L "$CLAUDE_HOME/hooks/hooks.json" ]]; then
-      rm "$CLAUDE_HOME/hooks/hooks.json"
-      ((++count))
-    fi
-    for f in "$SCRIPT_DIR/plugins/common/agents/"*.md; do
-      [[ -f "$f" ]] || continue
-      local name
-      name=$(basename "$f")
-      if [[ -L "$CLAUDE_HOME/agents/$name" ]]; then
-        rm "$CLAUDE_HOME/agents/$name"
-        ((++count))
-      fi
-    done
-    for f in "$SCRIPT_DIR/plugins/common/commands/"*.md; do
-      [[ -f "$f" ]] || continue
-      local name
-      name=$(basename "$f")
-      if [[ -L "$CLAUDE_HOME/commands/$name" ]]; then
-        rm "$CLAUDE_HOME/commands/$name"
-        ((++count))
-      fi
-    done
-    for skill_dir in "$SCRIPT_DIR/plugins/common/skills/"*/; do
-      [[ -d "$skill_dir" ]] || continue
-      local skill_name
-      skill_name=$(basename "$skill_dir")
-      if [[ -L "$CLAUDE_HOME/skills/$skill_name" ]]; then
-        rm "$CLAUDE_HOME/skills/$skill_name"
-        ((++count))
-      fi
-    done
-    echo -e "  ${RED}✗${NC} ${BOLD}common${NC}: $count items removed"
+  local key="${pack}@${MARKETPLACE_KEY}"
+  if jq -e --arg k "$key" '.enabledPlugins[$k]' "$SETTINGS" > /dev/null 2>&1; then
+    backup_settings
+    jq_inplace --arg k "$key" 'del(.enabledPlugins[$k])'
+    echo -e "  ${RED}✗${NC} ${BOLD}$pack${NC}: disabled (${key})"
   else
-    for skill_dir in "$SCRIPT_DIR/plugins/$pack/skills/"*/; do
-      [[ -d "$skill_dir" ]] || continue
-      local skill_name
-      skill_name=$(basename "$skill_dir")
-      if [[ -L "$CLAUDE_HOME/skills/$skill_name" ]]; then
-        rm "$CLAUDE_HOME/skills/$skill_name"
-        ((++count))
-      fi
-    done
-    echo -e "  ${RED}✗${NC} ${BOLD}$pack${NC}: $count skills removed"
+    echo -e "  ${YELLOW}⚠${NC} ${BOLD}$pack${NC}: was not installed"
   fi
 }
 
@@ -349,6 +193,14 @@ remove_pack() {
 
 show_status() {
   print_header
+  ensure_settings
+
+  echo -e "${BOLD}Marketplace:${NC}"
+  local path
+  path=$(jq -r --arg k "$MARKETPLACE_KEY" '.extraKnownMarketplaces[$k].source.path // "(not registered)"' "$SETTINGS")
+  echo -e "  ${BOLD}$MARKETPLACE_KEY${NC} → $path"
+  echo ""
+
   echo -e "${BOLD}Pack status:${NC}"
   echo ""
   for pack in "${PACKS[@]}"; do
@@ -358,23 +210,6 @@ show_status() {
       echo -e "  ${RED}○${NC} $pack — not installed"
     fi
   done
-  echo ""
-
-  # Show symlink details
-  echo -e "${BOLD}Symlinks in $CLAUDE_HOME/skills/:${NC}"
-  local symlink_count=0
-  if [[ -d "$CLAUDE_HOME/skills" ]]; then
-    while IFS= read -r link; do
-      [[ -L "$link" ]] || continue
-      local target
-      target=$(readlink "$link")
-      local pack_name
-      pack_name=$(echo "$target" | grep -oP 'plugins/\K[^/]+' || echo "unknown")
-      echo -e "  $(basename "$link") ${BLUE}→${NC} ...plugins/${pack_name}/..."
-      ((++symlink_count))
-    done < <(find "$CLAUDE_HOME/skills" -maxdepth 1 -type l | sort)
-  fi
-  echo -e "  ${BOLD}Total: $symlink_count symlinks${NC}"
   echo ""
 }
 
@@ -425,7 +260,7 @@ interactive_mode() {
   fi
 
   echo ""
-  echo -e "${GREEN}Done!${NC} Run ${BOLD}./setup.sh --status${NC} to verify."
+  echo -e "${GREEN}Done!${NC} Restart Claude Code to pick up new plugins. Run ${BOLD}./setup.sh --status${NC} to verify."
 }
 
 # ─────────────────────────────────────────────
@@ -440,9 +275,14 @@ usage() {
   echo "  --all              Install all packs"
   echo "  --pack <names>     Install specific packs (space-separated)"
   echo "  --remove <names>   Remove specific packs (space-separated)"
-  echo "  --status           Show installed packs and symlinks"
+  echo "  --status           Show marketplace registration and pack status"
   echo "  --list             List available packs"
   echo "  --help             Show this help"
+  echo ""
+  echo "Mechanism:"
+  echo "  Packs are registered as plugins in a local Claude Code marketplace"
+  echo "  pointing at this directory ($SCRIPT_DIR). No symlinks. Edits in"
+  echo "  plugins/*/ are picked up live on next Claude Code session."
   echo ""
   echo "Environment:"
   echo "  CLAUDE_HOME        Override ~/.claude (default: \$HOME/.claude)"
@@ -454,10 +294,6 @@ usage() {
   echo "  ./setup.sh --remove php       # Remove PHP pack"
   echo "  ./setup.sh --status           # Check what's installed"
 }
-
-# ─────────────────────────────────────────────
-# Resolve pack name (supports short aliases)
-# ─────────────────────────────────────────────
 
 resolve_pack() {
   local input="$1"
@@ -477,10 +313,6 @@ validate_pack() {
   return 1
 }
 
-# ─────────────────────────────────────────────
-# Main
-# ─────────────────────────────────────────────
-
 main() {
   if [[ $# -eq 0 ]]; then
     interactive_mode
@@ -496,7 +328,7 @@ main() {
         install_pack "$pack"
       done
       echo ""
-      echo -e "${GREEN}Done!${NC}"
+      echo -e "${GREEN}Done!${NC} Restart Claude Code to pick up new plugins."
       ;;
 
     --pack)
@@ -518,7 +350,7 @@ main() {
         fi
       done
       echo ""
-      echo -e "${GREEN}Done!${NC}"
+      echo -e "${GREEN}Done!${NC} Restart Claude Code to pick up new plugins."
       ;;
 
     --remove)
@@ -540,7 +372,7 @@ main() {
         fi
       done
       echo ""
-      echo -e "${GREEN}Done!${NC}"
+      echo -e "${GREEN}Done!${NC} Restart Claude Code to apply."
       ;;
 
     --status)
