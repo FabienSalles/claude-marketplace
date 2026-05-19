@@ -1,14 +1,50 @@
 ---
 name: php-twig-conventions
-description: "ACTIVATE when writing or modifying Twig templates, using Twig components (twig:*), handling translations in Twig, or debugging translation issues. ACTIVATE whenever 'trans_default_domain', 'twig component', or 'translation not working' appears. Covers: trans_default_domain isolation in Twig components (critical pitfall), ClockInterface for dates in templates. DO NOT use for: Twig syntax basics, Symfony controller rendering, CSS/HTML questions."
-version: "1.1"
+description: "ACTIVATE when writing or modifying Twig templates, using Twig components (twig:*), handling translations in Twig, debugging translation issues, or deciding whether to create a Twig component. ACTIVATE whenever 'trans_default_domain', 'twig component', 'translation not working', 'create twig component', or 'should I create a component' appears. Covers: trans_default_domain isolation in Twig components (critical pitfall), ClockInterface for dates in templates, when to create a Twig component vs use direct HTML. DO NOT use for: Twig syntax basics, Symfony controller rendering, generic CSS questions."
+version: "1.2"
 ---
 
 # Twig Conventions
 
-Two critical pitfalls that produce silent bugs in Twig templates.
+Critical pitfalls and decision rules for Twig templates and components.
 
 ## Critical Concepts
+
+### When to Create a Twig Component (`<twig:*>`)
+
+A Twig component is only justified if it encapsulates **complex logic** — either in the component itself or in its PHP class. Use HTML directly otherwise.
+
+#### Create a component when:
+- Non-trivial rendering logic (multiple conditional branches, props transformations, slots)
+- Business logic in the PHP class (calculations, services, computed state)
+- Effective reuse in ≥ 2 independent templates with distinct callsites
+
+#### Don't create a component when:
+- It's just a wrapper around an HTML element with a CSS class
+- The class is empty and the template is a single tag
+
+```twig
+{# WRONG — Twig component with no logic #}
+<twig:Marker />
+```
+
+```twig
+{# CORRECT — Direct HTML #}
+<span class="marker"></span>
+```
+
+A component without logic adds overhead (YAML registration, PHP file, Twig file) for zero benefit. Raw HTML is more readable, faster to render, and easier to grep.
+
+#### Decision checklist
+
+Before creating `MyComponent.php` + `MyComponent.html.twig`, answer:
+1. Will the PHP class have non-trivial methods or constructor dependencies? → if no, reconsider
+2. Will the template have conditionals, loops, or computed values? → if no, reconsider
+3. Will it be called from ≥ 2 places with different contexts? → if no, reconsider
+
+If all three answers are "no", write inline HTML + class. You can always extract to a component later when the need emerges.
+
+---
 
 ### Translation Domains in Twig Components
 
