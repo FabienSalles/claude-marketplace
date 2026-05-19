@@ -22,7 +22,7 @@ Claude Code does not accept the `statusLine` key in `plugin.json`, so `/plugin i
 /statusline:setup
 ```
 
-After a plugin upgrade re-run `/statusline:setup` to refresh the symlink target.
+`/statusline:setup` creates the symlink `~/.claude/statusline-command.sh → ${CLAUDE_PLUGIN_ROOT}/statusline.sh` and writes `statusLine.command = "~/.claude/statusline-command.sh"` to `~/.claude/settings.json`. The symlink shields settings from the plugin cache path, which rotates on every plugin update — **re-run `/statusline:setup` after upgrading the plugin** so the symlink target follows.
 
 ### Via `setup.sh` (from a clone)
 
@@ -32,7 +32,7 @@ cd claude-marketplace
 ./setup.sh --pack statusline
 ```
 
-Both paths create the stable symlink `~/.claude/statusline-command.sh → ${CLAUDE_PLUGIN_ROOT}/statusline.sh` and add the `statusLine` entry to `~/.claude/settings.json` (with a backup of the previous file).
+`setup.sh` writes `statusLine.command = "<clone>/plugins/statusline/statusline.sh"` directly to `~/.claude/settings.json` — no symlink needed because the clone path is stable. Both paths back up the previous `settings.json` before editing it.
 
 ## What the bar shows
 

@@ -34,12 +34,11 @@ Or `./setup.sh --pack common` (dev mode). The pack also writes `skillListingBudg
 |---|---|
 | [`ui-engineer`](agents/ui-engineer.md) | Frontend / UI specialist agent (component design, responsive layouts, code review for modern best practices) |
 
-## Hooks (9)
+## Hooks (8)
 
 | Hook | Event | Purpose |
 |---|---|---|
 | [`audit-trail.sh`](hooks/audit-trail.sh) | PostToolUse | Append every tool call to a local audit log |
-| [`fix-permissions.sh`](hooks/fix-permissions.sh) | PostToolUse | Restore expected file permissions after `Write` |
 | [`git-add-empty.sh`](hooks/git-add-empty.sh) | PostToolUse | `git add -N` newly created files so diffs are visible |
 | [`notify-sound.sh`](hooks/notify-sound.sh) | Notification / Stop | Play a sound on notifications and turn-end |
 | [`remind-ci-before-commit.sh`](hooks/remind-ci-before-commit.sh) | PreToolUse | Reminder before `git commit`: run full quality pipeline first (coding style, static analysis, tests) |

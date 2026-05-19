@@ -29,7 +29,7 @@ Each row links to the plugin's own README with the full skill catalog and direct
 | [**typescript**](plugins/typescript/README.md) | 8 | Typing, code style, functional, OOP, DDD events, refactoring, security audit |
 | [**astro**](plugins/astro/README.md) | 11 | Components, routing, content collections, i18n, SEO, Tailwind, React islands, view transitions, env, analytics |
 | [**nest**](plugins/nest/README.md) | 2 | NestJS architectural conventions, DDD with NestJS |
-| [**frontend**](plugins/frontend/README.md) | 2 | Clean architecture (hexagonal), Container/Presentation patterns |
+| [**frontend**](plugins/frontend/README.md) | 3 | Clean architecture (hexagonal), Container/Presentation patterns, best-practices for editing existing UI |
 | [**vitest**](plugins/vitest/README.md) | 2 | TDD workflow + test conventions |
 | [**tooling**](plugins/tooling/README.md) | 6 | Docker, Drizzle ORM, pnpm workspaces, Zod, Claude plugin conventions, npx skills |
 | [**common**](plugins/common/README.md) | 4 skills + 4 commands + 9 hooks + 1 agent | Shared workflow tools: planning, context window, research, persona, TDD/feature-dev commands, code-review/test hooks |
@@ -49,9 +49,9 @@ Each row links to the plugin's own README with the full skill catalog and direct
 
 The `statusline` plugin needs one extra activation step — see [Statusline](#statusline) below.
 
-### Via `setup.sh` (developer mode, symlinks)
+### Via `setup.sh` (local marketplace registration)
 
-For active development of the marketplace. Changes are live immediately because every component is symlinked into `~/.claude/`.
+For active development of the marketplace. The script registers this clone as a local marketplace in `~/.claude/settings.json` (`extraKnownMarketplaces.fabien-claude-marketplace`) and toggles packs via `enabledPlugins.<pack>@fabien-claude-marketplace`. No symlinks — edits in `plugins/*/` are picked up live on the next Claude Code session.
 
 ```bash
 git clone https://github.com/FabienSalles/claude-marketplace.git
@@ -119,12 +119,12 @@ claude-marketplace/
 │   ├── typescript/                     # README + 8 skills
 │   ├── astro/                          # README + 11 skills
 │   ├── nest/                           # README + 2 skills
-│   ├── frontend/                       # README + 2 skills
+│   ├── frontend/                       # README + 3 skills
 │   ├── vitest/                         # README + 2 skills
 │   ├── tooling/                        # README + 6 skills + 1 hook
 │   ├── common/                         # README + 4 skills + 4 commands + 9 hooks + 1 agent
 │   └── statusline/                     # README + script + /statusline:setup
-├── setup.sh                            # Symlink installer (dev mode)
+├── setup.sh                            # Registers this dir as a local marketplace, toggles packs
 ├── EXTERNAL_PLUGINS.md                 # Plugins from other marketplaces (checklist)
 └── README.md                           # This file
 ```

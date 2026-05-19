@@ -8,7 +8,7 @@ PHP 8.2/8.3 conventions and workflows: code style, DDD, TDD, Symfony, Twig, Comp
 /plugin install php@fabien-claude-marketplace
 ```
 
-Or `./setup.sh --pack php` (dev mode, symlinks).
+Or `./setup.sh --pack php` (dev mode — registers this directory as a local marketplace).
 
 ## Skills (13)
 
@@ -34,7 +34,7 @@ Or `./setup.sh --pack php` (dev mode, symlinks).
 | [`php-ddd-conventions`](skills/php-ddd-conventions/SKILL.md) | Strict domain layer purity rules, SPI interface pattern |
 | [`php-symfony-form`](skills/php-symfony-form/SKILL.md) | `data_class` as single source of truth, `DataTransformer` placement, `property_path` for collections |
 | [`php-prg-pattern`](skills/php-prg-pattern/SKILL.md) | POST success → redirect; POST error → re-render; flash messages after redirect |
-| [`php-twig-conventions`](skills/php-twig-conventions/SKILL.md) | `trans_default_domain` isolation in Twig components, `ClockInterface` for dates in templates |
+| [`php-twig-conventions`](skills/php-twig-conventions/SKILL.md) | When (not) to create a `<twig:*>` component, `trans_default_domain` isolation pitfall, `ClockInterface` for dates in templates |
 
 ### Testing
 
