@@ -150,80 +150,94 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Test --all creates symlinks
+      - name: Test --all registers marketplace and enables every pack
         run: |
           export CLAUDE_HOME=$(mktemp -d)
           ./setup.sh --all
 
-          # Count skill symlinks
-          skill_count=$(find "$CLAUDE_HOME/skills" -maxdepth 1 -type l | wc -l)
-          echo "Created $skill_count skill symlinks"
-          if [[ $skill_count -lt 40 ]]; then
-            echo "::error::Expected at least 40 skill symlinks, got $skill_count"
+          settings="$CLAUDE_HOME/settings.json"
+          if [[ ! -f "$settings" ]]; then
+            echo "::error::settings.json not created"
             exit 1
           fi
 
-          # Check hooks
-          hook_count=$(find "$CLAUDE_HOME/hooks" -maxdepth 1 -type l | wc -l)
-          echo "Created $hook_count hook symlinks"
-          if [[ $hook_count -lt 4 ]]; then
-            echo "::error::Expected at least 4 hook symlinks, got $hook_count"
+          mp_path=$(jq -r '.extraKnownMarketplaces["fabien-claude-marketplace"].source.path // empty' "$settings")
+          mp_source=$(jq -r '.extraKnownMarketplaces["fabien-claude-marketplace"].source.source // empty' "$settings")
+          if [[ "$mp_source" != "directory" ]] || [[ "$mp_path" != "$(pwd)" ]]; then
+            echo "::error::Marketplace not registered correctly (source=$mp_source path=$mp_path)"
             exit 1
           fi
+          echo "✓ Marketplace registered: directory → $mp_path"
 
-          # Check agents
-          if [[ ! -L "$CLAUDE_HOME/agents/ui-engineer.md" ]]; then
-            echo "::error::Agent symlink not created"
+          for pack in php typescript astro nest frontend vitest tooling common; do
+            val=$(jq -r --arg k "${pack}@fabien-claude-marketplace" '.enabledPlugins[$k] // empty' "$settings")
+            if [[ "$val" != "true" ]]; then
+              echo "::error::$pack not enabled (value=$val)"
+              exit 1
+            fi
+          done
+          echo "✓ All 8 plugin packs enabled"
+
+          statusline_cmd=$(jq -r '.statusLine.command // empty' "$settings")
+          if [[ "$statusline_cmd" != "$(pwd)/plugins/statusline/statusline.sh" ]]; then
+            echo "::error::statusLine.command incorrect ($statusline_cmd)"
             exit 1
           fi
+          echo "✓ statusLine wired"
 
-          # Check commands
-          cmd_count=$(find "$CLAUDE_HOME/commands" -maxdepth 1 -type l 2>/dev/null | wc -l)
-          if [[ $cmd_count -lt 1 ]]; then
-            echo "::error::Command symlinks not created"
+          symlinks=$(find "$CLAUDE_HOME" -type l 2>/dev/null | wc -l)
+          if [[ $symlinks -ne 0 ]]; then
+            echo "::error::Setup created $symlinks symlinks — the new mechanism should create none"
+            find "$CLAUDE_HOME" -type l
             exit 1
           fi
-          echo "Created $cmd_count command symlinks"
+          echo "✓ Zero symlinks created (marketplace-only registration)"
 
-          echo "✓ --all: all symlinks created"
-
-      - name: Test --pack installs only selected pack
+      - name: Test --pack enables only the selected pack
         run: |
           export CLAUDE_HOME=$(mktemp -d)
           ./setup.sh --pack php
 
-          # Only PHP skills should exist
-          php_count=$(find "$CLAUDE_HOME/skills" -maxdepth 1 -type l -name "php-*" | wc -l)
-          total_count=$(find "$CLAUDE_HOME/skills" -maxdepth 1 -type l | wc -l)
-
-          echo "PHP symlinks: $php_count, Total: $total_count"
-          if [[ $php_count -ne $total_count ]]; then
-            echo "::error::Expected only PHP skills, got non-PHP skills too"
+          settings="$CLAUDE_HOME/settings.json"
+          enabled=$(jq -r '.enabledPlugins // {} | to_entries[] | select((.key | endswith("@fabien-claude-marketplace")) and .value == true) | .key' "$settings")
+          if [[ "$enabled" != "php@fabien-claude-marketplace" ]]; then
+            echo "::error::Expected only php enabled, got: $enabled"
             exit 1
           fi
-          echo "✓ --pack php: only PHP skills installed"
+          echo "✓ --pack php: only php enabled"
 
-      - name: Test --remove removes symlinks
+      - name: Test --remove disables only the named pack
         run: |
           export CLAUDE_HOME=$(mktemp -d)
           ./setup.sh --all
           ./setup.sh --remove php
 
-          # PHP skills should be gone
-          php_count=$(find "$CLAUDE_HOME/skills" -maxdepth 1 -type l -name "php-*" 2>/dev/null | wc -l)
-          if [[ $php_count -ne 0 ]]; then
-            echo "::error::PHP skills still exist after --remove"
+          settings="$CLAUDE_HOME/settings.json"
+          php_val=$(jq -r '.enabledPlugins["php@fabien-claude-marketplace"] // "absent"' "$settings")
+          if [[ "$php_val" != "absent" ]]; then
+            echo "::error::php still present after --remove (value=$php_val)"
             exit 1
           fi
 
-          # Other skills should remain
-          remaining=$(find "$CLAUDE_HOME/skills" -maxdepth 1 -type l | wc -l)
-          echo "Remaining skills after removing php: $remaining"
-          if [[ $remaining -lt 25 ]]; then
-            echo "::error::Too few skills remaining, --remove may have removed too much"
+          remaining=$(jq -r '.enabledPlugins // {} | to_entries[] | select((.key | endswith("@fabien-claude-marketplace")) and .value == true) | .key' "$settings" | wc -l)
+          if [[ $remaining -lt 6 ]]; then
+            echo "::error::Too few plugins remaining ($remaining) — --remove may have removed too much"
             exit 1
           fi
-          echo "✓ --remove php: only PHP skills removed"
+          echo "✓ --remove php: only php disabled, $remaining other plugins remain"
+
+      - name: Test --remove statusline drops the statusLine key
+        run: |
+          export CLAUDE_HOME=$(mktemp -d)
+          ./setup.sh --pack statusline
+          ./setup.sh --remove statusline
+
+          settings="$CLAUDE_HOME/settings.json"
+          if jq -e '.statusLine' "$settings" > /dev/null 2>&1; then
+            echo "::error::statusLine key still present after --remove statusline"
+            exit 1
+          fi
+          echo "✓ --remove statusline: key removed"
 
       - name: Test --status runs without error
         run: |
@@ -232,38 +246,32 @@ jobs:
           ./setup.sh --status
           echo "✓ --status: runs successfully"
 
-      - name: Test symlinks point to existing files
+      - name: Test idempotency (running --all twice leaves single registration)
         run: |
           export CLAUDE_HOME=$(mktemp -d)
           ./setup.sh --all
+          ./setup.sh --all
 
-          errors=0
-          for link in $(find "$CLAUDE_HOME" -type l); do
-            target=$(readlink -f "$link")
-            if [[ ! -e "$target" ]]; then
-              echo "✗ Broken symlink: $link → $target"
-              errors=$((errors + 1))
-            fi
-          done
-
-          if [[ $errors -gt 0 ]]; then
-            echo "::error::$errors broken symlinks found"
+          settings="$CLAUDE_HOME/settings.json"
+          mp_count=$(jq -r '.extraKnownMarketplaces | keys[] | select(. == "fabien-claude-marketplace")' "$settings" | wc -l)
+          if [[ $mp_count -ne 1 ]]; then
+            echo "::error::Marketplace registered $mp_count times after two --all calls"
             exit 1
           fi
-          echo "✓ All symlinks point to existing targets"
+          echo "✓ Idempotent: marketplace registered exactly once"
 
-      - name: Test ts alias
+      - name: Test ts alias resolves to typescript
         run: |
           export CLAUDE_HOME=$(mktemp -d)
           ./setup.sh --pack ts
 
-          ts_count=$(find "$CLAUDE_HOME/skills" -maxdepth 1 -type l -name "ts-*" -o -name "ddd-ts-*" | wc -l)
-          echo "TypeScript symlinks: $ts_count"
-          if [[ $ts_count -lt 7 ]]; then
-            echo "::error::Expected at least 7 TypeScript skills"
+          settings="$CLAUDE_HOME/settings.json"
+          val=$(jq -r '.enabledPlugins["typescript@fabien-claude-marketplace"] // empty' "$settings")
+          if [[ "$val" != "true" ]]; then
+            echo "::error::ts alias did not enable typescript (value=$val)"
             exit 1
           fi
-          echo "✓ ts alias works"
+          echo "✓ ts alias → typescript"
 
   test-plugin-validate:
     name: Test claude plugin validate
