@@ -9,7 +9,6 @@
   "license": "MIT",
   "keywords": ["hooks", "agents", "commands", "skills"],
   "agents": "./agents/ui-engineer.md",
-  "hooks": "./hooks/hooks.json",
   "commands": "./commands/",
   "skills": "./skills/"
 }
