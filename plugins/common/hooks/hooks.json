@@ -1,17 +1,7 @@
 {
-  "description": "Shared hooks for development workflow: file permissions, git tracking, skill reminders, command audit trail, CI reminders, test-file edit warnings, clock-bypass detection, and git mv enforcement",
+  "description": "Shared hooks for development workflow: git tracking, skill reminders, command audit trail, CI reminders, test-file edit warnings, clock-bypass detection, and git mv enforcement",
   "hooks": {
     "PostToolUse": [
-      {
-        "matcher": "Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/fix-permissions.sh",
-            "timeout": 10
-          }
-        ]
-      },
       {
         "matcher": "Write",
         "hooks": [
@@ -80,6 +70,28 @@
           {
             "type": "command",
             "command": "${CLAUDE_PLUGIN_ROOT}/hooks/remind-ci-before-commit.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/notify-sound.sh notification",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/notify-sound.sh stop",
             "timeout": 10
           }
         ]
