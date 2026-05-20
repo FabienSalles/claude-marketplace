@@ -36,8 +36,15 @@ narrows them.
 - Verify branch names from actual git state (`git branch -a`), not
   from README references or memory.
 - Prefer new commits over `--amend` unless explicitly asked.
+- Standard `git push` (without `--force` / `--force-with-lease`) is
+  the **normal workflow** — including direct pushes to `main` on
+  personal/solo repos. No special approval is required beyond the
+  user's intent to commit and push.
 
-### Force-push policy
+### Force-push policy (only `--force` / `--force-with-lease` flags)
+
+This section concerns **only force-push variants**, NOT standard
+`git push`.
 
 - **`git push --force` is strictly forbidden.** Never use it. Always
   prefer `--force-with-lease` — it refuses to push if the remote
@@ -48,10 +55,6 @@ narrows them.
   1. Reverting / dropping a local commit the user asked to undo.
   2. Rebasing local history (interactive rebase, squash, reword)
      that the user explicitly requested.
-
-- **On `main` / `master`** — `--force-with-lease` is allowed only
-  during explicit iterative back-and-forth ("we're tâtonning") where
-  the user asks to revert a commit Claude already made locally.
 
 - **Default rule** : new need → new commit. Never rewrite existing
   history just because something needs to change. History is
