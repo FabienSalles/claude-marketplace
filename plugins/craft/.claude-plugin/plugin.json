@@ -1,0 +1,8 @@
+{
+  "name": "craft",
+  "version": "1.0.0",
+  "description": "Cross-language software craftsmanship principles — refactoring, DDD, OOP, TDD, testing, code style — that complement language-specific example skills (php-*, ts-*, etc.)",
+  "author": { "name": "FabienSalles" },
+  "license": "MIT",
+  "keywords": ["craft", "refactoring", "ddd", "tdd", "oop", "principles", "cross-language"]
+}

@@ -89,6 +89,16 @@
       "keywords": ["hooks", "agents", "commands", "skills"]
     },
     {
+      "name": "craft",
+      "source": "./plugins/craft",
+      "description": "Cross-language software craftsmanship principles — abstract rules (refactoring, DDD, OOP, TDD, …) that pair with language-specific example skills",
+      "version": "1.0.0",
+      "author": { "name": "FabienSalles" },
+      "category": "development",
+      "license": "MIT",
+      "keywords": ["craft", "refactoring", "ddd", "tdd", "oop", "principles"]
+    },
+    {
       "name": "statusline",
       "source": "./plugins/statusline",
       "description": "Claude Code statusline — cwd, git branch, model, context progress bar, 5h rate limit",

@@ -1,53 +1,33 @@
 ---
 name: php-refactoring
-description: "ACTIVATE when the user wants to refactor, redesign, extract classes/value objects, or restructure PHP code. ACTIVATE for 'refactor', 'extract', 'redesign', 'simplify', or 'clean up' requests. Covers: mandatory end-to-end flow analysis before refactoring, consumer-driven value object design, imports as coupling signals. DO NOT use for: writing new features from scratch (see php-tdd-workflow), general OOP principles (see php-oop)."
-version: "1.1"
+description: "ACTIVATE when refactoring PHP code. ACTIVATE for 'refactor', 'extract', 'redesign', 'simplify', or 'clean up' in a PHP/Symfony context. This skill provides PHP-specific examples for the cross-language refactoring rules defined in craft:refactoring-principles. DO NOT use for: writing new features from scratch (see php-tdd-workflow), general OOP principles (see php-oop)."
+version: "2.0"
 ---
 
-# Refactoring Methodology
+# Refactoring — PHP Examples
 
-## 1. Trace the Complete Business Flow BEFORE Refactoring
+> The **rules** are defined in `craft:refactoring-principles` (cross-language). This skill provides PHP / Symfony examples only. Load both for the full picture.
 
-A local refactoring that ignores the global flow produces incomplete abstractions. Before touching any code, trace the data flow end-to-end.
-
-### Problem
+## Example — Rule 1: Trace the Complete Business Flow
 
 ```php
-// ❌ AVOID - Refactoring a controller without understanding the full flow
-// UploadFile is created in the controller...
+// ❌ AVOID — refactoring a controller without understanding the full flow
 $uploadFile = new UploadFile($content, $fileName);
 
-// ...but the same object is also created
-// in downloadExistingFiles() with different data.
-// Result: two inconsistent creation paths.
-```
-
-### Solution
-
-```
-// ✅ CORRECT - Trace the complete flow BEFORE refactoring
+// ...but UploadFile is also created in downloadExistingFiles() with
+// different data. Two inconsistent creation paths.
 //
-// 1. Identify all inputs: form, API, database
-// 2. Trace each piece of data from source to final destination
-// 3. Spot convergence points (same object, different sources)
-// 4. Design the abstraction that covers ALL paths
+// Sources you must identify BEFORE refactoring:
+//   - form upload:  UploadedFile (Symfony) → UploadFile
+//   - API download: binary content        → UploadFile
 //
-// Example: UploadFile is created from:
-//   - an uploaded file (form → UploadedFile → UploadFile)
-//   - an existing re-downloaded file (API → binary content → UploadFile)
-// → The abstraction must unify both sources
+// → The abstraction must unify both sources.
 ```
 
-**Criterion:** if an object can be constructed from N different sources, the refactoring must identify all of them before defining the structure.
-
-## 2. Design by Tracing All Consumers
-
-**When creating or modifying a value object, list all its consumers to define the required properties.** Do not limit the analysis to the creation point.
-
-### Problem
+## Example — Rule 2: Consumer-Driven Value Object
 
 ```php
-// ❌ AVOID - Defining a value object only from its creation point
+// ❌ AVOID — VO defined only from its creation point
 final class UploadFile
 {
     public function __construct(
@@ -56,27 +36,12 @@ final class UploadFile
     ) {}
 }
 
-// Later, a consumer needs the file type...
-// A missing property is discovered.
-// The consumer must maintain an external mapping.
-```
+// Later, a consumer needs the file type → external mapping required.
+//   repository->upload($file, $request)
+//     uses  $file->content, $file->originalFileName, $request->fileType
+//   → fileType comes from the file itself, NOT the request.
 
-### Solution
-
-```php
-// ✅ CORRECT - Analyze consumers before defining the structure
-//
-// Steps:
-// 1. List every place that CONSUMES the object
-// 2. For each consumer, note the data it needs
-// 3. Include in the object everything consumers extract
-//
-// Consumer: repository->upload($file, $request)
-//   → needs $file->content, $file->originalFileName
-//   → needs $request->fileType (comes from the file)
-//
-// → The type must be carried by UploadFile itself
-
+// ✅ CORRECT — include FileTypeEnum because a consumer needs it
 final class UploadFile
 {
     public function __construct(
@@ -87,45 +52,19 @@ final class UploadFile
 }
 ```
 
-**Criterion:** a value object is complete when no consumer needs an external mapping to interpret it.
-
-## 3. Imports as a Coupling Signal
-
-**A file's imports reveal its real dependencies.** After a refactoring, verify that remaining imports are consistent with the class responsibility.
-
-### Problem
+## Example — Rule 3: Imports as a Coupling Signal
 
 ```php
-// ❌ AVOID - A controller importing form-internal types
+// ❌ AVOID — controller importing a form-internal type
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 
-// This controller manipulates UploadedFile (form-internal type)
-// instead of model objects.
-// The import betrays a leaking abstraction.
-```
+// The controller manipulates UploadedFile (form-internal) instead of
+// model objects. The import betrays a leaking abstraction.
 
-### Solution
-
-```php
-// ✅ CORRECT - The import reflects the right abstraction level
+// ✅ CORRECT — the controller imports a model
 use App\Model\UploadFile;
 
 // The controller only manipulates model objects.
-// The UploadedFile → UploadFile conversion is done in the FormType
+// UploadedFile → UploadFile conversion happens in the FormType
 // (via a DataTransformer).
-//
-// Post-refactoring check:
-// 1. List the imports of the modified file
-// 2. Does each import belong to this class's responsibility?
-// 3. A "foreign" import signals misplaced responsibility
 ```
-
-**Criterion:** after a refactoring, if a file imports a type that does not match its layer/responsibility, code needs to be moved.
-
-## Quick Reference
-
-| Rule | Principle |
-|------|-----------|
-| Complete business flow | Trace all sources and destinations before refactoring |
-| Trace consumers | List all usages to define a value object's structure |
-| Imports = coupling | Imports reveal dependencies; verify their consistency |
