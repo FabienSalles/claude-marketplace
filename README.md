@@ -37,7 +37,8 @@ Each row links to the plugin's own README with the full skill catalog and direct
 | [**craft**](plugins/craft/README.md) | 7 | Cross-language software craftsmanship principles (refactoring, OOP, code-style, testing, TDD workflow, DDD-OOP, DDD-FP; security planned) — pairs with language example skills |
 | [**statusline**](plugins/statusline/README.md) | — | Colored statusline: cwd, branch, model, context %, 5h rate-limit usage + reset countdown |
 | [**mac**](plugins/mac/README.md) | 1 | macOS / BSD platform discipline — shell/bash 3.2 vs Homebrew bash 5+, BSD vs GNU command portability, common macOS pitfalls |
-| **security-audit** *(external)* | — | [netresearch/security-audit-skill](https://github.com/netresearch/security-audit-skill) — OWASP, CWE, CVSS |
+| [**audit**](plugins/audit/README.md) | 1 | Personal overlay on top of upstream audit skills (`netresearch/security-audit`) — stack scope, false-positive filters, output conventions |
+| **security-audit** *(external)* | — | [netresearch/security-audit-skill](https://github.com/netresearch/security-audit-skill) — OWASP, CWE, CVSS, 61 references |
 
 ## Installation
 
@@ -147,9 +148,10 @@ claude-marketplace/
 │   ├── vitest/                         # README + 2 skills
 │   ├── tooling/                        # README + 6 skills + 1 hook
 │   ├── common/                         # README + 4 skills + 4 commands + 9 hooks + 1 agent
-│   ├── craft/                          # README + 1 skill (cross-language principles)
+│   ├── craft/                          # README + 7 skills (cross-language principles)
 │   ├── statusline/                     # README + script + /statusline:setup
-│   └── mac/                            # README + 1 skill (macOS/BSD platform discipline)
+│   ├── mac/                            # README + 1 skill (macOS/BSD platform discipline)
+│   └── audit/                          # README + 1 skill (security overlay on netresearch)
 ├── scripts/
 │   └── health-check.sh                 # Local diagnostic (also runs in CI)
 ├── setup.sh                            # Registers this dir as a local marketplace, toggles packs

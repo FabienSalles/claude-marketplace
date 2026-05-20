@@ -27,7 +27,7 @@ BOLD='\033[1m'
 # ─────────────────────────────────────────────
 # Available packs
 # ─────────────────────────────────────────────
-PACKS=(php typescript astro nest frontend vitest tooling common statusline mac craft)
+PACKS=(php typescript astro nest frontend vitest tooling common statusline mac craft audit)
 
 declare -A PACK_DESCRIPTIONS=(
   [php]="PHP 8.2/8.3, conventions, DDD, TDD, Symfony, Twig, Composer, OOP, refactoring, SQL, security"

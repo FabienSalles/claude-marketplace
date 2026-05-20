@@ -119,6 +119,16 @@
       "keywords": ["macos", "bsd", "platform", "shell", "bash"]
     },
     {
+      "name": "audit",
+      "source": "./plugins/audit",
+      "description": "Audit overlay — personal overrides for upstream audit skills (security from netresearch, …). Loads in parallel with the upstream, no modification.",
+      "version": "1.0.0",
+      "author": { "name": "FabienSalles" },
+      "category": "security",
+      "license": "MIT",
+      "keywords": ["audit", "security", "overlay", "owasp"]
+    },
+    {
       "name": "security-audit",
       "source": {
         "source": "github",

@@ -38,4 +38,4 @@ Each `*-principles` skill in this plugin defines the **rules** in language-agnos
 | `tdd-workflow-principles` | ✓ shipped |
 | `ddd-principles` (OOP) | ✓ shipped |
 | `ddd-fp-principles` (functional) | ✓ shipped |
-| `security-audit-principles` | _planned (depends on PHP equivalent of ts-security-audit)_ |
+| `security-audit-principles` | ❌ **NOT planned** — handled by the `audit` plugin (overlay on netresearch/security-audit, no principles extraction needed since upstream is already comprehensive) |
