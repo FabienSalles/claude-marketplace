@@ -30,12 +30,6 @@ Items identified during the marketplace audit and not yet executed. Loose priori
 - **Trigger:** every CI run currently emits this warning.
 - **File:** `.github/workflows/validate.yml` (job `test-npx-skills`)
 
-### Bump `actions/checkout@v4` → `@v5` (Node 20 deprecation)
-- **Symptom:** GitHub annotates every CI run with the Node 20 deprecation warning. Forced default change in **June 2026**.
-- **Effort:** ~5 min (sed `@v4` → `@v5` across all workflows + verify CI green)
-- **Trigger:** before June 2026, or whenever you touch `.github/workflows/`.
-- **Files:** `.github/workflows/validate.yml` (and any future workflow file).
-
 ---
 
 ## 🛡️ Audit plugin extensions
@@ -71,3 +65,9 @@ Items identified during the marketplace audit and not yet executed. Loose priori
 - Append a new section under the relevant category.
 - Each entry: **Why** (problem) + **Effort** (rough) + **Trigger** (what would make you pick it up) + concrete pointer (file, command, link).
 - When done, move it to a `## ✅ Done` section at the bottom with the commit SHA, or just delete.
+
+---
+
+## ✅ Done
+
+- Bump `actions/checkout@v4` → `@v5` and `actions/setup-node@v4` → `@v5` (Node 24, kills Node 20 deprecation warnings) — covers 6 occurrences in `.github/workflows/validate.yml`.

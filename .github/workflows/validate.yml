@@ -13,7 +13,7 @@ jobs:
     name: Validate structure
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Validate marketplace.json exists and is valid JSON
         run: |
@@ -150,7 +150,7 @@ jobs:
     name: Test setup.sh
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Test --all registers marketplace and enables every pack
         run: |
@@ -279,7 +279,7 @@ jobs:
     name: Test claude plugin validate
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install Claude Code
         run: npm install -g @anthropic-ai/claude-code
@@ -311,10 +311,10 @@ jobs:
     name: Test npx skills discovery
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '20'
 
@@ -336,7 +336,7 @@ jobs:
         os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install Claude Code
         run: npm install -g @anthropic-ai/claude-code
