@@ -5,6 +5,8 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  schedule:
+    - cron: '0 6 * * *'
 
 jobs:
   validate-structure:
@@ -325,3 +327,19 @@ jobs:
             echo "::warning::Expected at least 40 skills discovered, got $skill_count"
           fi
           echo "✓ npx skills add --list completed"
+
+  health-check:
+    name: Run health-check.sh (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Claude Code
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Run health-check.sh
+        run: ./scripts/health-check.sh
