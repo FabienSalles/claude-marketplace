@@ -1,55 +1,40 @@
 ---
 name: ts-oop
-description: "ACTIVATE when designing TypeScript classes, value objects, collections, or when the user asks about object design, encapsulation, Tell Don't Ask, or Symbol.iterator. Covers: Tell Don't Ask with TS examples, collection over named properties, Whole Object pattern, iterable collections via Symbol.iterator, self-descriptive value objects with branded types. DO NOT use for: functional DDD modeling (see ddd-ts-fp), refactoring methodology (see ts-refactoring)."
-version: "1.1"
+description: "ACTIVATE when designing TypeScript classes, value objects, collections, or when the user asks about object design, encapsulation, Tell Don't Ask, or Symbol.iterator. Provides TS-specific examples for the cross-language OOP rules defined in craft:oop-principles, plus TS-specific patterns (Symbol.iterator, branded types for primitive identifiers). DO NOT use for: functional DDD modeling (see ddd-ts-fp), refactoring methodology (see ts-refactoring)."
+version: "2.0"
 ---
 
-# OOP Design Principles (TypeScript)
+# OOP — TypeScript Examples
 
-## 1. Tell Don't Ask
+> The **rules** are defined in `craft:oop-principles`. This skill provides TypeScript / NestJS examples plus TS-specific patterns (`Symbol.iterator`, branded types).
 
-**The object that owns the data exposes behavior.** Calling code must not extract data to make decisions on behalf of the object.
+> See also: `ts-conventions` for typing rules (strict mode, etc.).
 
-### Problem
+## Example — Rule 1: Tell Don't Ask
 
 ```typescript
-// ❌ AVOID - The caller interrogates the object and decides
+// ❌ AVOID — caller interrogates and decides
 const requiredFields = identityDocument.getRequiredFieldNames();
-
 for (const fieldName of requiredFields) {
   const file = identityDocument.getFileByFieldName(fieldName);
-
-  if (file !== null) {
-    continue;
-  }
+  if (file !== null) continue;
 
   const existing = existingFiles.find(fieldName);
-
-  if (existing === null) {
-    continue;
-  }
+  if (existing === null) continue;
 
   // ... re-download logic
 }
-```
 
-### Solution
-
-```typescript
-// ✅ CORRECT - The object exposes behavior
+// ✅ CORRECT — object exposes behavior
 for (const [fieldName, existingFile] of identityDocument.getMissingExistingFiles()) {
-  // The object already determined which files are missing
+  // Object already determined which files are missing
 }
 ```
 
-## 2. Collection over Named Properties
-
-**When elements share the same nature and undergo the same treatment**, prefer an indexed collection over separate named properties.
-
-### Problem
+## Example — Rule 2: Collection Over Named Properties
 
 ```typescript
-// ❌ AVOID - Separate properties = N identical code paths
+// ❌ AVOID — N separate fields with parallel handling
 class FormData {
   private frontFile: File | null = null;
   private backFile: File | null = null;
@@ -57,19 +42,15 @@ class FormData {
 
   getFileByFieldName(name: string): File | null {
     switch (name) {
-      case 'front_file': return this.frontFile;
-      case 'back_file': return this.backFile;
+      case 'front_file':    return this.frontFile;
+      case 'back_file':     return this.backFile;
       case 'passport_file': return this.passportFile;
-      default: return null;
+      default:              return null;
     }
   }
 }
-```
 
-### Solution
-
-```typescript
-// ✅ CORRECT - One collection, one loop
+// ✅ CORRECT — one keyed collection
 class FormData {
   private readonly files = new Map<string, File>();
 
@@ -83,53 +64,25 @@ class FormData {
 }
 ```
 
-**Criterion:** if elements share the same type and undergo the same treatment (upload, validation, display), it's a collection — even if the count is known and fixed.
-
-## 3. Whole Object — Pass the Entire Object
-
-**When multiple parameters come from the same object, pass the object.** Extracting primitives on the caller side is a sign of *feature envy*.
-
-### Problem
+## Example — Rule 3: Whole Object
 
 ```typescript
-// ❌ AVOID - The caller destructures the object
+// ❌ AVOID — caller destructures
 collection.add({
   documentType: document.type,
   documentName: document.originalFileName,
   downloadUrl: url,
 });
-```
 
-### Solution
-
-```typescript
-// ✅ CORRECT - The object is passed whole
+// ✅ CORRECT — pass the whole object
 collection.addFromDocument(document, url);
 ```
 
-The receiving method extracts what it needs. This encapsulates knowledge of the `document` structure.
+## Example — Rule 4: Iterable Collections via `Symbol.iterator`
 
-## 4. Iterable Collections (`Symbol.iterator`)
-
-**Implement `Symbol.iterator` when the collection will be iterated**, to keep the internal property private while allowing `for...of`.
-
-### Problem
+TS-specific: implement `Symbol.iterator` to allow `for...of` while keeping internals private.
 
 ```typescript
-// ❌ AVOID - Public property to allow iteration
-class FilesCollection {
-  files: FileInfo[] = [];
-}
-
-// Direct access to internal array
-for (const file of collection.files) { ... }
-collection.files.push(file); // uncontrolled mutation
-```
-
-### Solution
-
-```typescript
-// ✅ CORRECT - Iterable with private internals
 class FilesCollection implements Iterable<[string, FileInfo]> {
   private readonly files = new Map<string, FileInfo>();
 
@@ -143,35 +96,22 @@ class FilesCollection implements Iterable<[string, FileInfo]> {
 }
 
 // Clean usage
-for (const [name, file] of collection) { ... }
+for (const [name, file] of collection) { /* ... */ }
 ```
 
-## 5. Self-Descriptive Value Objects with Branded Types
-
-**Include type or identity in the value object** so consumers don't need external mappings to interpret it.
-
-### Problem
+## Example — Rule 5: Self-Descriptive Value Object
 
 ```typescript
-// ❌ AVOID - The consumer needs an external mapping
+// ❌ AVOID — consumer needs an external mapping
 class UploadFile {
   constructor(
     readonly content: Buffer,
     readonly originalFileName: string,
   ) {}
 }
+// Controller maintains fieldName → fileType outside the object
 
-// The controller must maintain a fieldName → fileType mapping
-for (const [fieldName, fileType] of fileTypeMapping) {
-  const request = new UploadRequest(fileType, expirationDate);
-  repository.upload(files[fieldName], request);
-}
-```
-
-### Solution
-
-```typescript
-// ✅ CORRECT - The object carries its own type
+// ✅ CORRECT — object carries its own type
 class UploadFile {
   constructor(
     readonly type: FileType,
@@ -179,25 +119,19 @@ class UploadFile {
     readonly originalFileName: string,
   ) {}
 }
-
-// The consumer needs no mapping
-for (const file of files) {
-  const request = new UploadRequest(file.type, expirationDate);
-  repository.upload(file, request);
-}
 ```
 
-### Branded Types for Primitive Identifiers
+## TS-specific: Branded Types for Primitive Identifiers
 
-Use branded types to make identifiers self-descriptive and prevent accidental swaps:
+Use branded types to make identifiers self-descriptive and prevent accidental swaps at compile-time:
 
 ```typescript
-type TenantId = string & { readonly __brand: 'TenantId' };
+type TenantId   = string & { readonly __brand: 'TenantId' };
 type LandlordId = string & { readonly __brand: 'LandlordId' };
 
-// ❌ Compile-time error: cannot pass TenantId where LandlordId expected
-function getReceipts(landlordId: LandlordId): Receipt[] { ... }
-getReceipts(tenantId); // Type error!
+// ❌ Compile-time error — cannot pass TenantId where LandlordId expected
+function getReceipts(landlordId: LandlordId): Receipt[] { /* ... */ }
+getReceipts(tenantId); // Type error
 
 // Factory function
 function toTenantId(id: string): TenantId {
@@ -205,15 +139,4 @@ function toTenantId(id: string): TenantId {
 }
 ```
 
-> **See also**: `ts-conventions` for more on branded types and type safety patterns.
-
-## Quick Reference
-
-| Rule | Principle |
-|------|-----------|
-| Tell Don't Ask | The object exposes behavior, not data to interpret |
-| Collection > named properties | Same nature + same treatment = indexed collection |
-| Whole Object | Pass the entire object, not its extracted primitives |
-| `Symbol.iterator` | Make iterable, keep internals private |
-| Self-descriptive value object | Include type/identity in the object |
-| Branded types | Prevent primitive type confusion at compile time |
+> See also: `ts-conventions` for more on branded types and type-safety patterns.

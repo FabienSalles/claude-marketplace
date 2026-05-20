@@ -1,69 +1,76 @@
 ---
 name: vitest-test-conventions
-description: "ACTIVATE when writing Vitest tests, creating test files, using vi.fn()/vi.mock()/vi.spyOn(), or test factories. ACTIVATE for 'Vitest', 'test convention', 'it.each', 'test double', 'DAMP test', 'spy vs mock'. Covers: DAMP over DRY, AAA pattern, vi.fn()/vi.spyOn()/vi.mock() patterns, spy over mock, what NOT to test, it.each() format selection (template vs object), factory functions, exception testing, NestJS integration test setup, structured assertions. DO NOT use for: TDD workflow/iterations (see vitest-tdd-workflow), PHP/PHPUnit tests (see php-test-conventions)."
-version: "1.1"
+description: "ACTIVATE when writing Vitest tests, creating test files, using vi.fn()/vi.mock()/vi.spyOn(), or test factories. ACTIVATE for 'Vitest', 'it.each', 'NestJS testing module', 'supertest', 'vi.fn', 'vi.mock', 'spyOn'. Provides Vitest/NestJS-specific testing patterns; cross-language testing principles (DAMP, AAA, spy>mock, what NOT to test) live in craft:testing-principles. DO NOT use for: TDD workflow/iterations (see vitest-tdd-workflow), PHP/PHPUnit tests (see php-test-conventions)."
+version: "2.0"
 ---
 
-# Test Conventions (Vitest)
+# Test Conventions — Vitest
 
-> **See also**: `vitest-tdd-workflow` for TDD workflow and iteration patterns.
+> The **cross-language testing principles** (DAMP, AAA, spy over mock, what NOT to test, factories, structured assertions) are defined in `craft:testing-principles`. This skill keeps Vitest / NestJS-specific patterns.
 
-## Test Types
+> See also: `vitest-tdd-workflow` for TDD workflow and iteration patterns.
 
-| Test Type | Setup | Purpose |
-|-----------|-------|---------|
-| Unit | No DI container, pure logic | Domain models, services |
-| Integration | NestJS `Test.createTestingModule()` | Services with real dependencies |
-| E2E | `supertest` + full app | HTTP request/response, full flow |
+## Test Types (Vitest + NestJS)
 
-## DAMP Principle
+| Test Type | Setup | File pattern |
+|-----------|-------|--------------|
+| Unit | No DI container, pure logic | `*.spec.ts` |
+| Integration | NestJS `Test.createTestingModule()` | `*.integration-spec.ts` |
+| E2E | `supertest` + full app | `*.e2e-spec.ts` |
 
-**Prefer DAMP (Descriptive And Meaningful Phrases) over DRY in tests.**
-
-Avoid `beforeEach()`. Keep the full test lifecycle in each test case:
+## Vitest-specific: Test Doubles
 
 ```typescript
-it('should mark tenant as eligible when lease is active', () => {
-  const lease = createActiveLease();
-  const specification = new IsTenantEligible();
-
-  const result = specification.isSatisfiedBy(lease);
-
-  expect(result).toBe(true);
-});
+vi.fn()    // Simple stubs for dependencies
+vi.spyOn() // Spy on real objects (verify after act — preferred)
+vi.mock()  // Module-level mocking
 ```
 
-## AAA / GWT Pattern
+## Vitest-specific: Spy Over Mock (verify after act)
 
-Respect **Arrange-Act-Assert** or **Given-When-Then** structure with blank line separators.
+```typescript
+// ❌ Setup expectations before act (violates AAA)
+const send = vi.fn();
+// → call SUT
+// → assert send was called
 
-## Test Doubles: Spy over Mock
+// ✅ Spy on real method, assert AFTER act
+const send = vi.spyOn(notifier, 'send');
+// → call SUT
+expect(send).toHaveBeenCalledWith(expectedArg);
+```
 
-**Verify AFTER the act**, not before (AAA compliance):
+> When writing test doubles, parameterized tests, or factory functions, read `references/test-examples.md` for complete `vi.fn`/`spyOn`/`mock` patterns, `it.each` examples, and factory patterns.
 
-- `vi.fn()` -- Simple stubs for dependencies
-- `vi.spyOn()` -- Spy on real objects
-- `vi.mock()` -- Module-level mocking
+## Vitest-specific: `it.each()` Format Selection
 
-## What NOT to Test
+- **Majority of strings** → template literal syntax (tabular reading).
+- **Mix of types or majority non-string** → object syntax (avoids verbose `${}`).
 
-| Worth testing | Not worth testing |
-|---------------|-------------------|
-| Business logic / domain rules | Simple DTOs with only properties |
-| Validation logic | Events with only properties |
-| Calculations / transformations | Data containers |
-| State machines / workflows | Entities with only getters/setters |
+> When writing exception tests or NestJS integration tests, read `references/test-examples.md` for `toThrow` patterns and `Test.createTestingModule` setup.
 
-## it.each() Format Selection
+## Vitest-specific: Structured Assertions
 
-- **Majority of strings** -> Template literal syntax (tabular reading)
-- **Mix of types or majority non-string** -> Object syntax (avoids verbose `${}`)
+```typescript
+// Compare full object
+expect(result).toEqual({ id: 1, name: 'Alice' });
 
-> **When writing test doubles, parameterized tests, or factory functions**, read `references/test-examples.md` for complete vi.fn/spyOn/mock patterns, it.each examples, and factory patterns.
+// Partial match
+expect(result).toEqual(expect.objectContaining({ id: 1 }));
+```
 
-> **When writing exception tests or NestJS integration tests**, read `references/test-examples.md` for toThrow patterns and Test.createTestingModule setup.
+## NestJS-specific: Integration Test Setup
 
-## Quick Reference
+```typescript
+// references/test-examples.md has the complete pattern
+const module = await Test.createTestingModule({
+  providers: [ReceiptService, { provide: RepositoryToken, useClass: InMemoryRepo }],
+}).compile();
+
+const service = module.get(ReceiptService);
+```
+
+## Quick Reference (Vitest-specific)
 
 | Situation | Approach |
 |-----------|----------|
@@ -72,9 +79,7 @@ Respect **Arrange-Act-Assert** or **Given-When-Then** structure with blank line 
 | Spy on real method | `vi.spyOn()` |
 | Module replacement | `vi.mock()` |
 | Same logic, different data | `it.each()` (object or template literal) |
-| Duplicated factory | Shared factory file |
-| Verify method called | Spy after act |
-| Setup code | In test body (DAMP) |
+| Verify method called | `expect(spy).toHaveBeenCalledWith(...)` after act |
 | Compare objects | `toEqual` + `expect.objectContaining` |
 
 | Test Type | File pattern | Base setup |

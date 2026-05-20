@@ -1,52 +1,32 @@
 ---
 name: php-test-conventions
-description: "ACTIVATE when writing or modifying PHPUnit tests, creating test classes, using Prophecy, test factories, or data providers. ACTIVATE for 'test naming', 'test doubles', 'DAMP', 'spy vs mock', 'test organization', 'serialization tests', 'deserialization tests'. Covers: DAMP over DRY, Spy over Mock (AAA), exception test naming, what NOT to test, factory methods, assertion patterns. Key rules: assertEquals with complete expected object over multiple assertSame/property assertions — read assertion-patterns.md. DO NOT use for: TDD workflow/iteration process (see php-tdd-workflow), Symfony form testing setup."
-version: "1.1"
+description: "ACTIVATE when writing or modifying PHPUnit tests, creating test classes, using Prophecy, test factories, or data providers. ACTIVATE for 'test naming', 'test doubles', 'spy vs mock', 'serialization tests', 'deserialization tests' in PHP. Provides PHPUnit/Prophecy/Symfony-specific testing patterns; cross-language testing principles (DAMP, AAA, spy>mock, what NOT to test, factories) live in craft:testing-principles. DO NOT use for: TDD workflow/iteration process (see php-tdd-workflow)."
+version: "2.0"
 ---
 
-# Test Conventions
+# Test Conventions — PHP
 
-> For TDD workflow and iteration process, see `php-tdd-workflow`.
+> The **cross-language testing principles** (DAMP, AAA, spy over mock, what NOT to test, factories, structured assertions) are defined in `craft:testing-principles`. This skill keeps PHPUnit/Prophecy/Symfony-specific patterns.
 
-## Test Types
+> For TDD workflow / iteration process, see `php-tdd-workflow`.
+
+## Test Types (PHPUnit + Symfony)
 
 | Test Type | Base Class | Purpose |
 |-----------|-----------|---------|
 | Unit | `TestCase` | No container dependencies, pure logic |
 | Unit FormType | `TypeTestCase` | Symfony form type testing |
 | Integration | `KernelTestCase` | Needs Symfony container services |
-| Functional/Acceptance | `WebTestCase` | HTTP request/response, E2E scenarios |
+| Functional / Acceptance | `WebTestCase` | HTTP request/response, E2E scenarios |
 
 > For FormType testing details, see [references/formtype-testing.md](references/formtype-testing.md).
 
-## Unit vs Integration Decision
+## Symfony-specific: What NOT to Test (Form Structure)
 
-```
-Does the test need Symfony container?
-├─ NO → Unit test (PHPUnit\Framework\TestCase)
-└─ YES → Integration test (KernelTestCase)
-```
-
-## What NOT to Test
-
-**Never write tests coupled to implementation without logic.** Only test classes that have behavior worth verifying:
-
-| Worth testing | Not worth testing |
-|---------------|-------------------|
-| Business logic / domain rules | Simple DTOs with only getters |
-| Validation logic | Events with only properties |
-| Serialization / deserialization | Value objects without logic |
-| Calculations / transformations | Data containers |
-| State machines / workflows | Entities with only setters/getters |
-| Form binding behavior (submit -> data) | Form structure (`$form->has(KEY)`, `$form->get(KEY)` for existence only) |
-| Form clean/transform listeners | Tests that re-verify what a higher-level test already validates |
-
-**Rule**: If the test only verifies that a getter returns what was passed to the constructor, delete it.
-
-**Rule extension (Form structure)**: If a higher-level behavior test (form is valid with N items, data is cleared on submit) would fail when the structure breaks, do NOT add a separate `formExposesXAndY` test.
+The `craft:testing-principles` rule "don't re-verify what a higher-level test already covers" has a frequent FormType expression:
 
 ```php
-// ❌ Avoid - just re-states the FormType composition
+// ❌ Avoid — just re-states the FormType composition
 public function transfersExposesCollectionAndAllocationsAtTopLevel(): void
 {
     $form = $this->factory->create(PaymentForm::class, ...);
@@ -57,22 +37,14 @@ public function transfersExposesCollectionAndAllocationsAtTopLevel(): void
 
 The test `transfersCollectionAcceptsMultipleTransfersWithSingleAllocation` already fails if either sub-form is missing.
 
-## Pre-Test Checklist
-
-Before writing a new test, confront it to these 3 questions. If you can't answer "yes" to all three, do not write the test.
-
-1. **Does this scenario represent a valid business state?** A test for a state that production can't reach (e.g., empty collection when business rule mandates >= 1 item) tests nothing real.
-2. **Is this behavior NOT already covered transitively by a higher-level test?** If the multi-item happy-path test would fail when the structure breaks, a separate structural test adds no signal.
-3. **Does the assertion express a behavior, not an implementation detail?** `$form->has(KEY)` or `count($form) === 3` after a submit of 3 items both look like assertions, but only the second one tests behavior.
-
-**Common false-positive cases**:
-- Collection-empty cases when the business rule requires >= 1 (already caught by the clean-listener test).
+**Common false-positives** to avoid:
+- Collection-empty tests when the business rule requires ≥ 1 (already caught by the clean-listener test).
 - "Form exposes X" tests that just re-state the FormType composition.
 - "Field has type Y" tests that just re-state the FormType configuration.
 
-## Exception Test Naming
+## PHP-specific: Exception Test Naming
 
-When a test verifies that an exception is thrown, the test method name **must include the exception class name**:
+When a test verifies an exception, the test method name **must include the exception class name**:
 
 ```php
 // ❌ Avoid
@@ -84,25 +56,7 @@ public function itThrowsMissingBuyerBirthDateWhenBirthDateIsMissing(): void
 
 Pattern: `itThrows{ExceptionClassName}When{Condition}`
 
-## DAMP Principle
-
-**Prefer DAMP (Descriptive And Meaningful Phrases) over DRY in tests.**
-
-Avoid `setUp()` methods. Keep the full test lifecycle in each test case:
-
-```php
-public function buyerWith100PercentProfileIsEligible(): void
-{
-    $specification = new IsBuyerEligibleForDiscount();
-    $buyer = $this->createBuyerWithProfile(100);
-
-    $result = $specification->isSatisfiedBy($buyer);
-
-    self::assertTrue($result);
-}
-```
-
-## Test Method Naming
+## PHP-specific: Test Method Naming
 
 Check the project's convention:
 
@@ -113,26 +67,10 @@ public function buyerWith100PercentProfileIsEligible(): void   // @test annotati
 public function testBuyerWith100PercentProfileIsEligible(): void // test prefix
 ```
 
-## AAA/GWT Pattern
-
-Respect **Arrange-Act-Assert** or **Given-When-Then** structure without comments:
+## PHP-specific: Spy Pattern (Prophecy)
 
 ```php
-public function buyerWith100PercentProfileIsEligible(): void
-{
-    $specification = new IsBuyerEligibleForDiscount();
-    $buyer = $this->createBuyerWithProfile(100);
-
-    $result = $specification->isSatisfiedBy($buyer);
-
-    self::assertTrue($result);
-}
-```
-
-**Spy over Mock** to respect AAA (verify after act):
-
-```php
-// ❌ Mock pattern (expectations before act)
+// ❌ Mock pattern (expectations before act — violates AAA)
 $service->method('call')->with($arg)->shouldBeCalled();
 $sut->execute();
 
@@ -141,15 +79,13 @@ $sut->execute();
 $service->call($arg)->shouldHaveBeenCalled();
 ```
 
-## Test Doubles
+## PHP-specific: Test Doubles
 
-Use manual stubs for simple cases, Prophecy for complex dependencies, Guzzle MockHandler for HTTP clients.
+Use manual stubs for simple cases, **Prophecy** for complex dependencies, **Guzzle MockHandler** for HTTP clients.
 
-For detailed patterns and best practices, see [references/test-doubles.md](references/test-doubles.md).
+> For detailed patterns and best practices, see [references/test-doubles.md](references/test-doubles.md).
 
-## Data Providers
-
-Use data providers when scenarios differ only by input/output:
+## PHP-specific: Data Providers (PHPUnit syntax)
 
 ```php
 /**
@@ -179,7 +115,7 @@ public static function provideProfileAndExpectedEligibility(): \Generator
 }
 ```
 
-## SUT Naming
+## PHP-specific: SUT Naming
 
 Use meaningful names when clear, `$sut` when generic:
 
@@ -188,9 +124,9 @@ $specification = new IsBuyerEligibleForDiscount();  // ✅ Clear
 $sut = new IsBuyerEligibleForDiscount();            // ✅ Also acceptable
 ```
 
-## Factory Methods
+## PHP-specific: Factory Methods
 
-Create helper methods in the test class. When duplicated across tests, extract to a dedicated Factory class:
+Helper methods in the test class. When duplicated across tests, extract to a dedicated Factory class:
 
 ```php
 private function createBuyerWithProfile(int $percentage): Buyer
@@ -205,32 +141,29 @@ private function createBuyerWithProfile(int $percentage): Buyer
 }
 ```
 
-## Assertion Patterns
+## PHP-specific: Assertion Patterns
 
 Use `assertEquals` with a complete expected object rather than multiple property assertions. For advanced patterns (computed properties, guard assertions), see [references/assertion-patterns.md](references/assertion-patterns.md).
 
-## API Functional Tests — Assert the Full JSON Response
+## Symfony-specific: API Functional Tests
 
-For API functional tests (`WebTestCase`) with deterministic data (fixtures), **assert the full JSON response directly** with `assertJsonStringEqualsJsonString` and a JSON heredoc. Do not decode the response to check individual properties, and do not `json_encode` a PHP array.
+For API functional tests (`WebTestCase`) with deterministic data (fixtures), **assert the full JSON response directly** with `assertJsonStringEqualsJsonString` and a JSON heredoc. Do not decode the response to check individual properties.
 
 For examples and when to use/not use, see [references/api-json-testing.md](references/api-json-testing.md).
 
-## HTTP Client Testing
+## PHP-specific: HTTP Client Testing
 
 When testing API clients, always use a **real serializer** to catch deserialization issues. For detailed patterns and SerializerRegistry setup, see [references/http-testing.md](references/http-testing.md).
 
-## Quick Reference
+## Quick Reference (PHP-specific)
 
 | Situation | Approach |
 |-----------|----------|
 | Simple value objects | Manual stubs |
 | Complex dependencies | Prophecy — see [references/test-doubles.md](references/test-doubles.md) |
 | HTTP client testing | Guzzle MockHandler — see [references/http-testing.md](references/http-testing.md) |
-| Same logic, different data | Data provider |
-| Duplicated factory | Factory class |
-| Verify method called | Spy (`shouldHaveBeenCalled`) |
-| Setup code | In test method (DAMP) |
-| Compare objects | `assertEquals` with expected object |
+| Verify method called (Prophecy) | `$dep->method($args)->shouldHaveBeenCalled()` |
 | API JSON response (deterministic) | `assertJsonStringEqualsJsonString` with JSON heredoc — see [references/api-json-testing.md](references/api-json-testing.md) |
 | FormType testing | `TypeTestCase` — see [references/formtype-testing.md](references/formtype-testing.md) |
 | Advanced assertions | See [references/assertion-patterns.md](references/assertion-patterns.md) |
+| Exception test naming | `itThrows{ExceptionClassName}When{Condition}` |

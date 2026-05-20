@@ -1,66 +1,64 @@
 ---
 name: php-oop
-description: "ACTIVATE when designing PHP classes, value objects, collections, or when the user asks about object design, encapsulation, or 'Tell Don't Ask'. Covers: Tell Don't Ask with concrete PHP examples, collection over named properties, Whole Object pattern, IteratorAggregate, self-describing value objects. DO NOT use for: refactoring methodology (see php-refactoring), DDD domain modeling (see php-ddd-conventions)."
-version: "1.1"
+description: "ACTIVATE when designing PHP classes, value objects, collections, or when the user asks about object design, encapsulation, or 'Tell Don't Ask' in PHP. Provides PHP-specific examples for the cross-language OOP rules defined in craft:oop-principles, plus PHP-specific patterns (readonly properties, IteratorAggregate). DO NOT use for: refactoring methodology (see php-refactoring), DDD domain modeling (see php-ddd-conventions)."
+version: "2.0"
 ---
 
-# OOP Design Principles
+# OOP — PHP Examples
 
-Project-specific OOP conventions. These focus on patterns where Claude tends to produce "ask" code instead of "tell" code.
+> The **rules** are defined in `craft:oop-principles`. This skill provides PHP / Symfony examples plus PHP-specific patterns.
 
-## 1. Tell Don't Ask
-
-The object that owns the data exposes the behavior. Do not extract data to make decisions externally.
+## Example — Rule 1: Tell Don't Ask
 
 ```php
-// AVOID: caller queries and decides
+// ❌ AVOID — caller queries and decides
 foreach ($identityDocument->getRequiredFieldNames() as $fieldName) {
     $file = $identityDocument->getFileByFieldName($fieldName);
     if ($file !== null) { continue; }
     // ... re-download logic
 }
 
-// CORRECT: object exposes behavior
+// ✅ CORRECT — object exposes behavior
 foreach ($identityDocument->getMissingExistingFiles() as $fieldName => $existingFile) {
     // Object already determined which files are missing
 }
 ```
 
-## 2. Collection Over Separate Named Properties
-
-When elements share the same type and processing, use an indexed collection — even if the count is known and fixed.
+## Example — Rule 2: Collection Over Named Properties
 
 ```php
-// AVOID: N separate properties = N identical code paths
+// ❌ AVOID — N separate properties = N identical code paths
 final class FormData {
     private ?File $frontFile = null;
     private ?File $backFile = null;
     private ?File $passportFile = null;
 }
 
-// CORRECT: one collection
+// ✅ CORRECT — one keyed collection
 final class FormData {
     /** @param array<string, File> $files */
     private array $files = [];
-    public function addFile(string $fieldName, File $file): void { ... }
+    public function addFile(string $fieldName, File $file): void { /* ... */ }
 }
 ```
 
-## 3. Whole Object — Pass the Object, Not Its Primitives
-
-When multiple parameters come from the same object, pass the object. Extracting primitives is feature envy.
+## Example — Rule 3: Whole Object
 
 ```php
-// AVOID: caller destructures
-$collection->add(documentType: $document->type, documentName: $document->originalFileName, downloadUrl: $url);
+// ❌ AVOID — caller destructures
+$collection->add(
+    documentType: $document->type,
+    documentName: $document->originalFileName,
+    downloadUrl: $url,
+);
 
-// CORRECT: pass whole object
+// ✅ CORRECT — pass the whole object
 $collection->addFromDocument(document: $document, downloadUrl: $url);
 ```
 
-## 4. Iterable Collections (`IteratorAggregate`)
+## Example — Rule 4: Iterable Collections via `IteratorAggregate`
 
-Implement `IteratorAggregate` to allow `foreach` while keeping internals private.
+PHP-specific: implement `IteratorAggregate` to allow `foreach` while keeping internals private.
 
 ```php
 /** @implements \IteratorAggregate<string, FileInfo> */
@@ -68,20 +66,24 @@ final class FilesCollection implements \IteratorAggregate
 {
     public function __construct(private array $files = []) {}
 
-    public function add(string $name, FileInfo $file): void { $this->files[$name] = $file; }
+    public function add(string $name, FileInfo $file): void
+    {
+        $this->files[$name] = $file;
+    }
 
-    public function getIterator(): \ArrayIterator { return new \ArrayIterator($this->files); }
+    public function getIterator(): \ArrayIterator
+    {
+        return new \ArrayIterator($this->files);
+    }
 }
 
 // Usage: foreach ($collection as $name => $file) { ... }
 ```
 
-## 5. Self-Describing Value Objects
-
-Include the type/identity in the value object so consumers need no external mapping.
+## Example — Rule 5: Self-Describing Value Object
 
 ```php
-// AVOID: consumer needs external fieldName -> fileType mapping
+// ❌ AVOID — consumer needs external fieldName → fileType mapping
 final class UploadFile {
     public function __construct(
         public readonly string $content,
@@ -89,7 +91,7 @@ final class UploadFile {
     ) {}
 }
 
-// CORRECT: object carries its own type
+// ✅ CORRECT — object carries its own type
 final class UploadFile {
     public function __construct(
         public readonly FileTypeEnum $type,
@@ -98,13 +100,3 @@ final class UploadFile {
     ) {}
 }
 ```
-
-## Quick Reference
-
-| Rule | Principle |
-|------|-----------|
-| Tell Don't Ask | The object exposes behavior, not data to interpret |
-| Collection > named properties | Same nature + same processing = indexed collection |
-| Whole Object | Pass the entire object, not its extracted primitives |
-| `IteratorAggregate` | Make iterable, keep internals private |
-| Self-describing value object | Include type/identity in the object |

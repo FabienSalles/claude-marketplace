@@ -9,12 +9,17 @@ Each `*-principles` skill in this plugin defines the **rules** in language-agnos
 | Principles skill (here) | Examples skills (language plugins) |
 |---|---|
 | `refactoring-principles` | `php-refactoring`, `ts-refactoring` |
+| `oop-principles` | `php-oop`, `ts-oop` |
+| `code-style-principles` | `php-code-conventions`, `ts-code-conventions` |
+| `testing-principles` | `php-test-conventions`, `vitest-test-conventions` |
+| `tdd-workflow-principles` | `php-tdd-workflow`, `vitest-tdd-workflow` |
 
-(More pairs to come as the cross-language refactor progresses: DDD, OOP, TDD, testing, code style.)
+(More to come: `ddd-principles`, `security-audit-principles`.)
 
 ## Why this split
 
 - **No more duplication** — the abstract rules used to be repeated in every `php-*` and `ts-*` skill, with only the examples differing.
+- **Anti-drift** — impossible for PHP and TS conventions to silently diverge on a shared concept.
 - **Cheaper context** — when working on PHP, Claude loads `craft:*-principles` + `php:*` examples; the TS examples skill stays cold.
 - **Easier to add languages** — adding Rust = a new `rust-refactoring` examples skill, zero principles to rewrite.
 
@@ -22,9 +27,10 @@ Each `*-principles` skill in this plugin defines the **rules** in language-agnos
 
 | Skill | Status |
 |---|---|
-| `refactoring-principles` | ✓ POC (paired with `php-refactoring` + `ts-refactoring`) |
-| `ddd-principles` | _planned_ |
-| `oop-principles` | _planned_ |
-| `tdd-workflow-principles` | _planned_ |
-| `testing-principles` | _planned_ |
-| `code-style-principles` | _planned_ |
+| `refactoring-principles` | ✓ shipped |
+| `oop-principles` | ✓ shipped |
+| `code-style-principles` | ✓ shipped |
+| `testing-principles` | ✓ shipped |
+| `tdd-workflow-principles` | ✓ shipped |
+| `ddd-principles` | _planned (complex — needs OOP/FP arbitration)_ |
+| `security-audit-principles` | _planned (depends on PHP equivalent of ts-security-audit)_ |
