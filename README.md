@@ -34,6 +34,7 @@ Each row links to the plugin's own README with the full skill catalog and direct
 | [**tooling**](plugins/tooling/README.md) | 6 | Docker, Drizzle ORM, pnpm workspaces, Zod, Claude plugin conventions, npx skills |
 | [**common**](plugins/common/README.md) | 4 skills + 4 commands + 9 hooks + 1 agent | Shared workflow tools: planning, context window, research, persona, TDD/feature-dev commands, code-review/test hooks |
 | [**statusline**](plugins/statusline/README.md) | — | Colored statusline: cwd, branch, model, context %, 5h rate-limit usage + reset countdown |
+| [**mac**](plugins/mac/README.md) | 1 | macOS / BSD platform discipline — shell/bash 3.2 vs Homebrew bash 5+, BSD vs GNU command portability, common macOS pitfalls |
 | **security-audit** *(external)* | — | [netresearch/security-audit-skill](https://github.com/netresearch/security-audit-skill) — OWASP, CWE, CVSS |
 
 ## Installation

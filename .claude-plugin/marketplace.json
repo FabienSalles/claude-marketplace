@@ -99,6 +99,16 @@
       "keywords": ["statusline", "context", "progress-bar"]
     },
     {
+      "name": "mac",
+      "source": "./plugins/mac",
+      "description": "macOS / BSD platform discipline — shell/bash 3.2 vs Homebrew bash 5+, BSD vs GNU command portability, common macOS pitfalls",
+      "version": "1.0.0",
+      "author": { "name": "FabienSalles" },
+      "category": "platform",
+      "license": "MIT",
+      "keywords": ["macos", "bsd", "platform", "shell", "bash"]
+    },
+    {
       "name": "security-audit",
       "source": {
         "source": "github",
