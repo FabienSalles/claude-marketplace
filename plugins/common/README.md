@@ -34,13 +34,14 @@ Or `./setup.sh --pack common` (dev mode). The pack also writes `skillListingBudg
 |---|---|
 | [`ui-engineer`](agents/ui-engineer.md) | Frontend / UI specialist agent (component design, responsive layouts, code review for modern best practices) |
 
-## Hooks (8)
+## Hooks (9)
 
 | Hook | Event | Purpose |
 |---|---|---|
 | [`audit-trail.sh`](hooks/audit-trail.sh) | PostToolUse | Append every tool call to a local audit log |
 | [`git-add-empty.sh`](hooks/git-add-empty.sh) | PostToolUse | `git add -N` newly created files so diffs are visible |
 | [`notify-sound.sh`](hooks/notify-sound.sh) | Notification / Stop | Play a sound on notifications and turn-end |
+| [`block-claude-coauthor.sh`](hooks/block-claude-coauthor.sh) | PreToolUse | Block any `git commit` whose message contains an AI-assistant `Co-Authored-By` trailer (Claude / ChatGPT / Copilot / …) |
 | [`remind-ci-before-commit.sh`](hooks/remind-ci-before-commit.sh) | PreToolUse | Reminder before `git commit`: run full quality pipeline first (coding style, static analysis, tests) |
 | [`remind-skills.py`](hooks/remind-skills.py) | PreToolUse | Remind to read relevant skills before editing `.php` / `Test.php` / `.twig` files |
 | [`warn-clock-bypass.py`](hooks/warn-clock-bypass.py) | PreToolUse | Warn when raw `new Date()` / `new DateTime()` / `Carbon::now()` appears in production code instead of an injectable Clock |
