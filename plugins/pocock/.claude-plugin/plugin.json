@@ -1,0 +1,8 @@
+{
+  "name": "pocock",
+  "version": "1.0.0",
+  "description": "Cherry-picked mattpocock/skills: grill-me (relentless interview before code), grill-with-docs (interview + CONTEXT.md/ADR docs), zoom-out (broader-context request)",
+  "author": { "name": "FabienSalles" },
+  "license": "MIT",
+  "keywords": ["planning", "interview", "context", "domain", "mattpocock"]
+}

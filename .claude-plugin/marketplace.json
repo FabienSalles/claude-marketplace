@@ -140,6 +140,26 @@
       "category": "security",
       "license": "MIT",
       "keywords": ["security", "owasp", "cvss", "php", "audit"]
+    },
+    {
+      "name": "superpowers",
+      "source": "./plugins/superpowers",
+      "description": "Cherry-picked obra/superpowers — writing-plans, verification-before-completion, systematic-debugging",
+      "version": "5.1.0",
+      "author": { "name": "FabienSalles" },
+      "category": "productivity",
+      "license": "MIT",
+      "keywords": ["planning", "verification", "debugging", "obra"]
+    },
+    {
+      "name": "pocock",
+      "source": "./plugins/pocock",
+      "description": "Cherry-picked mattpocock/skills — grill-me, grill-with-docs, zoom-out",
+      "version": "1.0.0",
+      "author": { "name": "FabienSalles" },
+      "category": "productivity",
+      "license": "MIT",
+      "keywords": ["planning", "interview", "context", "mattpocock"]
     }
   ]
 }
