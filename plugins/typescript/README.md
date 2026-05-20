@@ -1,6 +1,6 @@
 # typescript
 
-TypeScript conventions and workflows: typing, code style, functional programming, OOP, DDD events, refactoring, security.
+TypeScript conventions and workflows: typing, code style, functional programming, OOP, DDD events, refactoring. (Security audit patterns moved to the `audit` plugin as `audit:ts-security`.)
 
 ## Install
 
@@ -10,7 +10,7 @@ TypeScript conventions and workflows: typing, code style, functional programming
 
 Or `./setup.sh --pack typescript` (or alias `--pack ts`).
 
-## Skills (8)
+## Skills (7)
 
 ### Code & typing
 
@@ -28,9 +28,10 @@ Or `./setup.sh --pack typescript` (or alias `--pack ts`).
 | [`ddd-ts-fp`](skills/ddd-ts-fp/SKILL.md) | Immutable aggregates as readonly types, curried domain operations, smart constructors (`make*`), validation/enrichment pipelines |
 | [`ts-ddd-events`](skills/ts-ddd-events/SKILL.md) | Domain event structure, event store (append-only), outbox pattern for reliable publishing, consumer pattern |
 
-### Refactoring & security
+### Refactoring
 
 | Skill | Purpose |
 |---|---|
 | [`ts-refactoring`](skills/ts-refactoring/SKILL.md) | End-to-end flow analysis before refactoring, consumer-driven value-object design, value-object completeness checklist |
-| [`ts-security-audit`](skills/ts-security-audit/SKILL.md) | SQL injection prevention (Drizzle), XSS, JWT security, password hashing, command/path injection, secrets management, CSRF |
+
+> Security audit for TS/NestJS was moved to [`audit:ts-security`](../audit/skills/ts-security/SKILL.md) so all audit concerns live in the same plugin.

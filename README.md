@@ -27,7 +27,7 @@ Each row links to the plugin's own README with the full skill catalog and direct
 | Plugin | Skills | What's inside |
 |---|---|---|
 | [**php**](plugins/php/README.md) | 13 | PHP 8.2/8.3, code style, DDD, TDD, Symfony, Twig, Composer, OOP, refactoring, SQL |
-| [**typescript**](plugins/typescript/README.md) | 8 | Typing, code style, functional, OOP, DDD events, refactoring, security audit |
+| [**typescript**](plugins/typescript/README.md) | 7 | Typing, code style, functional, OOP, DDD events, refactoring (security audit moved to **audit**) |
 | [**astro**](plugins/astro/README.md) | 11 | Components, routing, content collections, i18n, SEO, Tailwind, React islands, view transitions, env, analytics |
 | [**nest**](plugins/nest/README.md) | 2 | NestJS architectural conventions, DDD with NestJS |
 | [**frontend**](plugins/frontend/README.md) | 3 | Clean architecture (hexagonal), Container/Presentation patterns, best-practices for editing existing UI |
@@ -37,7 +37,7 @@ Each row links to the plugin's own README with the full skill catalog and direct
 | [**craft**](plugins/craft/README.md) | 7 | Cross-language software craftsmanship principles (refactoring, OOP, code-style, testing, TDD workflow, DDD-OOP, DDD-FP; security planned) — pairs with language example skills |
 | [**statusline**](plugins/statusline/README.md) | — | Colored statusline: cwd, branch, model, context %, 5h rate-limit usage + reset countdown |
 | [**mac**](plugins/mac/README.md) | 1 | macOS / BSD platform discipline — shell/bash 3.2 vs Homebrew bash 5+, BSD vs GNU command portability, common macOS pitfalls |
-| [**audit**](plugins/audit/README.md) | 1 | Personal overlay on top of upstream audit skills (`netresearch/security-audit`) — stack scope, false-positive filters, output conventions |
+| [**audit**](plugins/audit/README.md) | 2 | Audit hub: overlay on `netresearch/security-audit` (`security-overrides`) + stack-specific code patterns (`ts-security`; PHP planned) |
 | **security-audit** *(external)* | — | [netresearch/security-audit-skill](https://github.com/netresearch/security-audit-skill) — OWASP, CWE, CVSS, 61 references |
 
 ## Installation

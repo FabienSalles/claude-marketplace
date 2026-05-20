@@ -1,12 +1,16 @@
 ---
-name: ts-security-audit
-description: "ACTIVATE when conducting security assessments, code review for vulnerabilities, or CVSS scoring in TypeScript/Node.js/NestJS projects. ACTIVATE for 'security audit', 'vulnerability', 'injection', 'XSS', 'OWASP'. Covers: SQL injection prevention (Drizzle), XSS prevention, JWT security, password hashing, command/path injection, secrets management, CSRF, security checklist. DO NOT use for: general code quality, performance optimization, authentication flow design."
-version: "1.1"
+name: ts-security
+description: "ACTIVATE when conducting security assessments, code review for vulnerabilities, or CVSS scoring in TypeScript/Node.js/NestJS projects. ACTIVATE for 'security audit', 'vulnerability', 'injection', 'XSS', 'OWASP' in a TS context. Provides TS/NestJS-specific security patterns (Drizzle parameterized queries, JWT setup, bcrypt rounds, execFile over exec, path traversal, Zod env validation, CSRF). Loads alongside netresearch:security-audit (comprehensive baseline) and audit:security-overrides (personal conventions). DO NOT use for: general code quality, performance optimization, authentication flow design."
+version: "2.0"
 ---
 
-# Security Audit (TypeScript / Node.js)
+# Security — TypeScript / Node.js Examples
 
-Security audit patterns for TypeScript/Node.js/NestJS projects.
+> Part of the audit overlay pattern. Companion skills:
+> - `netresearch:security-audit` (upstream baseline — OWASP/CWE/CVSS, 61 references)
+> - `audit:security-overrides` (personal conventions: stack scope, FP filters, output format)
+>
+> This skill provides TS-specific code examples for the patterns the upstream covers conceptually.
 
 ## Standards
 

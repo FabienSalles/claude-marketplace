@@ -21,7 +21,7 @@
     {
       "name": "typescript",
       "source": "./plugins/typescript",
-      "description": "TypeScript conventions, typing, DDD events, functional programming, OOP, refactoring, security",
+      "description": "TypeScript conventions, typing, DDD events, functional programming, OOP, refactoring",
       "version": "1.0.0",
       "author": { "name": "FabienSalles" },
       "category": "development",
@@ -121,12 +121,12 @@
     {
       "name": "audit",
       "source": "./plugins/audit",
-      "description": "Audit overlay — personal overrides for upstream audit skills (security from netresearch, …). Loads in parallel with the upstream, no modification.",
+      "description": "Audit hub — personal overrides for upstream audit skills + stack-specific code patterns (security for TS/NestJS, PHP planned). Loads in parallel with netresearch/security-audit.",
       "version": "1.0.0",
       "author": { "name": "FabienSalles" },
       "category": "security",
       "license": "MIT",
-      "keywords": ["audit", "security", "overlay", "owasp"]
+      "keywords": ["audit", "security", "overlay", "owasp", "ts", "nestjs"]
     },
     {
       "name": "security-audit",

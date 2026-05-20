@@ -1,6 +1,6 @@
 ---
 name: security-overrides
-description: "ACTIVATE when conducting a security audit / review / vulnerability assessment on a personal project. Loads alongside netresearch:security-audit (which provides the comprehensive 80+ checkpoint / OWASP / CWE / CVSS baseline). This skill adds personal/project overrides: stack scope (PHP/Symfony + TS/NestJS), false-positive filters, output format conventions, and cross-references to language-specific skills (e.g. ts-security-audit for Drizzle/JWT/bcrypt). DO NOT use as a primary audit skill — it is an overlay only."
+description: "ACTIVATE when conducting a security audit / review / vulnerability assessment on a personal project. Loads alongside netresearch:security-audit (which provides the comprehensive 80+ checkpoint / OWASP / CWE / CVSS baseline). This skill adds personal/project overrides: stack scope (PHP/Symfony + TS/NestJS), false-positive filters, output format conventions, and cross-references to language-specific skills (e.g. audit:ts-security for Drizzle/JWT/bcrypt). DO NOT use as a primary audit skill — it is an overlay only."
 version: "1.0"
 ---
 
@@ -76,7 +76,7 @@ No verbose intro. No multi-option matrices. Direct to findings.
 
 ## 5. Cross-References to Companion Skills
 
-- **TypeScript-specific patterns** (Drizzle parameterized queries, JWT setup, bcrypt rounds, `execFile` over `exec`, path traversal, Zod env validation, Helmet headers, SameSite cookies) → see `ts-security-audit` (loads automatically in TS context).
+- **TypeScript-specific patterns** (Drizzle parameterized queries, JWT setup, bcrypt rounds, `execFile` over `exec`, path traversal, Zod env validation, Helmet headers, SameSite cookies) → see `audit:ts-security` (loads automatically in TS context).
 - **PHP/Symfony-specific patterns** → see `netresearch:security-audit` references `symfony-security.md`, `php-security-features.md`.
 - **NestJS-specific patterns** → see netresearch `nestjs-security.md`.
 - **Frontend (React/Vue/Astro)** → see netresearch `react-security.md`, `vue-security.md`, `frontend-security.md`.
