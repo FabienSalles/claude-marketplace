@@ -66,6 +66,8 @@ Items identified during the marketplace audit and not yet executed. Loose priori
 ## ✅ Done
 
 - Bump `actions/checkout@v4` → `@v5` and `actions/setup-node@v4` → `@v5` (Node 24, kills Node 20 deprecation warnings) — covers 6 occurrences in `.github/workflows/validate.yml`.
+- Install `florian-claude-tools/security-suite` (7 skills, 2 agents, 13 bash hooks: dangerous-actions-blocker, prompt-injection-detector, output-secrets-scanner, repo-integrity-scanner, security-gate, sandbox-validation, pre-commit-secrets, …). Token cost ~458 always-on. Pairs with existing `security-guidance@claude-plugins-official` (no strict overlap). Hooks activate on next Claude Code session.
+- Add `audit:install-security-review-action` command + `templates/claude-code-security-review.yml` for installing the `anthropics/claude-code-security-review` GitHub Action into any production repo (`/audit:install-security-review-action` from within the target repo).
 
 ---
 

@@ -1,0 +1,41 @@
+name: Security Review
+
+permissions:
+  pull-requests: write  # for inline PR comments
+  contents: read
+
+on:
+  pull_request:
+
+jobs:
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 2
+
+      - uses: anthropics/claude-code-security-review@main
+        with:
+          comment-pr: true
+          claude-api-key: ${{ secrets.CLAUDE_API_KEY }}
+          # Default model is Opus 4.1 (premium, ~accurate). Switch to a
+          # cheaper model if cost is a concern on smaller repos:
+          #   claude-model: claude-sonnet-4-6
+          claudecode-timeout: 20
+
+          # Optional — exclude noise paths for this stack:
+          exclude-directories: "tests,test,vendor,node_modules,docs"
+
+          # Optional — point to a project-specific custom-rules file
+          # (e.g. for Symfony patterns or NestJS conventions):
+          # custom-security-scan-instructions: ".github/security/custom-rules.md"
+          # false-positive-filtering-instructions: ".github/security/fp-filters.md"
+
+# Notes:
+# 1. Add CLAUDE_API_KEY in GitHub Settings → Secrets → Actions for this repo.
+# 2. For external contributors, enable Settings → Actions → "Require approval
+#    for first-time contributors" or "for all outside collaborators" — the
+#    action is not hardened against prompt injection.
+# 3. Diff-aware: only changed files are analysed on PR. Costs are bounded.
