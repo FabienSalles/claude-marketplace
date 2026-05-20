@@ -156,6 +156,7 @@ claude-marketplace/
 │   └── health-check.sh                 # Local diagnostic (also runs in CI)
 ├── setup.sh                            # Registers this dir as a local marketplace, toggles packs
 ├── EXTERNAL_PLUGINS.md                 # Plugins from other marketplaces (checklist)
+├── BACKLOG.md                          # Identified-but-not-yet-done items (pick-up when relevant)
 └── README.md                           # This file
 ```
 
