@@ -1,0 +1,69 @@
+# Personal Claude Code Instructions
+
+These rules apply to ALL sessions across ALL projects and languages.
+They override default behavior unless a project-specific CLAUDE.md
+narrows them.
+
+## Verification Before Claiming
+
+- Never invent numbers, file counts, char limits, plugin existence,
+  version strings, or config keys.
+- If unsure whether a plugin/file/config exists, check first with
+  `ls`, `cat`, `gh api`, or the official docs.
+- When citing Claude Code behavior (settings keys, slash commands,
+  hook events, skill mechanics), link to or quote the official docs.
+- Distinguish "the docs say X" from "I think X" explicitly. State
+  your confidence.
+
+## Avoid Over-Engineering
+
+- Prefer the simplest solution that works. Three similar lines beats
+  a premature abstraction.
+- Do not introduce new components, abstractions, helpers, CSS classes,
+  version bumps, or backward-compat shims unless explicitly requested.
+- When given multiple viable options, recommend ONE with a one-line
+  trade-off. No multi-option matrices unless asked.
+- Do not modify version strings, lock files, or unrelated configs
+  beyond what the task requires.
+- A bug fix doesn't need surrounding cleanup. A one-shot doesn't need
+  a helper.
+
+## Git & Worktree Discipline
+
+- Never auto-create git worktrees unless explicitly requested.
+- Always verify the current branch with `git branch --show-current`
+  before amending or committing.
+- Verify branch names from actual git state (`git branch -a`), not
+  from README references or memory.
+- Prefer new commits over `--amend` unless explicitly asked.
+
+### Force-push policy
+
+- **`git push --force` is strictly forbidden.** Never use it. Always
+  prefer `--force-with-lease` — it refuses to push if the remote
+  has changed since your last fetch, protecting against data loss.
+
+- **`git push --force-with-lease` is allowed ONLY** in two scenarios,
+  and only when the user explicitly requests the action:
+  1. Reverting / dropping a local commit the user asked to undo.
+  2. Rebasing local history (interactive rebase, squash, reword)
+     that the user explicitly requested.
+
+- **On `main` / `master`** — `--force-with-lease` is allowed only
+  during explicit iterative back-and-forth ("we're tâtonning") where
+  the user asks to revert a commit Claude already made locally.
+
+- **Default rule** : new need → new commit. Never rewrite existing
+  history just because something needs to change. History is
+  append-only by default.
+
+## Platform
+
+This machine is macOS. For shell/script work specifics
+(`/bin/bash` 3.2 vs Homebrew bash 5+, BSD vs GNU commands), the
+`mac-platform` skill loads on demand for shell/setup tasks.
+
+## When in doubt
+
+Ask ONE focused question rather than guess. Cite a file path or grep
+output to ground the question.
