@@ -27,6 +27,26 @@ Items identified during the marketplace audit and not yet executed. Loose priori
 
 ---
 
+## 🔐 MCPs hardening (manual configuration outside this repo)
+
+### Restrict Cloudflare API token scope
+- **Why:** the `claude.ai Cloudflare Developer Platform` MCP is connected with a token that has write/delete permissions on D1, KV, R2, Workers, Hyperdrive. A compromised session (prompt injection, malicious file) could delete production resources.
+- **Effort:** ~10 min (manual, on dash.cloudflare.com)
+- **Trigger:** before any session involving untrusted content (file uploads, web fetches from unknown sources, third-party MCP usage).
+- **Action plan:**
+  1. Go to https://dash.cloudflare.com → My Profile → API Tokens.
+  2. Identify the token bound to the Claude MCP (look at last-used timestamps).
+  3. Either rotate to a **read-only token** if you don't need write access for daily use, OR scope it to specific zones/resources only (exclude prod).
+  4. If a separate "write" token is needed occasionally, create a short-lived one (24h TTL) and revoke after use.
+
+### Fix `plugin:github:github` MCP failed connection
+- **Symptom:** `claude mcp list` reports `plugin:github:github: ✗ Failed to connect` (endpoint: `https://api.githubcopilot.com/mcp/`).
+- **Why:** this is a GitHub Copilot MCP, requires a Copilot subscription + auth flow not completed.
+- **Effort:** ~5 min — either complete the auth flow (if you have Copilot) or remove the MCP (`claude mcp remove github` / disable in plugin settings).
+- **Decision needed:** do you actually use GitHub Copilot? If no, remove to clean noise from `claude mcp list`.
+
+---
+
 ## 🛡️ Audit plugin extensions
 
 ### `audit:php-security` skill (if a real PHP gap emerges)
@@ -68,6 +88,7 @@ Items identified during the marketplace audit and not yet executed. Loose priori
 - Bump `actions/checkout@v4` → `@v5` and `actions/setup-node@v4` → `@v5` (Node 24, kills Node 20 deprecation warnings) — covers 6 occurrences in `.github/workflows/validate.yml`.
 - Install `florian-claude-tools/security-suite` (7 skills, 2 agents, 13 bash hooks: dangerous-actions-blocker, prompt-injection-detector, output-secrets-scanner, repo-integrity-scanner, security-gate, sandbox-validation, pre-commit-secrets, …). Token cost ~458 always-on. Pairs with existing `security-guidance@claude-plugins-official` (no strict overlap). Hooks activate on next Claude Code session.
 - Add `audit:install-security-review-action` command + `templates/claude-code-security-review.yml` for installing the `anthropics/claude-code-security-review` GitHub Action into any production repo (`/audit:install-security-review-action` from within the target repo).
+- Remove `playwright` MCP (real functional duplicate of `chrome-devtools`, 0 usage in history vs `chrome-devtools` actively used with 3 auto-allowed tools).
 
 ---
 
