@@ -94,9 +94,58 @@ done
 errors=$((errors + plugin_errors))
 
 # ─────────────────────────────────────────────
-# 4. Installed plugins overview
+# 4. Validate ${CLAUDE_PLUGIN_ROOT} references resolve to existing files
+#
+# Scans runtime files (hooks.json + slash-command .md) for any
+# ${CLAUDE_PLUGIN_ROOT}/<path> reference and confirms the target
+# file exists. Skips SKILL.md and README.md (they contain
+# documentation examples that are not runtime refs).
 # ─────────────────────────────────────────────
-section "4. Installed plugins overview"
+section "4. Validate \${CLAUDE_PLUGIN_ROOT} references"
+ref_errors=0
+ref_total=0
+
+# Build the file list: hooks.json files + plugins/*/commands/*.md
+ref_files=()
+while IFS= read -r f; do
+  ref_files+=("$f")
+done < <(find plugins -type f \( -name "hooks.json" -o -path "plugins/*/commands/*.md" \) 2>/dev/null)
+
+for src in "${ref_files[@]}"; do
+  # Determine the plugin root for this file: plugins/<plugin_name>
+  plugin_root=$(echo "$src" | sed -nE 's|^(plugins/[^/]+)/.*|\1|p')
+  [[ -z "$plugin_root" ]] && continue
+
+  # Extract each ${CLAUDE_PLUGIN_ROOT}/<path> reference
+  while IFS= read -r ref; do
+    [[ -z "$ref" ]] && continue
+    rel_path="${ref#\$\{CLAUDE_PLUGIN_ROOT\}/}"
+    # Strip arguments after first space (e.g. "notify-sound.sh notification")
+    rel_path="${rel_path%% *}"
+    # Strip trailing quotes / punctuation
+    rel_path="${rel_path%[\"\`\'\,]}"
+    full_path="$plugin_root/$rel_path"
+    ref_total=$((ref_total + 1))
+    if [[ -e "$full_path" ]]; then
+      echo -e "  ${GREEN}✓${NC} $src → $rel_path"
+    else
+      echo -e "  ${RED}✗${NC} $src → $rel_path (resolves to $full_path, NOT FOUND)"
+      ref_errors=$((ref_errors + 1))
+    fi
+  done < <(grep -oE '\$\{CLAUDE_PLUGIN_ROOT\}/[^"`'"'"' ]+' "$src" 2>/dev/null)
+done
+
+if [[ $ref_total -eq 0 ]]; then
+  echo -e "  ${YELLOW}(no \${CLAUDE_PLUGIN_ROOT} references found)${NC}"
+else
+  echo -e "  ${BOLD}$ref_total references checked, $ref_errors broken${NC}"
+fi
+errors=$((errors + ref_errors))
+
+# ─────────────────────────────────────────────
+# 5. Installed plugins overview
+# ─────────────────────────────────────────────
+section "5. Installed plugins overview"
 claude plugin list 2>&1 | sed 's/^/  /'
 
 # ─────────────────────────────────────────────
