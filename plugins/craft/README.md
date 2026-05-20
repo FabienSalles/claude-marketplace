@@ -13,8 +13,12 @@ Each `*-principles` skill in this plugin defines the **rules** in language-agnos
 | `code-style-principles` | `php-code-conventions`, `ts-code-conventions` |
 | `testing-principles` | `php-test-conventions`, `vitest-test-conventions` |
 | `tdd-workflow-principles` | `php-tdd-workflow`, `vitest-tdd-workflow` |
+| `ddd-principles` (OOP) | `php-ddd-conventions`, `nest-ddd-conventions` |
+| `ddd-fp-principles` (functional) | `ddd-ts-fp` |
 
-(More to come: `ddd-principles`, `security-audit-principles`.)
+(`ts-ddd-events` remains independent — event sourcing / outbox is a niche concern, not cross-language refactorable as-is.)
+
+(More to come: `security-audit-principles`.)
 
 ## Why this split
 
@@ -32,5 +36,6 @@ Each `*-principles` skill in this plugin defines the **rules** in language-agnos
 | `code-style-principles` | ✓ shipped |
 | `testing-principles` | ✓ shipped |
 | `tdd-workflow-principles` | ✓ shipped |
-| `ddd-principles` | _planned (complex — needs OOP/FP arbitration)_ |
+| `ddd-principles` (OOP) | ✓ shipped |
+| `ddd-fp-principles` (functional) | ✓ shipped |
 | `security-audit-principles` | _planned (depends on PHP equivalent of ts-security-audit)_ |

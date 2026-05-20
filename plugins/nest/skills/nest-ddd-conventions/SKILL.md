@@ -1,35 +1,29 @@
 ---
 name: nest-ddd-conventions
-description: "ACTIVATE when writing domain layer code in a NestJS project, defining ports/adapters, or structuring bounded contexts as NestJS modules. ACTIVATE for 'domain layer', 'DDD NestJS', 'port', 'adapter', 'bounded context', 'domain purity'. Covers: strict domain layer purity (no NestJS decorators, no ORM, no HTTP in domain), directory structure (domain/application/infrastructure), ports and adapters pattern with Symbol tokens, dependency direction rules. DO NOT use for: NestJS module/controller setup (see nest-conventions), general TypeScript DDD (see ddd-ts-fp)."
-version: "1.1"
+description: "ACTIVATE when writing domain layer code in a NestJS project, defining ports/adapters, or structuring bounded contexts as NestJS modules. ACTIVATE for 'domain layer', 'DDD NestJS', 'port', 'adapter', 'bounded context', 'domain purity' in TypeScript/NestJS. Provides NestJS-specific examples for cross-language OOP DDD principles defined in craft:ddd-principles. DO NOT use for: NestJS module/controller setup (see nest-conventions), functional TypeScript DDD (see ddd-ts-fp)."
+version: "2.0"
 ---
 
-# DDD Conventions (NestJS)
+# DDD Conventions — NestJS
 
-> **See also**: `php-ddd-conventions` for the same principles in PHP/Symfony context.
+> The **cross-language OOP DDD principles** (domain purity, ports & adapters, dependency direction, bounded contexts, aggregates) are defined in `craft:ddd-principles`. This skill keeps NestJS-specific patterns.
 
-## Domain Layer Purity
-
-The domain layer MUST NOT depend on infrastructure concerns.
-
-### Forbidden in Domain Layer
+## NestJS-specific: Forbidden in Domain Layer
 
 - **NestJS decorators**: `@Injectable()`, `@Controller()`, `@Module()`, `@Inject()`
 - **HTTP-related**: `Request`, `Response`, `@Body()`, `@Param()`, `@Query()`
-- **ORM/Database**: Drizzle schemas (`pgTable`), Drizzle query builders, `PrismaClient`
-- **Framework services**: `ConfigService`, `HttpService`, `Logger` (NestJS)
-- **External libraries**: anything tied to infrastructure
+- **ORM / database**: Drizzle schemas (`pgTable`), Drizzle query builders, `PrismaClient`
+- **Framework services**: `ConfigService`, `HttpService`, NestJS `Logger`
 
-### Allowed in Domain Layer
+## NestJS-specific: Allowed in Domain Layer
 
 - Pure TypeScript types (`string`, `number`, `Date`, `Record`, etc.)
 - Domain value objects (classes with no framework dependencies)
-- Domain interfaces (defined in domain, implemented in infrastructure)
+- Domain interfaces (defined in `domain/`, implemented in `infrastructure/`)
 - DTOs from `packages/shared` (Zod schemas + inferred types)
-- Enums and `as const` objects
-- Branded types
+- Enums, `as const` objects, branded types
 
-### Architecture
+## NestJS-specific: Directory Structure
 
 ```
 src/
@@ -48,12 +42,12 @@ src/
     └── config/                # NestJS module, providers
 ```
 
-### Bounded Contexts = NestJS Modules
+## NestJS-specific: Bounded Context = NestJS Module
 
 Each bounded context maps to a NestJS module:
 
 ```typescript
-// ✅ CORRECT - One module per bounded context
+// ✅ One module per bounded context
 @Module({
   controllers: [ReceiptController],
   providers: [
@@ -64,18 +58,7 @@ Each bounded context maps to a NestJS module:
 export class ReceiptModule {}
 ```
 
-### Dependency Rule
-
-```
-Controllers → Use Cases → Domain Services → Domain Ports
-                                                ↑
-Infrastructure Adapters ────────────────────────┘
-  (implement domain ports)
-```
-
-**Domain NEVER imports from infrastructure. Infrastructure imports from domain.**
-
-### Example: Domain Port + Infrastructure Adapter
+## NestJS-specific: Port + Adapter (Symbol Token DI)
 
 ```typescript
 // ✅ domain/port/receipt-repository.ts — pure interface
@@ -97,26 +80,26 @@ export class DrizzleReceiptRepository implements ReceiptRepository {
   constructor(@Inject('DRIZZLE') private readonly db: DrizzleDatabase) {}
 
   async findByTenantId(tenantId: TenantId): Promise<Receipt[]> {
-    // Drizzle query here — infrastructure concern
+    // Drizzle query — infrastructure concern
   }
 
   async save(receipt: Receipt): Promise<void> {
-    // Drizzle insert here
+    // Drizzle insert
   }
 }
 ```
 
-## Quick Reference
+## Quick Reference (NestJS-specific)
 
 | Layer | Can import from | Cannot import from |
-|-------|----------------|-------------------|
+|-------|----------------|--------------------|
 | Domain | Pure TS, shared DTOs | NestJS, Drizzle, HTTP, any framework |
 | Application | Domain, NestJS DI | Infrastructure directly |
 | Infrastructure | Domain, NestJS, Drizzle | — |
 
-| Rule | Principle |
-|------|-----------|
-| Domain purity | No decorators, no ORM, no HTTP in domain |
-| Ports & adapters | Interfaces in domain, implementations in infrastructure |
-| Bounded context | 1 NestJS module = 1 bounded context |
-| Dependency direction | Always inward: infra → application → domain |
+| NestJS pattern | Convention |
+|----------------|------------|
+| Bounded context | 1 NestJS module per context |
+| Port DI token | `Symbol('PortName')` exported alongside interface |
+| Adapter | `@Injectable()` class implementing the port |
+| Use case | `@Injectable()` orchestrator in `application/use-case/` |
