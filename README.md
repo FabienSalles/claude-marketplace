@@ -8,6 +8,7 @@ A curated collection of skills, hooks, agents, and slash commands for [Claude Co
 - [Plugins](#plugins)
 - [Installation](#installation)
 - [Statusline](#statusline)
+- [Health check](#health-check)
 - [Repo structure](#repo-structure)
 - [Environment](#environment)
 - [License](#license)
@@ -110,6 +111,27 @@ Claude Code does not accept the `statusLine` key in `plugin.json`, so a small sl
 
 Full details — colored screenshot, segment-by-segment breakdown, refresh-interval tip — live in [`plugins/statusline/README.md`](plugins/statusline/README.md).
 
+## Health check
+
+A local diagnostic script orchestrating the native `claude plugin` commands:
+
+```bash
+./scripts/health-check.sh           # full run (re-syncs upstream marketplaces)
+./scripts/health-check.sh --quick   # skip the upstream sync (faster, for dev loops)
+```
+
+What it does:
+
+1. Re-syncs all upstream marketplaces (skippable via `--quick`).
+2. Validates the root `marketplace.json` manifest.
+3. Validates each plugin manifest (per-plugin `✓`/`✗`).
+4. Checks every `${CLAUDE_PLUGIN_ROOT}/...` reference in `hooks.json` and slash-command files actually resolves to an existing file. Catches renames/moves not propagated to the JSON.
+5. Lists installed plugins overview.
+
+Exits `1` on any failure — usable in pre-commit hooks or local CI.
+
+The same script also runs in the GitHub Actions workflow on every PR and on a nightly cron (`06:00 UTC`), across `ubuntu-latest` and `macos-latest`.
+
 ## Repo structure
 
 ```
@@ -124,7 +146,10 @@ claude-marketplace/
 │   ├── vitest/                         # README + 2 skills
 │   ├── tooling/                        # README + 6 skills + 1 hook
 │   ├── common/                         # README + 4 skills + 4 commands + 9 hooks + 1 agent
-│   └── statusline/                     # README + script + /statusline:setup
+│   ├── statusline/                     # README + script + /statusline:setup
+│   └── mac/                            # README + 1 skill (macOS/BSD platform discipline)
+├── scripts/
+│   └── health-check.sh                 # Local diagnostic (also runs in CI)
 ├── setup.sh                            # Registers this dir as a local marketplace, toggles packs
 ├── EXTERNAL_PLUGINS.md                 # Plugins from other marketplaces (checklist)
 └── README.md                           # This file
