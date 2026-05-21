@@ -104,6 +104,15 @@ Items identified during the marketplace audit and not yet executed. Loose priori
   3. The native BSD-vs-GNU lint hook (planned above) addresses the real problem in pure bash, zero dependency, zero overhead.
 - **If revisited:** would only be relevant as defense-in-depth against accidental destructive commands, after `bun` is installed and a measurable risk is identified. Low priority.
 
+### `ctxharness` as pre-commit on this marketplace — _piloted, not adopted_
+- **What it does:** scans declared markdown files (CLAUDE.md, AGENTS.md, docs/) for verifiable claims (semver, paths, scripts) and flags drift against ground truth.
+- **Pilot result:** `ctxharness init` + `ctxharness scan README.md` on this repo produced 4 false positives — `SKILL.md`, `plugin.json`, `marketplace.json`, `hooks.json` all flagged as "NOT FOUND" because `scan` resolves paths at repo root only, while these files live in `plugins/*/` subdirectories. Real drifts here (version `plugin.json` ↔ `marketplace.json`, plugin count in README, skill-name ↔ directory-name) would require hand-written custom assertions — not auto-discovery.
+- **Why rejected here:**
+  1. The marketplace has no CLAUDE.md / AGENTS.md at the root (those live in `~/.claude/` and are out of scope).
+  2. Two existing guardrails already cover the relevant invariants: `claude plugin validate` for manifest correctness, and `scripts/health-check.sh` for marketplace state.
+  3. Net value here would be marginal — and would add commit-time friction.
+- **Where it still makes sense:** real product repos (eres, formation, RAG) that maintain rich CLAUDE.md / SKILL.md / docs with version, path, and count claims that drift often. Install there, not here.
+
 ### `atournayre/gemini` (Gemini CLI delegation: 1M context, Deep Think, Google Search) — _evaluated, not adopted_
 - **What it does:** Delegates queries to the `gemini` CLI for ultra-long context (1M tokens), Deep Think reasoning, and Google Search.
 - **Why rejected:**
