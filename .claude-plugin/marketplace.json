@@ -144,12 +144,12 @@
     {
       "name": "superpowers",
       "source": "./plugins/superpowers",
-      "description": "Cherry-picked obra/superpowers — writing-plans, verification-before-completion, systematic-debugging",
-      "version": "5.1.0",
+      "description": "Cherry-picked obra/superpowers — verification-before-completion, systematic-debugging",
+      "version": "5.1.1",
       "author": { "name": "FabienSalles" },
       "category": "productivity",
       "license": "MIT",
-      "keywords": ["planning", "verification", "debugging", "obra"]
+      "keywords": ["verification", "debugging", "obra"]
     },
     {
       "name": "pocock",

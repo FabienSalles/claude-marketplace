@@ -10,12 +10,13 @@ Tous les exemples ci-dessous sont écrits avec ton contexte réel (eres, dotfile
 
 | Skill | Plugin | Trigger | Quand Claude le charge |
 |---|---|---|---|
-| `writing-plans` | superpowers | Auto | Tu as une spec/un besoin, tu demandes un plan |
 | `verification-before-completion` | superpowers | Auto | Claude est sur le point de dire "done/passes/fixed" |
 | `systematic-debugging` | superpowers | Auto | Tu signales un bug, un test qui fail, un comportement inattendu |
 | `grill-me` | pocock | Auto | Tu écris "grille-moi", "grill me", "stress-test mon plan" |
 | `grill-with-docs` | pocock | Auto | Même que `grill-me`, en présence de `CONTEXT.md` / `docs/adr/` |
 | `zoom-out` | pocock | **Manuel uniquement** (`disable-model-invocation: true`) | Tu invoques `/zoom-out` ou tu nommes le skill |
+
+> `writing-plans` (obra) a été initialement cherry-pické puis **retiré en v5.1.1** : doublon réel avec `/business-first-dev`. Voir `tdd-workflow-audit.md` pour le détail.
 
 ---
 
@@ -184,42 +185,7 @@ Claude : Q2: ...
 
 ---
 
-## 4. `writing-plans` (obra) — plan d'implémentation step-by-step
-
-### ⚠️ Notable overlap avec `/business-first-dev`
-
-Tu as observé que `writing-plans` ressemble à ton workflow `/business-first-dev`. C'est **partiellement vrai** :
-
-| | `/business-first-dev` Phase 3-4 | `writing-plans` |
-|---|---|---|
-| Sortie | Spec à `.claude/plans/<feature>-spec.md` (files to create/modify, tests, UL) | Plan à `docs/superpowers/plans/YYYY-MM-DD-<feature>.md` (steps bite-sized 2-5 min) |
-| Granularité | Niveau fichier/méthode | Niveau action ("write test → run → see fail → impl → commit") |
-| GATE | Validation utilisateur entre phases | Pas de GATE |
-| Workflow englobant | Oui (5 phases) | Non, juste le plan |
-
-**Le seul vrai delta de `writing-plans`** = granularité step ultra-fine. Sauf que tu as **déjà** `php-tdd-workflow` et `vitest-tdd-workflow` qui couvrent ce red-green à la step.
-
-→ **Verdict honnête : doublon réel**. À retirer si tu confirmes.
-
-### Quand l'utiliser malgré tout
-
-- 🟡 Sur un projet **hors eres** (formation perso, RAG, dotfiles) où `/business-first-dev` est over-kill mais où tu veux quand même un plan persisté
-- 🟡 Quand `/business-first-dev` Phase 3 a produit la spec et tu veux décomposer **une itération** en steps ultra-fins avant d'attaquer (rare — les TDD skills le font déjà)
-
-### Quand NE PAS l'utiliser
-
-- 🔴 Sur un projet eres avec feature dev complète → `/business-first-dev` est mieux taillé
-- 🔴 Pour un bugfix isolé → overkill
-
-### Comment l'invoquer
-
-Auto-trigger sur :
-- *"écris-moi le plan d'implémentation pour..."*
-- *"break ça en tâches bite-sized"*
-
----
-
-## 5. `verification-before-completion` (obra) — discipline « evidence before claims »
+## 4. `verification-before-completion` (obra) — discipline « evidence before claims »
 
 ### Ce qu'il fait
 
@@ -263,7 +229,7 @@ vs. l'ancien comportement où il aurait dit "c'est bon !" sans tourner les tests
 
 ---
 
-## 6. `systematic-debugging` (obra) — méthode debug en 4 phases
+## 5. `systematic-debugging` (obra) — méthode debug en 4 phases
 
 ### Ce qu'il fait
 
@@ -330,13 +296,7 @@ vs. l'ancien comportement où Claude aurait dit "c'est sûrement le validator, j
 | Entrer dans une codebase inconnue | `/zoom-out` |
 | Bug, test qui fail, comportement inattendu | `systematic-debugging` _(auto)_ |
 | Claude vient de dire "done" sans preuve | `verification-before-completion` _(auto)_ |
-| Plan d'implémentation hors eres | `writing-plans` _(à confirmer — overlap)_ |
-
----
-
-## 🧹 À faire — décision en attente
-
-`writing-plans` a un overlap significatif avec `/business-first-dev`. Si tu confirmes, on retire le skill (et on bumpe la version du plugin `superpowers` à `5.1.0+1`). Garde-le **seulement** si tu vois un usage réel hors `/business-first-dev`.
+| Plan d'implémentation feature | `/business-first-dev` _(workflow maison, plus structuré que writing-plans)_ |
 
 ---
 
