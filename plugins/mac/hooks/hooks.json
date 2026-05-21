@@ -1,0 +1,17 @@
+{
+  "description": "macOS / BSD portability hooks — warn (never block) when Bash commands use GNU-only flags or bash 4+ syntax that silently fails on macOS.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/bsd-gnu-lint.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

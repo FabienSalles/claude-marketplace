@@ -6,17 +6,6 @@ Items identified during the marketplace audit and not yet executed. Loose priori
 
 ---
 
-## 🖥️ macOS / BSD portability
-
-### Native BSD-vs-GNU lint hook in `plugins/mac/hooks/`
-- **Why:** the usage report flags recurring BSD/GNU issues (`grep -P`, GNU `realpath`, `sed -i 's/x/y/' file` missing BSD suffix, `mapfile`, bash 4+ features in `#!/bin/bash` scripts). The `mac-platform` skill documents these *passively* (Claude reads them). A PreToolUse hook on `Bash` matcher would *actively* warn when these patterns appear in commands or fresh scripts, before they fail silently on macOS.
-- **Effort:** ~30 min (write `plugins/mac/hooks/bsd-gnu-lint.sh` in pure bash, register in `plugins/mac/.claude-plugin/hooks.json`, smoke test)
-- **Trigger:** next time `claude` writes a broken setup.sh or you see a `grep -P` slip through.
-- **Path:** `plugins/mac/hooks/bsd-gnu-lint.sh` (new file)
-- **Patterns to detect (warn, not block):** `grep -P`, `realpath` (without `coreutils`-aware shim), `sed -i 's/...' file` (no BSD suffix), `readlink -f`, `xargs -r`, `date -d`, `mapfile`/`readarray`, `${var,,}`/`${var^^}`.
-
----
-
 ## 🛠️ CI hygiene (visible in every CI run)
 
 ### Investigate the `npx skills add . --list` discovery shortfall
@@ -89,6 +78,7 @@ Items identified during the marketplace audit and not yet executed. Loose priori
 - Install `florian-claude-tools/security-suite` (7 skills, 2 agents, 13 bash hooks: dangerous-actions-blocker, prompt-injection-detector, output-secrets-scanner, repo-integrity-scanner, security-gate, sandbox-validation, pre-commit-secrets, …). Token cost ~458 always-on. Pairs with existing `security-guidance@claude-plugins-official` (no strict overlap). Hooks activate on next Claude Code session.
 - Add `audit:install-security-review-action` command + `templates/claude-code-security-review.yml` for installing the `anthropics/claude-code-security-review` GitHub Action into any production repo (`/audit:install-security-review-action` from within the target repo).
 - Remove `playwright` MCP (real functional duplicate of `chrome-devtools`, 0 usage in history vs `chrome-devtools` actively used with 3 auto-allowed tools).
+- Native BSD-vs-GNU lint hook shipped in `plugins/mac/hooks/bsd-gnu-lint.sh` + `hooks.json`. Warn-only (never blocks), runs on every PreToolUse:Bash. Detects: `grep -P`, `sed -i` without BSD empty suffix, `readlink -f`, `xargs -r`, `date -d`, GNU-only `realpath` flags, `mapfile`/`readarray`, `${var,,}`/`${var^^}`. Smoke-tested across 8 cases (5 trigger, 3 silent).
 - Cherry-pick `obra/superpowers` v5.1.0 into local `plugins/superpowers/` — 3 skills kept (`writing-plans`, `verification-before-completion`, `systematic-debugging`). Skipped: `brainstorming` (doublon `bmad-brainstorming`), `test-driven-development` (4th TDD framework → hesitation), `subagent-driven-development` / `requesting-code-review` / `receiving-code-review` / etc. (out of scope or covered). LICENSE + upstream attribution preserved.
 - Cherry-pick `mattpocock/skills` into local `plugins/pocock/` — 3 skills kept (`grill-me`, `grill-with-docs`, `zoom-out`). Inverts the push-back loop: Claude grills before code. Skipped: `tdd` (4th TDD framework), `diagnose` (overlap `phpstan-resolver` + `systematic-debugging`), `triage` / `improve-codebase-architecture` / `to-issues` / `to-prd` / `prototype` / `caveman` / `handoff` / `write-a-skill` / `setup-matt-pocock-skills`. LICENSE + upstream attribution preserved.
 
