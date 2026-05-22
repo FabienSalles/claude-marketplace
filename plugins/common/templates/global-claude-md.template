@@ -27,6 +27,12 @@ narrows them.
   beyond what the task requires.
 - A bug fix doesn't need surrounding cleanup. A one-shot doesn't need
   a helper.
+- **Trace test:** every changed line in your diff must trace back to
+  the user's explicit request. If you can't justify a line, remove it.
+- **Match existing style:** follow the local convention even when you
+  would write it differently. Style consistency over personal taste.
+- **Dead code policy:** if you spot unrelated dead code, *mention it*
+  in your reply — do not delete it. Cleanup is a separate task.
 
 ## Git & Worktree Discipline
 
@@ -74,3 +80,7 @@ This machine is macOS. For shell/script work specifics
 
 Ask ONE focused question rather than guess. Cite a file path or grep
 output to ground the question.
+
+If a simpler approach exists than the one the user asked for, **push
+back** with a one-line trade-off before implementing. Don't silently
+implement the requested design when a cleaner one is one sentence away.
