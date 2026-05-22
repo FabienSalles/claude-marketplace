@@ -36,8 +36,11 @@ Each row links to the plugin's own README with the full skill catalog and direct
 | [**common**](plugins/common/README.md) | 4 skills + 4 commands + 9 hooks + 1 agent | Shared workflow tools: planning, context window, research, persona, TDD/feature-dev commands, code-review/test hooks |
 | [**craft**](plugins/craft/README.md) | 7 | Cross-language software craftsmanship principles (refactoring, OOP, code-style, testing, TDD workflow, DDD-OOP, DDD-FP; security planned) — pairs with language example skills |
 | [**statusline**](plugins/statusline/README.md) | — | Colored statusline: cwd, branch, model, context %, 5h rate-limit usage + reset countdown |
-| [**mac**](plugins/mac/README.md) | 1 | macOS / BSD platform discipline — shell/bash 3.2 vs Homebrew bash 5+, BSD vs GNU command portability, common macOS pitfalls |
+| [**mac**](plugins/mac/README.md) | 1 skill + 1 hook | macOS / BSD platform discipline — shell/bash 3.2 vs Homebrew bash 5+, BSD vs GNU command portability, plus a PreToolUse `bsd-gnu-lint` hook that warns on GNU-only flags in Bash commands |
 | [**audit**](plugins/audit/README.md) | 2 | Audit hub: overlay on `netresearch/security-audit` (`security-overrides`) + stack-specific code patterns (`ts-security`; PHP planned) |
+| [**security-runtime**](plugins/security-runtime/README.md) | 2 hooks | Runtime security: `claudemd-scanner` (SessionStart) flags injection patterns in CLAUDE.md files, `prompt-injection-detector` (PreToolUse:Bash) blocks Bash commands containing AI-instruction overrides |
+| [**superpowers**](plugins/superpowers/README.md) | 2 | Cherry-picked subset of [obra/superpowers](https://github.com/obra/superpowers): `verification-before-completion`, `systematic-debugging` |
+| [**pocock**](plugins/pocock/README.md) | 3 | Cherry-picked subset of [mattpocock/skills](https://github.com/mattpocock/skills): `grill-me`, `grill-with-docs`, `zoom-out` |
 | **security-audit** *(external)* | — | [netresearch/security-audit-skill](https://github.com/netresearch/security-audit-skill) — OWASP, CWE, CVSS, 61 references |
 
 ## Installation
@@ -150,8 +153,11 @@ claude-marketplace/
 │   ├── common/                         # README + 4 skills + 4 commands + 9 hooks + 1 agent
 │   ├── craft/                          # README + 7 skills (cross-language principles)
 │   ├── statusline/                     # README + script + /statusline:setup
-│   ├── mac/                            # README + 1 skill (macOS/BSD platform discipline)
-│   └── audit/                          # README + 1 skill (security overlay on netresearch)
+│   ├── mac/                            # README + 1 skill + 1 hook (BSD/GNU lint)
+│   ├── audit/                          # README + 1 skill (security overlay on netresearch)
+│   ├── security-runtime/               # README + 2 hooks (claudemd-scanner, prompt-injection-detector)
+│   ├── superpowers/                    # README + 2 skills (cherry-pick obra)
+│   └── pocock/                         # README + 3 skills (cherry-pick mattpocock)
 ├── scripts/
 │   └── health-check.sh                 # Local diagnostic (also runs in CI)
 ├── setup.sh                            # Registers this dir as a local marketplace, toggles packs

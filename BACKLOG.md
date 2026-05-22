@@ -94,6 +94,15 @@ Items identified during the marketplace audit and not yet executed. Loose priori
   3. The native BSD-vs-GNU lint hook (planned above) addresses the real problem in pure bash, zero dependency, zero overhead.
 - **If revisited:** would only be relevant as defense-in-depth against accidental destructive commands, after `bun` is installed and a measurable risk is identified. Low priority.
 
+### `florian-claude-tools/security-suite` — _adopted, then superseded by internal `security-runtime`_
+- **What it was:** 7 skills + 2 agents + 13 PreToolUse / PostToolUse bash hooks (dangerous-actions-blocker, prompt-injection-detector, output-secrets-scanner, repo-integrity-scanner, security-gate, sandbox-validation, pre-commit-secrets, claudemd-scanner, …). Installed during the audit work (commit history visible in BACKLOG ✅ Done section).
+- **Why superseded:**
+  1. **Footprint disproportionné** — 13 always-on hooks (~458 tokens of context) versus the 2 hooks that actually mattered for this threat model.
+  2. **Real value concentrated in 2 hooks** — `claudemd-scanner` (SessionStart) and `prompt-injection-detector` (PreToolUse:Bash). The other 11 either overlapped with existing tooling (`pre-commit-secrets` is covered by per-project pre-commit configs, `dangerous-actions-blocker` is covered by Claude Code's native blocklist) or were defensive-of-defensive layers with negligible marginal value.
+  3. **Replacement built locally** — `plugins/security-runtime/` ships those 2 hooks, smoke-tested (8 + 12 cases), with a README explaining the threat model and what is *not* covered (notably: MCP-vector prompt injection — token scoping is still required for that).
+- **Current state:** `security-suite@florian-claude-tools` is **disabled** in `~/.claude/settings.json`. The marketplace `florian-claude-tools` is still registered, so re-enabling is one toggle away if a real gap is identified.
+- **If revisited:** would only be considered if (a) the threat model widens beyond CLAUDE.md + Bash injection, and (b) a specific hook in the 13 is identified as having unique coverage not replicable in ~30 lines of bash. Low probability.
+
 ### `ctxharness` as pre-commit on this marketplace — _piloted, not adopted_
 - **What it does:** scans declared markdown files (CLAUDE.md, AGENTS.md, docs/) for verifiable claims (semver, paths, scripts) and flags drift against ground truth.
 - **Pilot result:** `ctxharness init` + `ctxharness scan README.md` on this repo produced 4 false positives — `SKILL.md`, `plugin.json`, `marketplace.json`, `hooks.json` all flagged as "NOT FOUND" because `scan` resolves paths at repo root only, while these files live in `plugins/*/` subdirectories. Real drifts here (version `plugin.json` ↔ `marketplace.json`, plugin count in README, skill-name ↔ directory-name) would require hand-written custom assertions — not auto-discovery.
