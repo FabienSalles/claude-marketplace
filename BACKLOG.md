@@ -18,14 +18,6 @@ Items identified during the marketplace audit and not yet executed. Loose priori
   3. Either rotate to a **read-only token** if you don't need write access for daily use, OR scope it to specific zones/resources only (exclude prod).
   4. If a separate "write" token is needed occasionally, create a short-lived one (24h TTL) and revoke after use.
 
-### Fix `plugin:github:github` MCP failed connection
-- **Symptom:** `claude mcp list` reports `plugin:github:github: ✗ Failed to connect` (endpoint: `https://api.githubcopilot.com/mcp/`).
-- **Why:** this is a GitHub Copilot MCP, requires a Copilot subscription + auth flow not completed.
-- **Effort:** ~5 min — either complete the auth flow (if you have Copilot) or remove the MCP (`claude mcp remove github` / disable in plugin settings).
-- **Decision needed:** do you actually use GitHub Copilot? If no, remove to clean noise from `claude mcp list`.
-
----
-
 ## 🛡️ Audit plugin extensions
 
 ### `audit:php-security` skill (if a real PHP gap emerges)
@@ -70,6 +62,7 @@ Items identified during the marketplace audit and not yet executed. Loose priori
 - Remove `playwright` MCP (real functional duplicate of `chrome-devtools`, 0 usage in history vs `chrome-devtools` actively used with 3 auto-allowed tools).
 - Native BSD-vs-GNU lint hook shipped in `plugins/mac/hooks/bsd-gnu-lint.sh` + `hooks.json`. Warn-only (never blocks), runs on every PreToolUse:Bash. Detects: `grep -P`, `sed -i` without BSD empty suffix, `readlink -f`, `xargs -r`, `date -d`, GNU-only `realpath` flags, `mapfile`/`readarray`, `${var,,}`/`${var^^}`. Smoke-tested across 8 cases (5 trigger, 3 silent).
 - Fix the `test-npx-skills` CI warning. Root cause: `npx skills` v1.5+ replaced the per-skill `SKILL.md` path output with a TUI summary (`Found <N> skills`). The CI grep was counting the old marker (2 incidental occurrences) and always tripped the warning. Switched the parser in `.github/workflows/validate.yml` to extract the `Found <N> skills` integer and compare to the 40-skill threshold; local run reports `Discovered 63 skills`.
+- Disable `github@claude-plugins-official` plugin (the only thing it ships is a GitHub Copilot MCP pointing at `api.githubcopilot.com/mcp/`, which fails to connect without a Copilot subscription + valid `GITHUB_PERSONAL_ACCESS_TOKEN`). User does not use GitHub Copilot. Removed from `~/.claude/settings.json.enabledPlugins`; effective on next Claude Code restart.
 - Cherry-pick `obra/superpowers` v5.1.0 into local `plugins/superpowers/` — 3 skills kept (`writing-plans`, `verification-before-completion`, `systematic-debugging`). Skipped: `brainstorming` (doublon `bmad-brainstorming`), `test-driven-development` (4th TDD framework → hesitation), `subagent-driven-development` / `requesting-code-review` / `receiving-code-review` / etc. (out of scope or covered). LICENSE + upstream attribution preserved.
 - Cherry-pick `mattpocock/skills` into local `plugins/pocock/` — 3 skills kept (`grill-me`, `grill-with-docs`, `zoom-out`). Inverts the push-back loop: Claude grills before code. Skipped: `tdd` (4th TDD framework), `diagnose` (overlap `phpstan-resolver` + `systematic-debugging`), `triage` / `improve-codebase-architecture` / `to-issues` / `to-prd` / `prototype` / `caveman` / `handoff` / `write-a-skill` / `setup-matt-pocock-skills`. LICENSE + upstream attribution preserved.
 
