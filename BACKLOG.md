@@ -6,16 +6,6 @@ Items identified during the marketplace audit and not yet executed. Loose priori
 
 ---
 
-## 🛠️ CI hygiene (visible in every CI run)
-
-### Investigate the `npx skills add . --list` discovery shortfall
-- **Symptom:** the `test-npx-skills` job warns: `Expected at least 40 skills discovered, got 2`. Pre-existed before the recent refactor — likely an `npx skills` CLI behavior change.
-- **Effort:** ~1 h (reproduce locally, check the `skills` CLI version, possibly adjust the test or open an upstream issue)
-- **Trigger:** every CI run currently emits this warning.
-- **File:** `.github/workflows/validate.yml` (job `test-npx-skills`)
-
----
-
 ## 🔐 MCPs hardening (manual configuration outside this repo)
 
 ### Restrict Cloudflare API token scope
@@ -79,6 +69,7 @@ Items identified during the marketplace audit and not yet executed. Loose priori
 - Add `audit:install-security-review-action` command + `templates/claude-code-security-review.yml` for installing the `anthropics/claude-code-security-review` GitHub Action into any production repo (`/audit:install-security-review-action` from within the target repo).
 - Remove `playwright` MCP (real functional duplicate of `chrome-devtools`, 0 usage in history vs `chrome-devtools` actively used with 3 auto-allowed tools).
 - Native BSD-vs-GNU lint hook shipped in `plugins/mac/hooks/bsd-gnu-lint.sh` + `hooks.json`. Warn-only (never blocks), runs on every PreToolUse:Bash. Detects: `grep -P`, `sed -i` without BSD empty suffix, `readlink -f`, `xargs -r`, `date -d`, GNU-only `realpath` flags, `mapfile`/`readarray`, `${var,,}`/`${var^^}`. Smoke-tested across 8 cases (5 trigger, 3 silent).
+- Fix the `test-npx-skills` CI warning. Root cause: `npx skills` v1.5+ replaced the per-skill `SKILL.md` path output with a TUI summary (`Found <N> skills`). The CI grep was counting the old marker (2 incidental occurrences) and always tripped the warning. Switched the parser in `.github/workflows/validate.yml` to extract the `Found <N> skills` integer and compare to the 40-skill threshold; local run reports `Discovered 63 skills`.
 - Cherry-pick `obra/superpowers` v5.1.0 into local `plugins/superpowers/` — 3 skills kept (`writing-plans`, `verification-before-completion`, `systematic-debugging`). Skipped: `brainstorming` (doublon `bmad-brainstorming`), `test-driven-development` (4th TDD framework → hesitation), `subagent-driven-development` / `requesting-code-review` / `receiving-code-review` / etc. (out of scope or covered). LICENSE + upstream attribution preserved.
 - Cherry-pick `mattpocock/skills` into local `plugins/pocock/` — 3 skills kept (`grill-me`, `grill-with-docs`, `zoom-out`). Inverts the push-back loop: Claude grills before code. Skipped: `tdd` (4th TDD framework), `diagnose` (overlap `phpstan-resolver` + `systematic-debugging`), `triage` / `improve-codebase-architecture` / `to-issues` / `to-prd` / `prototype` / `caveman` / `handoff` / `write-a-skill` / `setup-matt-pocock-skills`. LICENSE + upstream attribution preserved.
 

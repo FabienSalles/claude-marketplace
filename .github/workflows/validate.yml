@@ -320,8 +320,11 @@ jobs:
 
       - name: Test skills discovery
         run: |
+          # `npx skills` v1.5+ no longer prints raw `SKILL.md` paths in --list output;
+          # it prints a TUI summary line `Found <N> skills` instead. Parse that.
           npx skills add . --list 2>&1 | tee /tmp/skills-output.txt
-          skill_count=$(grep -c "SKILL.md" /tmp/skills-output.txt || echo "0")
+          skill_count=$(grep -oE 'Found [0-9]+ skills' /tmp/skills-output.txt | grep -oE '[0-9]+' | head -1)
+          skill_count=${skill_count:-0}
           echo "Discovered $skill_count skills"
           if [[ $skill_count -lt 40 ]]; then
             echo "::warning::Expected at least 40 skills discovered, got $skill_count"
