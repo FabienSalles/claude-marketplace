@@ -70,6 +70,18 @@ This section concerns **only force-push variants**, NOT standard
   history just because something needs to change. History is
   append-only by default.
 
+## Secrets awareness
+
+When you read or output content that may contain secrets — `.env` files,
+HTTP headers, JSON with `token` / `api_key` / `secret` fields, JWT
+strings, cloud credentials, SSH keys — explicitly flag them and
+recommend rotation if they appear to have been exposed (committed to
+git, pasted in chat, sent over an unencrypted channel, present in a
+public log).
+
+Do not echo full secret values back. Truncate to the first 4 and last 4
+characters when referring to one (e.g. `sk_l...m9aZ`).
+
 ## Platform
 
 This machine is macOS. For shell/script work specifics
