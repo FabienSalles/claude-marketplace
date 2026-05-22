@@ -1,0 +1,11 @@
+{
+  "name": "security-runtime",
+  "version": "0.1.0",
+  "description": "Runtime security hooks: CLAUDE.md injection scanner (SessionStart) + Bash prompt injection detector (PreToolUse)",
+  "author": {
+    "name": "FabienSalles"
+  },
+  "repository": "https://github.com/FabienSalles/claude-marketplace",
+  "license": "MIT",
+  "keywords": ["security", "runtime", "hooks", "prompt-injection", "claude-md"]
+}

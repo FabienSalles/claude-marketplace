@@ -142,6 +142,16 @@
       "keywords": ["security", "owasp", "cvss", "php", "audit"]
     },
     {
+      "name": "security-runtime",
+      "source": "./plugins/security-runtime",
+      "description": "Runtime security hooks: CLAUDE.md injection scanner (SessionStart) + Bash prompt injection detector (PreToolUse)",
+      "version": "0.1.0",
+      "author": { "name": "FabienSalles" },
+      "category": "security",
+      "license": "MIT",
+      "keywords": ["security", "runtime", "hooks", "prompt-injection", "claude-md"]
+    },
+    {
       "name": "superpowers",
       "source": "./plugins/superpowers",
       "description": "Cherry-picked obra/superpowers — verification-before-completion, systematic-debugging",
