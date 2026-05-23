@@ -27,7 +27,7 @@ BOLD='\033[1m'
 # ─────────────────────────────────────────────
 # Available packs
 # ─────────────────────────────────────────────
-PACKS=(php typescript astro nest frontend vitest tooling common statusline mac craft audit)
+PACKS=(php typescript astro nest frontend vitest tooling common statusline mac craft audit goal)
 
 declare -A PACK_DESCRIPTIONS=(
   [php]="PHP 8.2/8.3, conventions, DDD, TDD, Symfony, Twig, Composer, OOP, refactoring, SQL, security"
@@ -39,6 +39,7 @@ declare -A PACK_DESCRIPTIONS=(
   [tooling]="Docker, Drizzle ORM, pnpm workspaces, Zod schemas"
   [common]="Shared hooks, agents, commands, skills"
   [statusline]="Claude Code statusline — cwd, git branch, model, context progress bar, 5h rate limit"
+  [goal]="Autonomous issue→PR workflow on Claude Code /goal — /draft-issue (spec → GitHub issue), /run-issue (issue → spec → branch → /goal), auto-regenerated execution log shipped in the PR diff"
 )
 
 STATUSLINE_CMD="$SCRIPT_DIR/plugins/statusline/statusline.sh"

@@ -7,7 +7,9 @@ argument-hint: Issue number (e.g. 42)
 
 You are helping the developer prepare for an **autonomous `/goal` session** that will deliver a working PR. THIS session is purely interactive — lift every ambiguity now, because once `/goal` starts in Session 2 it cannot ask the user anything.
 
-> Companion docs: `docs/autonomous-issue-workflow.md` (full workflow), `plugins/common/templates/done-criteria.template` (standard acceptance criteria pattern).
+> Companion docs: this plugin's `README.md` (full 3-session workflow), `templates/done-criteria.template` (standard acceptance criteria pattern).
+>
+> **Permissiveness:** this command works standalone — it falls back to inlined questions in Phase 2 when no upstream interview skill is available. Other plugins (`pocock` for `grill-me`/`grill-with-docs`, `superpowers` for `verification-before-completion`/`systematic-debugging`, `common` for `business-first-dev`, `craft` for TDD principles) enhance the workflow but are not required.
 
 ## Argument
 
@@ -40,11 +42,37 @@ Ask the developer: **"Is my reading correct? Anything to add before I start gril
 
 ## Phase 2 — Grill (one question at a time)
 
-If the `pocock:grill-with-docs` skill is available AND a `CONTEXT.md` or `docs/adr/` exists, prefer it. Otherwise use `pocock:grill-me`. Otherwise apply `/business-first-dev` Phase 1 questions.
+Pick the **best available** interview approach, in order of preference:
 
-Walk down the decision tree. For each question:
-- Provide your recommended answer
-- Wait for the developer's response before asking the next
+1. **`pocock:grill-with-docs`** if the skill is installed AND a `CONTEXT.md` or `docs/adr/` exists in the repo. This adds inline glossary maintenance.
+2. **`pocock:grill-me`** if the skill is installed. Pure Socratic interview.
+3. **`common:business-first-dev` Phase 1 questions** if the `common` plugin is installed. Structured business + system rounds.
+4. **Inlined baseline** (below) — works with NO other plugin installed.
+
+### Inlined baseline questions (fallback — use only if 1–3 unavailable)
+
+Ask these one at a time. Provide your recommended answer for each. Skip questions already answered by the issue body.
+
+**Round 1 — the need:**
+- Who triggers this? (end user / admin / batch / external system)
+- What is the precise end-to-end flow? Describe the happy path step by step.
+- Which business rules apply? (validations, computations, conditions, limits)
+- Vocabulary: are there project-specific terms I should align with? Where do they live? (CONTEXT.md, glossary, wiki)
+- Known edge cases? Not technical — actual business cases.
+- What is explicitly **out of scope** for this issue?
+
+**Round 2 — the system:**
+- Are there mockups / Figma / design docs referenced?
+- Cross-project couplings? (API client here, endpoint elsewhere — should I scan another repo?)
+- Where does data come from? (new API to create, existing DB, hard-coded, external)
+- Constraints not derivable from the code? (deadlines, legal, team decisions)
+- Anything else I cannot find in the code that I should know?
+
+**Round 3 — verifiability (always ask):**
+- What is the **smallest command-line check** that would prove this works? (test path, lint command, build output)
+- What should **not** change as a side-effect? (files / behaviors to protect)
+
+### Stop condition
 
 Stop grilling when:
 - All branches resolved
@@ -52,6 +80,10 @@ Stop grilling when:
 - No remaining "it depends"
 
 Typical question count: 5–15 for a small issue, more for a feature.
+
+### One question at a time
+
+Walk down the decision tree, **one question per message**. For each: provide your recommended answer, then wait for the developer's response before continuing. Batch-style questionnaires reduce signal.
 
 ## Phase 3 — Write the spec
 

@@ -19,15 +19,16 @@ Or `./setup.sh --pack common` (dev mode). The pack also writes `skillListingBudg
 | [`expert-persona-skills`](skills/expert-persona-skills/SKILL.md) | Short persona prompts for non-code expert analysis (security audits, product, competitive, vendor evaluation, architecture review) |
 | [`product-research`](skills/product-research/SKILL.md) | 2-phase workflow (gather cheap, synthesize expensive) for market/competitive/technology research before BMAD product briefs |
 
-## Slash commands (5)
+## Slash commands (4)
 
 | Command | Purpose |
 |---|---|
-| [`/business-first-dev`](commands/business-first-dev.md) | 5-phase business-first feature workflow — understand business before code, produce a validated spec, then implement with iterative checkpoints |
+| [`/business-first-dev`](commands/business-first-dev.md) | 5-phase business-first feature workflow — understand business before code, produce a validated spec, then implement with iterative checkpoints. Can be chained into [`goal:/draft-issue`](../goal/commands/draft-issue.md) to materialize the spec as a GitHub issue. |
 | [`/feature-tdd-dev`](commands/feature-tdd-dev.md) | Guided feature development with TDD workflow and architecture focus |
 | [`/deep-review`](commands/deep-review.md) | Adversarial 3-agent code review producing ~2 high-impact comments per PR |
 | [`/research`](commands/research.md) | Objective research separating investigation from implementation to avoid confirmation bias |
-| [`/run-issue`](commands/run-issue.md) | Session 1 of the autonomous issue→PR workflow — read a GitHub issue, lift all ambiguities, persist a spec, create a feature branch, and echo the `/goal` command for Session 2. See [`docs/autonomous-issue-workflow.md`](../../docs/autonomous-issue-workflow.md) for the full 3-session recipe |
+
+> The autonomous issue→PR workflow (`/run-issue`, `/draft-issue`, execution log Stop hook) has moved to its own [`goal`](../goal/) plugin. Install it alongside this one to use the chain `business-first-dev → draft-issue → run-issue → /goal → PR`.
 
 ## Agents
 
@@ -35,7 +36,7 @@ Or `./setup.sh --pack common` (dev mode). The pack also writes `skillListingBudg
 |---|---|
 | [`ui-engineer`](agents/ui-engineer.md) | Frontend / UI specialist agent (component design, responsive layouts, code review for modern best practices) |
 
-## Hooks (10)
+## Hooks (9)
 
 | Hook | Event | Purpose |
 |---|---|---|
@@ -48,4 +49,3 @@ Or `./setup.sh --pack common` (dev mode). The pack also writes `skillListingBudg
 | [`warn-clock-bypass.py`](hooks/warn-clock-bypass.py) | PreToolUse | Warn when raw `new Date()` / `new DateTime()` / `Carbon::now()` appears in production code instead of an injectable Clock |
 | [`warn-test-file-edit.sh`](hooks/warn-test-file-edit.sh) | PreToolUse | Confirm before editing a test file (unless the user asked for it) |
 | [`warn-use-git-mv.sh`](hooks/warn-use-git-mv.sh) | PreToolUse | Block raw `mv` on tracked files, suggest `git mv` instead |
-| [`issue-execution-log.sh`](hooks/issue-execution-log.sh) | Stop | Regenerate `.claude/plans/issue-<N>-execution-log.md` after every turn — **only** when on a `feature/issue-<N>-*` branch with a matching spec. Silent no-op everywhere else (zero overhead on normal sessions). Drives the autonomous-issue-workflow log produced by [`scripts/extract-execution-log.py`](scripts/extract-execution-log.py). |

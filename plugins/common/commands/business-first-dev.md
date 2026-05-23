@@ -199,6 +199,26 @@ The validated spec becomes the **implementation contract**. Any deviation must c
 
 ---
 
+## Optional next step — materialize the spec as a GitHub issue
+
+If the `goal` plugin is installed and you want to drive the implementation
+autonomously via `/goal` instead of implementing in this session, the spec
+from Phase 3 (`.claude/plans/<feature>-spec.md`) is already in the shape
+`goal:/draft-issue` expects.
+
+```text
+> /draft-issue .claude/plans/<feature>-spec.md
+# → creates the GitHub issue
+> /run-issue <N>
+# → Session 1 of the autonomous workflow
+```
+
+See [`plugins/goal/README.md`](../../goal/README.md) for the full chain.
+This is purely opt-in — if you prefer to implement directly via Phase 4
+in this session, ignore it.
+
+---
+
 ## Rules
 
 - **Never write code before Phase 2.** Phase 1 is purely conversational.

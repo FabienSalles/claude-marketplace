@@ -1,0 +1,16 @@
+{
+  "description": "Stop hook that regenerates the per-issue execution log when on a `feature/issue-<N>-…` branch with a matching spec file. Silent no-op elsewhere — zero overhead on regular sessions.",
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/issue-execution-log.sh",
+            "timeout": 15
+          }
+        ]
+      }
+    ]
+  }
+}

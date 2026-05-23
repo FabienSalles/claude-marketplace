@@ -33,7 +33,8 @@ Each row links to the plugin's own README with the full skill catalog and direct
 | [**frontend**](plugins/frontend/README.md) | 3 | Clean architecture (hexagonal), Container/Presentation patterns, best-practices for editing existing UI |
 | [**vitest**](plugins/vitest/README.md) | 2 | TDD workflow + test conventions |
 | [**tooling**](plugins/tooling/README.md) | 6 | Docker, Drizzle ORM, pnpm workspaces, Zod, Claude plugin conventions, npx skills |
-| [**common**](plugins/common/README.md) | 4 skills + 5 commands + 9 hooks + 1 agent | Shared workflow tools: planning, context window, research, persona, TDD/feature-dev commands, [autonomous issue→PR workflow](docs/autonomous-issue-workflow.md), code-review/test hooks |
+| [**common**](plugins/common/README.md) | 4 skills + 4 commands + 9 hooks + 1 agent | Shared workflow tools: planning, context window, research, persona, TDD/feature-dev commands, code-review/test hooks |
+| [**goal**](plugins/goal/README.md) | 2 commands + 1 hook + 1 script + 1 template | Autonomous issue→PR workflow on top of Claude Code's native `/goal`: `/draft-issue` (spec → GitHub issue), `/run-issue` (issue → spec → branch → /goal), Stop hook that auto-regenerates a PR-shippable execution log. Permissive — falls back gracefully without `common`/`pocock`/`superpowers` |
 | [**craft**](plugins/craft/README.md) | 7 | Cross-language software craftsmanship principles (refactoring, OOP, code-style, testing, TDD workflow, DDD-OOP, DDD-FP; security planned) — pairs with language example skills |
 | [**statusline**](plugins/statusline/README.md) | — | Colored statusline: cwd, branch, model, context %, 5h rate-limit usage + reset countdown |
 | [**mac**](plugins/mac/README.md) | 1 skill + 1 hook | macOS / BSD platform discipline — shell/bash 3.2 vs Homebrew bash 5+, BSD vs GNU command portability, plus a PreToolUse `bsd-gnu-lint` hook that warns on GNU-only flags in Bash commands |
@@ -157,7 +158,8 @@ claude-marketplace/
 │   ├── audit/                          # README + 1 skill (security overlay on netresearch)
 │   ├── security-runtime/               # README + 2 hooks (claudemd-scanner, prompt-injection-detector)
 │   ├── superpowers/                    # README + 2 skills (cherry-pick obra)
-│   └── pocock/                         # README + 3 skills (cherry-pick mattpocock)
+│   ├── pocock/                         # README + 3 skills (cherry-pick mattpocock)
+│   └── goal/                           # README + 2 commands + 1 hook + 1 script + 1 template (autonomous issue→PR)
 ├── scripts/
 │   └── health-check.sh                 # Local diagnostic (also runs in CI)
 ├── setup.sh                            # Registers this dir as a local marketplace, toggles packs
