@@ -19,7 +19,7 @@ Or `./setup.sh --pack common` (dev mode). The pack also writes `skillListingBudg
 | [`expert-persona-skills`](skills/expert-persona-skills/SKILL.md) | Short persona prompts for non-code expert analysis (security audits, product, competitive, vendor evaluation, architecture review) |
 | [`product-research`](skills/product-research/SKILL.md) | 2-phase workflow (gather cheap, synthesize expensive) for market/competitive/technology research before BMAD product briefs |
 
-## Slash commands (4)
+## Slash commands (5)
 
 | Command | Purpose |
 |---|---|
@@ -27,6 +27,7 @@ Or `./setup.sh --pack common` (dev mode). The pack also writes `skillListingBudg
 | [`/feature-tdd-dev`](commands/feature-tdd-dev.md) | Guided feature development with TDD workflow and architecture focus |
 | [`/deep-review`](commands/deep-review.md) | Adversarial 3-agent code review producing ~2 high-impact comments per PR |
 | [`/research`](commands/research.md) | Objective research separating investigation from implementation to avoid confirmation bias |
+| [`/run-issue`](commands/run-issue.md) | Session 1 of the autonomous issue→PR workflow — read a GitHub issue, lift all ambiguities, persist a spec, create a feature branch, and echo the `/goal` command for Session 2. See [`docs/autonomous-issue-workflow.md`](../../docs/autonomous-issue-workflow.md) for the full 3-session recipe |
 
 ## Agents
 
