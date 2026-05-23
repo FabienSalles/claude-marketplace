@@ -47,6 +47,16 @@ narrows them.
   personal/solo repos. No special approval is required beyond the
   user's intent to commit and push.
 
+### Commit authorship
+
+- **Never add AI / agent / model trailers to commit messages.**
+  No `Co-Authored-By: Claude <noreply@anthropic.com>`, no
+  `Generated with Claude Code`, no equivalent for any other AI tool.
+  Commits authored on the user's behalf must be attributed solely to
+  the user — the AI is a tool, not a co-author.
+- Applies to any tool default that would inject such a trailer; strip
+  it explicitly when crafting the commit body.
+
 ### Force-push policy (only `--force` / `--force-with-lease` flags)
 
 This section concerns **only force-push variants**, NOT standard
