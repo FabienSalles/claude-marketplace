@@ -13,7 +13,7 @@ This command sits at the **upstream end** of the chain:
 (idea)
   └─ BMAD bmm:create-prd → bmm:create-epics-and-stories
        │
-       └─ /business-first-dev (5 phases, GATES, persists a spec)
+       └─ /spec-first-dev (5 phases, GATES, persists a spec)
             │
             └─ /draft-issue ← YOU ARE HERE
                  └─ gh issue created with the right sections
@@ -46,7 +46,7 @@ From the source, extract these sections. They may use different headings dependi
 
 | Target section | Upstream synonyms |
 |---|---|
-| **Title** | `# …` first heading, or BMAD `story.title`, or business-first-dev "Feature" |
+| **Title** | `# …` first heading, or BMAD `story.title`, or spec-first-dev "Feature" |
 | **Business intent** | "Business intent", "Why", "Context", "Goal", BMAD `story.description` |
 | **Scope IN** | "Scope IN", "In scope", "Requirements", BMAD `acceptance_criteria` (positive) |
 | **Scope OUT** | "Scope OUT", "Out of scope", "Non-goals", "Will not do" |
@@ -171,6 +171,6 @@ Where `<N>` is the issue number returned by `gh issue create`.
 
 ## Chain reminders
 
-- After `/business-first-dev`: the validated spec from Phase 3 is usually at `.claude/plans/<feature>-spec.md`. Use that path as `$ARGUMENTS`.
+- After `/spec-first-dev`: the validated spec from Phase 3 is usually at `.claude/plans/<feature>-spec.md`. Use that path as `$ARGUMENTS`.
 - After BMAD `bmm:create-epics-and-stories`: one issue per story. Run `/draft-issue` once per story file.
 - For ad-hoc brainstorm: paste with `inline` argument.

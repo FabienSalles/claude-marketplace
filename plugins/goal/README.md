@@ -13,7 +13,7 @@ The plugin is **self-contained** — `gh` CLI and Claude Code ≥ 2.1.139 are th
   │
   └─ Upstream planning (any one of these — optional):
        ├─ BMAD: bmm:create-prd → bmm:create-epics-and-stories
-       ├─ common: /business-first-dev (5 phases, GATES, persists a spec)
+       ├─ common: /spec-first-dev (5 phases, GATES, persists a spec)
        └─ Free-form: write a markdown spec by hand
   │
   └─ Step 0 — /draft-issue        ◀ this plugin
@@ -46,7 +46,7 @@ The temptation: drop `/goal "deliver issue 42"` and walk away. It usually fails 
 - **Going in the wrong direction for an hour costs more than 10 minutes of upfront grilling.**
 - **A scope-creeping diff is hard to review and harder to revert.** The Karpathy "trace test" (every changed line ↔ a spec line) needs a written contract to check against.
 
-Splitting clarification from execution mirrors `/business-first-dev`'s philosophy: **lift ambiguities → lock a spec → deliver against the spec**.
+Splitting clarification from execution mirrors `/spec-first-dev`'s philosophy: **lift ambiguities → lock a spec → deliver against the spec**.
 
 ---
 
@@ -81,7 +81,7 @@ Splitting clarification from execution mirrors `/business-first-dev`'s philosoph
 | `pocock` | `grill-me` / `grill-with-docs` skills for Phase 2 of `/run-issue` | Falls back to inlined baseline questions in `/run-issue` |
 | `superpowers` | `verification-before-completion`, `systematic-debugging` activate during Session 2 | `/goal` evaluator still enforces criteria; Claude's native discipline applies |
 | `craft` | `tdd-workflow-principles` (Karpathy trace test, common rationalizations, etc.) | Trace test is also referenced in `templates/done-criteria.template` |
-| `common` | `/business-first-dev` for richer upstream planning, plus shared hooks (CI reminder, git-add-empty, audit-trail) | `/draft-issue` accepts any markdown spec — BMAD or hand-written works |
+| `common` | `/spec-first-dev` for richer upstream planning, plus shared hooks (CI reminder, git-add-empty, audit-trail) | `/draft-issue` accepts any markdown spec — BMAD or hand-written works |
 | Language-specific (`vitest`, `php`, …) | `vitest-tdd-workflow` / `php-tdd-workflow` activate during Session 2 | `/goal` still validates against the spec's command-line criteria; the loop just lacks TDD scaffolding |
 
 ---
@@ -90,7 +90,7 @@ Splitting clarification from execution mirrors `/business-first-dev`'s philosoph
 
 ### Step 0 — Draft the issue (optional but recommended)
 
-If you don't have a GitHub issue yet, but you do have a spec (from `/business-first-dev`, a BMAD story, or a hand-written markdown):
+If you don't have a GitHub issue yet, but you do have a spec (from `/spec-first-dev`, a BMAD story, or a hand-written markdown):
 
 ```bash
 cd ~/projects/<repo>
@@ -101,7 +101,7 @@ claude
 ```
 
 What happens:
-1. Reads the source spec, extracts/normalizes the sections (`/draft-issue` understands BMAD story headings, business-first-dev sections, and ad-hoc markdown).
+1. Reads the source spec, extracts/normalizes the sections (`/draft-issue` understands BMAD story headings, spec-first-dev sections, and ad-hoc markdown).
 2. Validates completeness — STOPS if no business intent or no command-line verifiable acceptance criteria.
 3. Drafts the issue body with the exact section structure `/run-issue` expects.
 4. Asks for confirmation (labels, milestone, assignee optional).
@@ -123,7 +123,7 @@ What happens:
 4. **Grills you, one question at a time**, each with a recommended answer. Picks the best available interview approach:
    1. `pocock:grill-with-docs` (if installed + `CONTEXT.md`/`docs/adr/` exist)
    2. `pocock:grill-me` (if installed)
-   3. `common:business-first-dev` Phase 1 questions (if installed)
+   3. `common:spec-first-dev` Phase 1 questions (if installed)
    4. **Inlined baseline** (always works — Round 1 need / Round 2 system / Round 3 verifiability)
 5. Drafts a spec at `.claude/plans/issue-42-spec.md` with command-line verifiable acceptance criteria.
 6. Asks for explicit confirmation.
@@ -387,5 +387,5 @@ Worth exploring **only** when the grilling phase has become so routine that you 
 
 - [`/goal` official docs](https://code.claude.com/docs/en/goal)
 - [Karpathy CLAUDE.md (forrestchang/andrej-karpathy-skills)](https://github.com/forrestchang/andrej-karpathy-skills) — the trace-test heuristic applied in Session 3
-- [`common:business-first-dev`](../common/commands/business-first-dev.md) — the inspiration for the gated, spec-first flow (chain into `/draft-issue` after Phase 3)
+- [`common:spec-first-dev`](../common/commands/spec-first-dev.md) — the inspiration for the gated, spec-first flow (chain into `/draft-issue` after Phase 3)
 - [`craft:tdd-workflow-principles`](../craft/skills/tdd-workflow-principles/SKILL.md) — cross-language TDD principles used during Session 2

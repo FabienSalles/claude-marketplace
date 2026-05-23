@@ -16,7 +16,7 @@ Tous les exemples ci-dessous sont écrits avec ton contexte réel (eres, dotfile
 | `grill-with-docs` | pocock | Auto | Même que `grill-me`, en présence de `CONTEXT.md` / `docs/adr/` |
 | `zoom-out` | pocock | **Manuel uniquement** (`disable-model-invocation: true`) | Tu invoques `/zoom-out` ou tu nommes le skill |
 
-> `writing-plans` (obra) a été initialement cherry-pické puis **retiré en v5.1.1** : doublon réel avec `/business-first-dev`. Voir `tdd-workflow-audit.md` pour le détail.
+> `writing-plans` (obra) a été initialement cherry-pické puis **retiré en v5.1.1** : doublon réel avec `/spec-first-dev`. Voir `tdd-workflow-audit.md` pour le détail.
 
 ---
 
@@ -82,12 +82,12 @@ Inverse le pattern habituel "Claude propose verbeux / toi tu pushes back". Au li
 
 ### Quand NE PAS l'utiliser
 
-- 🔴 Tu démarres une **feature DDD/Symfony complète sur eres** → utilise `/business-first-dev` qui est plus structuré (Round 1 business + Round 2 système + UL + GATE de validation)
+- 🔴 Tu démarres une **feature DDD/Symfony complète sur eres** → utilise `/spec-first-dev` qui est plus structuré (Round 1 business + Round 2 système + UL + GATE de validation)
 - 🔴 Tu as déjà tout clair dans la tête → tu vas perdre du temps en aller-retour
 
-### Différence vs `/business-first-dev` Phase 1
+### Différence vs `/spec-first-dev` Phase 1
 
-| | `/business-first-dev` | `grill-me` |
+| | `/spec-first-dev` | `grill-me` |
 |---|---|---|
 | Structure | Checklist fixe (6 questions business + 5 questions système) | Émergent, dépend du sujet |
 | Sortie | Synthèse markdown formelle (UL/User flow/BR/Scope) | Pas de sortie persistée |
@@ -290,13 +290,13 @@ vs. l'ancien comportement où Claude aurait dit "c'est sûrement le validator, j
 
 | Situation | Skill |
 |---|---|
-| Démarrer une feature DDD complète sur eres | `/business-first-dev` _(pas un skill cherry-pick — workflow maison)_ |
+| Démarrer une feature DDD complète sur eres | `/spec-first-dev` _(pas un skill cherry-pick — workflow maison)_ |
 | Décision ponctuelle hors feature-dev (lib, hook, refacto isolé) | `grill-me` |
 | Idem mais projet DDD avec CONTEXT.md / ADR | `grill-with-docs` |
 | Entrer dans une codebase inconnue | `/zoom-out` |
 | Bug, test qui fail, comportement inattendu | `systematic-debugging` _(auto)_ |
 | Claude vient de dire "done" sans preuve | `verification-before-completion` _(auto)_ |
-| Plan d'implémentation feature | `/business-first-dev` _(workflow maison, plus structuré que writing-plans)_ |
+| Plan d'implémentation feature | `/spec-first-dev` _(workflow maison, plus structuré que writing-plans)_ |
 
 ---
 
@@ -305,4 +305,4 @@ vs. l'ancien comportement où Claude aurait dit "c'est sûrement le validator, j
 - Upstream `obra/superpowers` : https://github.com/obra/superpowers (MIT)
 - Upstream `mattpocock/skills` : https://github.com/mattpocock/skills (MIT)
 - README plugin : [`plugins/superpowers/README.md`](../plugins/superpowers/README.md), [`plugins/pocock/README.md`](../plugins/pocock/README.md)
-- Workflow maison à comparer : `/business-first-dev` ([`plugins/common/commands/business-first-dev.md`](../plugins/common/commands/business-first-dev.md))
+- Workflow maison à comparer : `/spec-first-dev` ([`plugins/common/commands/spec-first-dev.md`](../plugins/common/commands/spec-first-dev.md))

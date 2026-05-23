@@ -1,13 +1,13 @@
 ---
-description: Business-first feature development — 5-phase workflow forcing business understanding before code exploration. Produces a validated spec then implements with iterative checkpoints.
+description: Spec-first feature development — 5-phase workflow that produces a validated specification before code, then implements against it with iterative checkpoints. Use when the requirement is fuzzy or the business domain is unfamiliar.
 argument-hint: Optional feature name or initial context
 ---
 
-# Business-First Feature Development
+# Spec-First Feature Development
 
-Business-driven development harness. Inspired by Harness Engineering (Fowler), Context Engineering (Karpathy), and Spec-Driven Development (OpenSpec, Spec Kit).
+Spec-driven development harness. Inspired by Harness Engineering (Fowler), Context Engineering (Karpathy), and Spec-Driven Development (OpenSpec, Spec Kit).
 
-**Principle**: Understand the business BEFORE touching the code. Produce a validated spec that constrains the implementation.
+**Principle**: Lock a validated specification BEFORE touching the code. The spec — built from explicit business intent, scope, and command-line verifiable acceptance criteria — becomes the contract the implementation must satisfy.
 
 **When to use this workflow**:
 - The requirement is fuzzy or incomplete

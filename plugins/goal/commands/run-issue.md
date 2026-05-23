@@ -9,7 +9,7 @@ You are helping the developer prepare for an **autonomous `/goal` session** that
 
 > Companion docs: this plugin's `README.md` (full 3-session workflow), `templates/done-criteria.template` (standard acceptance criteria pattern).
 >
-> **Permissiveness:** this command works standalone — it falls back to inlined questions in Phase 2 when no upstream interview skill is available. Other plugins (`pocock` for `grill-me`/`grill-with-docs`, `superpowers` for `verification-before-completion`/`systematic-debugging`, `common` for `business-first-dev`, `craft` for TDD principles) enhance the workflow but are not required.
+> **Permissiveness:** this command works standalone — it falls back to inlined questions in Phase 2 when no upstream interview skill is available. Other plugins (`pocock` for `grill-me`/`grill-with-docs`, `superpowers` for `verification-before-completion`/`systematic-debugging`, `common` for `spec-first-dev`, `craft` for TDD principles) enhance the workflow but are not required.
 
 ## Argument
 
@@ -46,7 +46,7 @@ Pick the **best available** interview approach, in order of preference:
 
 1. **`pocock:grill-with-docs`** if the skill is installed AND a `CONTEXT.md` or `docs/adr/` exists in the repo. This adds inline glossary maintenance.
 2. **`pocock:grill-me`** if the skill is installed. Pure Socratic interview.
-3. **`common:business-first-dev` Phase 1 questions** if the `common` plugin is installed. Structured business + system rounds.
+3. **`common:spec-first-dev` Phase 1 questions** if the `common` plugin is installed. Structured business + system rounds.
 4. **Inlined baseline** (below) — works with NO other plugin installed.
 
 ### Inlined baseline questions (fallback — use only if 1–3 unavailable)
