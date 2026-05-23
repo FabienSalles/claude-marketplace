@@ -35,7 +35,7 @@ Or `./setup.sh --pack common` (dev mode). The pack also writes `skillListingBudg
 |---|---|
 | [`ui-engineer`](agents/ui-engineer.md) | Frontend / UI specialist agent (component design, responsive layouts, code review for modern best practices) |
 
-## Hooks (9)
+## Hooks (10)
 
 | Hook | Event | Purpose |
 |---|---|---|
@@ -48,3 +48,4 @@ Or `./setup.sh --pack common` (dev mode). The pack also writes `skillListingBudg
 | [`warn-clock-bypass.py`](hooks/warn-clock-bypass.py) | PreToolUse | Warn when raw `new Date()` / `new DateTime()` / `Carbon::now()` appears in production code instead of an injectable Clock |
 | [`warn-test-file-edit.sh`](hooks/warn-test-file-edit.sh) | PreToolUse | Confirm before editing a test file (unless the user asked for it) |
 | [`warn-use-git-mv.sh`](hooks/warn-use-git-mv.sh) | PreToolUse | Block raw `mv` on tracked files, suggest `git mv` instead |
+| [`issue-execution-log.sh`](hooks/issue-execution-log.sh) | Stop | Regenerate `.claude/plans/issue-<N>-execution-log.md` after every turn — **only** when on a `feature/issue-<N>-*` branch with a matching spec. Silent no-op everywhere else (zero overhead on normal sessions). Drives the autonomous-issue-workflow log produced by [`scripts/extract-execution-log.py`](scripts/extract-execution-log.py). |

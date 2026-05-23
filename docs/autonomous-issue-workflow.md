@@ -103,6 +103,10 @@ cd ~/projects/your-side-project
 tmux attach -t issue-42   # see what happened (or open a new session)
 ```
 
+Two artifacts are now in `.claude/plans/`:
+- `issue-42-spec.md` — the contract written in Session 1
+- `issue-42-execution-log.md` — automatically regenerated at every Stop event during Session 2 by the `common:issue-execution-log` Stop hook (turn-by-turn summary of what Claude actually did: user inputs, reasoning, tool calls). It exists whether the `/goal` cycle succeeded OR was cleared early, so you can debug either way.
+
 Ask Claude to apply the Karpathy trace test on its own work:
 
 ```text
@@ -114,11 +118,13 @@ Apply the trace test: every changed line must trace to
 If the review is clean:
 
 ```bash
+git add .claude/plans/issue-42-execution-log.md
+git commit -m "docs: ship execution log for issue #42 review"
 git push -u origin feature/issue-42-<slug>
 gh pr create --fill --body-file .claude/plans/issue-42-spec.md
 ```
 
-The PR description **is** the spec — your reviewer (CodeRabbit, teammate, future-you) sees the exact contract.
+The PR description **is** the spec — your reviewer (CodeRabbit, teammate, future-you) sees the exact contract. The execution log ships in the diff so they can audit how Claude got there.
 
 ---
 
@@ -263,7 +269,18 @@ The 5-hour rate-limit window applies normally. Your `statusline` plugin shows th
 |---|---|
 | `plugins/common/commands/run-issue.md` | The `/run-issue` slash command (Session 1) |
 | `plugins/common/templates/done-criteria.template` | Reusable acceptance-criteria pattern, referenced by `/run-issue` when drafting specs |
+| `plugins/common/hooks/issue-execution-log.sh` | Stop hook that triggers the execution-log extractor only when on a matching feature branch |
+| `plugins/common/scripts/extract-execution-log.py` | Parses the session JSONL into a PR-readable markdown summary |
 | `.claude/plans/issue-<N>-spec.md` | Per-issue contract, committed alongside the implementation |
+| `.claude/plans/issue-<N>-execution-log.md` | Auto-regenerated debug log of the autonomous session (user inputs, Claude's reasoning, tool calls). Ships in the PR diff. |
+
+### Manual log regeneration (if you want a snapshot mid-session)
+
+```bash
+python3 ~/projects/github/claude-marketplace/plugins/common/scripts/extract-execution-log.py 42
+```
+
+Auto-detects the branch (`feature/issue-N-…`) and the most recent JSONL referencing the spec. Writes `.claude/plans/issue-42-execution-log.md`.
 
 ---
 
