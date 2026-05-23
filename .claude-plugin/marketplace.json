@@ -11,12 +11,32 @@
     {
       "name": "php",
       "source": "./plugins/php",
-      "description": "PHP 8.2/8.3, conventions, DDD, TDD, Symfony, Twig, Composer, OOP, refactoring, SQL",
+      "description": "PHP 8.2/8.3 language conventions — code style, OOP, DDD, refactoring, SQL, Composer. Framework-agnostic. Pair with phpunit for testing and symfony for Symfony-specific FormType/Twig/PRG conventions.",
+      "version": "2.0.0",
+      "author": { "name": "FabienSalles" },
+      "category": "development",
+      "license": "MIT",
+      "keywords": ["php", "language", "ddd", "oop", "conventions"]
+    },
+    {
+      "name": "phpunit",
+      "source": "./plugins/phpunit",
+      "description": "PHPUnit testing discipline — TDD workflow (red-green-refactor cross-layer iterations), test writing conventions (DAMP, AAA, Prophecy, factories). Layers on craft:tdd-workflow-principles and craft:testing-principles.",
+      "version": "1.0.0",
+      "author": { "name": "FabienSalles" },
+      "category": "testing",
+      "license": "MIT",
+      "keywords": ["php", "phpunit", "tdd", "testing", "prophecy"]
+    },
+    {
+      "name": "symfony",
+      "source": "./plugins/symfony",
+      "description": "Personal Symfony conventions overlay — FormType data ownership, Twig component translation domain isolation, Post/Redirect/Get for HTML controllers. Distinct from atournayre/symfony (broader toolkit).",
       "version": "1.0.0",
       "author": { "name": "FabienSalles" },
       "category": "development",
       "license": "MIT",
-      "keywords": ["php", "symfony", "ddd", "tdd", "conventions"]
+      "keywords": ["php", "symfony", "form", "twig", "prg"]
     },
     {
       "name": "typescript",

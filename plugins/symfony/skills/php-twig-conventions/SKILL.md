@@ -1,7 +1,7 @@
 ---
 name: php-twig-conventions
-description: "ACTIVATE when writing or modifying Twig templates, using Twig components (twig:*), handling translations in Twig, debugging translation issues, or deciding whether to create a Twig component. ACTIVATE whenever 'trans_default_domain', 'twig component', 'translation not working', 'create twig component', or 'should I create a component' appears. Covers: trans_default_domain isolation in Twig components (critical pitfall), ClockInterface for dates in templates, when to create a Twig component vs use direct HTML. DO NOT use for: Twig syntax basics, Symfony controller rendering, generic CSS questions."
-version: "1.2"
+description: "ACTIVATE when writing or modifying Twig templates, using Twig components (twig:*), handling translations in Twig, debugging translation issues, or deciding whether to create a Twig component. ACTIVATE whenever 'trans_default_domain', 'twig component', 'translation not working', 'create twig component', or 'should I create a component' appears. Covers: trans_default_domain isolation in Twig components (1 translation = inline domain, 2+ translations = hoist trans_default_domain in the component scope), ClockInterface for dates in templates, when to create a Twig component vs use direct HTML. DO NOT use for: Twig syntax basics, Symfony controller rendering, generic CSS questions."
+version: "1.3"
 ---
 
 # Twig Conventions
@@ -65,19 +65,43 @@ When using `trans_default_domain` in a parent template, child content passed to 
 
 #### The Solution
 
-Always specify the domain explicitly when translating inside Twig component content:
+There are two acceptable ways to set the domain inside a Twig component, depending on how many translations the component content holds.
+
+##### Rule: 1 translation → inline `domain:`
+
+When there is a single `|trans` call inside the component content, pass the domain inline. No need to add a setup line for one call.
 
 ```twig
-{% trans_default_domain 'my_domain' %}
-
-<twig:Button>
-    {{ 'my_key'|trans(domain: 'my_domain') }}  {# CORRECT: Explicit domain #}
-</twig:Button>
+<twig:Alert>
+    <twig:block name="content">{{ 'warning'|trans(domain: 'my_domain') }}</twig:block>
+</twig:Alert>
 ```
+
+##### Rule: 2+ translations → hoist `{% trans_default_domain %}` once
+
+When the component content contains 2+ `|trans` calls, declare `{% trans_default_domain %}` once at the top of the content rather than repeating `(domain: '...')` on every line. Repetition is a refactor liability — change the domain once and you've shifted N spots.
+
+```twig
+<twig:Table>
+    {% trans_default_domain 'my_domain' %}
+    <thead>
+        <tr>
+            <th>{{ 'col.name'|trans }}</th>
+            <th>{{ 'col.type'|trans }}</th>
+            <th>{{ 'col.isin'|trans }}</th>
+            <th>{{ 'col.sri'|trans }}</th>
+            <th>{{ 'col.allocation'|trans }}</th>
+        </tr>
+    </thead>
+    {# ... #}
+</twig:Table>
+```
+
+The `trans_default_domain` declared inside the component's content scope applies within that isolated scope.
 
 #### Why This Happens
 
-Twig components process their content in isolation. The `trans_default_domain` tag sets a variable in the current template scope, but component content is evaluated in a separate context where this variable is not accessible.
+Twig components process their content in isolation. The `trans_default_domain` tag sets a variable in the current template scope, but component content is evaluated in a separate context where the **parent**'s variable is not accessible. Re-declaring `trans_default_domain` *inside* the component content sets it in that inner scope.
 
 ### Full Example
 
@@ -87,18 +111,25 @@ Twig components process their content in isolation. The `trans_default_domain` t
 {% block body %}
     {% trans_default_domain 'order_checkout' %}
 
-    {# Direct translation - uses trans_default_domain #}
+    {# Direct translation in template scope — inherits trans_default_domain #}
     <h1>{{ 'title'|trans }}</h1>
 
-    {# Inside a Twig component - MUST specify domain #}
-    <div class="d-flex gap-3">
-        <twig:Button href="{{ path('back_route') }}">
-            {{ 'back_button'|trans(domain: 'order_checkout') }}
-        </twig:Button>
-        <twig:Button type="submit" color="primary">
-            {{ 'continue_button'|trans(domain: 'order_checkout') }}
-        </twig:Button>
-    </div>
+    {# 1 translation inside a component — inline domain #}
+    <twig:Alert>
+        <twig:block name="content">{{ 'warning'|trans(domain: 'order_checkout') }}</twig:block>
+    </twig:Alert>
+
+    {# 2+ translations inside a component — hoist trans_default_domain #}
+    <twig:Table>
+        {% trans_default_domain 'order_checkout' %}
+        <thead>
+            <tr>
+                <th>{{ 'col.name'|trans }}</th>
+                <th>{{ 'col.qty'|trans }}</th>
+                <th>{{ 'col.price'|trans }}</th>
+            </tr>
+        </thead>
+    </twig:Table>
 {% endblock %}
 ```
 
@@ -185,22 +216,27 @@ final class DateExtension extends AbstractExtension
 - **PSR-20**: Standard interface (`Psr\Clock\ClockInterface`)
 - **Decoupling**: No dependency on global functions
 
-## When to Use Explicit Domain
+## When to Set the Domain Explicitly
 
-Always use explicit `domain:` parameter when:
+The parent's `trans_default_domain` does not propagate into:
 
-1. Translating text inside `<twig:*>` component tags
-2. Translating text inside macros called from another file
-3. Translating in any context that might have isolated scope
+1. `<twig:*>` component content
+2. Macros called from another file (imported macros)
+3. Any isolated rendering scope
+
+Pick the form based on call count:
+
+- **1 translation in the isolated scope** → inline `(domain: '...')`
+- **2+ translations in the isolated scope** → declare `{% trans_default_domain '...' %}` once at the top of that scope
 
 ## Quick Reference
 
-| Context | Inherits `trans_default_domain` | Solution |
-|---------|--------------------------------|----------|
-| Direct in template | Yes | `{{ 'key'\|trans }}` |
-| Inside `<twig:Component>` | **No** | `{{ 'key'\|trans(domain: 'domain') }}` |
-| Inside macro (same file) | Yes | `{{ 'key'\|trans }}` |
-| Inside imported macro | Depends | Use explicit domain to be safe |
+| Context | Inherits parent `trans_default_domain` | 1 translation | 2+ translations |
+|---------|---------------------------------------|---------------|-----------------|
+| Direct in template | Yes | `{{ 'key'\|trans }}` | `{{ 'key'\|trans }}` |
+| Inside `<twig:Component>` | **No** | `{{ 'key'\|trans(domain: 'd') }}` | `{% trans_default_domain 'd' %}` then `{{ 'key'\|trans }}` |
+| Inside macro (same file) | Yes | `{{ 'key'\|trans }}` | `{{ 'key'\|trans }}` |
+| Inside imported macro | Depends | `{{ 'key'\|trans(domain: 'd') }}` | `{% trans_default_domain 'd' %}` then `{{ 'key'\|trans }}` |
 
 ## Debugging Translation Issues
 

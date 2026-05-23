@@ -26,7 +26,9 @@ Each row links to the plugin's own README with the full skill catalog and direct
 
 | Plugin | Skills | What's inside |
 |---|---|---|
-| [**php**](plugins/php/README.md) | 13 | PHP 8.2/8.3, code style, DDD, TDD, Symfony, Twig, Composer, OOP, refactoring, SQL |
+| [**php**](plugins/php/README.md) | 8 | PHP 8.2/8.3 language conventions — code style, OOP, DDD, refactoring, SQL, Composer. Framework-agnostic. |
+| [**phpunit**](plugins/phpunit/README.md) | 2 | PHPUnit TDD workflow + test writing conventions. Layers on `craft` principles. |
+| [**symfony**](plugins/symfony/README.md) | 3 | Personal Symfony overlay — FormType, Twig component, PRG pattern. Distinct from `atournayre/symfony`. |
 | [**typescript**](plugins/typescript/README.md) | 7 | Typing, code style, functional, OOP, DDD events, refactoring (security audit moved to **audit**) |
 | [**astro**](plugins/astro/README.md) | 11 | Components, routing, content collections, i18n, SEO, Tailwind, React islands, view transitions, env, analytics |
 | [**nest**](plugins/nest/README.md) | 2 | NestJS architectural conventions, DDD with NestJS |
@@ -144,7 +146,9 @@ The same script also runs in the GitHub Actions workflow on every PR and on a ni
 claude-marketplace/
 ├── .claude-plugin/marketplace.json     # Root marketplace manifest
 ├── plugins/
-│   ├── php/                            # README + 13 skills
+│   ├── php/                            # README + 8 skills (language only)
+│   ├── phpunit/                        # README + 2 skills (TDD workflow + test conventions)
+│   ├── symfony/            # README + 3 skills (FormType, Twig, PRG)
 │   ├── typescript/                     # README + 8 skills
 │   ├── astro/                          # README + 11 skills
 │   ├── nest/                           # README + 2 skills

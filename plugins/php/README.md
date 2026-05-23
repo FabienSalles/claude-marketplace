@@ -1,6 +1,8 @@
 # php
 
-PHP 8.2/8.3 conventions and workflows: code style, DDD, TDD, Symfony, Twig, Composer, OOP, refactoring, SQL.
+PHP 8.2/8.3 **language** conventions — framework-agnostic. Code style, OOP, DDD, refactoring, SQL, Composer.
+
+Pair with [`phpunit`](../phpunit/) for testing discipline and [`symfony`](../symfony/) for Symfony-specific overlays (FormType, Twig component, PRG pattern). All three are independent — a Laravel project takes `php` alone or `php` + `phpunit`, a Symfony project takes the three together.
 
 ## Install
 
@@ -10,7 +12,7 @@ PHP 8.2/8.3 conventions and workflows: code style, DDD, TDD, Symfony, Twig, Comp
 
 Or `./setup.sh --pack php` (dev mode — registers this directory as a local marketplace).
 
-## Skills (13)
+## Skills (8)
 
 ### Language
 
@@ -32,16 +34,6 @@ Or `./setup.sh --pack php` (dev mode — registers this directory as a local mar
 | Skill | Purpose |
 |---|---|
 | [`php-ddd-conventions`](skills/php-ddd-conventions/SKILL.md) | Strict domain layer purity rules, SPI interface pattern |
-| [`php-symfony-form`](skills/php-symfony-form/SKILL.md) | `data_class` as single source of truth, `DataTransformer` placement, `property_path` for collections |
-| [`php-prg-pattern`](skills/php-prg-pattern/SKILL.md) | POST success → redirect; POST error → re-render; flash messages after redirect |
-| [`php-twig-conventions`](skills/php-twig-conventions/SKILL.md) | When (not) to create a `<twig:*>` component, `trans_default_domain` isolation pitfall, `ClockInterface` for dates in templates |
-
-### Testing
-
-| Skill | Purpose |
-|---|---|
-| [`php-test-conventions`](skills/php-test-conventions/SKILL.md) | DAMP over DRY, spy over mock (AAA), test naming, factory methods, assertion patterns |
-| [`php-tdd-workflow`](skills/php-tdd-workflow/SKILL.md) | Cross-layer TDD iterations, red-green-refactor cycle, keeping the app working at every GREEN, bug-fix-first-test |
 
 ### Data & tooling
 
@@ -49,3 +41,17 @@ Or `./setup.sh --pack php` (dev mode — registers this directory as a local mar
 |---|---|
 | [`php-sql-conventions`](skills/php-sql-conventions/SKILL.md) | Query direction convention (start from known entity), nowdoc formatting, JOIN ordering |
 | [`php-composer-conventions`](skills/php-composer-conventions/SKILL.md) | Caret versioning policy, forbidden patterns (`*`, `dev-master`, exact versions), internal package exception |
+
+## What moved out (v1 → v2)
+
+In v2.0 the plugin was tightened to **PHP language only** to make it reusable across frameworks. The framework-specific and testing skills moved to dedicated plugins:
+
+| Skill | New home |
+|---|---|
+| `php-tdd-workflow` | [`phpunit`](../phpunit/) |
+| `php-test-conventions` | [`phpunit`](../phpunit/) |
+| `php-symfony-form` | [`symfony`](../symfony/) |
+| `php-twig-conventions` | [`symfony`](../symfony/) |
+| `php-prg-pattern` | [`symfony`](../symfony/) |
+
+If you used the monolithic `php` plugin before, install [`phpunit`](../phpunit/) and [`symfony`](../symfony/) alongside it to keep the same coverage.

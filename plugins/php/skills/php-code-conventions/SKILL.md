@@ -1,6 +1,6 @@
 ---
 name: php-code-conventions
-description: "ACTIVATE whenever writing or modifying PHP code in src/, creating controllers, services, repositories, specifications, or any production PHP class. ACTIVATE for code review, formatting questions, or 'coding standards'. Provides PHP-specific code style examples for the cross-language rules defined in craft:code-style-principles, plus PHP-specific rules (no empty(), nullsafe `?->`, nowdoc, constructor parameter ordering with promoted properties). DO NOT use for: test code conventions (see php-test-conventions), SQL formatting (see php-sql-conventions)."
+description: "ACTIVATE whenever writing or modifying PHP code in src/, creating controllers, services, repositories, specifications, or any production PHP class. ACTIVATE for code review, formatting questions, or 'coding standards'. Provides PHP-specific code style examples for the cross-language rules defined in craft:code-style-principles, plus PHP-specific rules (no empty(), nullsafe `?->`, nowdoc, constructor parameter ordering with promoted properties). DO NOT use for: test code conventions (see phpunit:php-test-conventions), SQL formatting (see php-sql-conventions)."
 version: "2.0"
 ---
 

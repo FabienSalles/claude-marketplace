@@ -1,6 +1,6 @@
 ---
 name: php-prg-pattern
-description: "ACTIVATE when implementing form handling, POST endpoints, or any controller that modifies data. ACTIVATE for 'form submission', 'POST redirect', 'PRG', 'duplicate submission'. Covers: POST success -> always redirect, POST error -> re-render (no redirect), flash messages after redirect. DO NOT use for: FormType design (see php-symfony-form), API endpoints returning JSON."
+description: "ACTIVATE when implementing form handling, POST endpoints, or any controller that modifies data. ACTIVATE for 'form submission', 'POST redirect', 'PRG', 'duplicate submission'. Covers: POST success -> always redirect, POST error -> re-render (no redirect), flash messages after redirect. DO NOT use for: FormType design (see symfony:php-symfony-form), API endpoints returning JSON."
 version: "1.1"
 ---
 

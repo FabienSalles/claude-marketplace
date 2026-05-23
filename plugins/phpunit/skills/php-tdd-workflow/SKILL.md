@@ -1,6 +1,6 @@
 ---
 name: php-tdd-workflow
-description: "ACTIVATE when the user wants to build, implement, or develop any new feature, endpoint, or user story using TDD in PHP/Symfony. ACTIVATE for the '/feature-tdd-dev' command alongside PHP context. Provides PHP/Symfony/PHPUnit-specific TDD examples and commands; cross-language TDD workflow (cross-layer iterations, RED-GREEN-REFACTOR, working app at each GREEN, bug-fix-first-test) lives in craft:tdd-workflow-principles. DO NOT use for: test writing conventions (see php-test-conventions), general PHP questions."
+description: "ACTIVATE when the user wants to build, implement, or develop any new feature, endpoint, or user story using TDD in PHP/Symfony. ACTIVATE for the '/feature-tdd-dev' command alongside PHP context. Provides PHP/Symfony/PHPUnit-specific TDD examples and commands; cross-language TDD workflow (cross-layer iterations, RED-GREEN-REFACTOR, working app at each GREEN, bug-fix-first-test) lives in craft:tdd-workflow-principles. DO NOT use for: test writing conventions (see phpunit:php-test-conventions), general PHP questions."
 version: "2.0"
 ---
 

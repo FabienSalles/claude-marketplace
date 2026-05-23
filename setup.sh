@@ -27,10 +27,12 @@ BOLD='\033[1m'
 # ─────────────────────────────────────────────
 # Available packs
 # ─────────────────────────────────────────────
-PACKS=(php typescript astro nest frontend vitest tooling common statusline mac craft audit goal)
+PACKS=(php phpunit symfony typescript astro nest frontend vitest tooling common statusline mac craft audit goal)
 
 declare -A PACK_DESCRIPTIONS=(
-  [php]="PHP 8.2/8.3, conventions, DDD, TDD, Symfony, Twig, Composer, OOP, refactoring, SQL, security"
+  [php]="PHP 8.2/8.3 language conventions — code style, OOP, DDD, refactoring, SQL, Composer (framework-agnostic)"
+  [phpunit]="PHPUnit TDD workflow + test writing conventions (layers on craft:tdd-workflow-principles + craft:testing-principles)"
+  [symfony]="Personal Symfony overlay — FormType data ownership, Twig component translation domain isolation, Post/Redirect/Get pattern"
   [typescript]="TypeScript conventions, typing, DDD events, functional programming, OOP, refactoring, security"
   [astro]="Astro 5.x — components, routing, collections, i18n, SEO, Tailwind, React islands, transitions"
   [nest]="NestJS architectural conventions, DDD with NestJS"

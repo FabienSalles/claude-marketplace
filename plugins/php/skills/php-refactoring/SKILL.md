@@ -1,6 +1,6 @@
 ---
 name: php-refactoring
-description: "ACTIVATE when refactoring PHP code. ACTIVATE for 'refactor', 'extract', 'redesign', 'simplify', or 'clean up' in a PHP/Symfony context. This skill provides PHP-specific examples for the cross-language refactoring rules defined in craft:refactoring-principles. DO NOT use for: writing new features from scratch (see php-tdd-workflow), general OOP principles (see php-oop)."
+description: "ACTIVATE when refactoring PHP code. ACTIVATE for 'refactor', 'extract', 'redesign', 'simplify', or 'clean up' in a PHP/Symfony context. This skill provides PHP-specific examples for the cross-language refactoring rules defined in craft:refactoring-principles. DO NOT use for: writing new features from scratch (see phpunit:php-tdd-workflow), general OOP principles (see php-oop)."
 version: "2.0"
 ---
 

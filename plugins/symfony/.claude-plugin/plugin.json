@@ -1,0 +1,8 @@
+{
+  "name": "symfony",
+  "version": "1.0.0",
+  "description": "Personal Symfony conventions — FormType design (data_class as single source of truth, DataTransformer placement), Twig component patterns (trans_default_domain isolation), Post/Redirect/Get for HTML controllers. Use alongside php (language) and phpunit (testing). Distinct from atournayre/symfony — these are personal overlays.",
+  "author": { "name": "FabienSalles" },
+  "license": "MIT",
+  "keywords": ["php", "symfony", "form", "twig", "prg", "conventions"]
+}

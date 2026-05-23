@@ -1,6 +1,6 @@
 ---
 name: php-symfony-form
-description: "ACTIVATE when working with Symfony FormTypes, form handling, data_class, DataTransformers, form options, or property_path. ACTIVATE when creating or modifying any FormType class. Covers: data_class as single source of truth (no data in options), DataTransformer placement (not controller), property_path for collection mapping. DO NOT use for: form submission flow/PRG (see php-prg-pattern), form validation rules, general Symfony questions."
+description: "ACTIVATE when working with Symfony FormTypes, form handling, data_class, DataTransformers, form options, or property_path. ACTIVATE when creating or modifying any FormType class. Covers: data_class as single source of truth (no data in options), DataTransformer placement (not controller), property_path for collection mapping. DO NOT use for: form submission flow/PRG (see symfony:php-prg-pattern), form validation rules, general Symfony questions."
 version: "1.1"
 ---
 

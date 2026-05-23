@@ -1,6 +1,6 @@
 ---
 name: php-test-conventions
-description: "ACTIVATE when writing or modifying PHPUnit tests, creating test classes, using Prophecy, test factories, or data providers. ACTIVATE for 'test naming', 'test doubles', 'spy vs mock', 'serialization tests', 'deserialization tests' in PHP. Provides PHPUnit/Prophecy/Symfony-specific testing patterns; cross-language testing principles (DAMP, AAA, spy>mock, what NOT to test, factories) live in craft:testing-principles. DO NOT use for: TDD workflow/iteration process (see php-tdd-workflow)."
+description: "ACTIVATE when writing or modifying PHPUnit tests, creating test classes, using Prophecy, test factories, or data providers. ACTIVATE for 'test naming', 'test doubles', 'spy vs mock', 'serialization tests', 'deserialization tests' in PHP. Provides PHPUnit/Prophecy/Symfony-specific testing patterns; cross-language testing principles (DAMP, AAA, spy>mock, what NOT to test, factories) live in craft:testing-principles. DO NOT use for: TDD workflow/iteration process (see phpunit:php-tdd-workflow)."
 version: "2.0"
 ---
 
