@@ -56,7 +56,7 @@ Splitting clarification from execution mirrors `/spec-first-dev`'s philosophy: *
 |---|---|---|
 | [`/draft-issue`](commands/draft-issue.md) | `commands/draft-issue.md` | **Step 0** — spec → GitHub issue with normalized sections |
 | [`/run-issue`](commands/run-issue.md) | `commands/run-issue.md` | **Session 1** — issue → grilled spec → feature branch + echoed `/goal` text |
-| `issue-execution-log.sh` Stop hook | `hooks/issue-execution-log.sh` | Triggers the log extractor at every Stop event, only when on a matching branch (silent no-op elsewhere — zero overhead on normal sessions) |
+| `issue-execution-log.sh` Stop hook | `hooks/issue-execution-log.sh` | Triggers the log extractor at every Stop event, only when **all three** preconditions hold: (1) branch matches `feature/issue-<N>-…`, (2) `.claude/plans/issue-<N>-spec.md` exists, (3) the current session's transcript contains a `/goal` user command. Silent no-op elsewhere — including when you open `claude` on the issue branch just to read code without engaging the autonomous loop. |
 | `extract-execution-log.py` | `scripts/extract-execution-log.py` | Parses the session JSONL into a PR-readable markdown summary |
 | `done-criteria.template` | `templates/done-criteria.template` | Reusable baseline for the acceptance-criteria section of any spec |
 
@@ -328,7 +328,7 @@ If any of those failed, the failure mode tells you which session to tighten next
 | `/run-issue` says "current branch is dirty" | Uncommitted changes | `git stash` (or commit), then re-run |
 | `/goal` not recognized | Workspace not trusted | `/trust` in this workspace |
 | `/goal` hangs forever | `disableAllHooks` set somewhere | Check `~/.claude/settings.json` |
-| Execution log not regenerating during Session 2 | Branch name doesn't match `feature/issue-<N>-…`, or no spec at `.claude/plans/issue-<N>-spec.md` | Both are the hook's preconditions — verify with `git branch --show-current` and `ls .claude/plans/` |
+| Execution log not regenerating during Session 2 | One of the three hook preconditions failed: (1) branch must match `feature/issue-<N>-…`, (2) `.claude/plans/issue-<N>-spec.md` must exist, (3) the transcript must contain a `/goal` user command (the hook stays silent if you opened `claude` on the branch without engaging `/goal`) | Verify (1) with `git branch --show-current`, (2) with `ls .claude/plans/`, (3) with `grep -E '\"content\".*\"/goal' \"$transcript_path\"`. For a manual snapshot independent of the hook, run the extractor directly. |
 | Execution log generated but huge (>2 MB) | Long `/goal` session with many tools | Acceptable for first runs; if it bothers reviewers, the script truncates per-block (script edits welcome) |
 | Subscription rate-limit hit during Session 2 | 5h window ran out | Wait + `claude --resume` — the goal is restored |
 
