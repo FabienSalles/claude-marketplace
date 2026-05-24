@@ -174,7 +174,7 @@ The validated spec becomes the **implementation contract**. Any deviation must c
 3. **If correction needed**: update the spec, then apply the correction.
 
 **Testing strategy** — TDD by default, permissive on the typology:
-- **Always TDD (test-first).** Write the test BEFORE the production code, in the same iteration. Activate the `php-tdd-workflow` or `vitest-tdd-workflow` skill depending on the project.
+- **Always TDD (test-first).** Write the test BEFORE the production code, in the same iteration. Activate the `phpunit:php-tdd-workflow` or `vitest:vitest-tdd-workflow` skill depending on the project.
 - Adapt the **test typology** to the project:
   - Project with established tests -> follow existing patterns and test types (unit, integration, functional)
   - New project -> ask "What level of tests do you want for this feature?"

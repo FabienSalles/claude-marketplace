@@ -1,14 +1,14 @@
 ---
 name: tdd-workflow-principles
-description: "ACTIVATE when the user wants to build, implement, or develop any new feature, endpoint, or user story using TDD, test-first, or red-green-refactor methodology. ACTIVATE for '/feature-tdd-dev', 'TDD', 'test first', 'red-green-refactor', 'iterations', 'horizontal slicing' alongside building something new. Covers cross-language TDD workflow: cross-layer iterations, happy-path first, working app at each GREEN, bug-fix-first-test, mocks-hide-bugs pitfall, interface design (deep modules), tests-survive-refactor heuristic, common rationalizations. Language-specific test runner commands and module wiring (PHPUnit, vitest, NestJS modules, Symfony container) live in php-tdd-workflow / vitest-tdd-workflow."
+description: "ACTIVATE when the user wants to build, implement, or develop any new feature, endpoint, or user story using TDD, test-first, or red-green-refactor methodology. ACTIVATE for '/feature-tdd-dev', 'TDD', 'test first', 'red-green-refactor', 'iterations', 'horizontal slicing' alongside building something new. Covers cross-language TDD workflow: cross-layer iterations, happy-path first, working app at each GREEN, bug-fix-first-test, mocks-hide-bugs pitfall, interface design (deep modules), tests-survive-refactor heuristic, common rationalizations. Language-specific test runner commands and module wiring (PHPUnit, vitest, NestJS modules, Symfony container) live in phpunit:php-tdd-workflow / vitest:vitest-tdd-workflow."
 version: "1.1"
 ---
 
 # TDD Workflow — Cross-Language Principles
 
 > The **process** below is language-agnostic. Test-runner commands and framework specifics (PHPUnit with Symfony container, vitest with NestJS modules, etc.) live in:
-> - `php-tdd-workflow`
-> - `vitest-tdd-workflow`
+> - `phpunit:php-tdd-workflow`
+> - `vitest:vitest-tdd-workflow`
 
 > For test-writing conventions (DAMP, AAA, spy vs mock, factories), see `testing-principles`.
 

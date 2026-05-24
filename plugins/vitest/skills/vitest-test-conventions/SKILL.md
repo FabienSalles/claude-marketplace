@@ -1,6 +1,6 @@
 ---
 name: vitest-test-conventions
-description: "ACTIVATE when writing Vitest tests, creating test files, using vi.fn()/vi.mock()/vi.spyOn(), or test factories. ACTIVATE for 'Vitest', 'it.each', 'NestJS testing module', 'supertest', 'vi.fn', 'vi.mock', 'spyOn'. Provides Vitest/NestJS-specific testing patterns; cross-language testing principles (DAMP, AAA, spy>mock, what NOT to test) live in craft:testing-principles. DO NOT use for: TDD workflow/iterations (see vitest-tdd-workflow), PHP/PHPUnit tests (see php-test-conventions)."
+description: "ACTIVATE when writing Vitest tests, creating test files, using vi.fn()/vi.mock()/vi.spyOn(), or test factories. ACTIVATE for 'Vitest', 'it.each', 'NestJS testing module', 'supertest', 'vi.fn', 'vi.mock', 'spyOn'. Provides Vitest/NestJS-specific testing patterns; cross-language testing principles (DAMP, AAA, spy>mock, what NOT to test) live in craft:testing-principles. DO NOT use for: TDD workflow/iterations (see vitest:vitest-tdd-workflow), PHP/PHPUnit tests (see phpunit:php-test-conventions)."
 version: "2.0"
 ---
 

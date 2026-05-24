@@ -1,6 +1,6 @@
 ---
 name: vitest-tdd-workflow
-description: "ACTIVATE when building new features, endpoints, or user stories using TDD with Vitest in a TypeScript/NestJS context. ACTIVATE for '/feature-tdd-dev', 'TDD', 'red-green-refactor', 'iterations' in TS context. Provides Vitest/NestJS-specific TDD examples and commands; cross-language TDD workflow (cross-layer iterations, RED-GREEN-REFACTOR, working app, bug-fix-first-test, mocks-hiding-bugs) lives in craft:tdd-workflow-principles. DO NOT use for: test writing conventions (see vitest-test-conventions), PHP TDD (see php-tdd-workflow)."
+description: "ACTIVATE when building new features, endpoints, or user stories using TDD with Vitest in a TypeScript/NestJS context. ACTIVATE for '/feature-tdd-dev', 'TDD', 'red-green-refactor', 'iterations' in TS context. Provides Vitest/NestJS-specific TDD examples and commands; cross-language TDD workflow (cross-layer iterations, RED-GREEN-REFACTOR, working app, bug-fix-first-test, mocks-hiding-bugs) lives in craft:tdd-workflow-principles. DO NOT use for: test writing conventions (see vitest:vitest-test-conventions), PHP TDD (see phpunit:php-tdd-workflow)."
 version: "2.0"
 ---
 

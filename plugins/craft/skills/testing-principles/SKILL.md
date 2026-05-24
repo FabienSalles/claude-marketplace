@@ -1,14 +1,14 @@
 ---
 name: testing-principles
-description: "ACTIVATE when writing or modifying tests, creating test classes/files, using test doubles, factories, or data providers. ACTIVATE for 'DAMP', 'spy vs mock', 'what NOT to test', 'AAA', 'test naming', 'factory test', 'parameterized test'. Covers cross-language testing principles: DAMP over DRY, AAA/GWT pattern, spy over mock, what NOT to test, factory functions, parameterized tests, structured assertions. Language-specific tooling (Prophecy, vi.fn/vi.mock, PHPUnit annotations, it.each syntax) lives in php-test-conventions / vitest-test-conventions."
+description: "ACTIVATE when writing or modifying tests, creating test classes/files, using test doubles, factories, or data providers. ACTIVATE for 'DAMP', 'spy vs mock', 'what NOT to test', 'AAA', 'test naming', 'factory test', 'parameterized test'. Covers cross-language testing principles: DAMP over DRY, AAA/GWT pattern, spy over mock, what NOT to test, factory functions, parameterized tests, structured assertions. Language-specific tooling (Prophecy, vi.fn/vi.mock, PHPUnit annotations, it.each syntax) lives in phpunit:php-test-conventions / vitest:vitest-test-conventions."
 version: "1.0"
 ---
 
 # Testing — Cross-Language Principles
 
 > The **rules** below are language-agnostic. Tool-specific examples (Prophecy, `vi.fn()`, `vi.spyOn()`, PHPUnit data providers, `it.each()`, NestJS `Test.createTestingModule`) live in:
-> - `php-test-conventions`
-> - `vitest-test-conventions`
+> - `phpunit:php-test-conventions`
+> - `vitest:vitest-test-conventions`
 
 ## 1. Test Types
 

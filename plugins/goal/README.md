@@ -82,7 +82,7 @@ Splitting clarification from execution mirrors `/spec-first-dev`'s philosophy: *
 | `superpowers` | `verification-before-completion`, `systematic-debugging` activate during Session 2 | `/goal` evaluator still enforces criteria; Claude's native discipline applies |
 | `craft` | `tdd-workflow-principles` (Karpathy trace test, common rationalizations, etc.) | Trace test is also referenced in `templates/done-criteria.template` |
 | `common` | `/spec-first-dev` for richer upstream planning, plus shared hooks (CI reminder, git-add-empty, audit-trail) | `/draft-issue` accepts any markdown spec — BMAD or hand-written works |
-| Language-specific (`vitest`, `php`, …) | `vitest-tdd-workflow` / `php-tdd-workflow` activate during Session 2 | `/goal` still validates against the spec's command-line criteria; the loop just lacks TDD scaffolding |
+| Language-specific (`vitest`, `php`, …) | `vitest:vitest-tdd-workflow` / `phpunit:php-tdd-workflow` activate during Session 2 | `/goal` still validates against the spec's command-line criteria; the loop just lacks TDD scaffolding |
 
 ---
 
@@ -146,7 +146,7 @@ Paste the `/goal …` text Session 1 gave you. Claude shows `◎ /goal active`.
 
 Automatic during this session:
 - Claude reads `.claude/plans/issue-42-spec.md`.
-- Implements iteratively — if a TDD skill is installed (`vitest-tdd-workflow` / `php-tdd-workflow`), red-green-refactor with cross-layer iterations.
+- Implements iteratively — if a TDD skill is installed (`vitest:vitest-tdd-workflow` / `phpunit:php-tdd-workflow`), red-green-refactor with cross-layer iterations.
 - Runs tests + linter after each meaningful step.
 - If `superpowers:verification-before-completion` is installed, it blocks any "done" claim without fresh command output.
 - If `superpowers:systematic-debugging` is installed, it engages on test failures.
