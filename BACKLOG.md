@@ -46,6 +46,36 @@ Items identified during the marketplace audit and not yet executed. Loose priori
 
 ---
 
+## 🪺 NestJS plugin extensions
+
+The `nest` plugin currently ships only 2 skills (`nest-conventions`, `nest-ddd-conventions`), which is sparse compared to `astro` (11) or `php` (8). During the marketplace audit, three non-obvious community patterns were identified as worth packaging — but **deliberately paused** until the next time you actively work on a NestJS project, to avoid speculative skill-writing.
+
+Each of the three carries content that the official NestJS docs don't cover well (real-world gotchas, opinionated patterns, decision trees).
+
+### `nest:nest-config-and-validation`
+- **Why considered:** three gotchas users hit repeatedly — (1) `ValidationPipe.enableImplicitConversion: true` silently coerces `"1"` to `1` and masks upstream contract bugs, (2) `configService.getOrThrow()` + `class-validator` schema on env vars makes the app fail-fast on missing config instead of crashing 4 layers deep at first use, (3) returning ORM entities directly from controllers leaks `password_hash` / audit fields — Response DTOs must be enforced.
+- **Effort:** ~1 h
+- **Trigger:** next time you start or audit a NestJS project (especially a fresh one where validation/config patterns get locked in early).
+- **Path:** `plugins/nest/skills/nest-config-and-validation/SKILL.md`
+
+### `nest:nest-testing`
+- **Why considered:** four non-obvious NestJS testing patterns — (1) `Test.createTestingModule().overrideProvider()` semantics differ from generic Vitest mocking, (2) test setup must reuse the app's global pipes/filters (else false positives in CI), (3) mocking Guards vs Strategies in e2e tests requires different approaches, (4) repository testing decision tree (mock vs sqlite-in-memory vs testcontainers).
+- **Effort:** ~1.5 h
+- **Trigger:** next NestJS test suite you write or refactor (especially e2e with auth guards). Pairs with `vitest:vitest-tdd-workflow` for the cross-language baseline.
+- **Path:** `plugins/nest/skills/nest-testing/SKILL.md`
+
+### `nest:nest-lifecycle-and-modules`
+- **Why considered:** three module/lifecycle patterns that bite production teams — (1) `OnModuleInit` vs `OnApplicationBootstrap` execution order is not obvious and causes cascade pitfalls when one provider waits on another, (2) `forwardRef()` for circular deps: when to use, when to refactor instead (a cycle almost always signals a design bug — refactor is usually correct), (3) `@Global() SharedModule` pattern for cross-cutting providers vs the anti-pattern of making everything global.
+- **Effort:** ~1 h
+- **Trigger:** next time you organize / reorganize a NestJS application's modules, or hit a circular dependency error.
+- **Path:** `plugins/nest/skills/nest-lifecycle-and-modules/SKILL.md`
+
+### Skipped: `nest:nest-authorization-layers`
+- **Why considered then dropped:** the "two-layer auth" pattern (Guards for coarse, Services for fine-grained) is genuinely useful, but the broader NestJS community is divided — many teams prefer CASL or similar libraries. Writing a strongly opinionated skill here risks contradicting whatever auth approach the project picks.
+- **If revisited:** only if you settle on a specific auth pattern and want it strictly enforced across NestJS projects.
+
+---
+
 ## 🐘 Symfony plugin polish
 
 ### Make `symfony:php-prg-pattern` framework-agnostic
