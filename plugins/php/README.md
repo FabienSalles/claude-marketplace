@@ -50,8 +50,8 @@ In v2.0 the plugin was tightened to **PHP language only** to make it reusable ac
 |---|---|
 | `php-tdd-workflow` | [`phpunit`](../phpunit/) |
 | `php-test-conventions` | [`phpunit`](../phpunit/) |
-| `php-symfony-form` | [`symfony`](../symfony/) |
-| `php-twig-conventions` | [`symfony`](../symfony/) |
-| `php-prg-pattern` | [`symfony`](../symfony/) |
+| `symfony-form` | [`symfony`](../symfony/) |
+| `twig-conventions` | [`symfony`](../symfony/) |
+| `prg-pattern` | [`symfony`](../symfony/) |
 
 If you used the monolithic `php` plugin before, install [`phpunit`](../phpunit/) and [`symfony`](../symfony/) alongside it to keep the same coverage.

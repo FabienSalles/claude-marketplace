@@ -79,6 +79,16 @@
       "keywords": ["frontend", "react", "clean-architecture", "hexagonal"]
     },
     {
+      "name": "jquery",
+      "source": "./plugins/jquery",
+      "description": "jQuery code conventions — module structure, js-* selectors, per-block scoping, symmetric toggleClass. Framework-agnostic.",
+      "version": "1.0.0",
+      "author": { "name": "FabienSalles" },
+      "category": "development",
+      "license": "MIT",
+      "keywords": ["jquery", "javascript", "frontend", "conventions"]
+    },
+    {
       "name": "vitest",
       "source": "./plugins/vitest",
       "description": "Vitest TDD workflow, test conventions and patterns",

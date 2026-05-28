@@ -78,7 +78,7 @@ Each of the three carries content that the official NestJS docs don't cover well
 
 ## 🐘 Symfony plugin polish
 
-### Make `symfony:php-prg-pattern` framework-agnostic
+### Make `symfony:prg-pattern` framework-agnostic
 - **Why considered:** the PRG pattern itself (POST→redirect, POST-error→re-render, flash messages) is universal across PHP web frameworks (Laravel, Slim, vanilla PHP). The skill is currently in `symfony` because the code examples use Symfony classes (`RedirectResponse`, `UrlGeneratorInterface`, `#[Route]`, `getFlashBag()`). A Laravel user installing `php` alone would miss this pattern.
 - **Currently NOT planned** — option (a) was chosen during the v2 refactor: keep the skill in `symfony` to avoid extra work, since the diagram and rules are already language-readable and a Laravel user can mentally translate the few Symfony-specific class names.
 - **Effort if revisited:** ~30 min (replace examples with pseudo-code or PSR-7/PSR-15 interfaces, add a 5-line Laravel snippet alongside the Symfony one, move the skill back to `php`).

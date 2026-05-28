@@ -1,5 +1,5 @@
 ---
-name: php-twig-conventions
+name: twig-conventions
 description: "ACTIVATE when writing or modifying Twig templates, using Twig components (twig:*), handling translations in Twig, debugging translation issues, or deciding whether to create a Twig component. ACTIVATE whenever 'trans_default_domain', 'twig component', 'translation not working', 'create twig component', or 'should I create a component' appears. Covers: trans_default_domain isolation in Twig components (1 translation = inline domain, 2+ translations = hoist trans_default_domain in the component scope), ClockInterface for dates in templates, when to create a Twig component vs use direct HTML. DO NOT use for: Twig syntax basics, Symfony controller rendering, generic CSS questions."
 version: "1.3"
 ---
