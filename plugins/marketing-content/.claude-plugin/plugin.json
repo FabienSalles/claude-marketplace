@@ -1,0 +1,8 @@
+{
+  "name": "marketing-content",
+  "version": "1.0.0",
+  "description": "Content & copywriting playbooks — LinkedIn posts, blog articles, direct-response copy, editing pass, editorial calendar, SEO briefs, technical SEO audit, schema markup. Framework-agnostic.",
+  "author": { "name": "FabienSalles" },
+  "license": "MIT",
+  "keywords": ["marketing", "content", "copywriting", "seo", "blog", "linkedin"]
+}

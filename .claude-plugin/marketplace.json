@@ -210,6 +210,46 @@
       "category": "productivity",
       "license": "MIT",
       "keywords": ["planning", "interview", "context", "mattpocock"]
+    },
+    {
+      "name": "marketing-content",
+      "source": "./plugins/marketing-content",
+      "description": "Content & copywriting playbooks — LinkedIn posts, SEO blog articles, direct-response copy, editing pass, editorial strategy, content calendar, content repurposing, SEO briefs, technical SEO audit, schema markup.",
+      "version": "1.0.0",
+      "author": { "name": "FabienSalles" },
+      "category": "marketing",
+      "license": "MIT",
+      "keywords": ["marketing", "content", "copywriting", "seo", "blog", "linkedin"]
+    },
+    {
+      "name": "marketing-strategy",
+      "source": "./plugins/marketing-strategy",
+      "description": "Strategic marketing — ICP definition, persuasion psychology (70+ mental models), 139 marketing ideas, competitor analysis, positioning/GTM (April Dunford), shared product-marketing context.",
+      "version": "1.0.0",
+      "author": { "name": "FabienSalles" },
+      "category": "marketing",
+      "license": "MIT",
+      "keywords": ["marketing", "strategy", "icp", "positioning", "gtm", "psychology"]
+    },
+    {
+      "name": "marketing-distribution",
+      "source": "./plugins/marketing-distribution",
+      "description": "Distribution channels — multi-platform social posts (Reddit/Twitter/X/LinkedIn/IG/FB/TikTok), Twitter threads and long Reddit posts, email subject lines, newsletter growth.",
+      "version": "1.0.0",
+      "author": { "name": "FabienSalles" },
+      "category": "marketing",
+      "license": "MIT",
+      "keywords": ["marketing", "distribution", "social-media", "email", "newsletter", "threads"]
+    },
+    {
+      "name": "marketing-analytics",
+      "source": "./plugins/marketing-analytics",
+      "description": "Marketing analytics — tracking setup (GA4/GTM/UTM/tracking plan), Google Analytics Data API reporting, Google Search Console reporting.",
+      "version": "1.0.0",
+      "author": { "name": "FabienSalles" },
+      "category": "marketing",
+      "license": "MIT",
+      "keywords": ["marketing", "analytics", "ga4", "gtm", "search-console", "tracking"]
     }
   ]
 }

@@ -1,0 +1,9 @@
+{
+  "name": "search-console",
+  "description": "",
+  "source": "OpenClaudia/openclaudia-skills",
+  "sourceType": "github",
+  "subpath": "search-console",
+  "installedAt": "2026-02-15T01:01:00.073Z",
+  "enabled": true
+}

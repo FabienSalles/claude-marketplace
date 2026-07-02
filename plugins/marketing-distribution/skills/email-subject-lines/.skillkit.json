@@ -1,0 +1,9 @@
+{
+  "name": "email-subject-lines",
+  "description": "",
+  "source": "OpenClaudia/openclaudia-skills",
+  "sourceType": "github",
+  "subpath": "email-subject-lines",
+  "installedAt": "2026-02-15T01:01:00.066Z",
+  "enabled": true
+}

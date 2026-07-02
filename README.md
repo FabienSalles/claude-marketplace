@@ -44,6 +44,10 @@ Each row links to the plugin's own README with the full skill catalog and direct
 | [**security-runtime**](plugins/security-runtime/README.md) | 2 hooks | Runtime security: `claudemd-scanner` (SessionStart) flags injection patterns in CLAUDE.md files, `prompt-injection-detector` (PreToolUse:Bash) blocks Bash commands containing AI-instruction overrides |
 | [**superpowers**](plugins/superpowers/README.md) | 2 | Cherry-picked subset of [obra/superpowers](https://github.com/obra/superpowers): `verification-before-completion`, `systematic-debugging` |
 | [**pocock**](plugins/pocock/README.md) | 3 | Cherry-picked subset of [mattpocock/skills](https://github.com/mattpocock/skills): `grill-me`, `grill-with-docs`, `zoom-out` |
+| [**marketing-content**](plugins/marketing-content/README.md) | 10 | Content & copywriting — LinkedIn, SEO blog, direct-response copy, editing, editorial strategy, calendar, repurposing, SEO briefs, site audit, schema markup |
+| [**marketing-strategy**](plugins/marketing-strategy/README.md) | 6 | Strategic marketing — ICP, 70+ mental models, 139 growth ideas, competitor analysis, positioning/GTM (April Dunford), shared product-marketing context |
+| [**marketing-distribution**](plugins/marketing-distribution/README.md) | 4 | Distribution channels — multi-platform social posts, Twitter/X threads + Reddit posts, email subject lines, newsletter growth |
+| [**marketing-analytics**](plugins/marketing-analytics/README.md) | 3 | Analytics — GA4/GTM/UTM tracking setup, Google Analytics Data API reporting, Google Search Console reporting |
 | **security-audit** *(external)* | — | [netresearch/security-audit-skill](https://github.com/netresearch/security-audit-skill) — OWASP, CWE, CVSS, 61 references |
 
 ## Installation

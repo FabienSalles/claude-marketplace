@@ -1,0 +1,9 @@
+{
+  "name": "icp-builder",
+  "description": "",
+  "source": "OpenClaudia/openclaudia-skills",
+  "sourceType": "github",
+  "subpath": "icp-builder",
+  "installedAt": "2026-02-15T01:01:00.068Z",
+  "enabled": true
+}
