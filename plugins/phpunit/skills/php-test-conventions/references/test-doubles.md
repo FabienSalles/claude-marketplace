@@ -1,5 +1,24 @@
 # Test Doubles Strategy
 
+## Choosing a Double (in order)
+
+Before any double, ask whether a **real implementation** trivially substitutes the collaborator. Order of preference:
+
+1. **Real / null implementation** — when one exists and reads cleaner: a null object (`NullLogger`), an in-memory repository, a fixed clock. No double at all.
+2. **Manual stub** — when the substitute is simple and only lightly duplicated.
+3. **Prophecy** — when the stub gets complex or has little reuse value, or you need to spy.
+4. **Guzzle MockHandler** — for HTTP clients.
+
+This is a preference, not a hard rule: a mocking tool is fine when it's the **fastest and cleanest** option for the case. The point is only — don't mock a collaborator you neither verify nor script when a real / null implementation is right there.
+
+```php
+// ❌ Mocking an unverified logger
+$logger = $this->prophesize(LoggerInterface::class)->reveal();
+
+// ✅ Real null object — PSR ships it
+$logger = new NullLogger();
+```
+
 ## 1. Manual Stubs (Preferred)
 
 Use manual stubs when the class is simple:

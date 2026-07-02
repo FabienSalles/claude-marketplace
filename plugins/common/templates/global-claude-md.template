@@ -19,20 +19,39 @@ narrows them.
 
 - Prefer the simplest solution that works. Three similar lines beats
   a premature abstraction.
-- Do not introduce new components, abstractions, helpers, CSS classes,
-  version bumps, or backward-compat shims unless explicitly requested.
-- When given multiple viable options, recommend ONE with a one-line
-  trade-off. No multi-option matrices unless asked.
+- Do not introduce new components, abstractions, helpers, version
+  bumps, or backward-compat shims unless explicitly requested.
 - Do not modify version strings, lock files, or unrelated configs
   beyond what the task requires.
-- A bug fix doesn't need surrounding cleanup. A one-shot doesn't need
-  a helper.
+- When given multiple viable options, recommend ONE with a one-line
+  trade-off. No multi-option matrices unless asked.
 - **Trace test:** every changed line in your diff must trace back to
   the user's explicit request. If you can't justify a line, remove it.
 - **Match existing style:** follow the local convention even when you
-  would write it differently. Style consistency over personal taste.
+  would write it differently.
 - **Dead code policy:** if you spot unrelated dead code, *mention it*
   in your reply — do not delete it. Cleanup is a separate task.
+
+## Coherence After Refactor / Rename / Replace / Delete
+
+When you modify existing code, keep the codebase coherent in the
+same pass. Grep twice before claiming done:
+
+- **Stale references** : every hit on the OLD name not updated is a
+  broken caller — fix it.
+- **Orphan definitions** : anything no longer referenced is dead
+  code — delete it.
+
+Ambiguous ? Ask before deleting.
+
+## File hygiene
+
+- **Respect `.editorconfig`** when present — read it once per session
+  and apply its rules. It overrides the defaults below.
+- **Defaults otherwise:** exactly one trailing `\n` at EOF (never
+  zero, never two), LF line endings, UTF-8 without BOM, trim trailing
+  whitespace (except in `*.md` where double-space is a hard line
+  break).
 
 ## Git & Worktree Discipline
 
@@ -44,59 +63,40 @@ narrows them.
 - Prefer new commits over `--amend` unless explicitly asked.
 - Standard `git push` (without `--force` / `--force-with-lease`) is
   the **normal workflow** — including direct pushes to `main` on
-  personal/solo repos. No special approval is required beyond the
-  user's intent to commit and push.
+  personal/solo repos.
 
 ### Commit authorship
 
 - **Never add AI / agent / model trailers to commit messages.**
-  No `Co-Authored-By: Claude <noreply@anthropic.com>`, no
-  `Generated with Claude Code`, no equivalent for any other AI tool.
-  Commits authored on the user's behalf must be attributed solely to
-  the user — the AI is a tool, not a co-author.
-- Applies to any tool default that would inject such a trailer; strip
-  it explicitly when crafting the commit body.
+  No `Co-Authored-By: Claude`, no `Generated with Claude Code`, no
+  equivalent for any other AI tool. Commits authored on the user's
+  behalf must be attributed solely to the user.
+- Strip such trailers explicitly if a tool default injects them.
 
-### Force-push policy (only `--force` / `--force-with-lease` flags)
+### Force-push policy
 
-This section concerns **only force-push variants**, NOT standard
-`git push`.
-
-- **`git push --force` is strictly forbidden.** Never use it. Always
-  prefer `--force-with-lease` — it refuses to push if the remote
-  has changed since your last fetch, protecting against data loss.
-
-- **`git push --force-with-lease` is allowed ONLY** in two scenarios,
-  and only when the user explicitly requests the action:
-  1. Reverting / dropping a local commit the user asked to undo.
-  2. Rebasing local history (interactive rebase, squash, reword)
-     that the user explicitly requested.
-
-- **On `main` / `master`** — `--force-with-lease` is allowed only
-  during explicit iterative back-and-forth ("we're tâtonning") where
-  the user asks to revert a commit Claude already made locally.
-
-- **Default rule** : new need → new commit. Never rewrite existing
-  history just because something needs to change. History is
-  append-only by default.
+- **`git push --force` is forbidden.** Always use `--force-with-lease`.
+- **`--force-with-lease` is allowed only** when the user explicitly
+  requests it for: (1) reverting a local commit, (2) rebasing local
+  history (squash, reword, interactive rebase).
+- **Default rule** : new need → new commit. History is append-only.
 
 ## Secrets awareness
 
-When you read or output content that may contain secrets — `.env` files,
-HTTP headers, JSON with `token` / `api_key` / `secret` fields, JWT
-strings, cloud credentials, SSH keys — explicitly flag them and
+When you read or output content that may contain secrets — `.env`
+files, HTTP headers, JSON with `token` / `api_key` / `secret` fields,
+JWT strings, cloud credentials, SSH keys — explicitly flag them and
 recommend rotation if they appear to have been exposed (committed to
-git, pasted in chat, sent over an unencrypted channel, present in a
-public log).
+git, pasted in chat, present in a public log).
 
-Do not echo full secret values back. Truncate to the first 4 and last 4
-characters when referring to one (e.g. `sk_l...m9aZ`).
+Do not echo full secret values back. Truncate to the first 4 and last
+4 characters when referring to one (e.g. `sk_l...m9aZ`).
 
 ## Platform
 
-This machine is macOS. For shell/script work specifics
-(`/bin/bash` 3.2 vs Homebrew bash 5+, BSD vs GNU commands), the
-`mac-platform` skill loads on demand for shell/setup tasks.
+This machine is macOS. For shell/script work specifics (`/bin/bash`
+3.2 vs Homebrew bash 5+, BSD vs GNU commands), the `mac-platform`
+skill loads on demand.
 
 ## When in doubt
 
@@ -105,4 +105,5 @@ output to ground the question.
 
 If a simpler approach exists than the one the user asked for, **push
 back** with a one-line trade-off before implementing. Don't silently
-implement the requested design when a cleaner one is one sentence away.
+implement the requested design when a cleaner one is one sentence
+away.

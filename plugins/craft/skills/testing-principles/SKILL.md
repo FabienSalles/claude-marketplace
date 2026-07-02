@@ -90,6 +90,12 @@ Compare **complete objects** with the language's structured assertion rather tha
 
 When debugging a flaky/broken behavior, **prefer real dependencies** over mocks. Mocks return what you tell them — they can pass while production crashes.
 
+## 11. Prefer a Real Implementation Over a Mocking Tool
+
+When a real collaborator trivially substitutes — a null object, an in-memory implementation, a fixed clock — and reads cleaner, use it instead of a double. Reach for a double only when the test needs it: to verify an interaction or to script a return / throw. Otherwise pick whatever is fastest and cleanest — a manual stub, or the mocking tool.
+
+**Criterion:** don't mock a collaborator you neither assert on nor script when a real / null implementation is available.
+
 ## Quick Reference
 
 | Rule | Principle |
@@ -104,3 +110,4 @@ When debugging a flaky/broken behavior, **prefer real dependencies** over mocks.
 | Factories | Helper methods, extract when duplicated |
 | Structured assert | Compare complete object, not field by field |
 | Real over mock | When debugging, use real dependencies — mocks hide bugs |
+| Real over double | Use a null-object / in-memory / fake when you don't verify or script the collaborator |

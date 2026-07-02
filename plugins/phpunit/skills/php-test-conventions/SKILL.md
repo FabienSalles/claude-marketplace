@@ -81,9 +81,9 @@ $service->call($arg)->shouldHaveBeenCalled();
 
 ## PHP-specific: Test Doubles
 
-Use manual stubs for simple cases, **Prophecy** for complex dependencies, **Guzzle MockHandler** for HTTP clients.
+Prefer an existing real / null implementation when it reads cleaner (an unverified logger → `new NullLogger()`, not a mocked interface). Otherwise: **manual stubs** for simple cases, **Prophecy** for complex dependencies, **Guzzle MockHandler** for HTTP clients.
 
-> For detailed patterns and best practices, see [references/test-doubles.md](references/test-doubles.md).
+> For the full hierarchy and examples, see [references/test-doubles.md](references/test-doubles.md).
 
 ## PHP-specific: Data Providers (PHPUnit syntax)
 

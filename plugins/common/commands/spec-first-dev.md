@@ -156,30 +156,40 @@ The validated spec becomes the **implementation contract**. Any deviation must c
 
 ## Phase 4: Implement
 
-**Goal**: Build the feature following the spec, with regular checkpoints.
+**Goal**: Build the feature following the spec, **test-first**.
+
+**TDD is the implementation mode.** No production code is written in Phase 4 before a
+failing test demands it — including "structural" files (enum case, empty interface, DTO,
+config wiring). Each behavior goes through RED → GREEN → REFACTOR, and you run the test at
+each step so the user SEES it go red, then green.
 
 **Actions**:
 
-1. **Propose the breakdown** into iterations based on the spec. The count depends on the scope:
+1. **Propose the breakdown** into iterations based on the spec:
    - Small feature: 1-2 iterations
    - Medium feature: 3-4 iterations
    - Large feature: 5+ iterations (consider splitting into multiple PRs)
 
-2. **For each iteration**:
-   a. Announce what will be built.
-   b. Implement according to the specification.
-   c. Run the CI (`make php/qa`, `make php/tests`, or the project equivalent).
-   d. **Checkpoint**: "Iteration N done. Result: [summary]. CI: [status]. Want to review before continuing?"
+2. **For each iteration**, drive every behavior through the micro-loop:
+   a. Announce the behavior.
+   b. **RED** — write the test, run it, confirm it fails for the expected reason.
+   c. **GREEN** — write the minimal code to pass, run it, confirm green.
+   d. **REFACTOR** — clean up (names, duplication, conventions) with the test still green.
 
-3. **If correction needed**: update the spec, then apply the correction.
+   Batching a few related tests in one RED/GREEN cycle is fine; skipping RED is not.
 
-**Testing strategy** — TDD by default, permissive on the typology:
-- **Always TDD (test-first).** Write the test BEFORE the production code, in the same iteration. Activate the `phpunit:php-tdd-workflow` or `vitest:vitest-tdd-workflow` skill depending on the project.
-- Adapt the **test typology** to the project:
-  - Project with established tests -> follow existing patterns and test types (unit, integration, functional)
-  - New project -> ask "What level of tests do you want for this feature?"
-- Do not force a particular test type. If the project only tests FormTypes in integration, do not invent unrequested unit or functional tests.
-- **Avoid implementation tests** (e.g., counting the number of options in a form). Test behavior: valid submission, invalid submission, business rules.
+3. **Checkpoint (end of iteration)** — stop and report: "Iteration N done. Result:
+   [summary]. Tests: [RED→GREEN]. CI: [status]. Want to review before continuing?"
+   This is the human-in-the-loop control point: it lets the user correct course between
+   iterations and catch a deviation early instead of at the end.
+
+4. **If correction needed**: update the spec first, then apply the correction test-first.
+
+**Test typology** — adapt to the project; the test-first rule is fixed, the *kind* of test adapts:
+- Established tests -> follow existing patterns and types (unit, integration, functional).
+- New project -> ask "What level of tests do you want for this feature?"
+- Do not force a particular test type.
+- **Avoid implementation tests** (e.g., counting form options). Test behavior: valid submission, invalid submission, business rules.
 
 ---
 
@@ -223,6 +233,7 @@ in this session, ignore it.
 
 - **Never write code before Phase 2.** Phase 1 is purely conversational.
 - **Never move to Phase 2 without Phase 1 validation.** The user must confirm the understanding.
+- **Never write production code in Phase 4 before a failing test.** TDD (RED → GREEN → REFACTOR) is the only implementation mode: write the test, run it, see it fail, *then* implement. Run the tests on each cycle so RED→GREEN is visible. No "tests after", no "just scaffolding".
 - **Only one architectural approach.** Not three alternatives — the architecture is dictated by the project.
 - **The spec is the contract.** Any deviation = update the spec first.
 - **Checkpoints are mandatory.** The user can always correct between iterations.

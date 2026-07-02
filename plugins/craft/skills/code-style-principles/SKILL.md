@@ -62,6 +62,36 @@ Constructors / function signatures: **mandatory parameters before optional / nul
 
 Within each group, the language's natural ordering applies (e.g. promoted properties in PHP, default values in TS).
 
+## 7. Comments — Justify or Delete
+
+Write a comment **only** when the code cannot speak for itself. A comment earns its place if it surfaces something the code does **not**:
+
+- **Hidden complexity** — a non-obvious algorithm, a workaround, a `!important` / specificity hack, an ordering constraint.
+- **Business / domain rule** — the *why* behind a magic value or branch (e.g. "French IBAN length = 27").
+- **A decision that would otherwise look wrong** — why a line is disabled, why a framework default is overridden.
+
+Delete any comment that **restates the code** without adding value:
+
+```php
+// AVOID — reproduces the code
+// Uppercase the IBAN and strip whitespace
+return strtoupper(preg_replace('/\s+/', '', $iban));
+
+// AVOID — restates the name
+/** Extra HTML attributes applied to the wrapper. */
+public array $wrapperAttributes = [];
+```
+
+```php
+// CORRECT — surfaces a non-obvious rule
+// !important: beat Bootstrap's :valid border (empty boxes are HTML5-valid)
+border-color: $danger !important;
+```
+
+**Type annotations are not prose comments**: keep `@var` / `@return` / `@param` when they add type information a tool or reader needs — they are not subject to this rule.
+
+**Heuristic**: if deleting the comment loses no information a competent reader couldn't get from the code in seconds, delete it.
+
 ## Quick Reference
 
 | Rule | Principle |
@@ -72,3 +102,4 @@ Within each group, the language's natural ordering applies (e.g. promoted proper
 | Flatten null checks | Use null-propagation operator instead of nested `if` |
 | Explicit checks | No implicit truthy/falsy — compare to empty / null explicitly |
 | Parameter ordering | Mandatory before optional |
+| Comments | Only for hidden complexity / business rule; delete anything that restates the code |

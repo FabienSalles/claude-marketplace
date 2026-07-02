@@ -26,13 +26,17 @@ Before editing this PHP file, did you consult the relevant skills?
 |-------|-------|---------|
 | **User** | `~/.claude/skills/code-conventions/` | PER Coding Style, PSR-12 |
 | **User** | `~/.claude/skills/sql-conventions/` | SQL conventions (queries, heredocs) |
+| **User** | `php:php-8-2` | mandatory `readonly class` (not per-property) |
+| **User** | `php:php-8-3` | mandatory typed class constants + default visibility |
 | **Organization** | `projects/org/.claude/skills/code-conventions/` | Organization conventions |
 | **Project** | `.claude/skills/code-conventions/` | Project conventions |
 
 Critical points:
 - **PER Coding Style**: heredocs indented +1 level, spacing around control structures
 - **SQL**: start from the known entity, heredoc Format 2 (separate parameter)
-- **PSR-12**: PHP formatting standards"""
+- **PSR-12**: PHP formatting standards
+- **PHP 8.2**: `final readonly class` when all props are readonly (not per-property)
+- **PHP 8.3**: typed class constants; default visibility is `private` unless externally consumed"""
 
 
 def get_test_reminder():
