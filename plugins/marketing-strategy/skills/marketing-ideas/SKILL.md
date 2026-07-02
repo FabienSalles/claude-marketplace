@@ -406,7 +406,7 @@ A comprehensive collection of marketing tactics organized by category. Use this 
 
 **This quarter:**
 - Build a free tool (29)
-- Launch referral program (see referral-program skill)
+- Launch an affiliate or referral program (81)
 - Start a podcast or webinar series (12, 89)
 - Run first paid campaign (42-44)
 - Publish original research (3, 97)

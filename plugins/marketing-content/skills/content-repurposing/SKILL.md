@@ -64,29 +64,11 @@ You are a content repurposing expert. Take one piece of content and transform it
 
 **Process:**
 1. Extract 7-10 actionable takeaways
-2. Write a hook slide (title + subtitle)
+2. Write a hook slide (title + subtitle: "X lessons from..." or "How to...")
 3. One takeaway per slide with minimal text
 4. Add a CTA final slide
 
-**Format:**
-```
-SLIDE 1 (Cover): {Compelling title}
-{Subtitle: "X lessons from..." or "How to..."}
-
-SLIDE 2: {Takeaway 1 - headline}
-{1-2 supporting sentences}
-
-SLIDE 3-9: {Repeat pattern}
-
-SLIDE 10 (CTA): {Follow / Save / Visit link}
-{Author name and handle}
-```
-
-**Rules:**
-- Large, readable text (imagine reading on a phone)
-- Max 3 lines of text per slide
-- Use contrasting colors for key words
-- 8-12 slides optimal
+For the slide-by-slide format and carousel design rules, see the **`linkedin-content`** skill. 8-12 slides is the sweet spot for a blog-derived carousel.
 
 ### Recipe 3: Blog Post → Newsletter Section
 

@@ -40,49 +40,18 @@ Posts are ranked by:
 
 ## Hook Formulas
 
-The first 2-3 lines determine if people click "see more." Use these patterns:
+The first 2-3 lines determine if people click "see more." For the universal hook formula catalogue (bold claim, counter-intuitive, specific result, question, listicle, confession...), see the **`marketing-distribution:social-content`** skill.
 
-**Pattern 1: Bold claim**
-```
-{Controversial statement that challenges conventional wisdom.}
+LinkedIn-specific hook rules:
+- The hook must land before the ~210-character "See more" fold.
+- End the hook with an open loop that earns the click and dwell time ("Here's why most people get this wrong:").
+- Before/After hooks perform especially well on LinkedIn:
 
-Here's why most people get this wrong:
-```
-
-**Pattern 2: Unexpected story**
-```
-{Unexpected event happened to me last week.}
-
-It changed how I think about {topic}.
-```
-
-**Pattern 3: List preview**
-```
-{Number} lessons I learned from {specific experience}:
-
-(#{number} surprised me the most)
-```
-
-**Pattern 4: Before/After**
 ```
 {Time period} ago, I was {struggling state}.
 Today, I {success state}.
 
 Here's exactly what changed:
-```
-
-**Pattern 5: Question hook**
-```
-Why do {group of people} keep making this mistake?
-
-I've seen it {number} times this month alone.
-```
-
-**Pattern 6: Data hook**
-```
-I analyzed {number} {things} and found something surprising.
-
-{One-line teaser of the finding.}
 ```
 
 ## Writing Rules
@@ -123,12 +92,7 @@ Aim for: 40% Utility, 25% Authority, 20% Relatability, 10% Opinion, 5% Social pr
 
 ## Posting Schedule
 
-**Optimal posting times (general, adjust for audience timezone):**
-- Tuesday-Thursday: 7:30-8:30am, 12:00-1:00pm
-- Monday/Friday: 8:00-9:00am
-- Avoid weekends (50-70% less reach)
-
-**Frequency:** 3-5 posts per week for growth. Minimum 2 for maintaining reach.
+For optimal posting times, weekly frequency, content mix (80/20 rule), and calendar planning, see the **`content-calendar`** skill. LinkedIn rule of thumb: Tuesday-Thursday mornings, 3-5 posts per week for growth (minimum 2), avoid weekends.
 
 ## CTA Formulas
 
@@ -165,9 +129,18 @@ When creating a LinkedIn post, deliver:
 ## Carousel Posts
 
 For carousel (PDF) posts, provide:
-1. **Slide 1 (Cover):** Bold title + subtitle + author name. This is the hook.
-2. **Slides 2-8:** One key point per slide. Large text. Minimal words.
-3. **Final slide:** CTA (follow, save, share, visit link)
+1. **Slide 1 (Cover):** Bold title + subtitle + author name. This is the hook — it must earn the swipe.
+2. **Slide 2 (Context):** Why this matters. State the problem or opportunity.
+3. **Slides 3-8 (Value):** One key point per slide. Large text. Minimal words.
+4. **Slide 9 (Summary):** Recap the key takeaways in a list.
+5. **Final slide (CTA):** Follow, save, share, visit link.
+
+**Carousel design rules:**
+- One idea per slide. Maximum 30-40 words per slide.
+- Use consistent branding (colors, fonts, logo placement).
+- Number the slides ("1/10", "2/10") to show progress and encourage swiping.
+- Use arrows or "Swipe" indicators on the first slide.
+- Make the cover slide work as a standalone post in the feed.
 
 Format carousel content as:
 

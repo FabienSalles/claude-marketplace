@@ -35,18 +35,7 @@ The hook tweet determines whether anyone reads the rest. It must:
 - Not include "Thread:" or "[1/N]" (these reduce engagement).
 - Stand alone as a great tweet even without the thread.
 
-**Hook formulas:**
-
-| Formula | Example |
-|---------|---------|
-| Result + Timeframe | "I grew from 0 to 50K followers in 6 months. Here's exactly how:" |
-| Bold claim | "90% of startups fail at marketing. Not because of budget. Because of this:" |
-| Contrarian | "The best content strategy is to post less. Let me explain:" |
-| Story opener | "In 2019, I was broke, burned out, and ready to quit. Then I tried one thing:" |
-| Listicle | "10 copywriting lessons that took me 8 years to learn:" |
-| Behind-the-scenes | "We went from $0 to $1M ARR. Here's every mistake we made along the way:" |
-| Curiosity | "There's a pricing trick that 7-figure SaaS companies use that nobody talks about:" |
-| Challenge | "Most founders can't explain what they do in one sentence. Can you?" |
+**Hook formulas:** for the universal catalogue (bold claim, contrarian, listicle, story opener, curiosity, challenge...), see the **`social-content`** skill. Thread-specific rule: end the hook with a colon and a promise the thread delivers on ("Here's exactly how:", "Let me explain:").
 
 ### 2. Context Tweets (Tweets 2-3)
 

@@ -151,22 +151,10 @@ Add one of these to drive comments and shares:
 
 ### Carousel Outlines (LinkedIn + Instagram)
 
-Structure a carousel for maximum swipe-through:
+For the slide-by-slide carousel structure (cover hook, context, value slides, summary, CTA) and design rules, see the **`marketing-content:linkedin-content`** skill. Platform specs:
 
-| Slide | Purpose | Content |
-|-------|---------|---------|
-| 1 (Cover) | Hook | Bold headline, minimal text, eye-catching design. Must earn the swipe. |
-| 2 | Context | Why this matters. State the problem or opportunity. |
-| 3-8 | Value | One point per slide. Short text. Visual hierarchy. |
-| 9 | Summary | Recap the key takeaways in a list. |
-| 10 (CTA) | Action | Follow, save, share, visit link, comment. |
-
-**Carousel Design Rules:**
-- One idea per slide. Maximum 30-40 words per slide.
-- Use consistent branding (colors, fonts, logo placement).
-- Number the slides ("1/10", "2/10") to show progress and encourage swiping.
-- Use arrows or "Swipe" indicators on the first slide.
-- Make the cover slide work as a standalone post in the feed.
+- **LinkedIn:** PDF document upload, 1080x1080 or 1080x1350 per slide.
+- **Instagram:** up to 20 image slides, 1080x1080 or 1080x1350. Carousels get 3x more engagement than single images.
 
 ### Video Script Hooks (TikTok + Reels)
 
@@ -192,36 +180,7 @@ Final tweet: CTA (follow, retweet, reply)
 
 ## Content Repurposing: Blog to Social
 
-Transform one blog post into platform-specific content:
-
-### From a 2000-Word Blog Post, Create:
-
-**Twitter/X:**
-- 1 single tweet (key takeaway + link in reply)
-- 1 thread (7-12 tweets covering the main points)
-- 3-5 standalone tweets (one insight per tweet, spread across the week)
-
-**LinkedIn:**
-- 1 long-form post (personal angle on the topic, 800-1200 chars)
-- 1 carousel (key points as slides, PDF format)
-- 1 poll (related question to the blog topic)
-
-**Instagram:**
-- 1 carousel (10 slides summarizing the post)
-- 1 reel (30-60s video covering the top 3 points)
-- 3 stories (teaser, key insight, swipe-up/link)
-
-**TikTok:**
-- 1 explainer video (60-90s covering the core idea)
-- 1 reaction/hot-take video (contrarian angle from the post)
-- 1 listicle video (quick tips from the post)
-
-### Repurposing Process
-
-1. **Extract** - Pull out the 5-7 key insights from the blog post.
-2. **Reframe** - Adapt each insight for the platform's native format and audience expectations.
-3. **Rewrite** - Do not copy-paste. Write natively for each platform.
-4. **Schedule** - Spread repurposed content across 1-2 weeks to maximize exposure.
+For the content-pyramid methodology and full conversion recipes (blog → thread, carousel, newsletter section, video script), see the **`marketing-content:content-repurposing`** skill. When repurposing into social posts, write natively for each platform using the platform rules and hook formulas above — never copy-paste the same content across platforms.
 
 ## Hashtag Strategy
 
