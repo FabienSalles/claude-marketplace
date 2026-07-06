@@ -1,176 +1,166 @@
 ---
-description: Step 0 of the autonomous issue→PR workflow — convert a spec, PRD output, BMAD story, brainstorm note or any planning artifact into a properly-formatted GitHub issue ready to be picked up by `/run-issue`
-argument-hint: Optional path to a spec file (e.g. .claude/plans/refactor-x-spec.md) — or 'inline' to paste it now
+description: Step 0 of the goal workflow — normalize any planning source (Jira US, spec file, PRD/BMAD story, brainstorm, inline note) into a clean structured spec, and OPTIONALLY mirror it as a GitHub issue. GitHub is opt-in, never forced.
+argument-hint: A source — Jira key (CT-1234), a spec path (.claude/plans/x-spec.md), or 'inline'
 ---
 
-# /draft-issue — Spec → GitHub Issue (Step 0 of the autonomous workflow)
+# /draft-issue — Source → Normalized spec (+ optional GitHub issue)
 
-You are converting a planning artifact into a GitHub issue formatted so the **autonomous loop** (`/run-issue` → `/goal` → PR) can pick it up downstream without losing information.
+You are turning a raw planning artifact into a clean, structured spec that
+`/run-issue` can consume. Creating a GitHub issue from it is **optional** — you
+**ask**, you never impose it.
 
-This command sits at the **upstream end** of the chain:
+This sits at the upstream end of the chain:
 
 ```
-(idea)
-  └─ BMAD bmm:create-prd → bmm:create-epics-and-stories
-       │
-       └─ /spec-first-dev (5 phases, GATES, persists a spec)
-            │
-            └─ /draft-issue ← YOU ARE HERE
-                 └─ gh issue created with the right sections
-                      └─ /run-issue <N>
-                           └─ /goal
-                                └─ PR + execution log
+(idea / Jira US / PRD / BMAD story / brainstorm)
+   └─ /draft-issue ← YOU ARE HERE
+        ├─ normalized spec written to .claude/plans/<work-id>-spec.md   (always)
+        └─ GitHub issue mirror                                          (only if the developer says yes)
+             └─ /run-issue <source>
+                  └─ /goal  (per iteration)
 ```
 
-Any of those upstream tools can produce the input. The point of `/draft-issue` is to **normalize** the artifact into the issue body shape `/run-issue` knows how to consume.
+## Argument — resolve the source
 
-## Argument
+Source: `$ARGUMENTS`
 
-Spec source: `$ARGUMENTS`
+| `$ARGUMENTS` shape | How to read it | work-id |
+|---|---|---|
+| Jira key `^[A-Z][A-Z0-9]+-[0-9]+$` (e.g. `CT-1234`) | Atlassian MCP — see below | key lowercased → `ct-1234` |
+| A path ending in `.md` | Read the file | ≤40-char kebab slug of the title |
+| `inline` or empty | Ask the developer to paste the source now | ≤40-char kebab slug of the title |
+| A path that doesn't exist | STOP and tell the developer | — |
 
-- A path to a markdown spec → read the file.
-- The literal `inline` (or empty + no spec on disk) → ask the developer to paste the spec content here.
-- A path that doesn't exist → STOP and tell the developer.
+**Reading a Jira source via MCP:** load the Atlassian tools with `ToolSearch`
+(`select:getAccessibleAtlassianResources,getJiraIssue`), get the `cloudId`, then
+`getJiraIssue` with the key. Pull summary, description, acceptance criteria, and
+comments. If the MCP is unreachable, STOP and ask the developer to paste the US
+with `inline`.
 
 ## Phase 0 — Preconditions
 
-Verify in one round:
-- `gh auth status` succeeds
-- The current working directory is inside a git repo whose remote points to GitHub (`gh repo view` works)
+- `git rev-parse --show-toplevel` succeeds (we're in a repo)
+- **Only if the source is Jira:** the Atlassian MCP resolves
+- **Do NOT check `gh` here.** GitHub is only touched in Phase 4, and only if the
+  developer opts in.
 
-If either fails, STOP and tell the developer what to fix.
+If a needed check fails, STOP and say what to fix.
 
 ## Phase 1 — Read & extract
 
-From the source, extract these sections. They may use different headings depending on the upstream tool — normalize:
+Normalize the source into these sections (headings vary by upstream tool):
 
 | Target section | Upstream synonyms |
 |---|---|
-| **Title** | `# …` first heading, or BMAD `story.title`, or spec-first-dev "Feature" |
-| **Business intent** | "Business intent", "Why", "Context", "Goal", BMAD `story.description` |
-| **Scope IN** | "Scope IN", "In scope", "Requirements", BMAD `acceptance_criteria` (positive) |
-| **Scope OUT** | "Scope OUT", "Out of scope", "Non-goals", "Will not do" |
-| **Acceptance criteria** | "Acceptance criteria", "Done when", "Success criteria" |
-| **Files to touch** (optional) | "Files to create/modify", "Files to touch", "Affected files" |
-| **Decisions** (optional) | "Decisions made", "Q&A", "Clarifications" |
+| **Title** | first `# …`, BMAD `story.title`, spec-first "Feature", Jira summary |
+| **Business intent** | "Why", "Context", "Goal", BMAD `story.description`, Jira description |
+| **Scope IN** | "In scope", "Requirements", BMAD `acceptance_criteria` (positive), Jira AC |
+| **Scope OUT** | "Out of scope", "Non-goals", "Will not do" |
+| **Acceptance criteria** | "Done when", "Success criteria", Jira AC |
+| **Files to touch** (optional) | "Files to create/modify", "Affected files" |
+| **Decisions** (optional) | "Q&A", "Clarifications", Jira comment thread |
 
-If some sections aren't in the source, that's fine — note which ones and ask the developer.
+Note which target sections the source is **missing** — a Jira US usually lacks a
+real Definition of Done and often has functional gaps. Don't fill them here;
+flag them so `/run-issue` grills them.
 
 ## Phase 2 — Validate completeness
 
-Before drafting the issue, surface anything that would break `/run-issue` downstream:
-
 | Issue | Severity | Action |
 |---|---|---|
-| Empty business intent | ❌ blocker | Ask developer to provide it now |
-| No acceptance criteria | ❌ blocker | Ask for at least 1 command-line verifiable criterion |
-| Scope IN/OUT mixed in one list | ⚠️ warn | Propose a split |
-| No "Files to touch" | ℹ️ info | Fine — `/run-issue` Session 1 will discover them |
-| Acceptance criteria not command-line verifiable ("code is clean", "no regression") | ⚠️ warn | Suggest concrete commands (test path, lint exit code, …) |
+| Empty business intent | ❌ blocker | Ask the developer to provide it now |
+| No acceptance criteria at all | ⚠️ warn | Fine to defer — `/run-issue` builds the DoD; note it |
+| Scope IN/OUT mixed | ⚠️ warn | Propose a split |
+| Criteria not command-line verifiable ("code is clean") | ℹ️ info | Note for `/run-issue` to make concrete |
 
-STOP here and resolve every blocker / discuss every warning with the developer before Phase 3.
+Resolve blockers with the developer before Phase 3. Warnings/infos are fine to
+carry forward — `/run-issue` is where the DoD gets built.
 
-## Phase 3 — Draft the issue body
+## Phase 3 — Write the normalized spec
 
-Render the issue body using this exact structure (so `/run-issue` finds its sections):
+Always write `.claude/plans/<work-id>-spec.md`:
 
 ```markdown
+# Spec (draft): <title>
+
+Source: <Jira CT-1234 | spec file path | inline>
+Work-id: <work-id>
+Status: draft — pass through /run-issue to build the Definition of Done and iterations.
+
 ## Business intent
+<what + why>
 
-<paragraphs from the source — what + why>
-
-## Scope
-
-**IN**
+## Scope IN
 - <items>
 
-**OUT**
+## Scope OUT
 - <items>
 
-## Acceptance criteria
-
-- [ ] <command-line verifiable criterion 1>
-- [ ] <criterion 2>
-- [ ] <criterion 3>
+## Acceptance criteria (as found — may be incomplete)
+- <items, or "none in source — /run-issue will build the DoD">
 
 ## Files (suspected)
-
 - `<path>` — <role>
-- `<path>` (new) — <description>
 
-## Notes / decisions captured upstream
+## Gaps flagged for /run-issue
+- <functional gap / missing DoD / technical consequence to grill>
 
-- <Q/A pair or design decision worth preserving>
-
----
-
-_Drafted by `/draft-issue` from `<spec source path or 'inline'>`. Pair with_
-_`/run-issue <N>` once the issue is created to start the autonomous loop._
+## Notes / decisions from source
+- <Q/A or comment-thread decision worth preserving>
 ```
 
-Compute an issue **title** in ≤ 80 chars: imperative form, no trailing punctuation, no ticket prefix.
+Show the title and the spec to the developer.
 
-Save the body to a temp file you can re-use:
+## Phase 4 — Ask: create a GitHub issue? (opt-in)
 
-```bash
-TMP=$(mktemp -t draft-issue-XXXXXX.md)
-# write the body to $TMP
-```
+Ask explicitly:
 
-Show the title and body to the developer.
+> **Do you also want a GitHub issue mirroring this spec?**
+> - **no** (default) — keep it local; go straight to `/run-issue`.
+> - **yes** — I'll `gh issue create` from the spec. (Optional: labels, milestone,
+>   assignee — I create nothing you didn't name.)
 
-## Phase 4 — Confirm + create
+WAIT for the answer.
 
-Ask the developer:
+If **no** → skip to Phase 5 with no GitHub involvement.
 
-> "Create the issue now? (y / edit / cancel)
->  - Optional: labels (comma-separated)?
->  - Optional: milestone?
->  - Optional: assignee (use `@me` for yourself)?"
+If **yes**:
+1. Now verify `gh auth status` and that `gh repo view` works. If either fails,
+   STOP, report, and fall back to the local-only handoff.
+2. Render the issue body from the spec (same sections), write it to a temp file:
+   ```bash
+   TMP=$(mktemp -t draft-issue-XXXXXX.md)
+   ```
+3. Create it:
+   ```bash
+   gh issue create --title "<title>" --body-file "$TMP" \
+     [--label "<labels>"] [--milestone "<milestone>"] [--assignee "<assignee>"]
+   ```
+4. Capture the issue number `<N>`. From now on the work-id is `issue-<N>`; rename
+   the spec to `.claude/plans/issue-<N>-spec.md` so `/run-issue <N>` finds it.
 
-WAIT for input.
-
-If **y** (default no labels/milestone/assignee unless given):
-
-```bash
-gh issue create \
-  --title "<title>" \
-  --body-file "$TMP" \
-  [--label "<labels>"] \
-  [--milestone "<milestone>"] \
-  [--assignee "<assignee>"]
-```
-
-Capture the resulting URL/number from `gh issue create` stdout.
-
-If **edit**: tell the developer the temp file path, ask them to edit it, then re-run Phase 4 once they're done.
-
-If **cancel**: print the temp file path so they can use it later, exit cleanly.
+Do **not** auto-create labels/milestones/assignees — only what the developer named.
 
 ## Phase 5 — Handoff
 
-Print this exact message:
+Print the matching message.
 
+If a GitHub issue was created:
 ```
-✓ Issue created: <URL>
-
-Next step — start the autonomous loop:
-  cd <current repo>
-  claude
-  > /run-issue <N>
+✓ Spec written + issue created: <URL>
+Next: /run-issue <N>
 ```
 
-Where `<N>` is the issue number returned by `gh issue create`.
+If local-only:
+```
+✓ Spec written: .claude/plans/<work-id>-spec.md
+Next: /run-issue <work-id>   (or /run-issue <source>, e.g. the Jira key)
+```
 
 ## Rules
 
-- The issue body **is the contract** handed to `/run-issue`. Anything fuzzy here costs a clarification loop in Session 1.
-- **Do not auto-create labels, milestones, or assignees** — only what the developer explicitly provided.
-- **Do not push code** or create branches in this command — that's `/run-issue`'s job.
-- **Permissiveness** — this command does not require any other plugin. It only needs `gh` CLI and a GitHub remote.
-
-## Chain reminders
-
-- After `/spec-first-dev`: the validated spec from Phase 3 is usually at `.claude/plans/<feature>-spec.md`. Use that path as `$ARGUMENTS`.
-- After BMAD `bmm:create-epics-and-stories`: one issue per story. Run `/draft-issue` once per story file.
-- For ad-hoc brainstorm: paste with `inline` argument.
+- **GitHub is opt-in.** Never call `gh` unless the developer said yes in Phase 4.
+- **Do not push code or create branches** — that's `/run-issue`'s job.
+- **Do not fabricate the DoD here** — flag gaps; `/run-issue` builds it during the grill.
+- **Standalone** — needs only a git repo, plus the Atlassian MCP for a Jira source
+  and `gh` only for the opt-in issue.

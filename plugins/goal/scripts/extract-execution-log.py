@@ -3,23 +3,26 @@
 Extract a PR-readable execution log from a Claude Code session JSONL.
 
 Usage:
-    extract-execution-log.py <issue-number> [<transcript-path>]
+    extract-execution-log.py <work-id> [<transcript-path>]
+
+`<work-id>` is the artifact id used by the goal workflow: `issue-<N>` for a
+GitHub issue source, a Jira key like `ct-1234`, or a slug for a file/inline
+source. It maps to `.claude/plans/<work-id>-spec.md`.
 
 Reads the session transcript (provided explicitly, or auto-detected as the
 most recently modified JSONL in ~/.claude/projects/<cwd-encoded>/ that
 references the spec file). Writes a markdown summary to
-    .claude/plans/issue-<N>-execution-log.md
+    .claude/plans/<work-id>-execution-log.md
 
-The output is intended to ship in the PR diff alongside the implementation,
-so reviewers can audit what Claude did in the autonomous /goal session
-without opening the raw JSONL.
+The output is intended to ship in the PR diff (or a manual commit) alongside
+the implementation, so reviewers can audit what Claude did in the autonomous
+/goal session without opening the raw JSONL.
 """
 
 from __future__ import annotations
 
 import json
 import os
-import re
 import subprocess
 import sys
 from collections import Counter
@@ -43,7 +46,10 @@ NOISE_MARKERS = (
 )
 
 
-def detect_issue_from_branch() -> str | None:
+def detect_workid_from_branch() -> str | None:
+    """Derive the work-id from the current branch by matching existing spec
+    files, so hyphenated ids (issue-42, ct-1234) resolve without ambiguous
+    id-vs-slug parsing."""
     try:
         result = subprocess.run(
             ["git", "branch", "--show-current"],
@@ -56,8 +62,18 @@ def detect_issue_from_branch() -> str | None:
         return None
     if result.returncode != 0:
         return None
-    m = re.match(r"^feature/issue-(\d+)", result.stdout.strip())
-    return m.group(1) if m else None
+    branch = result.stdout.strip()
+    if not branch.startswith("feature/"):
+        return None
+
+    plans = Path(".claude/plans")
+    if not plans.is_dir():
+        return None
+    for spec in plans.glob("*-spec.md"):
+        work_id = spec.name[: -len("-spec.md")]
+        if branch == f"feature/{work_id}" or branch.startswith(f"feature/{work_id}-"):
+            return work_id
+    return None
 
 
 def find_session_jsonl(spec_relative: str) -> Path | None:
@@ -222,7 +238,7 @@ def slice_from_goal(turns: list[dict]) -> tuple[list[dict], bool]:
 
 def write_log(
     out_path: Path,
-    issue_num: str,
+    work_id: str,
     spec_relative: str,
     transcript_path: Path,
     turns: list[dict],
@@ -252,7 +268,7 @@ def write_log(
     ).stdout.strip()
 
     lines: list[str] = []
-    lines.append(f"# Execution log — issue #{issue_num}")
+    lines.append(f"# Execution log — {work_id}")
     lines.append("")
     lines.append(f"_Source transcript: `{transcript_path.name}`_  ")
     lines.append(
@@ -263,9 +279,10 @@ def write_log(
     lines.append("")
     lines.append(
         "> This file is regenerated automatically at every Stop event while "
-        "on a `feature/issue-N-*` branch with a matching spec. It is meant "
-        "to ship in the PR diff so reviewers can audit the autonomous /goal "
-        "session without opening the raw JSONL."
+        "on a `feature/<work-id>-*` branch with a matching spec. It is meant "
+        "to ship alongside the implementation (PR diff or manual commit) so "
+        "reviewers can audit the autonomous /goal session without opening the "
+        "raw JSONL."
     )
     lines.append("")
     lines.append("## Summary")
@@ -328,18 +345,19 @@ def write_log(
 
 def main() -> int:
     if len(sys.argv) < 2:
-        issue_num = detect_issue_from_branch()
-        if not issue_num:
+        work_id = detect_workid_from_branch()
+        if not work_id:
             print(
-                "Usage: extract-execution-log.py <issue-number> [<transcript>]\n"
-                "(no issue number given and current branch is not feature/issue-N-…)",
+                "Usage: extract-execution-log.py <work-id> [<transcript>]\n"
+                "(no work-id given and no .claude/plans/<id>-spec.md matches the "
+                "current feature/<id>-… branch)",
                 file=sys.stderr,
             )
             return 1
     else:
-        issue_num = sys.argv[1]
+        work_id = sys.argv[1]
 
-    spec_relative = f".claude/plans/issue-{issue_num}-spec.md"
+    spec_relative = f".claude/plans/{work_id}-spec.md"
     if not Path(spec_relative).exists():
         print(f"Spec not found: {spec_relative}", file=sys.stderr)
         return 1
@@ -362,8 +380,8 @@ def main() -> int:
         return 1
 
     turns = parse_session(transcript_path)
-    out_path = Path(f".claude/plans/issue-{issue_num}-execution-log.md")
-    write_log(out_path, issue_num, spec_relative, transcript_path, turns)
+    out_path = Path(f".claude/plans/{work_id}-execution-log.md")
+    write_log(out_path, work_id, spec_relative, transcript_path, turns)
     print(f"Wrote {out_path}", file=sys.stderr)
     return 0
 

@@ -16,12 +16,15 @@ and stdout that Claude has surfaced during the autonomous session.
    exact path/filter scope listed in the spec, not the whole suite,
    unless the spec explicitly asks for whole-suite.
 2. **Project lint / static-analysis command exits 0.**
-3. **`git diff --stat HEAD` shows ONLY the files listed under "Files to
-   touch"** — the Karpathy trace test, applied to the autonomous output.
+3. **`git diff --stat` shows ONLY the files listed for this iteration** —
+   the Karpathy trace test, applied to the autonomous output.
 4. **`git status` is clean** — no untracked artifacts (build cache,
    `.DS_Store`, `*.bak`, scratch files).
-5. **Nothing pushed to `origin` yet** — push is manual in Session 3
-   after human review.
+5. **Commit / push / PR follow the chosen policy** — `manual` (Claude
+   touches nothing; you commit each iteration), `commit` (Claude commits
+   each iteration, no push/PR), or `commit+pr` (commit + push + PR after
+   the last iteration). In `commit`/`commit+pr`, commit messages carry **no
+   `Co-Authored-By` trailer**.
 
 ## Common commands by stack
 
@@ -50,10 +53,12 @@ spec, then proceed**. Not "do it silently and hope it sticks".
 
 ## Hard stops (force end of `/goal`)
 
-- **Maximum 30 turns by default.** A tight scope should clear in ≤10.
-  Hitting 30 = the scope was too big, or Claude is stuck.
-- **No `git push`.** Push is reserved for Session 3 after human review.
-- **No `gh pr create`.** Same.
+- **One iteration per `/goal` run.** Stop after the current functional
+  iteration, with a synthesis — don't roll into the next one.
+- **Maximum 15 turns per iteration by default.** A tight slice should clear
+  in ≤10. Hitting the cap = the iteration was too big, or Claude is stuck.
+- **`git push` / `gh pr create` only under `commit+pr`**, and only after the
+  last iteration. Never under `manual` or `commit`.
 
 ## Optional, opt-in (case by case)
 

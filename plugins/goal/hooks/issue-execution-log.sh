@@ -1,17 +1,19 @@
 #!/bin/bash
-# Stop hook — regenerate the per-issue execution log on every turn end,
+# Stop hook — regenerate the per-work-item execution log on every turn end,
 # but ONLY when ALL three preconditions hold:
 #
-#   1. Current branch matches `feature/issue-<N>-…`
-#   2. `.claude/plans/issue-<N>-spec.md` exists at the repo root
+#   1. Current branch matches `feature/<work-id>-…` for some `<work-id>` whose
+#      spec file exists (work-id is `issue-<N>` for GitHub, a Jira key like
+#      `ct-1234`, or a slug for a file/inline source)
+#   2. `.claude/plans/<work-id>-spec.md` exists at the repo root
 #   3. The current session's transcript contains at least one `/goal` user
 #      command (i.e. the autonomous loop has been engaged at some point)
 #
 # Precondition #3 is what guarantees this hook stays a no-op when you just
-# open `claude` on the issue branch for a quick read-through, a manual
-# tweak, or anything that isn't a real autonomous /goal cycle.
+# open `claude` on the branch for a quick read-through, a manual tweak, or
+# anything that isn't a real autonomous /goal cycle.
 #
-# Output: `.claude/plans/issue-<N>-execution-log.md` (overwritten each Stop).
+# Output: `.claude/plans/<work-id>-execution-log.md` (overwritten each Stop).
 # Always exits 0 so it never interferes with the user's session.
 
 set -eu
@@ -33,13 +35,28 @@ cd "$CWD" || exit 0
 # (a) Inside a git repo
 git rev-parse --show-toplevel >/dev/null 2>&1 || exit 0
 
-# (b) Branch must match feature/issue-<N>-...
+# (b)+(c) Branch must be feature/<work-id>-… for a work-id whose spec exists.
+#         We derive the work-id by matching existing spec files against the
+#         branch, so ids containing hyphens (issue-42, ct-1234) are handled
+#         without ambiguous "id vs slug" parsing.
 branch=$(git branch --show-current 2>/dev/null || true)
-issue_num=$(printf '%s' "$branch" | sed -n 's|^feature/issue-\([0-9][0-9]*\).*|\1|p')
-[ -z "$issue_num" ] && exit 0
+case "$branch" in
+    feature/*) : ;;
+    *) exit 0 ;;
+esac
 
-# (c) Spec must exist
-spec_file=".claude/plans/issue-${issue_num}-spec.md"
+work_id=""
+for spec in .claude/plans/*-spec.md; do
+    [ -f "$spec" ] || continue
+    base=$(basename "$spec")
+    id=${base%-spec.md}
+    case "$branch" in
+        "feature/$id"|"feature/$id-"*) work_id="$id"; break ;;
+    esac
+done
+[ -z "$work_id" ] && exit 0
+
+spec_file=".claude/plans/${work_id}-spec.md"
 [ ! -f "$spec_file" ] && exit 0
 
 # (d) /goal must have been engaged in this session.
@@ -57,6 +74,6 @@ SCRIPT="${CLAUDE_PLUGIN_ROOT}/scripts/extract-execution-log.py"
 
 # Pass the explicit transcript_path so the extractor doesn't have to guess.
 # Stderr suppressed — failures here must not pollute the user's session.
-python3 "$SCRIPT" "$issue_num" "$TRANSCRIPT" >/dev/null 2>&1 || true
+python3 "$SCRIPT" "$work_id" "$TRANSCRIPT" >/dev/null 2>&1 || true
 
 exit 0
