@@ -1,6 +1,6 @@
 ---
 name: grill-adversarial
-description: Opt-in adversarial plan-challenging pass for the goal workflow (invoked by /draft-issue or /run-issue when functional gaps are suspected, or on explicit request). Composes the Pocock grill skills (grill-me, grill-with-docs) and goes much further: it hunts the functional and technical holes that survive a normal grill — broken invariants and broken execution schemas — BEFORE the iterations are frozen, so the plan is coherent and executable exactly as specified. Highest value on FRONT / interactive features where every user action is a state transition; lighter on pure back/transactional work. ACTIVATE for 'grill adversarial', 'grille adversariale', 'challenge the plan', 'trous fonctionnels', 'invariants', 'state machine', 'interaction coherence', 'front interactions', 'edge transitions'.
+description: Opt-in adversarial plan-challenging pass for the goal workflow (invoked by /goal:draft-issue or /goal:run-issue when functional gaps are suspected, or on explicit request). Composes the Pocock grill skills (grill-me, grill-with-docs) and goes much further: it hunts the functional and technical holes that survive a normal grill — broken invariants and broken execution schemas — BEFORE the iterations are frozen, so the plan is coherent and executable exactly as specified. Highest value on FRONT / interactive features where every user action is a state transition; lighter on pure back/transactional work. ACTIVATE for 'grill adversarial', 'grille adversariale', 'challenge the plan', 'trous fonctionnels', 'invariants', 'state machine', 'interaction coherence', 'front interactions', 'edge transitions'.
 ---
 
 # Adversarial grill — challenge the plan until no functional hole is left
@@ -94,6 +94,6 @@ cell needs a human decision, **ASK** — never guess an invariant into place.
 
 ## Output
 A challenged, updated plan the developer confirms — coherent and executable exactly
-as specified, ready for `/run-issue` to decompose (or refined in place if already
+as specified, ready for `/goal:run-issue` to decompose (or refined in place if already
 decomposed). Summarize: states found, invariants added, holes surfaced, and which
 plan cells changed.

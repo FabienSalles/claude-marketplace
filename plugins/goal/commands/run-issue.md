@@ -3,7 +3,7 @@ description: Session 1 of the goal workflow — read any source (Jira US, GitHub
 argument-hint: A source — Jira key (CT-1234), GitHub issue number (42), a spec path (.claude/plans/x-spec.md), or 'inline'
 ---
 
-# /run-issue — Source → Plan → Branch (Session 1 of the goal workflow)
+# /goal:run-issue — Source → Plan → Branch (Session 1 of the goal workflow)
 
 You are helping the developer prepare an **autonomous `/goal` execution** that
 delivers working code. THIS session is purely interactive — lift every
@@ -14,7 +14,7 @@ The source is **not necessarily a GitHub issue**. It is frequently a **Jira
 US** that has functional holes, undocumented technical consequences, and **no
 Definition of Done at all** — building that DoD here is the whole point.
 
-> Companion docs: this plugin's `README.md` (full workflow), `templates/done-criteria.template` (acceptance-criteria baseline), `templates/goal-handoff.template` (the canonical `/goal` handoff both `/run-issue` and `/next` emit).
+> Companion docs: this plugin's `README.md` (full workflow), `templates/done-criteria.template` (acceptance-criteria baseline), `templates/goal-handoff.template` (the canonical `/goal` handoff both `/goal:run-issue` and `/goal:next` emit).
 >
 > **Permissiveness:** this command works standalone. It reads Jira via the
 > Atlassian MCP, GitHub via `gh`, or a plain file — whatever the source is.
@@ -59,7 +59,7 @@ STOP and tell the developer what to fix.
 
 Optional pointer (do not block on it): if the source is **not** a GitHub issue
 and the developer might want one for tracking, mention once: _"No GitHub issue
-backs this source — run `/draft-issue <source>` first if you want one mirrored.
+backs this source — run `/goal:draft-issue <source>` first if you want one mirrored.
 Otherwise I continue local-only."_ Default: continue local-only.
 
 ## Phase 1 — Read the source
@@ -129,11 +129,11 @@ interaction state space, so broken invariants and broken execution schemas
 (interface / usage incoherence) slip through and become rework. Close that gap here,
 **before** decomposition:
 
-1. Read the spec's **`## Adversarial grill`** line (set by `/draft-issue` Phase 3b).
+1. Read the spec's **`## Adversarial grill`** line (set by `/goal:draft-issue` Phase 3b).
    - **`requested`** → load and run the **`goal:grill-adversarial`** skill on the
      whole plan.
    - **`not requested`** → skip, unless step 2 applies.
-2. If the line is **absent** (spec didn't come through `/draft-issue`) OR the feature
+2. If the line is **absent** (spec didn't come through `/goal:draft-issue`) OR the feature
    is **front / interactive** and Phase 2 flagged functional gaps → **ask now**
    (`AskUserQuestion`, recommending **yes** for front/interactive): run the
    adversarial grill? If yes → load `goal:grill-adversarial`.

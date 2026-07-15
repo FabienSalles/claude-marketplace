@@ -1,7 +1,7 @@
 {
   "name": "goal",
   "version": "1.0.0",
-  "description": "Source→plan→autonomous /goal workflow for Claude Code: normalize any source — Jira US (via MCP), GitHub issue, spec file or inline — into a grilled plan with a built Definition of Done and small functional iterations (/draft-issue + /run-issue), then drive native /goal one iteration at a time with a synthesis at each stop. GitHub, commit and PR are all opt-in, never forced.",
+  "description": "Source→plan→autonomous /goal workflow for Claude Code: normalize any source — Jira US (via MCP), GitHub issue, spec file or inline — into a grilled plan with a built Definition of Done and small functional iterations (/goal:draft-issue + /goal:run-issue), then drive native /goal one iteration at a time with a synthesis at each stop. GitHub, commit and PR are all opt-in, never forced.",
   "author": { "name": "FabienSalles" },
   "license": "MIT",
   "keywords": ["goal", "autonomous", "github", "issue", "workflow", "pr"]

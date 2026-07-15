@@ -3,20 +3,20 @@ description: Step 0 of the goal workflow — normalize any planning source (Jira
 argument-hint: A source — Jira key (CT-1234), a spec path (.claude/plans/x-spec.md), or 'inline'
 ---
 
-# /draft-issue — Source → Normalized spec (+ optional GitHub issue)
+# /goal:draft-issue — Source → Normalized spec (+ optional GitHub issue)
 
 You are turning a raw planning artifact into a clean, structured spec that
-`/run-issue` can consume. Creating a GitHub issue from it is **optional** — you
+`/goal:run-issue` can consume. Creating a GitHub issue from it is **optional** — you
 **ask**, you never impose it.
 
 This sits at the upstream end of the chain:
 
 ```
 (idea / Jira US / PRD / BMAD story / brainstorm)
-   └─ /draft-issue ← YOU ARE HERE
+   └─ /goal:draft-issue ← YOU ARE HERE
         ├─ normalized spec written to .claude/plans/<work-id>-spec.md   (always)
         └─ GitHub issue mirror                                          (only if the developer says yes)
-             └─ /run-issue <source>
+             └─ /goal:run-issue <source>
                   └─ /goal  (per iteration)
 ```
 
@@ -62,19 +62,19 @@ Normalize the source into these sections (headings vary by upstream tool):
 
 Note which target sections the source is **missing** — a Jira US usually lacks a
 real Definition of Done and often has functional gaps. Don't fill them here;
-flag them so `/run-issue` grills them.
+flag them so `/goal:run-issue` grills them.
 
 ## Phase 2 — Validate completeness
 
 | Issue | Severity | Action |
 |---|---|---|
 | Empty business intent | ❌ blocker | Ask the developer to provide it now |
-| No acceptance criteria at all | ⚠️ warn | Fine to defer — `/run-issue` builds the DoD; note it |
+| No acceptance criteria at all | ⚠️ warn | Fine to defer — `/goal:run-issue` builds the DoD; note it |
 | Scope IN/OUT mixed | ⚠️ warn | Propose a split |
-| Criteria not command-line verifiable ("code is clean") | ℹ️ info | Note for `/run-issue` to make concrete |
+| Criteria not command-line verifiable ("code is clean") | ℹ️ info | Note for `/goal:run-issue` to make concrete |
 
 Resolve blockers with the developer before Phase 3. Warnings/infos are fine to
-carry forward — `/run-issue` is where the DoD gets built.
+carry forward — `/goal:run-issue` is where the DoD gets built.
 
 ## Phase 3 — Write the normalized spec
 
@@ -85,7 +85,7 @@ Always write `.claude/plans/<work-id>-spec.md`:
 
 Source: <Jira CT-1234 | spec file path | inline>
 Work-id: <work-id>
-Status: draft — pass through /run-issue to build the Definition of Done and iterations.
+Status: draft — pass through /goal:run-issue to build the Definition of Done and iterations.
 
 ## Business intent
 <what + why>
@@ -97,16 +97,16 @@ Status: draft — pass through /run-issue to build the Definition of Done and it
 - <items>
 
 ## Acceptance criteria (as found — may be incomplete)
-- <items, or "none in source — /run-issue will build the DoD">
+- <items, or "none in source — /goal:run-issue will build the DoD">
 
 ## Files (suspected)
 - `<path>` — <role>
 
-## Gaps flagged for /run-issue
+## Gaps flagged for /goal:run-issue
 - <functional gap / missing DoD / technical consequence to grill>
 
 ## Adversarial grill
-- <requested | not requested>   (decided in Phase 3b; /run-issue reads this line)
+- <requested | not requested>   (decided in Phase 3b; /goal:run-issue reads this line)
 
 ## Notes / decisions from source
 - <Q/A or comment-thread decision worth preserving>
@@ -114,7 +114,7 @@ Status: draft — pass through /run-issue to build the Definition of Done and it
 
 Show the title and the spec to the developer.
 
-## Phase 3b — Ask: run the adversarial grill in /run-issue? (opt-in)
+## Phase 3b — Ask: run the adversarial grill in /goal:run-issue? (opt-in)
 
 The default grill resolves the branches that get **raised**. It does **not**
 enumerate the interaction state space — so broken invariants and broken execution
@@ -123,8 +123,8 @@ The `grill-adversarial` skill closes that gap, but it is heavy — so it is **op
 
 Ask the developer with `AskUserQuestion`:
 
-> **Run the adversarial grill on this spec in `/run-issue`?**
-> - **yes (recommended for front / interactive work, or when unsure)** — `/run-issue`
+> **Run the adversarial grill on this spec in `/goal:run-issue`?**
+> - **yes (recommended for front / interactive work, or when unsure)** — `/goal:run-issue`
 >   will load `grill-adversarial`: enumerate states, extract invariants, build the
 >   `(state × action)` transition matrix, and turn every hole into an owned + tested
 >   rule. Take altitude and question everything, including what was never defined.
@@ -133,7 +133,7 @@ Ask the developer with `AskUserQuestion`:
 
 Recommend **yes** whenever the feature is **front / interactive**, state lives
 client-side, or Phase 2 flagged functional gaps. Write the answer verbatim into the
-spec's **`## Adversarial grill`** line (`requested` / `not requested`) so `/run-issue`
+spec's **`## Adversarial grill`** line (`requested` / `not requested`) so `/goal:run-issue`
 picks it up without asking again.
 
 ## Phase 4 — Ask: create a GitHub issue? (opt-in)
@@ -141,7 +141,7 @@ picks it up without asking again.
 Ask explicitly:
 
 > **Do you also want a GitHub issue mirroring this spec?**
-> - **no** (default) — keep it local; go straight to `/run-issue`.
+> - **no** (default) — keep it local; go straight to `/goal:run-issue`.
 > - **yes** — I'll `gh issue create` from the spec. (Optional: labels, milestone,
 >   assignee — I create nothing you didn't name.)
 
@@ -162,7 +162,7 @@ If **yes**:
      [--label "<labels>"] [--milestone "<milestone>"] [--assignee "<assignee>"]
    ```
 4. Capture the issue number `<N>`. From now on the work-id is `issue-<N>`; rename
-   the spec to `.claude/plans/issue-<N>-spec.md` so `/run-issue <N>` finds it.
+   the spec to `.claude/plans/issue-<N>-spec.md` so `/goal:run-issue <N>` finds it.
 
 Do **not** auto-create labels/milestones/assignees — only what the developer named.
 
@@ -173,22 +173,22 @@ Print the matching message.
 If a GitHub issue was created:
 ```
 ✓ Spec written + issue created: <URL>
-Next: /run-issue <N>
+Next: /goal:run-issue <N>
 ```
 
 If local-only:
 ```
 ✓ Spec written: .claude/plans/<work-id>-spec.md
-Next: /run-issue <work-id>   (or /run-issue <source>, e.g. the Jira key)
+Next: /goal:run-issue <work-id>   (or /goal:run-issue <source>, e.g. the Jira key)
 ```
 
 ## Rules
 
 - **GitHub is opt-in.** Never call `gh` unless the developer said yes in Phase 4.
-- **Do not push code or create branches** — that's `/run-issue`'s job.
-- **Do not fabricate the DoD here** — flag gaps; `/run-issue` builds it during the grill.
+- **Do not push code or create branches** — that's `/goal:run-issue`'s job.
+- **Do not fabricate the DoD here** — flag gaps; `/goal:run-issue` builds it during the grill.
 - **The adversarial grill is opt-in** — you only *ask* (Phase 3b) and record the
-  answer; `/run-issue` runs it. Recommend it for front / interactive features, where
+  answer; `/goal:run-issue` runs it. Recommend it for front / interactive features, where
   unmodelled invariants and transitions cause the most rework.
 - **Standalone** — needs only a git repo, plus the Atlassian MCP for a Jira source
   and `gh` only for the opt-in issue.

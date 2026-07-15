@@ -184,7 +184,7 @@
     {
       "name": "goal",
       "source": "./plugins/goal",
-      "description": "Autonomous issue→PR workflow for Claude Code /goal: turn a spec or PRD into a GitHub issue (/draft-issue), then drive autonomous implementation against acceptance criteria (/run-issue + native /goal) with an automatically-regenerated execution log shipped in the PR diff",
+      "description": "Autonomous issue→PR workflow for Claude Code /goal: turn a spec or PRD into a GitHub issue (/goal:draft-issue), then drive autonomous implementation against acceptance criteria (/goal:run-issue + native /goal) with an automatically-regenerated execution log shipped in the PR diff",
       "version": "1.0.0",
       "author": { "name": "FabienSalles" },
       "category": "productivity",

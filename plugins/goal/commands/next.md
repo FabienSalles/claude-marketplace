@@ -3,7 +3,7 @@ description: Checkpoint between two /goal iterations — verify the finished ite
 argument-hint: Optional plan path (.claude/plans/<work-id>-spec.md); omit to auto-discover the active plan
 ---
 
-# /next — Iteration checkpoint + next-/goal handoff
+# /goal:next — Iteration checkpoint + next-/goal handoff
 
 You are the **handoff between two `/goal` iterations**. An iteration just ran in
 this session; before the developer clears the context and starts the next one in
@@ -26,7 +26,7 @@ Plan: `$ARGUMENTS`
 - A path → use it.
 - Empty → find it: the `.claude/plans/*-spec.md` most recently modified, or the one
   referenced by the active goal. Ambiguous (several candidates) → list them and ASK.
-  None → STOP: _"No plan found — run `/run-issue` first."_
+  None → STOP: _"No plan found — run `/goal:run-issue` first."_
 
 Read the plan and locate:
 - **the finished iteration** = the last `[x]` before the first `[ ]`.
@@ -43,7 +43,7 @@ Run the **finished iteration's own acceptance commands** from the plan (its test
 command, lint/QA) and show the **real output**. Never trust the `[x]` or memory.
 
 If anything fails → **STOP**. Report what failed: the iteration is not done, so
-there is nothing to hand off. Fix it (or let the developer) before re-running `/next`.
+there is nothing to hand off. Fix it (or let the developer) before re-running `/goal:next`.
 
 ## Phase 2 — Reconcile the plan with the codebase
 
@@ -142,7 +142,7 @@ and paste the block above.
   and show the output.
 - **The plan must equal reality** before you emit the handoff: every claim true,
   every changed file accounted for, ripple propagated to later iterations.
-- **In manual mode, never stage** — `/next` only **verifies and reports** the working
+- **In manual mode, never stage** — `/goal:next` only **verifies and reports** the working
   tree; `git add`/`git reset`/committing is the developer's review job. A clean tree
   is expected only under commit / commit+pr (where the iteration was committed). Never
   auto-stage to "make it safe": safety in manual mode is work-on-disk + plan-on-disk.
