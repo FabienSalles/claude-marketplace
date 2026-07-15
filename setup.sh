@@ -115,6 +115,17 @@ ensure_skill_budget() {
   echo -e "    ${BLUE}ℹ${NC} skillListingBudgetFraction (0.06) registered"
 }
 
+# Disable Claude auto memory once. Idempotent.
+# has() is used (not jq -e on the value) so a stored `false` still counts as present.
+ensure_auto_memory_disabled() {
+  if jq -e 'has("autoMemoryEnabled")' "$SETTINGS" > /dev/null 2>&1; then
+    return 0
+  fi
+  backup_settings
+  jq_inplace '. + {"autoMemoryEnabled": false}'
+  echo -e "    ${BLUE}ℹ${NC} autoMemoryEnabled (false) registered"
+}
+
 is_pack_installed() {
   local pack="$1"
   ensure_settings
@@ -153,6 +164,7 @@ install_pack() {
   ensure_marketplace_registered
   if [[ "$pack" == "common" ]]; then
     ensure_skill_budget
+    ensure_auto_memory_disabled
   fi
 
   local key="${pack}@${MARKETPLACE_KEY}"
