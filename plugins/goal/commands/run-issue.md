@@ -122,6 +122,31 @@ a command-line check, and no "it depends" remains. Typical: 5–15 questions for
 small US, more for a feature. **One question per message** — batch questionnaires
 reduce signal.
 
+## Phase 2b — Adversarial grill (opt-in, before freezing iterations)
+
+The baseline grill resolves what is **raised**. It does not enumerate the
+interaction state space, so broken invariants and broken execution schemas
+(interface / usage incoherence) slip through and become rework. Close that gap here,
+**before** decomposition:
+
+1. Read the spec's **`## Adversarial grill`** line (set by `/draft-issue` Phase 3b).
+   - **`requested`** → load and run the **`goal:grill-adversarial`** skill on the
+     whole plan.
+   - **`not requested`** → skip, unless step 2 applies.
+2. If the line is **absent** (spec didn't come through `/draft-issue`) OR the feature
+   is **front / interactive** and Phase 2 flagged functional gaps → **ask now**
+   (`AskUserQuestion`, recommending **yes** for front/interactive): run the
+   adversarial grill? If yes → load `goal:grill-adversarial`.
+
+`grill-adversarial` composes the Pocock grills and adds the coverage discipline:
+enumerate states, extract invariants (front-only ⇒ the front owns them), build the
+`(state × action)` transition matrix, hunt execution-schema breaks, and turn every
+hole into an **owned + sequence-tested** rule. Fold its output into the **Business
+rules** and iterations below — each new invariant becomes a business rule with a
+**sequence test** (drive the action series, assert the invariant holds throughout),
+assigned to an iteration or marked **transverse** (re-verified at each iteration's
+DoD). Do not freeze iterations until every `(state, action)` cell is resolved.
+
 ## Phase 3 — Decompose into functional iterations, then write the plan
 
 Break the work into **functional iterations** — each a thin vertical slice that
@@ -149,6 +174,12 @@ Work-id: <work-id>
 ## Business rules (each must map to a test in the DoD)
 - <rule> → verified by <named test / command>
 - <rule> → verified by <named test / command>
+
+## States, invariants & transitions (only if the adversarial grill ran)
+- **States:** <S1…Sk>
+- **Invariants:** <I1…In — each with its owner; front-only ⇒ the front owns it>
+- **Transition matrix:** <(state × action) → resulting state / blocked / invariant preserved>
+- Each invariant → a **sequence test**, assigned to an iteration or marked **transverse** (re-verified at each iteration's DoD).
 
 ## Files NOT to touch
 - <tempting-but-out-of-scope files>
@@ -242,12 +273,17 @@ Chaque règle métier listée dans l'itération DOIT être couverte par un test.
 1. <commande de test du périmètre de l'itération> exit 0
 2. <commande de lint/QA du projet> exit 0
 3. git diff --stat montre UNIQUEMENT les fichiers listés dans l'itération
-4. git status propre (aucun artefact non suivi)
+4. git status ne montre aucun artefact PARASITE (temp, cache, build). Les nouveaux
+   fichiers livrables de l'itération apparaissent en intent-to-add (` A`) via le hook
+   `git-add-empty` — c'est l'état attendu, ne PAS les stager ni les « nettoyer ».
 5. Chaque critère d'acceptation de l'itération est vérifié par une commande
 6. Coche [x] cette itération dans le spec (dernier geste)
 
 Politique commit/PR : <policy>
-- manual      → NE COMMITE PAS, NE PUSH PAS, N'OUVRE PAS DE PR.
+- manual      → NE COMMITE PAS, NE PUSH PAS, N'OUVRE PAS DE PR, NE FAIS AUCUN `git add`
+                de contenu NI `git reset`/`git restore` sur l'index (le hook `git-add-empty`
+                pose déjà les intent-to-add ; y toucher casse la review du dev). Laisse le
+                dev stager et reviewer lui-même.
 - commit      → commite CETTE itération avec le message conventionnel suggéré (SANS trailer Co-Authored-By), sans push ni PR.
 - commit+pr   → commite CETTE itération ; si c'est la DERNIÈRE itération non cochée, push puis gh pr create --body-file .claude/plans/<work-id>-spec.md.
 

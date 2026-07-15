@@ -1,0 +1,191 @@
+---
+description: Checkpoint between two /goal iterations — verify the finished iteration's Definition of Done, reconcile the plan with what actually changed in the codebase, verify the working tree is safe for a fresh session (in manual mode never stage — the tree is left intact for the developer's review; staging/committing is their job), confirm the next iteration is doable cold with no context loss, then print the exact ready-to-run /goal handoff for it. Does not write code, stage, commit, clear context, or launch /goal.
+argument-hint: Optional plan path (.claude/plans/<work-id>-spec.md); omit to auto-discover the active plan
+---
+
+# /next — Iteration checkpoint + next-/goal handoff
+
+You are the **handoff between two `/goal` iterations**. An iteration just ran in
+this session; before the developer clears the context and starts the next one in
+a **fresh session**, you guarantee three things and then hand off:
+
+1. the finished iteration **really is done** (re-run its checks, don't trust the box);
+2. the **plan on disk reflects reality** (every adjustment made while coding is in it);
+3. **nothing will be lost** across the clear (work committed, or left intact on disk and reported — in **manual** mode you never stage, that is the developer's review);
+
+then you print the **exact `/goal` prompt** for the next iteration.
+
+You do **not** write production code, and you **cannot** clear the context or launch
+`/goal` yourself — Claude Code has no way to self-clear or self-chain commands. Your
+final act is to print the next `/goal` prompt for the developer to paste in a fresh
+session.
+
+## Resolve the plan
+
+Plan: `$ARGUMENTS`
+- A path → use it.
+- Empty → find it: the `.claude/plans/*-spec.md` most recently modified, or the one
+  referenced by the active goal. Ambiguous (several candidates) → list them and ASK.
+  None → STOP: _"No plan found — run `/run-issue` first."_
+
+Read the plan and locate:
+- **the finished iteration** = the last `[x]` before the first `[ ]`.
+  (No `[x]` at all → nothing has run yet: skip Phase 1, go straight to Phase 5 and
+  emit the iteration-1 handoff.)
+- **the next iteration** = the first `[ ]`.
+- **No `[ ]` left** → all iterations done: run the plan's **global** Definition of
+  Done, report completion and (per policy) the commit/PR guidance, then STOP. There
+  is no next handoff to emit.
+
+## Phase 1 — Verify the finished iteration is actually done
+
+Run the **finished iteration's own acceptance commands** from the plan (its test
+command, lint/QA) and show the **real output**. Never trust the `[x]` or memory.
+
+If anything fails → **STOP**. Report what failed: the iteration is not done, so
+there is nothing to hand off. Fix it (or let the developer) before re-running `/next`.
+
+## Phase 2 — Reconcile the plan with the codebase
+
+The plan is the contract; any drift makes the next cold session act on lies. Verify
+and **edit the plan in place** so every statement is true:
+
+- **Files:** `git status` + `git diff --stat` — do the changed files match the
+  finished iteration's declared *Files to touch*? Renamed / added / removed files
+  mean the plan's list is stale or scope leaked. Update the list to reality, or flag
+  a genuine scope leak and ask.
+- **Claims:** scan the finished iteration's *Goal*, decisions, **test method names**,
+  and acceptance for anything the code no longer backs (renamed file, changed
+  approach, dropped attribute/field, a helper that moved). Grep the repo for each
+  name the plan still uses to confirm it exists. Correct every stale claim.
+- **Ripple:** an adjustment in the finished iteration often invalidates *later*
+  iterations (a rename, a moved data source, a new island/format). Propagate it into
+  iterations 2..N and the global DoD so they stay executable.
+
+Summarize every edit you made to the plan.
+
+## Phase 3 — Account for the working tree (in manual mode, never stage)
+
+The next iteration runs in a new session whose only durable memory is **the repo +
+the plan**. This iteration's work must not be lost — but **how** the tree is made
+safe depends on the commit policy, and in **manual** mode staging is the
+**developer's** job, not yours.
+
+- If the iteration was **committed** (policy commit / commit+pr) → verify the tree is
+  clean. If it is not, the commit is incomplete: report it, don't paper over it.
+- Otherwise (**manual** — the default, nothing committed) → **do NOT stage. Never run
+  `git add`, `git reset`, or otherwise touch the index on your own initiative.**
+  Staging is the developer's review step: they alone decide what is OK and add it
+  manually. Your job is only to **verify and report**:
+  ```bash
+  git status --short      # report what is modified / staged / untracked
+  git diff --stat         # show the shape of the change
+  ```
+  Confirm nothing is lost (every piece of the iteration's work is present on disk —
+  staged or not), then **list plainly what remains for the developer to review and
+  stage manually**. `.claude/` is gitignored, so the plan file stays on disk — that is
+  fine, it is durable there.
+  - If a prior step (or you) already staged something in manual mode, you may
+    **unstage only what was wrongly added** (`git restore --staged <files>`) — never
+    disturb staging the developer set up, and never `git reset` wholesale unless the
+    developer explicitly asks.
+
+Nothing is destroyed by leaving changes unstaged: they live in the working tree and
+the plan lives on disk. In manual mode, safety = **work-on-disk + plan-on-disk + a
+clear report**, not a staged index.
+
+The commit **policy comes from the plan / the original `/goal` handoff, not from you**
+— if you cannot determine it, **assume manual** (the safe default: verify and report,
+never stage), and note which policy you assumed.
+
+## Phase 4 — Confirm the next iteration is doable cold
+
+Read the next `[ ]` iteration and confirm it is **fully self-contained** for a
+context-free start:
+- *Goal*, *Files to touch*, *Business rules covered*, and *Acceptance commands* are
+  all present and concrete in the plan.
+- Nothing it needs exists **only in this conversation** — a decision, a value, a name
+  you introduced but never wrote into the plan or the code. If you find such a thing,
+  write it into the plan now.
+- Its acceptance commands run as-is (paths/targets exist).
+
+Under-specified for a cold start → fix the plan (add the missing detail) before
+emitting the handoff; if it needs a human decision, say so and ASK.
+
+## Phase 5 — Emit the next /goal handoff
+
+Print, as **one copy-paste block**, the same per-iteration handoff `/run-issue`
+emits, filled from the plan:
+- `<plan path>` = the resolved plan path;
+- line 1 = the **next iteration's** acceptance **test** command (use whatever the plan
+  says — PHP/JS/other, dockerized where the plan is); line 2 = the project lint/QA;
+- `<policy>` = the plan's commit/PR policy verbatim.
+
+Prepend the context-hygiene reminder (you cannot run these — the developer does):
+
+```text
+# In THIS session first: run /context; if usage is non-trivial, run /clear.
+# Then paste the following into the fresh session:
+
+/goal Implémente la PROCHAINE itération non cochée de <plan path>, puis STOP.
+
+Avant de coder : charge les skills de conventions du projet applicables au périmètre
+(backend, templates, tests, TDD, langage) et lis le sibling le plus proche de la feature
+pour capter les conventions locales.
+
+Implémente en TDD : test qui échoue d'abord (montre le RED), puis le code, puis refactor.
+Chaque règle métier listée dans l'itération DOIT être couverte par un test.
+Tests d'interface (si applicable) : UN SEUL test de succès par jeu de données, qui asserte
+le CONTENU réel (texte/valeurs/état), pas seulement des classes CSS (elles ne servent qu'à
+localiser des éléments).
+
+« Done » pour CETTE itération — exécute les commandes et montre la sortie, n'affirme rien de mémoire :
+1. <commande de test du périmètre de l'itération> exit 0
+2. <commande de lint/QA du projet> exit 0
+3. git diff --stat montre UNIQUEMENT les fichiers listés dans l'itération
+4. git status ne montre aucun artefact PARASITE (temp, cache, build). Les nouveaux
+   fichiers livrables de l'itération apparaissent en intent-to-add (` A`) via le hook
+   `git-add-empty` — c'est l'état attendu, ne PAS les stager ni les « nettoyer ».
+5. Chaque critère d'acceptation de l'itération est vérifié par une commande
+6. Coche [x] cette itération dans le spec (dernier geste)
+
+Politique commit/PR : <policy>
+- manual      → NE COMMITE PAS, NE PUSH PAS, N'OUVRE PAS DE PR, NE FAIS AUCUN `git add`
+                de contenu NI `git reset`/`git restore` sur l'index (le hook `git-add-empty`
+                pose déjà les intent-to-add ; y toucher casse la review du dev). Laisse le
+                dev stager et reviewer lui-même.
+- commit      → commite CETTE itération avec le message conventionnel suggéré (SANS trailer Co-Authored-By), sans push ni PR.
+- commit+pr   → commite CETTE itération ; si c'est la DERNIÈRE itération non cochée, push puis gh pr create --body-file <plan path>.
+
+Termine TOUJOURS par une SYNTHÈSE structurée dans le prompt :
+- **Fait** : ce qui a été implémenté
+- **Pourquoi** : le besoin métier couvert
+- **Règles métier couvertes** : liste + test correspondant
+- **À reviewer** : points d'attention, décisions, risques de régression
+- **Commit suggéré** : message conventionnel (SANS trailer Co-Authored-By)
+- **Reste** : itérations non cochées restantes dans le spec
+
+STOP après cette itération, quoi qu'il arrive. Max 15 tours.
+Le spec est le contrat — si une déviation est nécessaire, mets à jour le spec d'abord.
+```
+
+Then close with two or three lines: the finished iteration is **verified** (name it),
+the plan is **reconciled** (list the edits you made), the tree is **safe**
+(clean / staged — say which), and the next iteration is **cold-start ready** — clear
+and paste the block above.
+
+## Rules for THIS command
+
+- **No production code.** This is a checkpoint, not an implementation step.
+- **Never trust the checkbox** — re-run the finished iteration's acceptance commands
+  and show the output.
+- **The plan must equal reality** before you emit the handoff: every claim true,
+  every changed file accounted for, ripple propagated to later iterations.
+- **In manual mode, never stage** — `/next` only **verifies and reports** the working
+  tree; `git add`/`git reset`/committing is the developer's review job. A clean tree
+  is expected only under commit / commit+pr (where the iteration was committed). Never
+  auto-stage to "make it safe": safety in manual mode is work-on-disk + plan-on-disk.
+- **You cannot self-clear or self-launch** — the final output is a prompt the
+  developer runs in a fresh session; do not pretend to have cleared or continued.
+- **Policy comes from the plan / handoff, not you** — if undiscoverable, **assume
+  manual** and just verify/report; do not stage to "stay safe".
