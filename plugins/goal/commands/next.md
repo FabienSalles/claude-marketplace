@@ -114,59 +114,20 @@ emitting the handoff; if it needs a human decision, say so and ASK.
 
 ## Phase 5 — Emit the next /goal handoff
 
-Print, as **one copy-paste block**, the same per-iteration handoff `/run-issue`
-emits, filled from the plan:
-- `<plan path>` = the resolved plan path;
-- line 1 = the **next iteration's** acceptance **test** command (use whatever the plan
-  says — PHP/JS/other, dockerized where the plan is); line 2 = the project lint/QA;
-- `<policy>` = the plan's commit/PR policy verbatim.
+Emit the canonical `/goal` handoff from `templates/goal-handoff.template`, filled
+per that file's **"How to fill it"** section: `<plan path>` = the resolved plan path,
+« Done » line 1 = the **next iteration's** acceptance test command, line 2 = the
+project lint/QA command, `<policy>` = the plan's policy verbatim. Respect its
+**≤ 4000-character hard limit**.
 
-Prepend the context-hygiene reminder (you cannot run these — the developer does):
+Prepend the context-hygiene reminder (you cannot run these — the developer does),
+then the filled template as **one copy-paste block**:
 
 ```text
 # In THIS session first: run /context; if usage is non-trivial, run /clear.
 # Then paste the following into the fresh session:
 
-/goal Implémente la PROCHAINE itération non cochée de <plan path>, puis STOP.
-
-Avant de coder : charge les skills de conventions du projet applicables au périmètre
-(backend, templates, tests, TDD, langage) et lis le sibling le plus proche de la feature
-pour capter les conventions locales.
-
-Implémente en TDD : test qui échoue d'abord (montre le RED), puis le code, puis refactor.
-Chaque règle métier listée dans l'itération DOIT être couverte par un test.
-Tests d'interface (si applicable) : UN SEUL test de succès par jeu de données, qui asserte
-le CONTENU réel (texte/valeurs/état), pas seulement des classes CSS (elles ne servent qu'à
-localiser des éléments).
-
-« Done » pour CETTE itération — exécute les commandes et montre la sortie, n'affirme rien de mémoire :
-1. <commande de test du périmètre de l'itération> exit 0
-2. <commande de lint/QA du projet> exit 0
-3. git diff --stat montre UNIQUEMENT les fichiers listés dans l'itération
-4. git status ne montre aucun artefact PARASITE (temp, cache, build). Les nouveaux
-   fichiers livrables de l'itération apparaissent en intent-to-add (` A`) via le hook
-   `git-add-empty` — c'est l'état attendu, ne PAS les stager ni les « nettoyer ».
-5. Chaque critère d'acceptation de l'itération est vérifié par une commande
-6. Coche [x] cette itération dans le spec (dernier geste)
-
-Politique commit/PR : <policy>
-- manual      → NE COMMITE PAS, NE PUSH PAS, N'OUVRE PAS DE PR, NE FAIS AUCUN `git add`
-                de contenu NI `git reset`/`git restore` sur l'index (le hook `git-add-empty`
-                pose déjà les intent-to-add ; y toucher casse la review du dev). Laisse le
-                dev stager et reviewer lui-même.
-- commit      → commite CETTE itération avec le message conventionnel suggéré (SANS trailer Co-Authored-By), sans push ni PR.
-- commit+pr   → commite CETTE itération ; si c'est la DERNIÈRE itération non cochée, push puis gh pr create --body-file <plan path>.
-
-Termine TOUJOURS par une SYNTHÈSE structurée dans le prompt :
-- **Fait** : ce qui a été implémenté
-- **Pourquoi** : le besoin métier couvert
-- **Règles métier couvertes** : liste + test correspondant
-- **À reviewer** : points d'attention, décisions, risques de régression
-- **Commit suggéré** : message conventionnel (SANS trailer Co-Authored-By)
-- **Reste** : itérations non cochées restantes dans le spec
-
-STOP après cette itération, quoi qu'il arrive. Max 15 tours.
-Le spec est le contrat — si une déviation est nécessaire, mets à jour le spec d'abord.
+<filled templates/goal-handoff.template>
 ```
 
 Then close with two or three lines: the finished iteration is **verified** (name it),
