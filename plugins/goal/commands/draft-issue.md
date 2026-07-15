@@ -105,11 +105,36 @@ Status: draft — pass through /run-issue to build the Definition of Done and it
 ## Gaps flagged for /run-issue
 - <functional gap / missing DoD / technical consequence to grill>
 
+## Adversarial grill
+- <requested | not requested>   (decided in Phase 3b; /run-issue reads this line)
+
 ## Notes / decisions from source
 - <Q/A or comment-thread decision worth preserving>
 ```
 
 Show the title and the spec to the developer.
+
+## Phase 3b — Ask: run the adversarial grill in /run-issue? (opt-in)
+
+The default grill resolves the branches that get **raised**. It does **not**
+enumerate the interaction state space — so broken invariants and broken execution
+schemas (interface/usage incoherence) slip through and surface later as rework.
+The `grill-adversarial` skill closes that gap, but it is heavy — so it is **opt-in**.
+
+Ask the developer with `AskUserQuestion`:
+
+> **Run the adversarial grill on this spec in `/run-issue`?**
+> - **yes (recommended for front / interactive work, or when unsure)** — `/run-issue`
+>   will load `grill-adversarial`: enumerate states, extract invariants, build the
+>   `(state × action)` transition matrix, and turn every hole into an owned + tested
+>   rule. Take altitude and question everything, including what was never defined.
+> - **no** — small US whose scenarios you fully enumerate and are confident about;
+>   or pure back / transactional work where actions are coarse and server-owned.
+
+Recommend **yes** whenever the feature is **front / interactive**, state lives
+client-side, or Phase 2 flagged functional gaps. Write the answer verbatim into the
+spec's **`## Adversarial grill`** line (`requested` / `not requested`) so `/run-issue`
+picks it up without asking again.
 
 ## Phase 4 — Ask: create a GitHub issue? (opt-in)
 
@@ -162,5 +187,8 @@ Next: /run-issue <work-id>   (or /run-issue <source>, e.g. the Jira key)
 - **GitHub is opt-in.** Never call `gh` unless the developer said yes in Phase 4.
 - **Do not push code or create branches** — that's `/run-issue`'s job.
 - **Do not fabricate the DoD here** — flag gaps; `/run-issue` builds it during the grill.
+- **The adversarial grill is opt-in** — you only *ask* (Phase 3b) and record the
+  answer; `/run-issue` runs it. Recommend it for front / interactive features, where
+  unmodelled invariants and transitions cause the most rework.
 - **Standalone** — needs only a git repo, plus the Atlassian MCP for a Jira source
   and `gh` only for the opt-in issue.
