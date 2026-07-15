@@ -18,7 +18,6 @@ In Claude Code:
 ### Marketplace: `claude-plugins-official` (Anthropic)
 
 ```
-/plugin install coderabbit@claude-plugins-official
 /plugin install feature-dev@claude-plugins-official
 /plugin install figma@claude-plugins-official
 /plugin install frontend-design@claude-plugins-official
@@ -57,7 +56,7 @@ cat ~/.claude/plugins/installed_plugins.json | jq 'keys'
 cat ~/.claude/plugins/known_marketplaces.json | jq 'keys'
 ```
 
-Expected count: **2 marketplaces**, **14 plugins** (11 from `claude-plugins-official` + 3 from `atournayre`).
+Expected count: **2 marketplaces**, **13 plugins** (10 from `claude-plugins-official` + 3 from `atournayre`).
 
 ## Maintenance
 
