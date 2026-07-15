@@ -1,6 +1,6 @@
 ---
 name: testing-principles
-description: "ACTIVATE when writing or modifying tests, creating test classes/files, using test doubles, factories, or data providers. ACTIVATE for 'DAMP', 'spy vs mock', 'what NOT to test', 'AAA', 'test naming', 'factory test', 'parameterized test'. Covers cross-language testing principles: DAMP over DRY, AAA/GWT pattern, spy over mock, what NOT to test, factory functions, parameterized tests, structured assertions. Language-specific tooling (Prophecy, vi.fn/vi.mock, PHPUnit annotations, it.each syntax) lives in phpunit:php-test-conventions / vitest:vitest-test-conventions."
+description: "ACTIVATE when writing or modifying tests, creating test classes/files, using test doubles, factories, or data providers. ACTIVATE for 'DAMP', 'spy vs mock', 'what NOT to test', 'AAA', 'test naming', 'factory test', 'parameterized test', 'interface test', 'UI test', 'assert visible content', 'locate vs assert', 'selector', 'count by class'. Covers cross-language testing principles: DAMP over DRY, AAA/GWT pattern, spy over mock, what NOT to test, factory functions, parameterized tests, structured assertions, interface tests coupling to perceivable content not technical wiring. Language-specific tooling (Prophecy, vi.fn/vi.mock, PHPUnit annotations, it.each syntax) lives in phpunit:php-test-conventions / vitest:vitest-test-conventions."
 version: "1.0"
 ---
 
@@ -96,6 +96,60 @@ When a real collaborator trivially substitutes — a null object, an in-memory i
 
 **Criterion:** don't mock a collaborator you neither assert on nor script when a real / null implementation is available.
 
+## 12. Never Add Production Code for Tests
+
+Production code must serve **production**. Never add anything to production code — a
+CSS class, `js-*` hook, `id`, attribute, getter, or method — whose only purpose is to
+give a test something to locate or assert. This kind of code should never exist.
+
+**Only exception:** what is strictly required for the environment to run or the test to
+boot — e.g. a test-only DI alias exposing a private service so it can be substituted.
+A test **locator** is never covered by this exception.
+
+**Instead:** locate via markup/API the production code already exposes for a production
+reason — the real field name, a class the framework/theme actually emits. If no clean
+locator exists without adding test-only production code, do **not** add it — find
+another assertion.
+
+## 13. Interface Tests — Couple to Perceivable Function, Not Wiring
+
+An interface / UI test proves **behavior**: the text, values, labels, and state a user
+actually perceives render correctly. Couple **maximally** to elements that carry
+functional meaning and are visible; avoid coupling to purely technical elements.
+
+**Selectors only LOCATE — assertions express FUNCTION.** A CSS class, `js-*` hook, test
+id, or XPath is just an address to reach an element. Once located, assert what the user
+reads or perceives there: the visible text, the field value, the selected / checked /
+disabled state. Never let the *technical address* be the thing you assert.
+
+- **Prefer functional anchors to locate:** the real field name, the visible label text,
+  an accessible role/name, the rendered content — over volatile styling/layout classes
+  (`.form-check-inline`, `.card`, wrapper `div`s) that carry no functional meaning and
+  change with a restyle.
+- **Count-by-technical-class is plumbing, not function.** `assertCount(2, '.form-check-inline')`
+  passes even when every option renders the wrong text. Presence/count-by-class is
+  acceptable only as a *secondary* invariant next to content assertions, never as the
+  whole test.
+- **Don't assert framework defaults.** "No option is pre-selected" when nothing was set,
+  "the field is empty" on a fresh form — the framework guarantees these. Assert the
+  behavior *your code* owns, not the framework's baseline.
+
+```
+// ❌ Technical — passes even if the labels render garbage
+assertCount(2, page.filter('.form-check-inline'))
+assertNull(radios[0].attr('checked'))          // framework default: nothing set → nothing checked
+
+// ✅ Functional — locate by the field the app owns, assert the visible labels
+options = page.filter('input[name$="[account_ownership]"] + label')
+assertCount(2, options)
+assertSame("the member",              options[0].text())
+assertSame("the professional entity", options[1].text())
+```
+
+**Rule:** locate with any selector you like; assert only what a user could see or perceive.
+If your assertion would still pass with the wrong text/value/state on screen, it tests
+wiring — rewrite it against perceivable content.
+
 ## Quick Reference
 
 | Rule | Principle |
@@ -111,3 +165,5 @@ When a real collaborator trivially substitutes — a null object, an in-memory i
 | Structured assert | Compare complete object, not field by field |
 | Real over mock | When debugging, use real dependencies — mocks hide bugs |
 | Real over double | Use a null-object / in-memory / fake when you don't verify or script the collaborator |
+| No prod code for tests | Never add a class/`js-*`/id/attribute to production solely as a test locator — locate via real production markup |
+| Interface tests | Selectors only locate; assert perceivable content (text/value/state), not technical classes or framework defaults |
