@@ -13,6 +13,8 @@ In Claude Code:
 /plugin marketplace add atournayre/claude-marketplace
 ```
 
+> Note the resolved marketplace names used in Step 2: `anthropics/claude-plugins-official` registers as `claude-plugins-official`, but `atournayre/claude-marketplace` registers as **`atournayre-claude-plugin-marketplace`** (declared in its `marketplace.json`, not the repo basename) — so installs use `@atournayre-claude-plugin-marketplace`, not `@claude-marketplace`.
+
 ## Step 2 — Install the plugins
 
 ### Marketplace: `claude-plugins-official` (Anthropic)

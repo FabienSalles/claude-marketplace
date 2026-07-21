@@ -1,308 +1,182 @@
-# Guide d'usage — skills cherry-pickés `superpowers` + `pocock`
+# Usage guide — cherry-picked `superpowers` + `pocock` skills
 
-Ce guide explique **quand et comment** te servir des 6 skills ajoutés via les plugins `superpowers@fabien-claude-marketplace` (cherry-pick `obra/superpowers`) et `pocock@fabien-claude-marketplace` (cherry-pick `mattpocock/skills`).
+How and when to use the skills added by the `superpowers@fabien-claude-marketplace` plugin (cherry-picked from `obra/superpowers`) and `pocock@fabien-claude-marketplace` (cherry-picked from `mattpocock/skills`).
 
-Tous les exemples ci-dessous sont écrits avec ton contexte réel (eres, dotfiles, formation PHPUnit, RAG, refactoring souscription-individuelle).
+## Overview — triggering
 
----
-
-## Vue d'ensemble — mode de déclenchement
-
-| Skill | Plugin | Trigger | Quand Claude le charge |
+| Skill | Plugin | Trigger | When Claude loads it |
 |---|---|---|---|
-| `verification-before-completion` | superpowers | Auto | Claude est sur le point de dire "done/passes/fixed" |
-| `systematic-debugging` | superpowers | Auto | Tu signales un bug, un test qui fail, un comportement inattendu |
-| `grill-me` | pocock | Auto | Tu écris "grille-moi", "grill me", "stress-test mon plan" |
-| `grill-with-docs` | pocock | Auto | Même que `grill-me`, en présence de `CONTEXT.md` / `docs/adr/` |
-| `zoom-out` | pocock | **Manuel uniquement** (`disable-model-invocation: true`) | Tu invoques `/zoom-out` ou tu nommes le skill |
+| `verification-before-completion` | superpowers | Auto | Claude is about to say "done / passes / fixed" |
+| `systematic-debugging` | superpowers | Auto | You report a bug, a failing test, or unexpected behavior |
+| `grill-me` | pocock | Auto | You ask to be "grilled" / "stress-test my plan" |
+| `grill-with-docs` | pocock | Auto | Same as `grill-me`, when a `CONTEXT.md` / `docs/adr/` is present |
+| `zoom-out` | pocock | **Manual only** (`disable-model-invocation: true`) | You invoke `/zoom-out` or name the skill |
 
-> `writing-plans` (obra) a été initialement cherry-pické puis **retiré en v5.1.1** : doublon réel avec `/spec-first-dev`. Voir `tdd-workflow-audit.md` pour le détail.
-
----
-
-## 1. `zoom-out` (pocock) — _user-trigger uniquement_
-
-### Ce qu'il fait
-
-Force Claude à **monter d'un niveau d'abstraction** au lieu de plonger dans le code. Il te répond avec une carte des modules, des callers, et utilise le vocabulaire du glossaire métier (CONTEXT.md s'il existe).
-
-### Quand l'utiliser
-
-- 🟢 Tu hérites d'un projet eres que tu ne connais pas et tu veux comprendre l'archi avant de toucher
-- 🟢 On te file un ticket sur un module opaque (`Refund`, `Beneficiary`, `ContractStatus`...) et tu veux savoir où ça vit dans le système
-- 🟢 Tu reviens sur un projet après 6 mois et tu as oublié les boundaries
-
-### Quand NE PAS l'utiliser
-
-- 🔴 Tu connais déjà bien le périmètre → tu vas perdre du temps
-- 🔴 Tu cherches une réponse précise (signature de méthode, valeur de constante) → utilise `Grep`/`Read` directement
-
-### Comment l'invoquer
-
-`zoom-out` a `disable-model-invocation: true` : Claude **ne le déclenchera jamais tout seul**. Tu dois être explicite :
-
-```
-/zoom-out
-```
-
-Ou en langage naturel :
-```
-Utilise le skill zoom-out sur src/Subscription/Individual/
-```
-
-### Exemple concret — refactoring souscription-individuelle
-
-Plutôt que :
-> "Claude, regarde le dossier src/Subscription/Individual et explique-moi"
-
-→ Claude va lire les fichiers un par un et te faire un résumé technique.
-
-Avec `zoom-out` :
-> "/zoom-out src/Subscription/Individual"
-
-→ Claude va d'abord chercher `CONTEXT.md`, `docs/adr/`, les callers depuis d'autres bounded contexts, et te répondra :
->
-> "**Subscription/Individual** est appelé par `Api/Souscription`, `Workflow/Onboarding`, et `Admin/Backoffice`.
-> Il publie `IndividualSubscribed` consommé par `Notification` et `Accounting`.
-> Glossaire (CONTEXT.md) : `IndividualSubscription` = adhésion personne physique seule (sans bénéficiaire) ≠ `GroupSubscription`."
+> `writing-plans` (obra) was cherry-picked at first, then **dropped in 5.1.1** — real overlap with `/spec-first-dev`. See [`plugins/superpowers/README.md`](../plugins/superpowers/README.md) for the skip rationale.
 
 ---
 
-## 2. `grill-me` (pocock) — Socratique léger
+## 1. `zoom-out` (pocock) — user-trigger only
 
-### Ce qu'il fait
+**What it does.** Forces Claude to go **up a level of abstraction** instead of diving into files. It replies with a map of the relevant modules and callers, using the project's domain glossary (`CONTEXT.md` if present).
 
-Inverse le pattern habituel "Claude propose verbeux / toi tu pushes back". Au lieu de ça, **Claude te grille** : une question à la fois, en parcourant l'arbre de décision, avec sa préconisation à chaque branche.
+**When to use**
 
-### Quand l'utiliser
+- ✅ You inherit a codebase you don't know and want the architecture before touching anything.
+- ✅ You get a ticket on an opaque module (`Refund`, `Beneficiary`, `ContractStatus`…) and want to know where it lives in the system.
+- ✅ You come back to a project after months and have forgotten the boundaries.
 
-- 🟢 Tu prends une **décision ponctuelle hors feature-dev** : choix entre 2 libs, scope d'un refacto, design d'un hook, structure d'un test fixture
-- 🟢 Tu as une idée floue dans la tête et tu veux que Claude force la clarification avant qu'il code
-- 🟢 Tu veux **stress-tester** un plan que tu as déjà écrit (mental check)
+**When NOT to use**
 
-### Quand NE PAS l'utiliser
+- ❌ You already know the area well — you'll just waste a round-trip.
+- ❌ You want a precise answer (a method signature, a constant's value) — use `Grep` / `Read` directly.
 
-- 🔴 Tu démarres une **feature DDD/Symfony complète sur eres** → utilise `/spec-first-dev` qui est plus structuré (Round 1 business + Round 2 système + UL + GATE de validation)
-- 🔴 Tu as déjà tout clair dans la tête → tu vas perdre du temps en aller-retour
+**How to invoke.** `zoom-out` has `disable-model-invocation: true`, so Claude never triggers it on its own. Be explicit:
 
-### Différence vs `/spec-first-dev` Phase 1
+```
+/zoom-out src/Subscription/Individual
+```
+
+Or in natural language: *"Use the zoom-out skill on src/Subscription/Individual"*.
+
+**Example.** Instead of *"read src/Subscription/Individual and explain it"* (which makes Claude read files one by one and summarize), `zoom-out` first looks for `CONTEXT.md` / `docs/adr/` and the callers from other bounded contexts, then answers with a system-level map: who calls this module, which events it publishes and who consumes them, and the glossary terms that disambiguate it from neighbors.
+
+---
+
+## 2. `grill-me` (pocock) — lightweight Socratic interview
+
+**What it does.** Inverts the usual "Claude proposes verbosely / you push back" loop. Instead, **Claude grills you** — one question at a time, walking the decision tree, with a recommendation at each branch.
+
+**When to use**
+
+- ✅ A one-off decision outside feature-dev: choosing between two libraries, scoping a refactor, designing a hook, structuring a test fixture.
+- ✅ You have a fuzzy idea and want Claude to force clarification before it writes any code.
+- ✅ You want to stress-test a plan you already wrote.
+
+**When NOT to use**
+
+- ❌ You're starting a full feature — use `/spec-first-dev`, which is more structured (business round + system round + ubiquitous language + a validation gate).
+- ❌ Everything is already clear in your head — you'll just waste back-and-forth.
+
+**vs `/spec-first-dev` Phase 1**
 
 | | `/spec-first-dev` | `grill-me` |
 |---|---|---|
-| Structure | Checklist fixe (6 questions business + 5 questions système) | Émergent, dépend du sujet |
-| Sortie | Synthèse markdown formelle (UL/User flow/BR/Scope) | Pas de sortie persistée |
-| Scope | Feature dev DDD eres | N'importe quelle décision |
+| Structure | Fixed checklist (business + system questions) | Emergent, depends on the topic |
+| Output | Formal markdown synthesis (UL / user flow / rules / scope) | No persisted output |
+| Scope | Full feature development | Any single decision |
 
-### Comment l'invoquer
+**How to invoke.** Auto-triggers on phrases like *"grill me on this hook before I write it"* or *"stress-test my architecture plan"*.
 
-Auto-trigger sur des phrases comme :
-- *"grille-moi sur le hook BSD/GNU lint avant que je l'écrive"*
-- *"stress-test mon plan d'archi RAG"*
-- *"grill me on this refactor"*
-
-### Exemple concret — hook BSD/GNU lint (item BACKLOG)
+**Example — a BSD/GNU lint hook**
 
 ```
-Toi : "grille-moi sur le hook BSD/GNU lint qu'on a au BACKLOG"
+You:    "grill me on the BSD/GNU lint hook"
 
-Claude : Q1: Tu veux que le hook warn ou block ?
-         Reco: warn (BACKLOG le dit : "warn, not block").
-Toi : warn
+Claude: Q1: Should the hook warn or block?
+        Rec: warn (least disruptive for a portability lint).
+You:    warn
 
-Claude : Q2: Détection par string match sur la commande, ou parse AST bash ?
-         Reco: string match (zero dep, ~50 lignes bash natif).
-Toi : string match
+Claude: Q2: Detect by string match on the command, or parse the bash AST?
+        Rec: string match (zero deps, ~50 lines of portable bash).
+You:    string match
 
-Claude : Q3: Tu cibles seulement `Bash` tool, ou aussi les `Edit/Write` sur 
-         des fichiers .sh ?
-         Reco: les deux (un script .sh fraîchement créé peut contenir 
-         grep -P qui shippera tel quel).
-Toi : seulement Bash pour v1
-
-Claude : Q4: Les patterns sont en dur dans le hook, ou dans un fichier YAML
-         versionné séparément ?
-         Reco: en dur pour v1 (8 patterns, pas besoin de YAML).
-...
+Claude: Q3: Target only the Bash tool, or also Edit/Write on .sh files?
+        Rec: both — a freshly-written .sh can contain `grep -P` that ships as-is.
+You:    Bash only for v1
 ```
 
-→ À la fin, vous avez aligné sur les 4-5 décisions clés avant le moindre code.
+By the end you've aligned on the key decisions before a single line of code.
 
 ---
 
-## 3. `grill-with-docs` (pocock) — Socratique + maintenance de la doc domain
+## 3. `grill-with-docs` (pocock) — Socratic interview + domain-doc maintenance
 
-### Ce qu'il fait
+**What it does.** Like `grill-me`, **plus** live updates to `CONTEXT.md` (the bounded context's glossary) and sparing creation of ADRs (Architecture Decision Records) as decisions crystallize.
 
-Comme `grill-me`, **plus** la mise à jour vivante de `CONTEXT.md` (le glossaire du bounded context) et la création parcimonieuse d'ADR (Architecture Decision Records) au fil des décisions cristallisées.
+**When to use**
 
-### Quand l'utiliser
+- ✅ You work on a DDD project that already has a `CONTEXT.md` or `docs/adr/`.
+- ✅ You want ubiquitous-language rigor beyond "it compiles" — an imprecise term should be challenged immediately.
+- ✅ You're preparing a structural architecture decision (event sourcing for orders, read/write separation…) that deserves an ADR.
 
-- 🟢 Tu travailles sur un projet eres **DDD avec `CONTEXT.md` ou `docs/adr/` déjà présents**
-- 🟢 Tu veux pousser la rigueur ubiquitous language au-delà du « ça compile » : qu'un terme imprécis te soit immédiatement challengé
-- 🟢 Tu prépares une **décision archi structurante** (event sourcing pour les Orders, séparation read/write...) qui mérite un ADR
+**When NOT to use**
 
-### Quand NE PAS l'utiliser
+- ❌ A project with no glossary and no DDD culture — `grill-me` is enough; don't bootstrap a `CONTEXT.md` nobody will maintain.
+- ❌ A purely technical decision with no impact on the domain language (e.g. picking an HTTP transport) — use `grill-me`.
 
-- 🔴 Projet sans glossaire / sans culture DDD → `grill-me` suffit, pas la peine d'amorcer artificiellement un `CONTEXT.md` que personne ne maintiendra
-- 🔴 Décision purement technique sans impact sur le langage métier (ex : choix d'un transport HTTP) → `grill-me`
+**vs `grill-me`.** `grill-me` is a pure interview. `grill-with-docs` also updates `CONTEXT.md` the moment a term is resolved, and proposes an ADR only when all three criteria hold:
 
-### Différence vs `grill-me`
+1. **Hard to reverse** — changing your mind later would be costly.
+2. **Surprising without context** — a future reader would wonder why.
+3. **Real trade-off** — there genuinely were several options.
 
-`grill-me` = pur interview. `grill-with-docs` = interview **+** met à jour `CONTEXT.md` au moment où un terme est résolu, et propose un ADR uniquement si les 3 critères sont réunis :
+**How to invoke.** Same phrases as `grill-me`. Claude detects a `CONTEXT.md` / `docs/adr/` and switches to `grill-with-docs`.
 
-1. **Hard to reverse** (changer d'avis coûterait cher)
-2. **Surprising without context** (un futur lecteur se demanderait pourquoi)
-3. **Real trade-off** (il y avait vraiment plusieurs options)
-
-### Comment l'invoquer
-
-Auto-trigger sur les mêmes phrases que `grill-me`. Claude détecte la présence de `CONTEXT.md` / `docs/adr/` et bascule sur `grill-with-docs`.
-
-### Exemple concret — formation PHPUnit, refonte du module "Beneficiary"
-
-```
-Toi : "grille-moi sur le redesign du module Beneficiary"
-
-Claude : (lit CONTEXT.md → voit que "Beneficiary" est déjà défini)
-        
-        Avant de commencer : ton CONTEXT.md définit `Beneficiary` 
-        comme "personne désignée par le souscripteur pour recevoir 
-        les prestations". Le redesign concerne ça, ou tu parles aussi 
-        des `Insured` (assurés directs) ?
-Toi : Bonne question — je pensais Beneficiary uniquement. Insured est out of scope.
-
-Claude : (met à jour CONTEXT.md inline pour clarifier la frontière)
-        
-        Q1: Un Beneficiary peut-il être lié à plusieurs Subscriptions, 
-        ou strictement 1:1 ?
-        Reco: regarde Subscription.beneficiaries (collection) → 1:N existant.
-Toi : 1:N confirmé
-
-Claude : Q2: ...
-```
-
-À la fin : `CONTEXT.md` enrichi avec la frontière `Beneficiary` vs `Insured`, plus éventuellement un ADR si une décision est structurante (ex: "On garde 1:N mais on ajoute une contrainte d'unicité par Subscription").
+**Example.** Grilling the redesign of a `Beneficiary` module: Claude reads `CONTEXT.md`, sees `Beneficiary` is already defined, and opens by pinning the boundary — is the redesign about `Beneficiary` only, or also `Insured` (direct insured parties)? Once you answer, it updates `CONTEXT.md` inline to record the boundary, then continues the interview. If a decision turns out to be structural (e.g. keep a 1:N relation but add a uniqueness constraint), it proposes an ADR.
 
 ---
 
-## 4. `verification-before-completion` (obra) — discipline « evidence before claims »
+## 4. `verification-before-completion` (obra) — "evidence before claims"
 
-### Ce qu'il fait
+**What it does.** A self-verification discipline. Before Claude says "done", "passes", "fixed", or "looks good", it **must** have run the verification command in the current message and read the output. *Confidence is not evidence.*
 
-Skill de **discipline d'auto-vérification**. Avant que Claude dise "done", "passes", "fixed", "looks good", il **doit** avoir exécuté la commande de vérification dans le message en cours et lu la sortie. *Confidence ≠ evidence.*
+**Why it matters.** A recurring failure mode is claiming success too early — announcing "done" without having run the tests. This skill addresses that directly by gating the claim on real, pasted output.
 
-### Pourquoi ça compte pour toi
+**When to use**
 
-Le rapport d'audit a montré **26 "wrong approach" / "mostly_achieved" sur 35 sessions** : Claude annonce "done" trop tôt, sans avoir lancé les tests. Ce skill adresse ça **directement**.
+- ✅ Nothing to do — it auto-triggers whenever Claude is about to claim success.
 
-### Quand l'utiliser
+**How to force it if Claude forgets**
 
-- 🟢 **Tu n'as rien à faire — il s'auto-déclenche** dès que Claude est sur le point de claim une réussite
-
-### Comment le forcer si Claude oublie
-
-- *"vérifie avant de conclure"*
-- *"montre-moi la preuve que ça passe"*
+- *"verify before concluding"*
+- *"show me the proof it passes"*
 - *"run the tests and show me the output before saying done"*
 
-### Effet attendu
-
-Avant ce skill :
-> "J'ai fixé le bug, les tests passent maintenant."
-
-Après ce skill :
-> "Je viens de tourner `make php/qa` : 12/12 tests passent (exit code 0). Le bug est fixé."
-> _(avec la sortie de la commande dans le message)_
-
-### Exemple concret — refacto souscription-individuelle
-
-```
-Toi : "fixe le bug de validation sur le formulaire de souscription"
-Claude : (édite le code)
-        → s'auto-déclenche verification-before-completion
-        → tourne `make php/qa`
-        → "Build vert : 247/247 tests passent, PHPStan 0 erreur, php-cs-fixer 
-           OK. Le bug est fixé. Voici la sortie : [..]"
-```
-
-vs. l'ancien comportement où il aurait dit "c'est bon !" sans tourner les tests.
+**Effect.** Before: *"I fixed the bug, tests pass now."* After: *"I just ran `make php/qa`: 12/12 tests pass (exit 0). The bug is fixed."* — with the command output included in the message.
 
 ---
 
-## 5. `systematic-debugging` (obra) — méthode debug en 4 phases
+## 5. `systematic-debugging` (obra) — 4-phase debugging method
 
-### Ce qu'il fait
+**What it does.** Forces a **systematic** method before any fix:
 
-Force Claude à suivre une méthode **systématique** avant tout fix :
+1. **Root-cause investigation** — read the errors, reproduce, check recent changes, instrument the boundaries in multi-component systems.
+2. **Pattern analysis** — understand *why*, not just *where*.
+3. **Fix design** — target the root cause, not the symptom.
+4. **Verification** — a red-green cycle proving the fix holds.
 
-1. **Phase 1 — Root Cause Investigation** : lire les erreurs, reproduire, vérifier les changements récents, instrumenter les boundaries dans les systèmes multi-composants
-2. **Phase 2 — Pattern Analysis** : comprendre pourquoi (pas juste où)
-3. **Phase 3 — Fix Design** : proposer un fix au root cause, pas au symptôme
-4. **Phase 4 — Verification** : red-green cycle pour valider que le fix tient
+**When to use**
 
-### Quand l'utiliser
+- ✅ Nothing to do — auto-triggers on "bug", "test fails", "it crashes", "unexpected behavior", "build error", "perf problem".
+- ✅ Bugs that span several services (API + worker + DB) — Phase 1 boundary instrumentation is where it earns its keep.
 
-- 🟢 **Tu n'as rien à faire — auto-trigger** sur "bug", "test fails", "ça crash", "comportement inattendu", "build error", "perf problem"
-- 🟢 Sur les bugs eres qui touchent plusieurs services (API + worker + DB) → la Phase 1 instrumentation des boundaries est précieuse
+**How to force it**
 
-### Quand le forcer
+- *"apply systematic-debugging"*
+- *"don't propose a fix before finding the root cause"*
 
-- *"applique systematic-debugging"*
-- *"ne propose pas de fix avant d'avoir trouvé la root cause"*
-
-### Différence vs `qa:phpstan-resolver` (que tu as déjà)
-
-| | `qa:phpstan-resolver` | `systematic-debugging` |
-|---|---|---|
-| Scope | PHP / PHPStan uniquement | Language-agnostic (TS, bash, infra, Symfony, NestJS...) |
-| Méthode | Loop sur les erreurs PHPStan jusqu'à zéro | 4 phases avant tout fix |
-| Cible | Erreurs typage | Bugs runtime, échecs CI, perf, intégration |
-
-Les deux sont **complémentaires** : `phpstan-resolver` résout les erreurs de types, `systematic-debugging` résout les vrais bugs (logique métier, intégration, perf).
-
-### Exemple concret — bug en prod sur souscription
-
-```
-Toi : "Les utilisateurs se plaignent que la souscription échoue 
-       silencieusement depuis hier."
-
-Claude : (auto-trigger systematic-debugging)
-
-        Phase 1 — Root Cause Investigation
-        
-        1. Erreurs : pas de stack trace côté front. Je regarde les logs API
-           (Datadog ? Sentry ?)
-        2. Reproduction : peux-tu me donner un user ID qui a échoué ?
-        3. Changements récents : `git log --since=yesterday` montre 3 commits 
-           dont 1 sur le service de validation.
-        4. Boundaries : je vais instrumenter API → Domain → Repository pour 
-           voir où ça casse.
-
-        Donne-moi un user ID que je puisse rejouer, et je tourne 
-        les diagnostics avant de proposer un fix.
-```
-
-vs. l'ancien comportement où Claude aurait dit "c'est sûrement le validator, je change la règle".
+**Example.** Reported: *"subscriptions have been failing silently since yesterday."* The skill drives Phase 1 — look at the API logs, ask for a failing user id to reproduce, run `git log --since=yesterday` (three commits, one on the validation service), and instrument API → Domain → Repository to see where it breaks — before proposing any fix, instead of guessing "it's probably the validator".
 
 ---
 
-## 🎯 Table de décision rapide
+## Quick decision table
 
 | Situation | Skill |
 |---|---|
-| Démarrer une feature DDD complète sur eres | `/spec-first-dev` _(pas un skill cherry-pick — workflow maison)_ |
-| Décision ponctuelle hors feature-dev (lib, hook, refacto isolé) | `grill-me` |
-| Idem mais projet DDD avec CONTEXT.md / ADR | `grill-with-docs` |
-| Entrer dans une codebase inconnue | `/zoom-out` |
-| Bug, test qui fail, comportement inattendu | `systematic-debugging` _(auto)_ |
-| Claude vient de dire "done" sans preuve | `verification-before-completion` _(auto)_ |
-| Plan d'implémentation feature | `/spec-first-dev` _(workflow maison, plus structuré que writing-plans)_ |
+| Start a full feature | `/spec-first-dev` *(house workflow, not a cherry-picked skill)* |
+| One-off decision outside feature-dev (lib, hook, isolated refactor) | `grill-me` |
+| Same, but a DDD project with `CONTEXT.md` / ADRs | `grill-with-docs` |
+| Enter an unfamiliar codebase | `/zoom-out` |
+| Bug, failing test, unexpected behavior | `systematic-debugging` *(auto)* |
+| Claude just said "done" with no proof | `verification-before-completion` *(auto)* |
+| Implementation plan for a feature | `/spec-first-dev` *(house workflow, more structured than writing-plans)* |
 
 ---
 
-## Références
+## References
 
-- Upstream `obra/superpowers` : https://github.com/obra/superpowers (MIT)
-- Upstream `mattpocock/skills` : https://github.com/mattpocock/skills (MIT)
-- README plugin : [`plugins/superpowers/README.md`](../plugins/superpowers/README.md), [`plugins/pocock/README.md`](../plugins/pocock/README.md)
-- Workflow maison à comparer : `/spec-first-dev` ([`plugins/common/commands/spec-first-dev.md`](../plugins/common/commands/spec-first-dev.md))
+- Upstream `obra/superpowers`: https://github.com/obra/superpowers (MIT)
+- Upstream `mattpocock/skills`: https://github.com/mattpocock/skills (MIT)
+- Plugin READMEs: [`plugins/superpowers/README.md`](../plugins/superpowers/README.md), [`plugins/pocock/README.md`](../plugins/pocock/README.md)
+- House workflow to compare against: `/spec-first-dev` ([`plugins/common/commands/spec-first-dev.md`](../plugins/common/commands/spec-first-dev.md))

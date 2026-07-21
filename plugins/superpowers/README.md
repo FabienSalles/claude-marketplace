@@ -9,12 +9,12 @@ The upstream marketplace ships 14 skills. Two are pulled here; the others are de
 | Skill | Status | Why |
 |---|---|---|
 | `verification-before-completion` | ✅ kept | Evidence-before-claims gate — no equivalent in the rest of the marketplace |
-| `systematic-debugging` | ✅ kept | Root-cause-first 4-phase process — complements `qa:phpstan-resolver` (PHP-specific) by being language-agnostic |
-| `writing-plans` | ❌ skipped (removed in 5.1.1) | Real overlap with `/spec-first-dev` Phase 3-4. Its only delta — bite-sized 2-5 min steps — is already covered by `php-tdd-workflow` / `vitest-tdd-workflow`. See `docs/tdd-workflow-audit.md` for the comparison. |
-| `brainstorming` | ❌ skipped | Duplicates `bmad-brainstorming` (BMAD is more structured) |
+| `systematic-debugging` | ✅ kept | Root-cause-first 4-phase process — this marketplace has no native, language-agnostic root-cause discipline (the only debugging aid, `qa:phpstan-resolver`, lives in an external marketplace) |
+| `writing-plans` | ❌ skipped (removed in 5.1.1) | Step decomposition overlaps `/spec-first-dev` Phase 3-4 and the `*-tdd-workflow` skills. Its distinct value — a No-Placeholders discipline for plan docs — is a tracked gap in `self-audit`, not yet ported. |
+| `brainstorming` | ❌ skipped | Generative divergent→convergent ideation is a deliberate non-goal here (this marketplace is critique/planning). No internal 1:1; the closest planning tools are `/spec-first-dev` + the grill family. (BMAD is an external, non-marketplace install.) |
 | `test-driven-development` | ❌ skipped | Would be a 4th TDD framework alongside `php-tdd-workflow`, `vitest-tdd-workflow`, `common:feature-tdd-dev` → Claude hesitates |
-| `subagent-driven-development` | ❌ skipped | Multi-clauding is handled manually + `audit-trail.sh` |
-| `requesting-code-review` / `receiving-code-review` | ❌ skipped | `common:deep-review` covers adversarial review |
+| `subagent-driven-development` | ❌ skipped | Hands-off subagent orchestration is a deliberate non-goal (human-as-controller). Nearest internal workflow: `goal`. (`audit-trail.sh` is only a Bash-command logger, not an orchestrator.) |
+| `requesting-code-review` / `receiving-code-review` | ❌ skipped | `common:deep-review` covers the reviewer/producer axis, not these: `requesting-code-review` is requester-side (feed the plan so silent omissions / scope-creep are caught), `receiving-code-review` is triage/pushback + no performative agreement. Both are tracked gaps in `self-audit`, not yet ported. |
 | `dispatching-parallel-agents` / `using-git-worktrees` / `finishing-a-development-branch` / `executing-plans` / `using-superpowers` / `writing-skills` | ❌ skipped | Out of scope (orthogonal workflows) |
 
 ## Upstream

@@ -27,21 +27,42 @@ BOLD='\033[1m'
 # ─────────────────────────────────────────────
 # Available packs
 # ─────────────────────────────────────────────
-PACKS=(php phpunit symfony typescript astro nest frontend vitest tooling common statusline mac craft audit goal)
+# security-audit is a remote github re-export — install it via /plugin, not this dev-mode toggler.
+PACKS=(
+  php phpunit symfony typescript nest vitest astro frontend jquery tooling
+  craft
+  goal common superpowers pocock
+  security-runtime audit
+  self-audit
+  mac statusline
+  marketing-content marketing-strategy marketing-distribution marketing-analytics
+)
 
 declare -A PACK_DESCRIPTIONS=(
   [php]="PHP 8.2/8.3 language conventions — code style, OOP, DDD, refactoring, SQL, Composer (framework-agnostic)"
   [phpunit]="PHPUnit TDD workflow + test writing conventions (layers on craft:tdd-workflow-principles + craft:testing-principles)"
   [symfony]="Personal Symfony overlay — FormType data ownership, Twig component translation domain isolation, Post/Redirect/Get pattern"
   [typescript]="TypeScript conventions, typing, DDD events, functional programming, OOP, refactoring, security"
-  [astro]="Astro 5.x — components, routing, collections, i18n, SEO, Tailwind, React islands, transitions"
   [nest]="NestJS architectural conventions, DDD with NestJS"
-  [frontend]="Frontend clean architecture (hexagonal), Container/Presentation patterns"
   [vitest]="Vitest TDD workflow, test conventions and patterns"
-  [tooling]="Docker, Drizzle ORM, pnpm workspaces, Zod schemas"
-  [common]="Shared hooks, agents, commands, skills"
-  [statusline]="Claude Code statusline — cwd, git branch, model, context progress bar, 5h rate limit"
+  [astro]="Astro 5.x — components, routing, collections, i18n, SEO, Tailwind, React islands, transitions"
+  [frontend]="Frontend clean architecture (hexagonal), Container/Presentation patterns"
+  [jquery]="jQuery conventions — module structure, js-* selector hooks, per-block scoping, symmetric toggles (framework-agnostic)"
+  [tooling]="Docker, Drizzle ORM, pnpm workspaces, Zod schemas, Claude plugin + npx skills conventions"
+  [craft]="Cross-language craftsmanship principles — refactoring, OOP, code style, testing, TDD, DDD (pair with language packs)"
   [goal]="Autonomous issue→PR workflow on Claude Code /goal — /draft-issue (spec → GitHub issue), /run-issue (issue → spec → branch → /goal), auto-regenerated execution log shipped in the PR diff"
+  [common]="Shared hooks, agents, commands, skills — planning, research, context-window, TDD/feature-dev, code-review"
+  [superpowers]="Cherry-picked obra/superpowers — verification-before-completion, systematic-debugging"
+  [pocock]="Cherry-picked mattpocock/skills — grill-me, grill-with-docs, zoom-out"
+  [security-runtime]="Runtime security hooks — CLAUDE.md injection scanner (SessionStart) + Bash prompt-injection blocker (PreToolUse)"
+  [audit]="Security audit overlay on netresearch/security-audit — personal overrides + ts-security code patterns"
+  [self-audit]="Meta-tooling — /self-audit:compare audits an external skill pack vs this marketplace into a gap backlog"
+  [mac]="macOS / BSD platform discipline — bash 3.2 vs Homebrew bash 5+, BSD vs GNU portability, bsd-gnu-lint hook"
+  [statusline]="Claude Code statusline — cwd, git branch, model, context progress bar, 5h rate limit"
+  [marketing-content]="Content & copywriting — LinkedIn, SEO blog, direct-response copy, editing, calendar, schema markup"
+  [marketing-strategy]="Strategic marketing — ICP, mental models, 139 growth ideas, competitor analysis, positioning/GTM"
+  [marketing-distribution]="Distribution — multi-platform social, Twitter/X + Reddit threads, email subject lines, newsletter"
+  [marketing-analytics]="Analytics — GA4/GTM/UTM tracking setup, GA Data API + Search Console reporting"
 )
 
 STATUSLINE_CMD="$SCRIPT_DIR/plugins/statusline/statusline.sh"
