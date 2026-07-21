@@ -53,6 +53,15 @@ Decide the approach. One approach, not three alternatives.
 - Files to change: [ordered list]
 ```
 
+When you accept complexity — an abstraction, a new dependency, an extra layer, a generalization beyond the current need — justify it in a Complexity Tracking table. Leave it empty when there is nothing to justify.
+
+```markdown
+## Complexity Tracking
+| Complexity accepted | Why needed | Simpler alternative rejected because |
+|---|---|---|
+| [what] | [the concrete need] | [why the simpler option doesn't cover it] |
+```
+
 ### Phase 4: Structured Plan (max 5 min)
 
 Break into ordered, testable steps. Each step should leave the codebase in a working state.

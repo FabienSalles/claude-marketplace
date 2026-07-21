@@ -148,6 +148,14 @@ Iterate on the synthesis until explicit confirmation. **DO NOT move to Phase 2 w
 [UL table from Phase 1]
 ```
 
+**Simplicity check** (run before the gate) — every layer earns its place:
+- [ ] No future-proofing — solve today's requirement, not a hypothetical one.
+- [ ] Framework used directly — no gratuitous wrapper around what it already provides.
+- [ ] Single model representation — no parallel DTO/entity duplication without a real need.
+- [ ] Any added abstraction layer is justified (name the concrete need it serves).
+
+If a box can't be checked, either simplify or record the justification in the spec.
+
 **GATE**: "Do you validate this specification? What would you change?"
 
 The validated spec becomes the **implementation contract**. Any deviation must come back to the spec. If a change is needed during implementation, update the spec FIRST.

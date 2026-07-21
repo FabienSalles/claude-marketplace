@@ -36,6 +36,8 @@ Never write tests coupled to implementation without behavior. Only test classes 
 
 **Rule:** if the test only verifies that a getter returns what was passed to the constructor, delete it.
 
+**Anti-pattern — tautological assertion:** an assertion that *recomputes* the expected value the same way the code does (`expect(add(a, b)).toBe(a + b)`) passes by construction and proves nothing. Expected values must come from an **independent source of truth** — a hardcoded literal, a hand-worked example, or a known-good fixture.
+
 ## 3. Pre-Test Checklist
 
 Before writing a new test, confront it to these **3 questions**. If you can't answer "yes" to all three, do not write the test.
@@ -89,6 +91,11 @@ Compare **complete objects** with the language's structured assertion rather tha
 ## 10. Mocks Can Hide Real Bugs
 
 When debugging a flaky/broken behavior, **prefer real dependencies** over mocks. Mocks return what you tell them — they can pass while production crashes.
+
+Two hygiene rules when a double is unavoidable:
+
+1. **Mirror the full structure.** A mock must reproduce the real data's complete shape. A partial mock — one field omitted — passes silently while production reads the missing field and breaks.
+2. **Don't stub the behavior under test.** Never stub a high-level method whose side-effect is the very thing the test is meant to verify — observe the real behavior first. And when you must isolate a dependency, double a boundary **you own** (a port / adapter), not a third-party type you don't — a mock of what you don't own only encodes guesses about it.
 
 ## 11. Prefer a Real Implementation Over a Mocking Tool
 
@@ -156,6 +163,7 @@ wiring — rewrite it against perceivable content.
 |------|-----------|
 | Test type | Unit (no container) / Integration (real deps) / Functional (full flow) |
 | What not to test | No tests on data containers / pure getters |
+| Tautological assertion | Expected value comes from an independent source, never recomputed like the code |
 | Pre-test checklist | Valid state? Not covered already? Behavior, not impl? |
 | DAMP > DRY | Full AAA in each test, no `setUp`/`beforeEach` for non-trivial logic |
 | AAA / GWT | Blank lines between Arrange/Act/Assert, no comments |
@@ -164,6 +172,7 @@ wiring — rewrite it against perceivable content.
 | Factories | Helper methods, extract when duplicated |
 | Structured assert | Compare complete object, not field by field |
 | Real over mock | When debugging, use real dependencies — mocks hide bugs |
+| Mock hygiene | Mirror the real data's full shape; never stub the behavior under test; double a boundary you own, not a third-party type |
 | Real over double | Use a null-object / in-memory / fake when you don't verify or script the collaborator |
 | No prod code for tests | Never add a class/`js-*`/id/attribute to production solely as a test locator — locate via real production markup |
 | Interface tests | Selectors only locate; assert perceivable content (text/value/state), not technical classes or framework defaults |

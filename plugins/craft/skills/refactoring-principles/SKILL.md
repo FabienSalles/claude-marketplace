@@ -58,6 +58,18 @@ Before considering an extracted value object "done":
 4. Include ALL extracted data as properties.
 5. If a consumer needs an external mapping → missing property.
 
+## 5. The Deletion Test (Is an Abstraction Earning Its Keep?)
+
+Before keeping a wrapper, layer, or indirection, imagine deleting it and inlining it into its callers.
+
+**Process:**
+
+1. Mentally delete the module and inline it at every call site.
+2. If the complexity vanishes, it was a pass-through — delete it for real.
+3. If the same complexity reappears duplicated across N callers, it was earning its keep.
+
+**Criterion:** an abstraction justifies its existence only when removing it would duplicate real complexity across callers — not when it merely renames a single indirection.
+
 ## Quick Reference
 
 | Rule | Principle |
@@ -66,3 +78,4 @@ Before considering an extracted value object "done":
 | Trace consumers | List all usages to define a value object's structure |
 | Imports = coupling | Imports reveal dependencies; verify their consistency |
 | Complete value objects | Include everything consumers need; no external mappings |
+| Deletion test | An abstraction earns its keep only if deleting it duplicates complexity across callers |
