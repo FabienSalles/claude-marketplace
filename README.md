@@ -24,21 +24,6 @@ What this marketplace optimizes for — and, just as deliberately, what it refus
 
 Grouped by theme. Each links to the plugin's own README with the full skill catalog and links to every `SKILL.md`.
 
-### Languages & stacks
-
-| Plugin | What it does |
-|---|---|
-| [**php**](plugins/php/README.md) | PHP 8.2/8.3 conventions — code style, OOP, DDD, refactoring, SQL, Composer. Framework-agnostic. |
-| [**phpunit**](plugins/phpunit/README.md) | PHPUnit TDD workflow + test conventions (DAMP/AAA/Prophecy). Layers on `craft`. |
-| [**symfony**](plugins/symfony/README.md) | Personal Symfony overlay — FormType, Twig components, PRG. Distinct from `atournayre/symfony`. |
-| [**typescript**](plugins/typescript/README.md) | Typing, code style, functional, OOP, DDD events, refactoring. |
-| [**nest**](plugins/nest/README.md) | NestJS architectural conventions + DDD. |
-| [**vitest**](plugins/vitest/README.md) | Vitest TDD workflow + test conventions. |
-| [**astro**](plugins/astro/README.md) | Astro 5.x — routing, content collections, i18n, SEO, Tailwind, React islands, view transitions. |
-| [**frontend**](plugins/frontend/README.md) | Clean/hexagonal architecture, Container/Presentation, safe edits to existing UI. |
-| [**jquery**](plugins/jquery/README.md) | jQuery module structure, `js-*` selector hooks, per-block scoping, symmetric toggles. |
-| [**tooling**](plugins/tooling/README.md) | Docker, Drizzle ORM, pnpm workspaces, Zod, Claude plugin + npx skills conventions. |
-
 ### Craft & quality
 
 | Plugin | What it does |
@@ -55,6 +40,21 @@ Grouped by theme. Each links to the plugin's own README with the full skill cata
 | [**pocock**](plugins/pocock/README.md) | Cherry-picked [mattpocock/skills](https://github.com/mattpocock/skills) — `grill-me`, `grill-with-docs`, `zoom-out`. |
 
 These overlap — [**docs/workflows-decision-guide.md**](docs/workflows-decision-guide.md) maps which planning / execution workflow to reach for, and when.
+
+### Languages & stacks
+
+| Plugin | What it does |
+|---|---|
+| [**php**](plugins/php/README.md) | PHP 8.2/8.3 conventions — code style, OOP, DDD, refactoring, SQL, Composer. Framework-agnostic. |
+| [**phpunit**](plugins/phpunit/README.md) | PHPUnit TDD workflow + test conventions (DAMP/AAA/Prophecy). Layers on `craft`. |
+| [**symfony**](plugins/symfony/README.md) | Personal Symfony overlay — FormType, Twig components, PRG. Distinct from `atournayre/symfony`. |
+| [**typescript**](plugins/typescript/README.md) | Typing, code style, functional, OOP, DDD events, refactoring. |
+| [**nest**](plugins/nest/README.md) | NestJS architectural conventions + DDD. |
+| [**vitest**](plugins/vitest/README.md) | Vitest TDD workflow + test conventions. |
+| [**astro**](plugins/astro/README.md) | Astro 5.x — routing, content collections, i18n, SEO, Tailwind, React islands, view transitions. |
+| [**frontend**](plugins/frontend/README.md) | Clean/hexagonal architecture, Container/Presentation, safe edits to existing UI. |
+| [**jquery**](plugins/jquery/README.md) | jQuery module structure, `js-*` selector hooks, per-block scoping, symmetric toggles. |
+| [**tooling**](plugins/tooling/README.md) | Docker, Drizzle ORM, pnpm workspaces, Zod, Claude plugin + npx skills conventions. |
 
 ### Security
 

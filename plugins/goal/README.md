@@ -11,39 +11,61 @@ The idea in one line: **don't drop `/goal "deliver CT-1234"` and walk away.** Fi
 lift the ambiguities and build a Definition of Done a machine can check, *then* let
 `/goal` execute against that contract, one small reviewable slice at a time.
 
+## Why it's different — what it does well
+
+Native `/goal` alone is brittle: drop `/goal "deliver X"` and walk away and it drifts. This plugin wraps it with the disciplines that make autonomous execution actually hold:
+
+- **A Definition of Done with teeth.** Every business rule maps to a command-line check, and the native `/goal` evaluator judges each iteration on the **real exit code and output** — not "looks done". A runner that merely "runs the verifications" can't tell whether the change did what was asked.
+- **A fresh session per iteration.** `/goal:next` + `/clear` + a size-capped handoff mean a long run never rots its own context — the most expensive failure mode of hands-off agents.
+- **Plan ↔ code reconciliation.** Between slices, `/goal:next` re-reads the repo and fixes stale plan claims before the next iteration, instead of trusting the plan blindly.
+- **You stay the controller.** Git, commits, and PRs are opt-in (default manual) — nothing is branched in the spec phase or shipped behind your back.
+- **Small green slices.** Each iteration leaves the app working and the diff reviewable, with TDD visible (red → green).
+- **It hunts the *unknown unknowns*.** The opt-in adversarial grill doesn't just re-read your prose — it enumerates the interaction's finite **states**, extracts the **invariants** that must always hold, and builds the full **`(state × action)` transition matrix** as a hostile user. Every unmodelled cell becomes an owned, tested rule. That's the class of edge case a one-pass Socratic or text-scan review structurally can't surface — and where this goes further than the competition.
+
+## When to use it
+
+Reach for `goal` when you want a **feature or issue delivered rigorously** — especially when the source is fuzzy, or the work is big enough to span several sessions and you want every slice reviewed and auditable.
+
+Not the right tool when:
+- you'll build it in **one sitting** without branch/handoff machinery → [`/spec-first-dev`](../common/commands/spec-first-dev.md)
+- the task is a **non-feature** plan (a migration, a large refactor) you'll drive yourself → [`crispi-planning`](../common/skills/crispi-planning/SKILL.md) or native plan mode
+
+Full map: [`docs/workflows-decision-guide.md`](../../docs/workflows-decision-guide.md).
+
+## Quick start
+
+```bash
+cd ~/projects/<repo>
+claude
+
+# Step 0 (optional) — normalize a source
+> /goal:draft-issue CT-1234                    # Jira, read via MCP
+> /goal:draft-issue .claude/plans/x-spec.md    # a spec file
+> /goal:draft-issue inline                     # paste a note
+
+# Session 1 — build the plan
+> /goal:run-issue CT-1234                       # or an issue number, a spec path, or 'inline'
+
+# Session 2 — execute one iteration, then checkpoint
+> <paste the /goal handoff>
+> /goal:next                                    # verify + emit the next handoff
+> /clear                                   # then paste the next handoff in a fresh session
+```
+
+**Learn more:** which workflow fits your task → [decision guide](../../docs/workflows-decision-guide.md) · the *unknown-unknowns* engine → [`grill-adversarial`](skills/grill-adversarial/SKILL.md) · how it's audited against competing frameworks → [`self-audit`](../self-audit/README.md).
+
 ## How it works
 
-Four commands, run in order across two-plus sessions:
+`goal` is a pipeline of four commands across two-plus sessions. Only `/goal` (native) writes code; the three `/goal:*` commands plan, checkpoint, and hand off. An optional **draft-issue** shapes the source, **run-issue** locks a plan, then **`/goal`** and **`/goal:next`** alternate — one iteration per fresh session — until the spec is done.
 
-```
-(idea / Jira US / PRD / BMAD story / spec file / brainstorm)
-  │
-  ├─ /goal:draft-issue <source>     ◀ optional · Step 0
-  │     normalize the source into a clean spec
-  │     ASK: mirror it as a GitHub issue?   (default no)
-  │     ASK: run the adversarial grill in /goal:run-issue?   (opt-in)
-  │
-  ├─ /goal:run-issue <source>       ◀ Session 1 · interactive
-  │     read the source · grill to close gaps + build the DoD
-  │     (opt-in) adversarial grill: enumerate states & invariants
-  │     decompose into small FUNCTIONAL ITERATIONS
-  │     ASK: commit/PR policy — manual | commit | commit+pr
-  │     lock a plan on feature/<work-id>-<slug>, echo the /goal handoff
-  │
-  ├─ /goal (native)            ◀ Session 2 · one run per iteration
-  │     implement the NEXT unchecked iteration test-first
-  │     verify every business rule with a command, then STOP + synthesis
-  │     execution log refreshed at every Stop
-  │
-  └─ /goal:next                     ◀ between iterations
-        verify the finished iteration's DoD · reconcile plan vs codebase
-        make the tree safe · re-emit the next /goal handoff
-        you review → /clear → paste it into a fresh session
-```
+| Step | Command | When | What it does |
+|---|---|---|---|
+| 0 · optional | `/goal:draft-issue <source>` | before you start | Normalize any source (Jira / issue / file / note) into a clean spec; ask whether to mirror it as a GitHub issue and whether to run the adversarial grill. |
+| 1 | `/goal:run-issue <source>` | Session 1 · interactive | Grill to close gaps + build a command-checkable **DoD** → decompose into small functional iterations → lock the plan on `feature/<id>` → echo the first `/goal` handoff. |
+| 2 | `/goal` *(native)* | Session 2 · per iteration | Implement the next unchecked iteration test-first, verify each rule by **running its command**, then stop with a synthesis. |
+| ↻ | `/goal:next` | between iterations | Verify the finished iteration's DoD, reconcile plan ↔ code, emit the next handoff. You `/clear` and paste it into a fresh session. |
 
-Everything runs on your **Claude Code subscription** (no API surcharge) in
-interactive `claude`. **GitHub is optional at every step** — you're asked whether you
-want an issue, and whether Claude should commit or open the PR.
+Everything runs on your **Claude Code subscription** (no API surcharge); **GitHub is optional at every step** — you're asked whether you want an issue, and whether Claude should commit or open the PR.
 
 ### Two typical modes
 
@@ -54,11 +76,7 @@ want an issue, and whether Claude should commit or open the PR.
 | Commit/PR policy | **manual** — you review + commit each iteration | **commit** or **commit+pr** for hands-off |
 | Cadence | stop + synthesis after each iteration | same, or iterations back-to-back |
 
----
-
-## What happens, and when
-
-The exhaustive walk-through. Each command owns a distinct moment in the lifecycle.
+Each command owns a distinct moment in the lifecycle — here is the detail behind the table above:
 
 ### Step 0 — `/goal:draft-issue <source>` (optional)
 
@@ -67,10 +85,10 @@ consistent shape.
 
 1. Reads the source (Jira via MCP / `gh` / file / inline paste).
 2. Writes `.claude/plans/<work-id>-spec.md` and flags the gaps `/goal:run-issue` will grill.
-3. **Phase 3b — asks** (`AskUserQuestion`) whether to run the **adversarial grill** in
+3. **Asks** (`AskUserQuestion`) whether to run the **adversarial grill** in
    `/goal:run-issue`, and records the answer verbatim on the spec's `## Adversarial grill`
    line. Recommend **yes** for front / interactive work or when gaps were flagged.
-4. **Phase 4 — asks** whether to mirror the spec as a GitHub issue (default no; `gh`
+4. **Asks** whether to mirror the spec as a GitHub issue (default no; `gh`
    only touched if you say yes).
 
 It never writes production code, creates branches, or builds the DoD — that's
@@ -80,21 +98,21 @@ It never writes production code, creates branches, or builds the DoD — that's
 
 Turns the source into a locked, executable plan.
 
-1. **Phase 0–1** — resolves and reads the source, summarizes it back, asks you to confirm.
-2. **Phase 2 — grills you one question at a time**: closes functional gaps, surfaces
+1. **Resolves and reads** the source, summarizes it back, asks you to confirm.
+2. **Grills you one question at a time**: closes functional gaps, surfaces
    technical consequences, and maps **each business rule to a command-line check** so
    the Definition of Done has teeth.
-3. **Phase 2b — adversarial grill (opt-in)**: if the spec's `## Adversarial grill` line
-   says `requested` (or it's front / interactive and Phase 2 flagged gaps), loads the
+3. **Adversarial grill (opt-in)**: if the spec's `## Adversarial grill` line
+   says `requested` (or it's front / interactive and gaps were flagged), loads the
    `goal:grill-adversarial` skill. It enumerates the interaction state space, extracts
    invariants, builds the `(state × action)` transition matrix, and turns every
    unmodelled hole into an owned + tested rule — the failures a Socratic grill misses.
-4. **Phase 3 — decomposes** the work into small functional iterations, each an
+4. **Decomposes** the work into small functional iterations, each an
    independently reviewable slice with its own files + acceptance criteria.
-5. **Phase 4 — asks the commit/PR policy**: `manual` (default) / `commit` / `commit+pr`.
-6. **Phase 5 — locks**: creates `feature/<work-id>-<slug>` and writes the plan
+5. **Asks the commit/PR policy**: `manual` (default) / `commit` / `commit+pr`.
+6. **Locks**: creates `feature/<work-id>-<slug>` and writes the plan
    (committing it only if the policy isn't `manual`).
-7. **Phase 6 — echoes** the per-iteration `/goal` text for you to paste.
+7. **Echoes** the per-iteration `/goal` text for you to paste.
 
 ### Session 2 — `/goal` (native), one iteration at a time
 
@@ -152,7 +170,7 @@ deliver against it**, iteration by iteration.
 | [`/goal:draft-issue`](commands/draft-issue.md) | `commands/draft-issue.md` | **Step 0** — any source → normalized spec; opt-in GitHub issue; asks whether to run the adversarial grill |
 | [`/goal:run-issue`](commands/run-issue.md) | `commands/run-issue.md` | **Session 1** — source → grilled plan (DoD + functional iterations) + commit/PR policy + per-iteration `/goal` handoff |
 | [`/goal:next`](commands/next.md) | `commands/next.md` | **Between iterations** — verify DoD, reconcile plan vs codebase, make the tree safe, re-emit the next `/goal` handoff (you `/clear` + paste) |
-| [`grill-adversarial`](skills/grill-adversarial/SKILL.md) | `skills/grill-adversarial/SKILL.md` | Opt-in skill loaded in `/goal:run-issue` Phase 2b — enumerates states, invariants, and transitions before iterations freeze |
+| [`grill-adversarial`](skills/grill-adversarial/SKILL.md) | `skills/grill-adversarial/SKILL.md` | Opt-in skill loaded during `/goal:run-issue`'s adversarial grill — enumerates states, invariants, and transitions before iterations freeze |
 | `issue-execution-log.sh` Stop hook | `hooks/issue-execution-log.sh` | Regenerates the execution log at every Stop, only when **all three** hold: (1) branch `feature/<work-id>-…` for an existing spec, (2) `.claude/plans/<work-id>-spec.md` exists, (3) the transcript contains a `/goal` command. Silent no-op otherwise. |
 | `extract-execution-log.py` | `scripts/extract-execution-log.py` | Parses the session JSONL into a readable markdown summary keyed by `<work-id>` |
 | `done-criteria.template` | `templates/done-criteria.template` | Reusable baseline for the acceptance-criteria / DoD section of any plan |
@@ -164,6 +182,14 @@ Two artifacts live in `.claude/plans/`:
 
 - `<work-id>-spec.md` — the contract (business rules, DoD, iterations)
 - `<work-id>-execution-log.md` — auto-regenerated audit of what Claude did
+
+### Regenerate the log manually (mid-session snapshot)
+
+```bash
+python3 ~/projects/github/claude-marketplace/plugins/goal/scripts/extract-execution-log.py <work-id>
+```
+
+Auto-detects `<work-id>` from the `feature/<work-id>-…` branch when omitted, and finds the most recent JSONL referencing the spec.
 
 ---
 
@@ -189,44 +215,13 @@ Two artifacts live in `.claude/plans/`:
 
 | Plugin | Adds | If missing |
 |---|---|---|
-| `pocock` | `grill-me` / `grill-with-docs` for Phase 2, composed by the adversarial grill | inlined baseline questions |
+| `pocock` | `grill-me` / `grill-with-docs` for the grilling step, composed by the adversarial grill | inlined baseline questions |
 | `superpowers` | `verification-before-completion`, `systematic-debugging` in Session 2 | Claude's native discipline |
 | `craft` / language TDD | `tdd-workflow-principles`, `php-tdd-workflow`, `vitest-tdd-workflow`… | trace test still in the template |
 | `common` | `/spec-first-dev` upstream | `/goal:draft-issue` accepts any source |
 
 The plugin is **self-contained**: the optional plugins enhance the workflow, but the
 commands fall back to inlined behavior when they're absent.
-
----
-
-## Quick start
-
-```bash
-cd ~/projects/<repo>
-claude
-
-# Step 0 (optional) — normalize a source
-> /goal:draft-issue CT-1234                    # Jira, read via MCP
-> /goal:draft-issue .claude/plans/x-spec.md    # a spec file
-> /goal:draft-issue inline                     # paste a note
-
-# Session 1 — build the plan
-> /goal:run-issue CT-1234                       # or an issue number, a spec path, or 'inline'
-
-# Session 2 — execute one iteration, then checkpoint
-> <paste the /goal handoff>
-> /goal:next                                    # verify + emit the next handoff
-> /clear                                   # then paste the next handoff in a fresh session
-```
-
-### Manual log regeneration (snapshot mid-session)
-
-```bash
-python3 ~/projects/github/claude-marketplace/plugins/goal/scripts/extract-execution-log.py <work-id>
-```
-
-Auto-detects `<work-id>` from the `feature/<work-id>-…` branch when omitted, and finds
-the most recent JSONL referencing the spec.
 
 ---
 
@@ -259,3 +254,5 @@ included. The 5-hour rate-limit window applies normally.
   spec-first inspiration; chain into `/goal:draft-issue` after its Phase 3
 - [`craft:tdd-workflow-principles`](../craft/skills/tdd-workflow-principles/SKILL.md)
   — cross-language TDD used during Session 2
+- [`docs/workflows-decision-guide.md`](../../docs/workflows-decision-guide.md) — when to
+  reach for `goal` vs `/spec-first-dev` vs `crispi-planning`

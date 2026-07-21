@@ -120,6 +120,8 @@ for src in "${ref_files[@]}"; do
   while IFS= read -r ref; do
     [[ -z "$ref" ]] && continue
     rel_path="${ref#\$\{CLAUDE_PLUGIN_ROOT\}/}"
+    # Skip template output paths with <placeholder> segments (not static references)
+    [[ "$rel_path" == *"<"*">"* ]] && continue
     # Strip arguments after first space (e.g. "notify-sound.sh notification")
     rel_path="${rel_path%% *}"
     # Strip trailing quotes / punctuation
