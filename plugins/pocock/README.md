@@ -15,6 +15,15 @@ Upstream now ships ~41 skills (≈22 "blessed" under `engineering/` + `productiv
 | `diagnosing-bugs` (ex-`diagnose`) | ❌ skipped | Overlaps with `qa:phpstan-resolver` (PHP) and `superpowers:systematic-debugging` (language-agnostic) |
 | `triage` / `improve-codebase-architecture` / `to-tickets` (ex-`to-issues`) / `to-spec` (ex-`to-prd`) / `prototype` / `handoff` / `writing-great-skills` (ex-`write-a-skill`) / `setup-matt-pocock-skills` | ❌ skipped | Out of scope (orthogonal workflows or covered elsewhere — e.g. `plugin-dev:skill-development` for skill authoring, `atlassian:capture-tasks-from-meeting-notes` for to-tickets) |
 
+## When to use which
+
+| Situation | Reach for |
+|---|---|
+| A one-off decision outside feature work (lib choice, hook design, isolated refactor) | `grill-me` |
+| Same, on a DDD project with a `CONTEXT.md` / `docs/adr/` to keep current | `grill-with-docs` |
+| Entering an unfamiliar area of the codebase | `zoom-out` (invoke explicitly) |
+| A full feature | `/spec-first-dev` (house workflow — more structured than a grill) |
+
 ## Upstream
 
 - Repo: https://github.com/mattpocock/skills
