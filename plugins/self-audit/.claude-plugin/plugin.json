@@ -1,0 +1,9 @@
+{
+  "name": "self-audit",
+  "version": "1.0.0",
+  "description": "Deep comparative audit of external Claude skill packs against this marketplace, weighted by my real Claude usage profile, plus a repo structure + documentation health pass. Produces versioned gap-analysis backlogs under audits/. Run via /self-audit:compare <target>.",
+  "author": { "name": "FabienSalles" },
+  "license": "MIT",
+  "keywords": ["audit", "meta", "skills", "gap-analysis", "marketplace", "self-review"],
+  "commands": "./commands/"
+}

@@ -212,6 +212,16 @@
       "keywords": ["planning", "interview", "context", "mattpocock"]
     },
     {
+      "name": "self-audit",
+      "source": "./plugins/self-audit",
+      "description": "Deep comparative audit of external skill packs vs this marketplace, weighted by my Claude usage profile, plus a repo structure + documentation health pass. Versioned gap-analysis backlogs under audits/. Run via /self-audit:compare <target>.",
+      "version": "1.0.0",
+      "author": { "name": "FabienSalles" },
+      "category": "productivity",
+      "license": "MIT",
+      "keywords": ["audit", "meta", "skills", "gap-analysis", "self-review"]
+    },
+    {
       "name": "marketing-content",
       "source": "./plugins/marketing-content",
       "description": "Content & copywriting playbooks — LinkedIn posts, SEO blog articles, direct-response copy, editing pass, editorial strategy, content calendar, content repurposing, SEO briefs, technical SEO audit, schema markup.",
