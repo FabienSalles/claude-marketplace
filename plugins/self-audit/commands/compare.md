@@ -112,3 +112,4 @@ top-3 P1 + path to the report.
 | bmad-code-org/BMAD-METHOD | `audits/bmad-method-gap-analysis.md` | 2026-07-20 | deep (81 agents) | ✅ backlog à traiter |
 | github/spec-kit | `audits/spec-kit-gap-analysis.md` | 2026-07-20 | deep (57 agents) | ✅ backlog à traiter |
 | SuperClaude-Org/SuperClaude_Framework | `audits/superclaude-gap-analysis.md` | 2026-07-20 | deep (62 agents) | ✅ skip intégral (0 port) |
+| eyaltoledano/claude-task-master | `audits/claude-task-master-gap-analysis.md` | 2026-07-21 | deep (42 agents) | ✅ skip intégral (0 port) |

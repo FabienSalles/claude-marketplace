@@ -54,6 +54,8 @@ Grouped by theme. Each links to the plugin's own README with the full skill cata
 | [**superpowers**](plugins/superpowers/README.md) | Cherry-picked [obra/superpowers](https://github.com/obra/superpowers) — `verification-before-completion`, `systematic-debugging`. |
 | [**pocock**](plugins/pocock/README.md) | Cherry-picked [mattpocock/skills](https://github.com/mattpocock/skills) — `grill-me`, `grill-with-docs`, `zoom-out`. |
 
+These overlap — [**docs/workflows-decision-guide.md**](docs/workflows-decision-guide.md) maps which planning / execution workflow to reach for, and when.
+
 ### Security
 
 | Plugin | What it does |

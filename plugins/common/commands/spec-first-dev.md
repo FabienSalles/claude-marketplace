@@ -21,6 +21,13 @@ Spec-driven development harness. Inspired by Harness Engineering (Fowler), Conte
 - The TDD workflow is established (red-green-refactor)
 - Iterations are known
 
+**When to use `goal` instead**:
+- You want to iterate across fresh sessions, hand off, and keep an audit log
+- The source is a tracked issue (Jira / GitHub) and you may commit / open a PR
+- `goal:run-issue` runs this same spec-building grill, then executes autonomously slice by slice
+
+This workflow is the **single-session, no-branch** path; `goal` is the iterated pipeline. See [`docs/workflows-decision-guide.md`](../../../docs/workflows-decision-guide.md) for the full map.
+
 ---
 
 ## Phase 1: Understand

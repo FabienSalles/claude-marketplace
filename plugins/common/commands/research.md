@@ -1,5 +1,5 @@
 ---
-description: "Objective research — separates investigation from implementation to avoid confirmation bias"
+description: "Objective technical research — investigate a codebase or technical question separately from implementation, to avoid confirmation bias. For market / competitive / product research, see the product-research skill."
 allowed-tools: Agent, Read, Grep, Glob, Bash, WebSearch, WebFetch
 ---
 

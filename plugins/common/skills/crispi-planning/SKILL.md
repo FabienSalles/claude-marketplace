@@ -1,19 +1,24 @@
 ---
 name: crispi-planning
-description: ACTIVATE when starting complex multi-step tasks, features, or refactoring that need structured planning. ACTIVATE for 'plan', 'complex task', 'big feature', 'multi-step', 'CRISPI'. Provides a 5-phase planning framework (Context, Research, Implementation design, Structured plan, Implementation) with file persistence to avoid over-planning. DO NOT use for simple, single-file changes or quick fixes.
+description: ACTIVATE when planning a complex, multi-file task that is NOT a single feature — a migration, a cross-cutting refactor, a tooling/build change — where you want a phased plan persisted to .claude/plans/ across sessions. ACTIVATE for 'CRISPI', 'structured plan', 'plan this migration', 'plan this refactor'. Provides the 5-phase CRISPI framework (Context, Research, Implementation design, Structured Plan, Implementation). DO NOT use for a single feature or issue (use goal or /spec-first-dev), simple single-file changes, or quick in-session planning (use native plan mode).
 version: 1.0.0
 ---
 
 # CRISPI Planning Framework
 
-Structured 5-phase approach for complex tasks. Prevents over-planning by enforcing phase transitions with file persistence.
+**CRISPI** = **C**ontext · **R**esearch · **I**mplementation design · **S**tructured **P**lan · **I**mplementation.
+
+A structured 5-phase approach for a complex task, persisted to a plan file. It prevents over-planning by time-boxing each phase.
 
 ## When to Use
 
-- Tasks requiring changes across 3+ files
-- Features with unclear requirements or multiple valid approaches
-- Refactoring that touches multiple modules
+Reach for CRISPI on a **complex, multi-file task that is not a single feature** and that you'll carry across sessions:
+
+- A migration, a cross-cutting refactor touching multiple modules, a tooling/build change
+- Tasks requiring changes across 3+ files where a persisted, phased plan pays off
 - Any task where you catch yourself exploring for more than 5 minutes
+
+**Not for:** a single feature or issue — use [`goal`](../../../goal/README.md) (iterated) or [`/spec-first-dev`](../../commands/spec-first-dev.md) (single session). For quick in-session planning, use Claude Code's native plan mode. See [`docs/workflows-decision-guide.md`](../../../../docs/workflows-decision-guide.md).
 
 ## The 5 Phases
 
