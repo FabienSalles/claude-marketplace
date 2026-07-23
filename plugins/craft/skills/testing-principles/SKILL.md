@@ -38,6 +38,8 @@ Never write tests coupled to implementation without behavior. Only test classes 
 
 **Anti-pattern — tautological assertion:** an assertion that *recomputes* the expected value the same way the code does (`expect(add(a, b)).toBe(a + b)`) passes by construction and proves nothing. Expected values must come from an **independent source of truth** — a hardcoded literal, a hand-worked example, or a known-good fixture.
 
+**Anti-pattern — the name promises a rule the assertion doesn't show:** a test named for a business rule (`submittingTheCouponExposesTheCoupon`) that only echoes back the value it submitted proves nothing — binding input to output is a framework given. Assert what the code exposes or withholds **as a function of inputs/context** (which fields exist per case, what is dropped when a condition flips). No such rule at this layer → the test belongs elsewhere or nowhere.
+
 ## 3. Pre-Test Checklist
 
 Before writing a new test, confront it to these **3 questions**. If you can't answer "yes" to all three, do not write the test.
@@ -74,6 +76,10 @@ When multiple tests have the **same Arrange-Act-Assert structure** and only diff
 **Criterion:** no `if` should be needed in the test body — same structure, different data.
 
 Do NOT parameterize when assertions differ or setup is specific to each case.
+
+**Split first, consolidate after.** One test per case is fine while developing, but tests sharing the same Act+Assert and differing only in data are a smell — do a consolidation pass into one parameterized test. Split leftovers read as many features when it is one.
+
+**Name = mechanism; keys = the rule, in domain terms.** Keep the method name plain about what it exercises (`itRetainsTheSubmittedData`), not the rule crammed in (`itRetainsTheFieldsAvailableToThePremiumCustomerContext`). Each case key carries the rule using the domain's **existing** words (`a premium customer gets free shipping`), never jargon coined for the test (`eligible`, `the good case`) — an unresolvable term just moves the unclear intent into the key. **Criterion:** name + keys make the rule legible with no prose comment.
 
 ## 8. Factory Methods / Functions
 
@@ -147,10 +153,10 @@ assertCount(2, page.filter('.form-check-inline'))
 assertNull(radios[0].attr('checked'))          // framework default: nothing set → nothing checked
 
 // ✅ Functional — locate by the field the app owns, assert the visible labels
-options = page.filter('input[name$="[account_ownership]"] + label')
+options = page.filter('input[name$="[shipping_method]"] + label')
 assertCount(2, options)
-assertSame("the member",              options[0].text())
-assertSame("the professional entity", options[1].text())
+assertSame("Standard delivery", options[0].text())
+assertSame("Express delivery",  options[1].text())
 ```
 
 **Rule:** locate with any selector you like; assert only what a user could see or perceive.
@@ -164,11 +170,14 @@ wiring — rewrite it against perceivable content.
 | Test type | Unit (no container) / Integration (real deps) / Functional (full flow) |
 | What not to test | No tests on data containers / pure getters |
 | Tautological assertion | Expected value comes from an independent source, never recomputed like the code |
+| Name over-promises | A test named for a rule but only echoing its input back proves nothing — assert what the code exposes/withholds as a function of inputs & context |
 | Pre-test checklist | Valid state? Not covered already? Behavior, not impl? |
 | DAMP > DRY | Full AAA in each test, no `setUp`/`beforeEach` for non-trivial logic |
 | AAA / GWT | Blank lines between Arrange/Act/Assert, no comments |
 | Spy > Mock | Verify after act, not before |
 | Parameterized tests | Same structure + different data → data provider / it.each |
+| Consolidation pass | Split-per-case is fine in dev; same Act+Assert differing only in data must be merged into one parameterized test |
+| Name vs keys | Method name = mechanism tested (`itRetainsTheSubmittedData`); provider keys = the business rule, in existing domain terms, no invented jargon |
 | Factories | Helper methods, extract when duplicated |
 | Structured assert | Compare complete object, not field by field |
 | Real over mock | When debugging, use real dependencies — mocks hide bugs |
