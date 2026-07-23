@@ -113,3 +113,6 @@ top-3 P1 + path to the report.
 | github/spec-kit | `audits/spec-kit-gap-analysis.md` | 2026-07-20 | deep (57 agents) | ✅ backlog à traiter |
 | SuperClaude-Org/SuperClaude_Framework | `audits/superclaude-gap-analysis.md` | 2026-07-20 | deep (62 agents) | ✅ skip intégral (0 port) |
 | eyaltoledano/claude-task-master | `audits/claude-task-master-gap-analysis.md` | 2026-07-21 | deep (42 agents) | ✅ skip intégral (0 port) |
+| buildermethods/agent-os | `audits/agent-os-gap-analysis.md` | 2026-07-21 | deep (26 agents) | ✅ quasi-skip (1 P3 optionnel) |
+| ruvnet/claude-flow | `audits/claude-flow-gap-analysis.md` | 2026-07-21 | deep (58 agents) | ✅ skip intégral (hors-catégorie) |
+| FlorianBruniaux/claude-code-plugins | `audits/bruniaux-claude-code-plugins-gap-analysis.md` | 2026-07-22 | deep (101 agents) | ✅ backlog à traiter (4 ports) |
