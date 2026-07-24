@@ -28,6 +28,18 @@ Source: `$ARGUMENTS`
 
 Resolve it to a **work item** and a stable **work-id**:
 
+**Draft-first — check the local artifact BEFORE any external I/O.** For a Jira
+key or an issue number, the work-id is derivable from the argument alone (no
+network): `CT-5856` → `ct-5856`, `42` → `issue-42`. So **first** look for
+`.claude/plans/<work-id>-spec.md`:
+- **It exists** → `/goal:draft-issue` already ran and captured the source
+  (Jira/issue content, gaps, decisions) into that draft. It is the **primary
+  source** — read it, do NOT re-fetch Jira/gh to rebuild what it already holds.
+  Only call the Atlassian MCP / `gh` to fill a **specific gap the draft
+  explicitly flags** (e.g. an unread screenshot). This skips a pointless OAuth
+  round-trip and guarantees a fresh session picks up the right element.
+- **It does not exist** → fall through to the external resolution table below.
+
 | `$ARGUMENTS` shape | How to read it | work-id |
 |---|---|---|
 | Jira key `^[A-Z][A-Z0-9]+-[0-9]+$` (e.g. `CT-1234`) | Atlassian MCP — see below | key lowercased → `ct-1234` |
@@ -51,8 +63,8 @@ branch `feature/<work-id>-<slug>`, log at `.claude/plans/<work-id>-execution-log
 Verify in one round:
 - `git rev-parse --show-toplevel` succeeds (we're in a repo)
 - The current branch is clean; if dirty, ask the developer to stash/commit first
-- **Only if the source is a GitHub issue:** `gh auth status` succeeds
-- **Only if the source is Jira:** the Atlassian MCP resolves (`getAccessibleAtlassianResources` returns a resource)
+- **Only if the source is a GitHub issue AND no local draft covers it:** `gh auth status` succeeds
+- **Only if the source is Jira AND no local draft covers it:** the Atlassian MCP resolves (`getAccessibleAtlassianResources` returns a resource). When the draft-first check found `.claude/plans/<work-id>-spec.md`, skip this — no MCP/OAuth needed.
 
 Do **not** require `gh` for a Jira/file/inline source. If a needed check fails,
 STOP and tell the developer what to fix.
