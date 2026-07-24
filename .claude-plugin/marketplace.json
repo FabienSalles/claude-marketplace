@@ -119,6 +119,16 @@
       "keywords": ["hooks", "agents", "commands", "skills"]
     },
     {
+      "name": "git",
+      "source": "./plugins/git",
+      "description": "Transverse git & PR discipline — ref freshness (fetch first), branch/commit/PR conventions, force-push and worktree guardrails. Merges the former PR-creation skill.",
+      "version": "1.0.0",
+      "author": { "name": "FabienSalles" },
+      "category": "productivity",
+      "license": "MIT",
+      "keywords": ["git", "pr", "workflow", "commit", "rebase", "fetch"]
+    },
+    {
       "name": "craft",
       "source": "./plugins/craft",
       "description": "Cross-language software craftsmanship principles — abstract rules (refactoring, DDD, OOP, TDD, …) that pair with language-specific example skills",

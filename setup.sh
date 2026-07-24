@@ -31,7 +31,7 @@ BOLD='\033[1m'
 PACKS=(
   php phpunit symfony typescript nest vitest astro frontend jquery tooling
   craft
-  goal common superpowers pocock
+  goal common git superpowers pocock
   security-runtime audit
   self-audit
   mac statusline
@@ -52,6 +52,7 @@ declare -A PACK_DESCRIPTIONS=(
   [craft]="Cross-language craftsmanship principles — refactoring, OOP, code style, testing, TDD, DDD (pair with language packs)"
   [goal]="Autonomous issue→PR workflow on Claude Code /goal — /draft-issue (spec → GitHub issue), /run-issue (issue → spec → branch → /goal), auto-regenerated execution log shipped in the PR diff"
   [common]="Shared hooks, agents, commands, skills — planning, research, context-window, TDD/feature-dev, code-review"
+  [git]="Transverse git & PR discipline — fetch-first ref freshness, branch/commit/PR conventions, force-push and worktree guardrails (merges the former PR-creation skill)"
   [superpowers]="Cherry-picked obra/superpowers — verification-before-completion, systematic-debugging"
   [pocock]="Cherry-picked mattpocock/skills — grill-me, grill-with-docs, zoom-out"
   [security-runtime]="Runtime security hooks — CLAUDE.md injection scanner (SessionStart) + Bash prompt-injection blocker (PreToolUse)"
