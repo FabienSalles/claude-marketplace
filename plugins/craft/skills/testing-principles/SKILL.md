@@ -109,6 +109,40 @@ When a real collaborator trivially substitutes — a null object, an in-memory i
 
 **Criterion:** don't mock a collaborator you neither assert on nor script when a real / null implementation is available.
 
+**Never reimplement the real logic inside the double.** A stub/mock must not copy the
+collaborator's (or SUT's) production body into its factory. If the double re-encodes the
+behavior, your assertions verify the *copy*, not the real code: the test goes green by
+construction, proves nothing about production, and silently rots the day the real logic
+changes (the copy stays, the real one drifts). This is the tautological-assertion trap
+(§2) wearing a mock's clothes.
+
+When you genuinely can't run the real module in this test — an untransformable file type,
+a side-effectful global, a heavy dependency — do **one** of:
+- **Default double + spy on the interaction.** Replace it with an empty stub
+  (`jest.fn()`, a no-op) and assert it was *called with the right arguments* for the
+  right target. The double stays behavior-free; you verify the contract you own (the call),
+  not the collaborator's internals.
+- **Move the behavioral assertion to where the real code lives.** The DOM/text/output the
+  collaborator produces is *its* responsibility — assert it in its own test (its repo /
+  its layer), not by re-deriving it here.
+
+```
+// ❌ The mock reimplements the real setTooltip — assertions test the copy
+jest.mock('@theme/tooltip', () => ({
+    setTooltip: (el, text) => { el.setAttribute('data-bs-title', text); /* …the real body… */ },
+}));
+expect(el.getAttribute('data-bs-title')).toBe('…');   // verifies the mock, not production
+
+// ✅ Default double; assert the interaction you own
+jest.mock('@theme/tooltip', () => ({ setTooltip: jest.fn() }));
+import { setTooltip } from '@theme/tooltip';
+expect(setTooltip).toHaveBeenCalledWith(el, 'Le compte par défaut ne peut pas être supprimé');
+// …and the attribute-writing behavior is tested in the tooltip component's own repo.
+```
+
+**Criterion:** if deleting the real implementation would leave your double still
+"passing" the assertion, the double has reimplemented the logic — strip it to a spy.
+
 ## 12. Never Add Production Code for Tests
 
 Production code must serve **production**. Never add anything to production code — a
@@ -183,5 +217,6 @@ wiring — rewrite it against perceivable content.
 | Real over mock | When debugging, use real dependencies — mocks hide bugs |
 | Mock hygiene | Mirror the real data's full shape; never stub the behavior under test; double a boundary you own, not a third-party type |
 | Real over double | Use a null-object / in-memory / fake when you don't verify or script the collaborator |
+| No logic in the double | Never reimplement the real body in a mock — use a default stub + spy on the call, or assert the behavior in the collaborator's own test |
 | No prod code for tests | Never add a class/`js-*`/id/attribute to production solely as a test locator — locate via real production markup |
 | Interface tests | Selectors only locate; assert perceivable content (text/value/state), not technical classes or framework defaults |
