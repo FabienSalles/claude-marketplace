@@ -1,6 +1,6 @@
 ---
 name: git
-description: ACTIVATE for any git or PR operation — create/choose a branch, open or update a PR, "est-ce mergé ?", choose a base, rebase/merge, commit, push, force-push, worktree, cherry-pick, fork. ACTIVATE on 'branche', 'PR', 'merge', 'rebase', 'base main', 'fork', 'gh pr', 'commit', 'push', 'mets à jour', 'est-ce mergé'. Covers Fabien's transverse git conventions — fetch before reasoning on remote state, never ask what a command answers, branch/commit discipline, English conventional commits without AI trailer, PR (French title, ultra-succinct body, draft for WIP, fork targets parent), force-push and worktree guardrails, manual index mode. DO NOT use for Eres-specific fork conventions (see Eres marketplace).
+description: ACTIVATE for any git or PR operation — create/choose a branch, open or update a PR, "est-ce mergé ?", choose a base, rebase/merge, commit, push, force-push, worktree, cherry-pick, fork. ACTIVATE on 'branche', 'PR', 'merge', 'rebase', 'squash', 'fixup', 'historique', 'base main', 'fork', 'gh pr', 'commit', 'push', 'mets à jour', 'est-ce mergé'. Covers Fabien's transverse git conventions — fetch before reasoning on remote state, never ask what a command answers, branch/commit discipline, English conventional commits without AI trailer, history shape (reshape before the first push, fixup over fix-on-fix, ask before pushing a branch that repairs itself, reshape unasked under a non-manual policy), PR (French title, ultra-succinct body, draft for WIP, fork targets parent), force-push and worktree guardrails, manual index mode. DO NOT use for Eres-specific fork conventions (see Eres marketplace).
 version: 1.0.0
 ---
 
@@ -51,7 +51,37 @@ developer what a command answers.
 - **No AI trailer**: never `Co-Authored-By: Claude`, never "Generated with…".
   The commit is attributed to the developer alone.
 
-## E. Pull requests
+## E. History shape — reshape before the first push
+
+The commits on a branch are what a reviewer reads. They should describe **the change**,
+not the session that produced it. A commit that exists only because an earlier commit on
+the same branch was wrong documents the author's process, and forces the reviewer to
+replay the branch to find out what the final state even is. It belongs folded into the
+commit it repairs.
+
+The test is per commit, not per branch: **would anyone want to bisect to this state?**
+That is what sets how many commits a branch keeps. Collapsing four real units into one
+loses as much as leaving eleven repairs strewn across the log.
+
+- **Reshape before the first push.** Unpushed history is free to rewrite and needs no
+  force. After the push the same reshape costs a `--force-with-lease` and an explicit
+  request (§G), so the cost of a messy log is paid at the moment you decide to push, not
+  before.
+- **Decide at commit time, not at the end.** A commit that repairs an earlier one on the
+  branch is written `git commit --fixup <sha>` and settled with
+  `git rebase --autosquash <base>`. Reconstructing afterwards what fixed what is guesswork.
+- **Before pushing a branch that becomes a PR, or marking a PR ready**, read
+  `git log --oneline <base>..HEAD`. If it carries repairs to its own commits, say so,
+  propose the reshaped list, and **ASK**. Pushing first and raising it after puts the
+  developer in front of a force-push they never chose.
+- **Non-manual policy → reshape without asking.** Under `commit` / `commit+pr` — an
+  unattended `/goal:auto` run — there is nobody to answer, and that mode produces this
+  shape by construction: one commit per iteration plus whatever repaired it. Reshaping is
+  part of shipping, and it lands before the single push at the end, so it never forces.
+- **Never rewrite across a merge**, nor any commit already on `main` or that someone may
+  have branched from.
+
+## F. Pull requests
 
 - **Update on `main` BEFORE** opening (rebase, linear history), never a PR from a
   lagging branch:
@@ -85,18 +115,18 @@ developer what a command answers.
   If the repo has no parent, it **is** the upstream.
 - **WIP / multi-iteration batch → `--draft`.**
 
-## F. Force-push
+## G. Force-push
 
 - `git push --force` is **forbidden**. `--force-with-lease` only on explicit
   request (reverting a local commit, a requested rebase / squash), never by
   default. `--force-with-lease` refuses to push if the remote moved since the
   last fetch — that is the anti-clobber guardrail.
 
-## G. Worktrees
+## H. Worktrees
 
 No auto worktree without an explicit request.
 
-## H. Manual mode (index)
+## I. Manual mode (index)
 
 Under the **manual** policy, **never** `git add` content nor `git reset` /
 `git restore` the index: the `git-add-empty` hook already sets the intent-to-add
@@ -123,6 +153,12 @@ stage and review themselves.
 - ❌ State a dependency PR's status from session memory ("it's merged").
   ✅ Verify at time T with `gh pr view <owner/repo#N>` — a PR may have merged or
   been closed since.
+
+- ❌ Review a branch, commit each batch of fixes on top, then push on "vas-y" without a
+  word about the log. The developer gets eleven commits, five of which repair the other
+  six, and a reshape now needs a force-push they never asked for.
+  ✅ Commit the fixes as `--fixup` of what they repair; at push time show
+  `git log --oneline <base>..HEAD`, propose the reshaped list, and ask before pushing.
 
 ### Canonical example — PR description (PR #160 incident)
 
