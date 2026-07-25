@@ -4,131 +4,129 @@ description: ACTIVATE for any git or PR operation — create/choose a branch, op
 version: 1.0.0
 ---
 
-# git — discipline git & PR (conventions transverses)
+# git — git & PR discipline (transverse conventions)
 
-Règles pour toute opération git / PR. À appliquer **par défaut**, sans les
-redemander. Le cœur du skill est la **fraîcheur des refs** (§A) : la faute la
-plus coûteuse est de raisonner sur un état distant périmé.
+Rules for any git / PR operation. Apply them **by default**, without asking
+again. The core of the skill is **ref freshness** (§A): the costliest mistake is
+reasoning on stale remote state.
 
-## A. Fraîcheur & source de vérité ← cœur
+## A. Freshness & source of truth ← core
 
-- **Fetch d'abord.** Toute décision qui dépend d'un statut distant (branche
-  mergée ? PR ouverte ? base à jour ?) commence par `git fetch <remote> --prune`,
-  puis lit `origin/*`, `gh pr list`, `gh pr view` sur le résultat frais. Les refs
-  de suivi locales sont **périmées** tant qu'on n'a pas fetch.
-- **Jamais de mémoire ni de contexte de session** pour un état git : une branche
-  a pu bouger, une PR merger depuis. Re-vérifier au moment T.
-- **Merge par squash** : un commit local n'est pas ancêtre de `main` même quand
-  le travail y est. Vérifier par **contenu** (fichier / feature présent sur
-  `origin/main`) et par le **titre de la PR mergée**, pas seulement
-  `git branch --contains <sha>`.
-- **« mets à jour » = ordre explicite** : fetch tous les remotes concernés (+
-  `composer install` / install des deps si une branche de dépendance a bougé),
-  sur **chaque** repo concerné (multi-repo), avant de continuer.
+- **Fetch first.** Any decision that depends on remote status (branch merged? PR
+  open? base up to date?) starts with `git fetch <remote> --prune`, then reads
+  `origin/*`, `gh pr list`, `gh pr view` on the fresh result. Local tracking refs
+  are **stale** until a fetch.
+- **Never rely on memory or session context** for git state: a branch may have
+  moved, a PR may have merged since. Re-verify at time T.
+- **Squash merges**: a local commit is not an ancestor of `main` even when its
+  work is there. Verify by **content** (file / feature present on `origin/main`)
+  and by the **merged PR title**, not just `git branch --contains <sha>`.
+- **"mets à jour" (update) = an explicit order**: fetch every relevant remote
+  (+ `composer install` / install deps if a dependency branch moved), on **each**
+  repo involved (multi-repo), before continuing.
 
-## B. Ne pas demander ce qui est vérifiable
+## B. Don't ask what is verifiable
 
-Épuiser `git` / `gh` / `ls` avant toute question. Une question n'est légitime que
-sur une **intention** que le state ne révèle pas (ex. « une PR combinée ou deux
-PR stackées ? »), et seulement **après** avoir constaté l'état réel et frais.
-Ne jamais poser au dev ce qu'une commande répond.
+Exhaust `git` / `gh` / `ls` before any question. A question is legitimate only
+about an **intent** the state does not reveal (e.g. "one combined PR or two
+stacked PRs?"), and only **after** observing the real, fresh state. Never ask the
+developer what a command answers.
 
-## C. Discipline de branche
+## C. Branch discipline
 
-- Vérifier `git branch --show-current` avant tout amend / commit / push.
-- Nouvelle branche **depuis une base fraîche** : `git switch -c <x> origin/main`
-  **après** fetch, jamais depuis un local en retard.
-- Nouveau commit > `--amend` par défaut. `--amend` seulement si le commit est
-  local non poussé, ou sur demande explicite.
-- Déplacer un commit mal placé : cherry-pick sur la bonne base fraîche, vérifier
-  build / tests, pas de reset destructif sans demande.
+- Check `git branch --show-current` before any amend / commit / push.
+- New branch **from a fresh base**: `git switch -c <x> origin/main` **after** a
+  fetch, never from a lagging local.
+- New commit > `--amend` by default. `--amend` only when the commit is local and
+  unpushed, or on explicit request.
+- Move a misplaced commit: cherry-pick onto the right fresh base, verify
+  build / tests, no destructive reset without a request.
 
 ## D. Commits
 
-- Message **anglais**, format `type(scope): summary`, conventional commits.
-- Type sur le changement observable : un comportement qui change est `feat` /
-  `fix`, **pas** `refactor` même si le diff est majoritairement du restructuring.
-  `refactor` = ni bug fixé ni comportement changé.
-- **Aucun trailer IA** : jamais `Co-Authored-By: Claude`, jamais « Generated
-  with… ». Le commit est attribué au dev seul.
+- Message in **English**, format `type(scope): summary`, conventional commits.
+- Type reflects the observable change: a behavior change is `feat` / `fix`,
+  **not** `refactor` even when the diff is mostly restructuring. `refactor` = no
+  bug fixed and no behavior changed.
+- **No AI trailer**: never `Co-Authored-By: Claude`, never "Generated with…".
+  The commit is attributed to the developer alone.
 
 ## E. Pull requests
 
-- **Se mettre à jour sur `main` AVANT** d'ouvrir (rebase, histoire linéaire),
-  jamais de PR depuis une branche en retard :
+- **Update on `main` BEFORE** opening (rebase, linear history), never a PR from a
+  lagging branch:
 
   ```bash
   git fetch upstream main
-  git rebase upstream/main        # rebase, pas merge
+  git rebase upstream/main        # rebase, not merge
   ```
 
-- **Titre français**, préfixe conventionnel conservé, concis, sans ref ticket
-  sauf demande. C'est une préférence **perso** (transverse à tes repos).
+- **French title**, conventional prefix kept, concise, no ticket ref unless
+  requested. This is a **personal** preference (transverse across your repos).
 
   ```
   feat(payment-information): découpe des modes de paiement par typologie d'offre
   ```
 
-- **Description ultra-succincte** : seulement le **non-devinable** (décisions,
-  comportement par cas, hors-périmètre volontaire). Quelques bullets max. Pas de
-  dump de spec, pas de sections exhaustives « Pourquoi / Règles / À reviewer ».
-  Pas de tiret cadratin `—` en milieu de phrase (marqueur IA).
-- **`--body-file <fichier>` toujours** : le `--body -` de `gh` ne lit pas stdin
-  et écrit littéralement « - ».
-- **Fork** : la PR cible le **parent**, base `main` :
+- **Ultra-succinct description**: only the **non-guessable** (decisions,
+  per-case behavior, deliberate out-of-scope). A few bullets max. No spec dump,
+  no exhaustive "Why / Rules / To review" sections. No em dash `—` mid-sentence
+  (an AI tell).
+- **Always `--body-file <file>`**: `gh`'s `--body -` does not read stdin and
+  writes a literal "-".
+- **Fork**: the PR targets the **parent**, base `main`:
 
   ```bash
   gh repo view <owner>/<repo> --json parent
   gh pr create --repo <parent> --base main --head <fork-owner>:<branch> \
-    --draft --title "<titre FR>" --body-file <fichier>
+    --draft --title "<French title>" --body-file <file>
   ```
 
-  Si le repo n'a pas de parent, il **est** l'upstream.
-- **WIP / lot multi-itérations → `--draft`.**
+  If the repo has no parent, it **is** the upstream.
+- **WIP / multi-iteration batch → `--draft`.**
 
 ## F. Force-push
 
-- `git push --force` **interdit**. `--force-with-lease` seulement sur demande
-  explicite (revert d'un commit local, rebase / squash demandé), jamais par
-  défaut. `--force-with-lease` refuse de pousser si le remote a bougé depuis le
-  dernier fetch — c'est le garde-fou anti-écrasement.
+- `git push --force` is **forbidden**. `--force-with-lease` only on explicit
+  request (reverting a local commit, a requested rebase / squash), never by
+  default. `--force-with-lease` refuses to push if the remote moved since the
+  last fetch — that is the anti-clobber guardrail.
 
 ## G. Worktrees
 
-Pas de worktree auto sans demande explicite.
+No auto worktree without an explicit request.
 
-## H. Mode manual (index)
+## H. Manual mode (index)
 
-En politique **manual**, ne **jamais** `git add` de contenu ni `git reset` /
-`git restore` sur l'index : le hook `git-add-empty` pose déjà les intent-to-add
-(` A`) pour rendre les nouveaux fichiers visibles au diff sans les stager.
-Laisser le dev stager et reviewer lui-même.
+Under the **manual** policy, **never** `git add` content nor `git reset` /
+`git restore` the index: the `git-add-empty` hook already sets the intent-to-add
+(` A`) so new files show in the diff without being staged. Let the developer
+stage and review themselves.
 
 ## Anti-patterns (❌ / ✅)
 
-- ❌ Lire `origin/main` sans fetch → conclure « retrieve pas mergé » (faux) →
-  poser une mauvaise question au dev.
-  ✅ `git fetch` d'abord → le commit `024ef9a … (#158)` est visible → agir.
+- ❌ Read `origin/main` without fetching → conclude "retrieve not merged" (false)
+  → ask the developer a wrong question.
+  ✅ `git fetch` first → the commit `024ef9a … (#158)` is visible → act.
 
-- ❌ `git branch -r --contains <sha>` seul pour « est-ce mergé ? » : rate les
+- ❌ `git branch -r --contains <sha>` alone for "is it merged?": misses
   squash-merges.
-  ✅ + vérifier le fichier / la feature réellement présents sur `origin/main`.
+  ✅ + verify the file / feature actually present on `origin/main`.
 
-- ❌ Créer une branche depuis un local en retard.
-  ✅ `git switch -c <x> origin/main` après fetch.
+- ❌ Create a branch from a lagging local.
+  ✅ `git switch -c <x> origin/main` after a fetch.
 
-- ❌ Référence cross-repo partielle dans un body de PR (`#55`, « la PR contract »).
-  ✅ Toujours la forme complète **`owner/repo#N`** — un `#N` seul est ambigu
-  hors du repo courant.
+- ❌ Partial cross-repo reference in a PR body (`#55`, "the contract PR").
+  ✅ Always the full form **`owner/repo#N`** — a bare `#N` is ambiguous outside
+  the current repo.
 
-- ❌ Déclarer l'état d'une PR dépendance de mémoire de session (« elle est
-  mergée »).
-  ✅ Vérifier au moment T par `gh pr view <owner/repo#N>` — une PR a pu merger ou
-  être fermée depuis.
+- ❌ State a dependency PR's status from session memory ("it's merged").
+  ✅ Verify at time T with `gh pr view <owner/repo#N>` — a PR may have merged or
+  been closed since.
 
-### Exemple canonique — description de PR (incident PR #160)
+### Canonical example — PR description (PR #160 incident)
 
-❌ Avant (écrit par Claude, trop bavard) :
+❌ Before (written by Claude, too verbose):
 
 ```md
 - Submit valide → POST `CreatePaymentInformationRequest` vers individual.contract.service, PRG vers l'étape origine des fonds.
@@ -137,7 +135,7 @@ Laisser le dev stager et reviewer lui-même.
 - Périmètre : ELV + SPK. SWL (type de compte + structure) à l'itération suivante.
 ```
 
-✅ Après (corrigé par Fabien) :
+✅ After (fixed by Fabien):
 
 ```md
 - Submit valide → POST `CreatePaymentInformationRequest` vers individual.contract.service, redirection vers l'étape origine des fonds.
@@ -145,6 +143,6 @@ Laisser le dev stager et reviewer lui-même.
 - Périmètre : ELV + SPK. SWL (type de compte + structure) à l'itération suivante.
 ```
 
-Règles illustrées : dépendance résolue → bullet **supprimée** (pas corrigée) ;
-détails d'implémentation de l'**autre** repo → supprimés ; détail devinable
-depuis le diff → supprimé (`Bump X` seul suffit) ; jargon (PRG) → mot simple.
+Rules illustrated: resolved dependency → bullet **removed** (not fixed);
+implementation details of the **other** repo → removed; detail guessable from
+the diff → removed (`Bump X` alone is enough); jargon (PRG) → plain word.
