@@ -122,7 +122,31 @@ context-free start:
 Under-specified for a cold start → fix the plan (add the missing detail) before
 emitting the handoff; if it needs a human decision, say so and ASK.
 
-## Phase 5 — Emit the next /goal handoff
+## Phase 5 — Pick the continuation, then emit it
+
+The plan's `Policy:` decides how the rest of the work runs, and this is the moment to say
+so — a developer who chose `commit` or `commit+pr` chose autonomy, and handing them a
+per-iteration prompt anyway makes them drive a loop they asked to be driven for them.
+
+Read `Policy:` from the spec header, then check the **remaining unchecked** iterations for
+any that cannot be gated: an explicit "cannot be verified unattended" note, or an
+acceptance criterion no command can express. `/goal:auto` drops what it cannot run, so such
+an iteration would pass its gate on a half-proof.
+
+| `Policy:` | Remaining iterations | Emit |
+|---|---|---|
+| `manual` | any | the per-iteration handoff **only** — `/goal:auto` refuses `manual` |
+| `commit` / `commit+pr` | all gateable | **`/goal:auto <plan path>` first**, per-iteration handoff below it as the fallback |
+| `commit` / `commit+pr` | one or more not gateable | the per-iteration handoff first, and name the iterations that block a clean autonomous run |
+
+**Always pass the plan path explicitly** in the `/goal:auto` line. Bare `/goal:auto`
+resolves the most recently modified `*-spec.md`, which is whichever plan was last touched —
+a follow-up tracks plan, a plan for another work-id. The path removes the guess.
+
+When you offer `/goal:auto`, state in one line what it will do: how many iterations remain,
+that it halts hard on the first failing gate without attempting the rest, and — under
+`commit+pr` — that the last green iteration pushes and opens the PR. The developer is
+choosing to walk away; they should know where it stops.
 
 Emit the canonical `/goal` handoff from `templates/goal-handoff.template`, filled
 per that file's **"How to fill it"** section: `<plan path>` = the resolved plan path,
@@ -144,7 +168,7 @@ then the filled template as **one copy-paste block**:
 Then close with two or three lines: the finished iteration is **verified** (name it),
 the plan is **reconciled** (list the edits you made), the tree is **safe**
 (clean / staged — say which), and the next iteration is **cold-start ready** — clear
-and paste the block above.
+and paste the block above (or run the `/goal:auto` line, when you offered one).
 
 ## Rules for THIS command
 
