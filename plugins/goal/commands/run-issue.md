@@ -313,10 +313,34 @@ Good candidates: work organized per module, per plugin, per bounded context, per
 in a monorepo. Bad candidates: a shared refactor everything else builds on, anything
 touching a common config, migrations that must run in order.
 
+**When the candidates share a foundation, extract it — do not fall back to sequential.**
+Tracks are rarely disjoint on the first pass. They usually share one artefact the others
+depend on: a validation script, a schema, a config, a rename that renumbers every call
+site. That overlap is not proof the work is sequential — it is a **foundation**, and the
+resolution is to pull it out rather than abandon the split:
+
+- The shared artefact, plus every change whose halves are incoherent apart (a reciprocal
+  cross-module pointer, a rename and its callers), goes into a **foundation plan** — one
+  sequential list, one PR.
+- The remainder forks into tracks in a **follow-up plan**, written at lock time as
+  `.claude/plans/<work-id>-tracks-spec.md`, carrying a **Trigger** line: the foundation PR
+  is merged. Tracks branched before that sit on a tree without the artefact their DoD
+  calls, so their acceptance commands cannot run.
+
+Only conclude "sequential" when the remainder, foundation removed, still shares files.
+
 If a split exists, ask the developer (`AskUserQuestion`) whether to use it, showing the
 tracks and the file sets that make them disjoint. If it does not, say so and keep a single
 sequential list. Do not invent tracks to look parallel: a false track means two PRs that
 conflict at merge.
+
+**Under `commit` or `commit+pr`, every acceptance criterion is a command.** `/goal:auto`
+builds its gate from these lines and **silently drops the ones it cannot run** — its own
+rule is "an acceptance criterion you cannot express as a command is not a gate: leave it
+out". A criterion written as prose therefore does not merely weaken the gate, it vanishes
+from it, and the iteration ships certified by whatever is left. Reread each criterion
+before freezing and ask what exits 0. If a slice's core deliverable has no such command,
+write one, or state in the spec that this slice cannot be verified unattended.
 
 **Cleanup never belongs to this plan.** Removing a flag, dropping the old column, deleting
 the compat shim: all of it waits on a condition this plan cannot satisfy, because the
