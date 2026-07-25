@@ -36,6 +36,7 @@ Grouped by theme. Each links to the plugin's own README with the full skill cata
 |---|---|
 | [**goal**](plugins/goal/README.md) | Source→plan→autonomous `/goal` issue→PR workflow. GitHub, commit, and PR all opt-in — never forced. |
 | [**common**](plugins/common/README.md) | Shared workflow tools — planning, research, context-window, TDD/feature-dev commands, code-review/test hooks, a UI agent. |
+| [**git**](plugins/git/README.md) | Transverse git & PR discipline — fetch-first ref freshness, branch/commit/PR conventions, force-push and worktree guardrails. Merges the former PR-creation skill. |
 | [**superpowers**](plugins/superpowers/README.md) | Cherry-picked [obra/superpowers](https://github.com/obra/superpowers) — `verification-before-completion`, `systematic-debugging`. |
 | [**pocock**](plugins/pocock/README.md) | Cherry-picked [mattpocock/skills](https://github.com/mattpocock/skills) — `grill-me`, `grill-with-docs`, `zoom-out`. |
 

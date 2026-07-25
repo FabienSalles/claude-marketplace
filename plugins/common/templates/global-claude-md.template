@@ -58,33 +58,19 @@ Ambiguous ? Ask before deleting.
   whitespace (except in `*.md` where double-space is a hard line
   break).
 
-## Git & Worktree Discipline
+## Git
 
-- Never auto-create git worktrees unless explicitly requested.
-- Always verify the current branch with `git branch --show-current`
-  before amending or committing.
-- Verify branch names from actual git state (`git branch -a`), not
-  from README references or memory.
-- Prefer new commits over `--amend` unless explicitly asked.
-- Standard `git push` (without `--force` / `--force-with-lease`) is
-  the **normal workflow** — including direct pushes to `main` on
-  personal/solo repos.
+Hard prohibitions below; the full discipline lives in the `git` skill — load it
+for any branch / commit / PR / rebase / push / worktree work.
 
-### Commit authorship
-
-- **Never add AI / agent / model trailers to commit messages.**
-  No `Co-Authored-By: Claude`, no `Generated with Claude Code`, no
-  equivalent for any other AI tool. Commits authored on the user's
-  behalf must be attributed solely to the user.
-- Strip such trailers explicitly if a tool default injects them.
-
-### Force-push policy
-
-- **`git push --force` is forbidden.** Always use `--force-with-lease`.
-- **`--force-with-lease` is allowed only** when the user explicitly
-  requests it for: (1) reverting a local commit, (2) rebasing local
-  history (squash, reword, interactive rebase).
-- **Default rule** : new need → new commit. History is append-only.
+- **Never `git push --force`.** `--force-with-lease` only on explicit request.
+- **Never add an AI trailer** (`Co-Authored-By: Claude`, `Generated with…`);
+  commits are attributed to the user alone.
+- **Never auto-create a worktree** unless explicitly requested.
+- **Fetch before reasoning on remote state** (`git fetch --prune`); never decide
+  branch / PR status from stale local refs or session memory.
+- New need → new commit (history is append-only); verify the branch
+  (`git branch --show-current`) before amend / commit.
 
 ## Secrets awareness
 

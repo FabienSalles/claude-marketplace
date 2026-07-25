@@ -1,0 +1,12 @@
+{
+  "name": "git",
+  "version": "1.0.0",
+  "description": "Transverse git & PR discipline — ref freshness (fetch first), branch/commit/PR conventions, force-push and worktree guardrails. Merges the former PR-creation skill.",
+  "author": {
+    "name": "FabienSalles"
+  },
+  "repository": "https://github.com/FabienSalles/claude-marketplace",
+  "license": "MIT",
+  "keywords": ["git", "pr", "workflow", "commit", "rebase", "fetch"],
+  "skills": "./skills/"
+}
