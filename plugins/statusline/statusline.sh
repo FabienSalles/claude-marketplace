@@ -8,6 +8,7 @@ input=$(cat)
   IFS= read -r cwd
   IFS= read -r model
   IFS= read -r used_pct
+  IFS= read -r effort
   IFS= read -r git_worktree
   IFS= read -r five_pct
   IFS= read -r five_resets_at
@@ -15,6 +16,7 @@ input=$(cat)
   .workspace.current_dir // .cwd // "",
   .model.display_name // "",
   (.context_window.used_percentage // "" | tostring),
+  .effort.level // "",
   .workspace.git_worktree // "",
   (.rate_limits.five_hour.used_percentage // "" | tostring),
   (.rate_limits.five_hour.resets_at // "" | tostring)
@@ -45,10 +47,15 @@ fi
 
 # Model
 if [ -n "$model" ]; then
-  parts+=("$(printf '\033[36m%s\033[0m' "$model")")
+  parts+=("$(printf '\033[36m%s\033[0m' "${model%% (*}")")
 fi
 
-# Context usage (visual progress bar)
+# Reasoning effort
+if [ -n "$effort" ]; then
+  parts+=("$(printf '\033[90m%s\033[0m' "$effort")")
+fi
+
+# Context usage
 if [ -n "$used_pct" ]; then
   used_int=$(printf '%.0f' "$used_pct")
   if [ "$used_int" -ge 80 ]; then
@@ -58,14 +65,7 @@ if [ -n "$used_pct" ]; then
   else
     ctx_color='\033[32m'
   fi
-  bar_width=10
-  filled=$(( used_int * bar_width / 100 ))
-  [ "$filled" -gt "$bar_width" ] && filled=$bar_width
-  empty=$(( bar_width - filled ))
-  bar=""
-  for ((i=0; i<filled; i++)); do bar+="█"; done
-  for ((i=0; i<empty; i++)); do bar+="░"; done
-  parts+=("$(printf "${ctx_color}ctx:[%s] %d%%\033[0m" "$bar" "$used_int")")
+  parts+=("$(printf "${ctx_color}ctx:%d%%\033[0m" "$used_int")")
 fi
 
 # Rate limits (with time-until-reset when resets_at is provided)
