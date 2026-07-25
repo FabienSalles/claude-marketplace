@@ -31,7 +31,7 @@ BOLD='\033[1m'
 PACKS=(
   php phpunit symfony typescript nest vitest astro frontend jquery tooling
   craft
-  goal common git superpowers pocock
+  goal product common git superpowers pocock
   security-runtime audit
   self-audit
   mac statusline
@@ -51,6 +51,7 @@ declare -A PACK_DESCRIPTIONS=(
   [tooling]="Docker, Drizzle ORM, pnpm workspaces, Zod schemas, Claude plugin + npx skills conventions"
   [craft]="Cross-language craftsmanship principles — refactoring, OOP, code style, testing, TDD, DDD (pair with language packs)"
   [goal]="Autonomous issue→PR workflow on Claude Code /goal — /draft-issue (spec → GitHub issue), /run-issue (issue → spec → branch → /goal), auto-regenerated execution log shipped in the PR diff"
+  [product]="Product delivery discipline — vertical-slice (17 splitting techniques + how to pick them per feature), delivery (feature flags, expand/contract, no-BC-break shipping)"
   [common]="Shared hooks, agents, commands, skills — planning, research, context-window, TDD/feature-dev, code-review"
   [git]="Transverse git & PR discipline — fetch-first ref freshness, branch/commit/PR conventions, force-push and worktree guardrails (merges the former PR-creation skill)"
   [superpowers]="Cherry-picked obra/superpowers — verification-before-completion, systematic-debugging"
