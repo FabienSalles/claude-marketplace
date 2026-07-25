@@ -16,7 +16,7 @@ Or `./setup.sh --pack git` (dev mode).
 
 | Skill | Purpose |
 |---|---|
-| [`git`](skills/git/SKILL.md) | Fetch-before-reasoning on remote state, never ask what a command answers, branch/commit discipline, English conventional commits without AI trailer, PR conventions (French title, ultra-succinct body, draft for WIP, fork targets parent), force-push and worktree guardrails, manual index mode. Includes ❌/✅ anti-patterns and the canonical PR-body before/after example. |
+| [`git`](skills/git/SKILL.md) | Fetch-before-reasoning on remote state, never ask what a command answers, branch/commit discipline, English conventional commits without AI trailer, history shape (reshape before the first push, `--fixup` over fix-on-fix, ask before pushing a branch that repairs itself, reshape unasked under a non-manual policy), PR conventions (French title, ultra-succinct body, draft for WIP, fork targets parent), force-push and worktree guardrails, manual index mode. Includes ❌/✅ anti-patterns and the canonical PR-body before/after example. |
 
 > Merges the former PR-creation skill. Ships a blocking fetch-first PreToolUse
 > hook (`hooks/fetch-first.sh`).

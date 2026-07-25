@@ -42,8 +42,11 @@ Read the plan and locate:
 Run the **finished iteration's own acceptance commands** from the plan (its test
 command, lint/QA) and show the **real output**. Never trust the `[x]` or memory.
 
-If anything fails → **STOP**. Report what failed: the iteration is not done, so
-there is nothing to hand off. Fix it (or let the developer) before re-running `/goal:next`.
+If anything fails → **restore `[ ]` on that iteration in the plan, then STOP**. Report
+what failed: the iteration is not done, so there is nothing to hand off. The un-tick
+matters because `/goal` implements the next *unchecked* iteration: leaving `[x]` on a
+failed slice makes the next run skip it and build on top of broken work. Fix it (or let
+the developer) before re-running `/goal:next`.
 
 ## Phase 2 — Reconcile the plan with the codebase
 
@@ -61,6 +64,13 @@ and **edit the plan in place** so every statement is true:
 - **Ripple:** an adjustment in the finished iteration often invalidates *later*
   iterations (a rename, a moved data source, a new island/format). Propagate it into
   iterations 2..N and the global DoD so they stay executable.
+
+- **Delivery:** if the plan carries a `## Delivery strategy` (or the iteration a
+  **Delivery** line), check the diff honoured it — the flag exists with the declared name
+  and defaults to off, an expand step added rather than replaced, nothing existing was
+  removed in a slice that was supposed to only add. A slice that quietly dropped the old
+  path took the rollback with it, and a checkpoint is the last cheap moment to notice.
+  Load `product:delivery` if the strategy needs re-deciding rather than just verifying.
 
 Summarize every edit you made to the plan.
 
@@ -117,8 +127,9 @@ emitting the handoff; if it needs a human decision, say so and ASK.
 Emit the canonical `/goal` handoff from `templates/goal-handoff.template`, filled
 per that file's **"How to fill it"** section: `<plan path>` = the resolved plan path,
 « Done » line 1 = the **next iteration's** acceptance test command, line 2 = the
-project lint/QA command, `<policy>` = the plan's policy verbatim. Respect its
-**≤ 4000-character hard limit**.
+project lint/QA command, `<policy>` = the plan's policy verbatim, `<delivery-mode>` =
+the plan's `Delivery mode:` line verbatim. Fold the policy and delivery-mode blocks to
+the single active branch of each. Respect its **≤ 4000-character hard limit**.
 
 Prepend the context-hygiene reminder (you cannot run these — the developer does),
 then the filled template as **one copy-paste block**:

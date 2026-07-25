@@ -262,6 +262,16 @@
       "keywords": ["marketing", "distribution", "social-media", "email", "newsletter", "threads"]
     },
     {
+      "name": "product",
+      "source": "./plugins/product",
+      "description": "Product delivery discipline — vertical-slice (17 splitting techniques + a procedure to choose and combine them from the feature's complexity, the technical constraints and the execution mode) and delivery (feature flags sized to the project, additive no-BC-break change, expand/contract, and the cleanup slice). Wired into the goal workflow.",
+      "version": "1.0.0",
+      "author": { "name": "FabienSalles" },
+      "category": "development",
+      "license": "MIT",
+      "keywords": ["product", "vertical-slicing", "user-story", "feature-flags", "continuous-delivery", "iterations"]
+    },
+    {
       "name": "marketing-analytics",
       "source": "./plugins/marketing-analytics",
       "description": "Marketing analytics — tracking setup (GA4/GTM/UTM/tracking plan), Google Analytics Data API reporting, Google Search Console reporting.",

@@ -1,8 +1,9 @@
 # /goal handoff — canonical instruction
 
-The exact `/goal` prompt an iteration runs on. Both `/run-issue` (Phase 6, first
-handoff) and `/next` (Phase 5, between-iteration handoff) emit THIS text, filled
-from the plan. Single source of truth — edit here, both commands follow.
+The exact `/goal` prompt an iteration runs on. Both `/run-issue` (first handoff, at
+the end of the planning session) and `/next` (between-iteration handoff) emit THIS
+text, filled from the plan. `/goal:auto` builds its subagent brief from it too, minus
+the `[x]` step and the policy block. Single source of truth — edit here, all three follow.
 
 ## How to fill it
 
@@ -11,14 +12,25 @@ from the plan. Single source of truth — edit here, both commands follow.
   plan says — PHP/JS/other, dockerized where the plan is).
 - « Done » line 2 = the project **lint / QA** command.
 - `<policy>` = the plan's commit/PR policy verbatim (`manual` | `commit` | `commit+pr`).
+- `<delivery-mode>` = the plan's `Delivery mode:` line (`no-bc-break` | `allow-bc-break`).
 
 ## Hard limit — ≤ 4000 characters
 
 The emitted `/goal` argument MUST stay ≤ 4000 characters (the `/goal` command
 truncates its condition beyond that). Count the filled block; if it exceeds,
 compress — drop redundant phrasing, fold the `manual`/`commit`/`commit+pr`
-branches to the single active `<policy>`, shorten the Done/synthesis wording —
-until it fits. Never truncate mid-sentence.
+branches to the single active `<policy>`, fold the two delivery-mode branches to
+the single active `<delivery-mode>`, shorten the Done/synthesis wording — until
+it fits. Never truncate mid-sentence.
+
+Fold both branch blocks by default, not only when you overflow: the emitted text is
+an instruction to one executor in one mode, and the branch it is not in is noise it
+has to read past.
+
+**The block below is a menu, not the emitted text, and it is longer than 4000
+characters on purpose.** Measure what you actually emit, never the raw template.
+Folded to one policy branch and one delivery-mode branch, the worst case lands near
+3000 characters, which is the number that has to fit.
 
 ---
 
@@ -27,6 +39,11 @@ until it fits. Never truncate mid-sentence.
 Avant de coder : charge les skills de conventions du projet applicables au périmètre
 (backend, templates, tests, TDD, langage) et lis le sibling le plus proche de la feature
 pour capter les conventions locales.
+
+Si l'itération porte une ligne « Delivery » (ou le spec une « Delivery strategy ») : charge
+`product:delivery` et respecte-la. N'AJOUTE que du additif — ne supprime, ne renomme et ne
+casse aucun chemin existant dans cette itération, même s'il devient inutile : sa suppression
+est une itération de cleanup à part. Un flag est off par défaut et tu ne l'actives jamais.
 
 Implémente en TDD : test qui échoue d'abord (montre le RED), puis le code, puis refactor.
 Chaque règle métier listée dans l'itération DOIT être couverte par un test.
@@ -44,13 +61,31 @@ localiser des éléments).
 5. Chaque critère d'acceptation de l'itération est vérifié par une commande
 6. Coche [x] cette itération dans le spec (dernier geste)
 
+Mode de livraison : <delivery-mode>
+- no-bc-break    → additif uniquement. Rien de ce que liste « Blast radius » du spec ne
+                   change de forme. Comportement modifié = derrière un flag par défaut OFF.
+                   Schéma = expand d'abord. NE SUPPRIME RIEN : le cleanup a son propre plan.
+- allow-bc-break → tu peux modifier en place ce que liste « Blast radius », et rien d'autre.
+
 Politique commit/PR : <policy>
 - manual      → NE COMMITE PAS, NE PUSH PAS, N'OUVRE PAS DE PR, NE FAIS AUCUN `git add`
                 de contenu NI `git reset`/`git restore` sur l'index (le hook `git-add-empty`
                 pose déjà les intent-to-add ; y toucher casse la review du dev). Laisse le
                 dev stager et reviewer lui-même.
-- commit      → commite CETTE itération avec le message conventionnel suggéré (SANS trailer Co-Authored-By), sans push ni PR.
-- commit+pr   → commite CETTE itération ; si c'est la DERNIÈRE itération non cochée, push puis gh pr create --body-file <plan path>.
+- commit      → commite CETTE itération dans cet ordre :
+                1. `git add` UNIQUEMENT les fichiers listés en « Files to touch ».
+                   Jamais `git add -A`, `git add .`, ni `git commit -a`.
+                2. `git commit -m "<message conventionnel>"` (SANS trailer Co-Authored-By).
+                3. `git status --short` DOIT être vide ensuite. Sinon un fichier a échappé
+                   à la liste déclarée : STOP et signale-le, ne commite pas par-dessus.
+                Le hook `git-add-empty` pose les fichiers neufs en intent-to-add (` A`), ce
+                qui ressemble à « stagé » sans l'être : sans l'étape 1 leur contenu reste
+                hors du commit et la PR part incomplète. Sans push ni PR.
+- commit+pr   → idem ; si c'est la DERNIÈRE itération non cochée, push puis gh pr create.
+                Le corps de la PR décrit UNIQUEMENT les itérations qu'elle livre (but,
+                règles métier, commande qui les prouve), jamais le plan entier. Si une
+                issue GitHub existe, ajoute « Refs #N » : elle porte déjà le plan. Jamais
+                « Closes », un plan peut donner plusieurs PR.
 
 Termine TOUJOURS par une SYNTHÈSE structurée dans le prompt :
 - **Fait** : ce qui a été implémenté
