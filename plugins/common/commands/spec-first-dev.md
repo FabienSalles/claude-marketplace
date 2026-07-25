@@ -180,10 +180,12 @@ each step so the user SEES it go red, then green.
 
 **Actions**:
 
-1. **Propose the breakdown** into iterations based on the spec:
-   - Small feature: 1-2 iterations
-   - Medium feature: 3-4 iterations
-   - Large feature: 5+ iterations (consider splitting into multiple PRs)
+1. **Propose the breakdown** into iterations based on the spec. Load
+   `product:vertical-slice` and run its procedure: name the core complexity, pick the
+   techniques that isolate it, apply the technical constraints, then verify against
+   INVEST. The number of iterations is an output of that, not an input — sizing by
+   "small feature, 2 iterations" is estimating, and it is how horizontal slices get
+   written down as iterations. Not installed? Say so once and split by hand.
 
 2. **For each iteration**, drive every behavior through the micro-loop:
    a. Announce the behavior.
