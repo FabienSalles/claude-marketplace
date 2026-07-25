@@ -334,13 +334,22 @@ tracks and the file sets that make them disjoint. If it does not, say so and kee
 sequential list. Do not invent tracks to look parallel: a false track means two PRs that
 conflict at merge.
 
-**Under `commit` or `commit+pr`, every acceptance criterion is a command.** `/goal:auto`
-builds its gate from these lines and **silently drops the ones it cannot run** — its own
-rule is "an acceptance criterion you cannot express as a command is not a gate: leave it
-out". A criterion written as prose therefore does not merely weaken the gate, it vanishes
-from it, and the iteration ships certified by whatever is left. Reread each criterion
-before freezing and ask what exits 0. If a slice's core deliverable has no such command,
-write one, or state in the spec that this slice cannot be verified unattended.
+**Under `commit` or `commit+pr`, every iteration carries a `gate` block, and that block is
+what runs.** The acceptance criteria used to be prose, and `/goal:auto` translated them into
+gate commands at run time: a model reading "the project test command exits 0" and deciding,
+alone and unattended, which command that is. The block removes the translation. It is written
+here, while the developer is present to read it, in the exact `key=value` form the state file
+and `goal-auto-gate.sh` already consume, so it is copied verbatim rather than interpreted.
+
+Write only commands that can fail. `git diff --stat` and `git status` do not belong in it:
+the gate script checks scope leak and parasitic artifacts structurally, so such a line is a
+gate that always exits 0. A criterion no command can express does not go in the block either
+— put it under **Not machine-verifiable**, where it stays visible instead of vanishing from
+the gate. **A slice whose core deliverable lands there cannot be verified unattended**: say
+so now, because `/goal:auto` halts on an iteration with no `gate1`.
+
+Use the project's real commands, dockerized where the project is, and check each one runs
+today. A command that does not exist yet is a halt at iteration 1, not at review time.
 
 **Cleanup never belongs to this plan.** Removing a flag, dropping the old column, deleting
 the compat shim: all of it waits on a condition this plan cannot satisfy, because the
@@ -357,7 +366,7 @@ parallel, and cleanup is strictly after.
 
 Persist at `.claude/plans/<work-id>-spec.md`:
 
-```markdown
+````markdown
 # Spec: <title>
 
 Source: <Jira CT-1234 | gh issue #42 URL | spec file path | inline>
@@ -399,11 +408,15 @@ section.>
 Built here because the source had none. Use the project's real commands
 (dockerized where applicable — e.g. `make …` / `docker compose run --rm …`,
 not host `php`/`composer`/`npm`).
-1. <whole-scope test command> exits 0
-2. <project lint/QA command> exits 0
-3. Every business rule above has a passing covering test
-4. `git status` clean (no untracked artifacts)
-5. Project convention skills were loaded before coding (see handoff)
+
+```gate
+dod1=<whole-scope test command>
+dod2=<project lint/QA command>
+```
+
+Also true, and not expressible as a command of its own:
+- Every business rule above has a passing covering test (proven by `dod1`)
+- Project convention skills were loaded before coding (see handoff)
 
 ## Functional iterations
 
@@ -418,10 +431,14 @@ numbered once across the whole plan, whether or not tracks are used.>
 - **Files to touch:** `<path>` (+ `<path>` (test))
 - **Business rules covered:** <subset of the rules above>
 - **Delivery:** <additive | flag `<name>` off by default | expand step of expand/contract | …>
-- **Acceptance criteria (command-line):**
-  - <test command scoped to this slice> exits 0
-  - `git diff --stat` shows only this iteration's files
-  - <project lint/QA> exits 0
+- **Not machine-verifiable:** <criteria no command can express, or "none">
+
+```gate
+iteration_files=<bare space-separated repo-relative paths, a subtree as a trailing slash>
+commit_msg=<conventional message, no Co-Authored-By trailer>
+gate1=<test command scoped to this slice>
+gate2=<project lint/QA>
+```
 
 ### Iteration 2 — <name>
 - [ ] Not done yet
@@ -434,9 +451,14 @@ column goes to `.claude/plans/<work-id>-cleanup-spec.md`, in this shape:>
 - [ ] Not done yet
 - **Trigger:** <what must be true in production before this can start>
 - **Delete:** <flag + config entry, losing implementation + its tests, compat shim, old column>
-- **Acceptance criteria (command-line):**
-  - `grep -r <flag name> <src dirs>` returns nothing
-  - <test command> exits 0 · <project lint/QA> exits 0
+
+```gate
+iteration_files=<bare space-separated repo-relative paths>
+commit_msg=<conventional message>
+gate1=! grep -rq <flag name> <src dirs>
+gate2=<test command>
+gate3=<project lint/QA>
+```
 
 <With tracks, wrap the iterations in `## Track` headings instead. Everything inside a
 track stays sequential; tracks are independent of each other and each becomes its own
@@ -461,7 +483,7 @@ branch and its own PR:>
 ## Out-of-band decisions captured during grill
 - Q: <question>
   A: <answer>
-```
+````
 
 Show the plan. Ask: **"Does this plan match our conversation? The iterations
 are the review checkpoints — edit the split or any criterion before I lock it?"**

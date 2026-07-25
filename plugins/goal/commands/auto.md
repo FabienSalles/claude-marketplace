@@ -37,10 +37,13 @@ the gate script reads it.
 | `policy` | `commit` or `commit+pr`, read from the spec's `Policy:` line |
 | `spec_hash` | normalized hash of the spec, detects a rewritten contract |
 | `iteration` | number of the iteration in flight |
-| `iteration_files` | space-separated "Files to touch" of that iteration |
+| `iteration_files` | space-separated paths that iteration may touch |
 | `commit_msg` | conventional message for that iteration |
 | `gate1`, `gate2`, … | that iteration's acceptance commands, one per key |
 | `dod1`, `dod2`, … | the global Definition of Done, replayed once before shipping |
+
+The last four are not composed here: they are copied verbatim out of the spec's `gate`
+blocks, which the developer validated when the plan was locked.
 
 ## Phase 0 — Resolve the plan and the mode
 
@@ -110,7 +113,8 @@ happen at the end.
 ## Phase 2 — Initialize, or resume from a clean boundary
 
 **Fresh run.** Write the state file with `state=running`, `spec`, `policy`, `iteration` =
-the first unchecked iteration's number, the global DoD as `dod1..dodN`, and `spec_hash`:
+the first unchecked iteration's number, the `dod1..dodN` lines copied verbatim from the
+`gate` block under the spec's `## Definition of Done`, and `spec_hash`:
 
 ```bash
 sed 's/^- \[x\]/- [ ]/' <spec> | shasum | cut -d' ' -f1
@@ -140,29 +144,32 @@ decision belongs to the developer.
 Repeat this for every unchecked iteration, in order, in this same turn. Announce each
 iteration as you start it so the run is readable from a phone.
 
-1. **Read the iteration** in the spec: Goal, Files to touch, Business rules covered,
-   Acceptance criteria.
+1. **Read the iteration** in the spec: Goal, Files to touch, Business rules covered, and
+   its `gate` block.
 2. **Rewrite the state file whole**, never append to it: `state`, `spec`, `policy`,
    `spec_hash` **carried forward verbatim from Phase 2, never recomputed** — recomputing it
    here re-baselines the contract on every iteration, so a spec rewritten during iteration 1
    would be blessed at iteration 2 and the tampering check would be dead for the rest of the
-   run. Then this iteration's `iteration`, `iteration_files`, `commit_msg`
-   (conventional, **no `Co-Authored-By` trailer**) and each acceptance command as `gate1`,
-   `gate2`, … Appending leaves the previous iteration's keys in place and the gate would
+   run. Then **the iteration's `gate` block, copied verbatim**, plus `iteration` = its
+   number. Appending leaves the previous iteration's keys in place and the gate would
    replay a stale command against this one; it halts on a duplicated key for that reason.
 
-   `iteration_files` is **bare, space-separated, repo-relative paths and nothing else**.
-   Translate the plan's rendering, do not copy it: `` `src/Foo.php` (+ `tests/FooTest.php`
-   (test)) `` becomes `src/Foo.php tests/FooTest.php`, and a whole subtree is declared with
-   a trailing slash (`plugins/astro/`, never `plugins/astro/**`). The gate compares
-   literally, so a backtick or a glob left in makes every file read as out of scope. A path
-   containing a space cannot be declared: keep it out of the iteration.
+   **Copy, never compose.** `iteration_files`, `commit_msg` and `gate1`, `gate2`, … are
+   already written in the plan, in this exact `key=value` form, validated by the developer
+   at lock time. Transcribe those lines and nothing else. You do not derive `iteration_files`
+   from the prose "Files to touch", you do not word a commit message, and you do not decide
+   which acceptance criterion becomes a command — that decision was made when the plan was
+   frozen, on purpose, by someone who was there. Reformulating any of it here reintroduces
+   exactly the run-time interpretation the block exists to remove.
 
-   Use the plan's real commands, dockerized where the plan is. An acceptance criterion you
-   cannot express as a command is not a gate: leave it out and say so, rather than writing
-   a command that always passes. **If that empties the list, the iteration has no gate at
-   all** — the script halts on it, and rightly: do not invent a command to get past it,
-   halt and report that this slice cannot be verified unattended.
+   Two ways the block can be wrong, and both are a halt rather than a repair:
+
+   - **No `gate` block, or no `gate1` in it** → the plan predates this format or the slice
+     was never gateable. Do not write commands for it. STOP, name the iteration, and tell
+     the developer to add the block with `/goal:run-issue`.
+   - **A line the gate script will reject** — a backtick, a glob, a markdown annotation in
+     `iteration_files` — → STOP and report it. Fixing it here would mean editing the
+     contract mid-run, which the spec hash catches anyway.
 3. **Spawn one subagent** with the brief below, and wait for it. Do not implement anything
    yourself, and do not run the tests yourself at this point.
 4. **Run the gate** and read its exit code:
@@ -365,6 +372,8 @@ ready yourself, and never merge either one.
 - **You never implement.** Every line of production code comes from a subagent.
 - **You never decide that an iteration passed.** The gate script's exit code decides. If
   you find yourself reasoning about whether a failure "really matters", stop and halt.
+- **You never decide what gets verified either.** The `gate` blocks are copied out of the
+  plan, verbatim. Writing a command the plan does not contain is inventing the contract.
 - **Never tick `[x]` before the gate, never commit before the tick.** That order is what
   makes an interrupted run diagnosable.
 - **A halt is final.** It ends the run until the developer restarts it explicitly. Never

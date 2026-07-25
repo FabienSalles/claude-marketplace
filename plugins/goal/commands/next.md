@@ -112,12 +112,13 @@ never stage), and note which policy you assumed.
 
 Read the next `[ ]` iteration and confirm it is **fully self-contained** for a
 context-free start:
-- *Goal*, *Files to touch*, *Business rules covered*, and *Acceptance commands* are
-  all present and concrete in the plan.
+- *Goal*, *Files to touch*, *Business rules covered*, and its `gate` block are all
+  present and concrete in the plan.
 - Nothing it needs exists **only in this conversation** — a decision, a value, a name
   you introduced but never wrote into the plan or the code. If you find such a thing,
   write it into the plan now.
-- Its acceptance commands run as-is (paths/targets exist).
+- Its `gate` commands run as-is (paths/targets exist), and `iteration_files` still
+  matches what the slice really touches after the ripple you just reconciled.
 
 Under-specified for a cold start → fix the plan (add the missing detail) before
 emitting the handoff; if it needs a human decision, say so and ASK.
@@ -129,9 +130,10 @@ so — a developer who chose `commit` or `commit+pr` chose autonomy, and handing
 per-iteration prompt anyway makes them drive a loop they asked to be driven for them.
 
 Read `Policy:` from the spec header, then check the **remaining unchecked** iterations for
-any that cannot be gated: an explicit "cannot be verified unattended" note, or an
-acceptance criterion no command can express. `/goal:auto` drops what it cannot run, so such
-an iteration would pass its gate on a half-proof.
+any that cannot be gated: a missing `gate` block, a block with no `gate1`, or a **Not
+machine-verifiable** line carrying the slice's core deliverable. `/goal:auto` halts on the
+first of these rather than run, so naming them now saves a run that would stop at iteration
+one.
 
 | `Policy:` | Remaining iterations | Emit |
 |---|---|---|
