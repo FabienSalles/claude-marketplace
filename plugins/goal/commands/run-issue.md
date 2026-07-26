@@ -341,8 +341,16 @@ conflict at merge.
 what runs.** The acceptance criteria used to be prose, and `/goal:auto` translated them into
 gate commands at run time: a model reading "the project test command exits 0" and deciding,
 alone and unattended, which command that is. The block removes the translation. It is written
-here, while the developer is present to read it, in the exact `key=value` form the state file
-and `goal-auto-gate.sh` already consume, so it is copied verbatim rather than interpreted.
+here, while the developer is present to read it, in the exact `key=value` form `goal-gate.ts`
+already consumes, so it is copied verbatim rather than interpreted.
+
+Four things the block's shape asks of you, all mechanical downstream. `test_files` and
+`impl_files` are separate because the gate sets the second aside and requires `gate1` to fail
+without it: a slice whose test passes either way is refused. `gate1` is therefore the one
+acceptance criterion — it is bitten, and it must pass three times in a row — where `gate2..N`
+are supporting lints. `max_diff` is the line ceiling you set while awake, enforced while you
+are not. And a slice with nothing to test declares `test_files=` empty, which skips the bite
+rather than faking it.
 
 Write only commands that can fail. `git diff --stat` and `git status` do not belong in it:
 the gate script checks scope leak and parasitic artifacts structurally, so such a line is a
@@ -451,9 +459,11 @@ numbered once across the whole plan, whether or not tracks are used.>
 - **Not machine-verifiable:** <criteria no command can express, or "none">
 
 ```gate
-iteration_files=<bare space-separated repo-relative paths, a subtree as a trailing slash>
+test_files=<the slice's test paths, or empty when it has nothing to test>
+impl_files=<bare space-separated repo-relative paths, a subtree as a trailing slash>
+max_diff=<added+removed line ceiling for this slice>
 commit_msg=<conventional message, no Co-Authored-By trailer>
-gate1=<test command scoped to this slice>
+gate1=<test command scoped to this slice — the one criterion, bitten without the implementation>
 gate2=<project lint/QA>
 ```
 
@@ -470,7 +480,9 @@ column goes to `.claude/plans/<work-id>-cleanup-spec.md`, in this shape:>
 - **Delete:** <flag + config entry, losing implementation + its tests, compat shim, old column>
 
 ```gate
-iteration_files=<bare space-separated repo-relative paths>
+test_files=
+impl_files=<bare space-separated repo-relative paths>
+max_diff=<added+removed line ceiling for this slice>
 commit_msg=<conventional message>
 gate1=! grep -rq <flag name> <src dirs>
 gate2=<test command>

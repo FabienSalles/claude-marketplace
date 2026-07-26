@@ -117,8 +117,8 @@ context-free start:
 - Nothing it needs exists **only in this conversation** — a decision, a value, a name
   you introduced but never wrote into the plan or the code. If you find such a thing,
   write it into the plan now.
-- Its `gate` commands run as-is (paths/targets exist), and `iteration_files` still
-  matches what the slice really touches after the ripple you just reconciled.
+- Its `gate` commands run as-is (paths/targets exist), and `test_files` + `impl_files`
+  still match what the slice really touches after the ripple you just reconciled.
 
 Under-specified for a cold start → fix the plan (add the missing detail) before
 emitting the handoff; if it needs a human decision, say so and ASK.
