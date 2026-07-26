@@ -15,6 +15,7 @@ export const meta = {
   phases: [
     { title: 'Survey', detail: 'take the run lock, list the unchecked iterations, refuse an unrunnable one' },
     { title: 'Iterate', detail: 'one implementer, then the gate, per iteration' },
+    { title: 'Report', detail: 'scan, push the branch, write the outcome to the issue' },
   ],
 };
 
@@ -74,6 +75,68 @@ const brief = (iteration) =>
     'You do not commit, do not push, do not stage, do not tick a checkbox and do not edit the plan.',
     'The gate does all of that, after it has verified. Your report is advisory: the gate is replayed',
     'independently and its exit code is the only verdict.',
+  ].join('\n');
+
+// The run is write-only towards GitHub: it posts, and it never reads a title, a body or a
+// comment. An agent that reads attacker-controlled text and also holds write credentials is one
+// injection away from using them, so the text posted here is always built from the plan.
+const post = async (target, subject, text) => {
+  const result = await agent(
+    [
+      `Post the text below as a comment on ${target}, exactly as given, changing nothing.`,
+      '',
+      'Write it to a temporary file first, then post that file. Report the exit code of the',
+      'posting command and nothing else. Do not read the issue or the pull request, do not',
+      'summarise, do not add a greeting, and do not decide the text needs improving.',
+      '',
+      `--- ${subject} ---`,
+      text,
+      '--- end ---',
+    ].join('\n'),
+    { agentType: 'goal-reporter', schema: RUN_RESULT, effort: 'low', label: `report:${target}`, phase: 'Report' },
+  );
+
+  return result ?? { exitCode: -1, output: `The reporter returned nothing for ${target}.` };
+};
+
+// The issue number comes from the plan's own header, never from GitHub. A plan with no issue
+// reports locally and says so: the GitHub mirror is opt-in, by design, from /goal:draft-issue on.
+const ISSUE_FROM_PLAN = String.raw`sed -n 's/^Source: gh issue #\([0-9][0-9]*\).*/\1/p'`;
+
+// Scan, then push: a halted branch is pushed on purpose — unattended, the alternative is that
+// the only machine that knows what happened is the one that is now asleep — and nothing is
+// pushed that a scanner has not passed.
+const pushBranch = async () => {
+  const scan = await runner(`${GATE} scan`, 'scan', 'Report');
+
+  if (scan.exitCode !== 0) {
+    return { pushed: false, scanned: false, detail: scan.output };
+  }
+
+  const push = await runner('git push -u origin HEAD', 'push', 'Report');
+
+  return { pushed: push.exitCode === 0, scanned: true, detail: push.output };
+};
+
+const haltReport = (report) =>
+  [
+    `## Run halted at iteration ${report.iteration}`,
+    '',
+    `Plan: \`${report.plan}\``,
+    `Landed, each gate-verified: ${report.landed.join(' ') || 'nothing'}`,
+    `Never attempted: ${report.notAttempted.join(' ') || 'nothing'}`,
+    '',
+    report.push?.pushed === true
+      ? 'The branch is pushed. The working tree of the halted iteration is left exactly as the implementer left it, on the machine that ran it.'
+      : `The branch is **not** pushed:\n\n\`\`\`\n${(report.push?.detail ?? '').slice(-1500)}\n\`\`\``,
+    '',
+    'The gate said, verbatim:',
+    '',
+    '```',
+    report.detail.slice(-4000),
+    '```',
+    '',
+    'Nothing was retried and no iteration after this one was attempted.',
   ].join('\n');
 
 const iterationsPending = (output) =>
@@ -149,6 +212,27 @@ if (hash === undefined) {
   };
 }
 
+const found = await runner(`${ISSUE_FROM_PLAN} ${PLAN} | head -1`, 'issue', 'Survey');
+const issue = /^[0-9]+$/.test(found.output.trim()) ? found.output.trim() : undefined;
+
+if (issue === undefined) {
+  log('The plan names no GitHub issue, so the run reports to its return value alone.');
+} else {
+  await post(
+    `issue #${issue}`,
+    'run started',
+    [
+      `## Run started on \`${PLAN}\``,
+      '',
+      `Iterations to run, in order: ${pending.join(' ')}`,
+      `Plan hash locked for the run: \`${hash}\``,
+      '',
+      'Each one is implemented by an agent that cannot commit, then judged by the gate, which',
+      'commits and ticks only after every check passed. The first refusal ends the run.',
+    ].join('\n'),
+  );
+}
+
 phase('Iterate');
 
 const landed = [];
@@ -194,7 +278,7 @@ for (const [index, iteration] of pending.entries()) {
   if (stopped !== undefined) {
     await release();
 
-    return {
+    const report = {
       status: stopped.status,
       plan: PLAN,
       iteration: stopped.iteration,
@@ -202,6 +286,20 @@ for (const [index, iteration] of pending.entries()) {
       landed,
       notAttempted: pending.slice(stopped.from),
     };
+
+    if (report.status !== 'halted') {
+      return report;
+    }
+
+    phase('Report');
+
+    report.push = await pushBranch();
+
+    if (issue !== undefined) {
+      report.reported = (await post(`issue #${issue}`, 'run halted', haltReport(report))).exitCode === 0;
+    }
+
+    return report;
   }
 
   landed.push(iteration);
