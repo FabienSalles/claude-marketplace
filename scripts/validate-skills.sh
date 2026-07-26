@@ -50,8 +50,8 @@ for skill_md in $(find plugins -name "SKILL.md" | sort); do
   fi
 
   # Validate name format: lowercase alphanumeric + hyphens, max 64 chars
-  if ! echo "$fm_name" | grep -qE '^[a-z0-9.-]+$'; then
-    echo "✗ Invalid name format '$fm_name': $skill_md (must match ^[a-z0-9.-]+$)"
+  if ! echo "$fm_name" | grep -qE '^[a-z0-9-]+$'; then
+    echo "✗ Invalid name format '$fm_name': $skill_md (must match ^[a-z0-9-]+$)"
     errors=$((errors + 1))
   fi
   if [[ ${#fm_name} -gt 64 ]]; then

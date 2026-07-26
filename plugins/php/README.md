@@ -18,8 +18,8 @@ Or `./setup.sh --pack php` (dev mode — registers this directory as a local mar
 
 | Skill | Purpose |
 |---|---|
-| [`php-8.2`](skills/php-8.2/SKILL.md) | Mandatory `readonly` class usage (class-level, not per-property) |
-| [`php-8.3`](skills/php-8.3/SKILL.md) | Mandatory typed class constants |
+| [`php-8-2`](skills/php-8-2/SKILL.md) | Mandatory `readonly` class usage (class-level, not per-property) |
+| [`php-8-3`](skills/php-8-3/SKILL.md) | Mandatory typed class constants |
 
 ### Code style & OOP
 
