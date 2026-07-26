@@ -16,6 +16,7 @@ export const meta = {
     { title: 'Survey', detail: 'take the run lock, list the unchecked iterations, refuse an unrunnable one' },
     { title: 'Iterate', detail: 'one implementer, then the gate, per iteration' },
     { title: 'Report', detail: 'scan, push the branch, write the outcome to the issue' },
+    { title: 'Ship', detail: 'replay the global Definition of Done, then mark the pull request ready' },
   ],
 };
 
@@ -116,6 +117,73 @@ const pushBranch = async () => {
   const push = await runner('git push -u origin HEAD', 'push', 'Report');
 
   return { pushed: push.exitCode === 0, scanned: true, detail: push.output };
+};
+
+// Reshaping happens once, before anything is pushed, and never again: after the first push
+// folding a commit would need a force. The gate is the only committer and it never amends, so
+// this is an assertion rather than a rewrite — and an assertion that fails is a refusal to push,
+// because rewriting history nobody has reviewed, unattended, is worse than stopping.
+const reshape = async (count) => {
+  const shape = await runner(
+    String.raw`git log --format=%s -${count} | grep -cE '^(fixup|squash)!' || true`,
+    'reshape',
+    'Report',
+  );
+
+  return shape.output.trim() === '0';
+};
+
+const quoted = (text) => text.replace(/'/g, '').trim();
+
+const planFacts = async (numbers) => {
+  const facts = await runner(
+    `{ sed -n 's/^# Spec: //p' ${PLAN} | head -1; sed -n 's/^Delivery mode: //p' ${PLAN} | head -1; grep -E '^### Iteration (${numbers.join('|')}) ' ${PLAN}; }`,
+    'plan-facts',
+    'Report',
+  );
+
+  const lines = facts.output.split('\n').map((line) => line.trimEnd()).filter((line) => line !== '');
+
+  return {
+    title: quoted(lines[0] ?? `Exécution de ${PLAN}`),
+    mode: lines[1] ?? '',
+    headings: lines.slice(2).map((line) => line.replace(/^### /, '')),
+  };
+};
+
+const prBody = (facts, issue) =>
+  [
+    `Delivery mode : ${facts.mode || 'non déclaré'}`,
+    '',
+    '## Livré',
+    '',
+    ...facts.headings.map((heading) => `- ${heading}`),
+    '',
+    'Chaque itération a été jugée par le gate avant son commit : périmètre déclaré, budget de',
+    'diff, suppressions, commandes d\'acceptation, trois runs de déterminisme, et le bite check',
+    "qui exige que le test échoue sans l'implémentation. Aucun commit n'existe qu'un gate n'a pas",
+    'vérifié.',
+    ...(issue === undefined ? [] : ['', `Refs #${issue}`]),
+  ].join('\n');
+
+// A body carries backticks and newlines, so it travels as a file. Push failure and pull-request
+// failure are reported separately: "pushed, no PR" is a real state and reading it as one
+// ambiguous failure is how a run ends up with an invisible branch.
+const publish = async (verb, facts, body) => {
+  const create = verb === 'create';
+  const command = [
+    "cat > .git/goal-pr-body.md <<'GOALPRBODY'",
+    body,
+    'GOALPRBODY',
+    create
+      ? `gh pr create --draft --title '${facts.title}' --body-file .git/goal-pr-body.md`
+      : 'gh pr edit --body-file .git/goal-pr-body.md',
+    'rc=$?',
+    'rm -f .git/goal-pr-body.md',
+    'exit $rc',
+  ].join('\n');
+
+  return runner(command, `pr:${verb}`, 'Report');
 };
 
 const haltReport = (report) =>
@@ -236,7 +304,42 @@ if (issue === undefined) {
 phase('Iterate');
 
 const landed = [];
+const shipping = { pushed: false, pr: false, blocked: undefined, prError: undefined };
 let stopped;
+
+// The pull request is opened as a draft at the **first** commit and its body rewritten by every
+// iteration after it, so a run that halts at iteration 3 of 15 still leaves something a human
+// can read instead of a local branch nobody can see.
+const mirror = async (issue) => {
+  if (shipping.blocked !== undefined) {
+    return;
+  }
+
+  if (!shipping.pushed && !(await reshape(landed.length))) {
+    shipping.blocked =
+      'The run carries a fixup or squash commit, so the history is not the sequence a reviewer should read. Nothing was pushed: fold them yourself, then push.';
+
+    return;
+  }
+
+  const push = await pushBranch();
+
+  if (!push.pushed) {
+    shipping.blocked = push.scanned
+      ? `The push failed:\n${push.detail.slice(-1500)}`
+      : `The secret scanner refused this tree, so nothing was pushed:\n${push.detail.slice(-1500)}`;
+
+    return;
+  }
+
+  shipping.pushed = true;
+
+  const facts = await planFacts(landed);
+  const published = await publish(shipping.pr ? 'edit' : 'create', facts, prBody(facts, issue));
+
+  shipping.prError = published.exitCode === 0 ? undefined : published.output.slice(-1500);
+  shipping.pr = shipping.pr || published.exitCode === 0;
+};
 
 for (const [index, iteration] of pending.entries()) {
   if (budget.total && budget.remaining() < ITERATION_FLOOR) {
@@ -293,7 +396,13 @@ for (const [index, iteration] of pending.entries()) {
 
     phase('Report');
 
-    report.push = await pushBranch();
+    if (landed.length > 0) {
+      await mirror(issue);
+      report.push = { pushed: shipping.pushed, detail: shipping.blocked ?? shipping.prError ?? '' };
+      report.pr = shipping.pr;
+    } else {
+      report.push = await pushBranch();
+    }
 
     if (issue !== undefined) {
       report.reported = (await post(`issue #${issue}`, 'run halted', haltReport(report))).exitCode === 0;
@@ -304,8 +413,47 @@ for (const [index, iteration] of pending.entries()) {
 
   landed.push(iteration);
   log(`iteration ${iteration} landed, gate-verified`);
+
+  await mirror(issue);
 }
 
 await release();
 
-return { status: 'done', plan: PLAN, landed, notAttempted: [] };
+phase('Ship');
+
+// Nothing ships unverified: every slice was gated against its own commands, which is not the
+// same claim as the whole plan holding. Marking the pull request ready is what "shipped" means
+// here, and it happens on the other side of this barrier or not at all.
+const dod = await runner(`${GATE} dod ${PLAN} ${hash}`, 'dod', 'Ship');
+
+if (dod.exitCode !== 0) {
+  const refused = {
+    status: 'halted',
+    plan: PLAN,
+    iteration: 'the global Definition of Done',
+    detail: dod.output,
+    landed,
+    notAttempted: [],
+    push: { pushed: shipping.pushed, detail: shipping.blocked ?? shipping.prError ?? '' },
+    pr: shipping.pr,
+  };
+
+  if (issue !== undefined) {
+    refused.reported = (await post(`issue #${issue}`, 'run halted', haltReport(refused))).exitCode === 0;
+  }
+
+  return refused;
+}
+
+const ready = shipping.pr ? await runner('gh pr ready', 'pr:ready', 'Ship') : undefined;
+
+return {
+  status: 'done',
+  plan: PLAN,
+  landed,
+  notAttempted: [],
+  pushed: shipping.pushed,
+  pr: shipping.pr,
+  ready: ready?.exitCode === 0,
+  detail: shipping.blocked ?? shipping.prError ?? ready?.output ?? '',
+};
