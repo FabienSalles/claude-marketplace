@@ -496,6 +496,8 @@ branch and its own PR:>
 ## Track astro — <what this track delivers>
 - **Branch suffix:** `astro`
 - **Files owned:** `plugins/astro/**`
+- **Prepare:** <command making the fresh worktree runnable — its own compose project, its own ports. Omit when there is nothing to prepare>
+- **Teardown:** <command undoing it, run on every exit path including a halt>
 
 ### Iteration 1 — <name>
 - [ ] Not done yet
@@ -508,6 +510,14 @@ branch and its own PR:>
 ### Iteration 3 — <name>
 - [ ] Not done yet
 - ...
+
+<Three things the harness enforces about tracks, before it creates anything: independence is
+proven from the `test_files` + `impl_files` of each track's iterations, so `Files owned` is
+prose for the reader and one shared path refuses the whole run; iteration numbers are global
+to the plan, so two tracks may not carry the same one; and a `Prepare:` that brings containers
+up needs the `Teardown:` that takes them down. What it cannot check is that your preparation
+genuinely isolates anything — it verifies the command exits 0 in a fresh worktree, not your
+mount points.>
 
 ## Out-of-band decisions captured during grill
 - Q: <question>

@@ -139,7 +139,11 @@ the evidence is what the developer needs. It also means the next launch fails pr
 3 until they deal with it, which is the intended friction.
 
 Parallel tracks are the workflow's concern, not this command's. A plan carrying `## Track`
-headings is run as one sequence, in plan order, which is always correct if sometimes slower.
+headings has its independence **proved** before anything is created — one path declared by two
+tracks refuses the whole run — then each track gets its own worktree, its declared preparation,
+its own branch and its own PR, and they run at the same time. A halted track never cancels a
+healthy sibling, so the report carries one entry per track under `tracks`, and the worktree of a
+halted one is kept for you to inspect. Tracks need `gate` passed as an absolute path.
 
 ### What goes in a PR body
 
