@@ -23,7 +23,7 @@ const withKey = (key: string, value: string): string[] => [
   `${key}=${value}`,
 ];
 
-const planWith = (gateLines: string[], header: string[]): string =>
+const planWith = (gateLines: string[], header: readonly string[]): string =>
   [
     ...header,
     '',
@@ -40,7 +40,7 @@ const git = (cwd: string, ...args: string[]) => spawnSync('git', args, { cwd, en
 
 const fixture = (
   gateLines: string[] = GATE_BLOCK,
-  header: string[] = ALLOW,
+  header: readonly string[] = ALLOW,
 ): { repo: string; plan: string } => {
   const repo = mkdtempSync(join(tmpdir(), 'goal-gate-bounds-'));
   git(repo, 'init', '-q');
