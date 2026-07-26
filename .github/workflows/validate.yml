@@ -331,6 +331,28 @@ jobs:
           fi
           echo "✓ npx skills add --list completed"
 
+  test-goal-gate:
+    name: Test the goal gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+
+      - name: Run the gate suite
+        run: bash plugins/goal/tests/run.sh
+
+      - name: Type-check the gate
+        run: |
+          # node strips types at run time without checking them — verified. This is the
+          # only place the gate's types are actually verified, which is why the compiler
+          # is installed here and deliberately not vendored in the repository.
+          npm install --no-save --no-package-lock typescript@5.9 @types/node@24
+          npx tsc --noEmit
+
   health-check:
     name: Run health-check.sh (${{ matrix.os }})
     strategy:
