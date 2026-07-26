@@ -12,7 +12,7 @@ const GATE_BLOCK = [
   'impl_files=src/a.ts',
   'max_diff=100',
   'commit_msg=feat(a): do a thing',
-  'gate1=true',
+  'gate1=grep -q "a = 2" src/a.ts',
 ];
 
 const planWith = (gateLines: string[]): string =>
@@ -152,7 +152,10 @@ test('a commit is refused while another writer holds the tick lock', () => {
 
 // R7 — commit and tick happen only after every check passed, in that order
 test('a failing acceptance command leaves no commit and no tick', () => {
-  const { repo, plan } = fixture([...GATE_BLOCK.filter((l) => l !== 'gate1=true'), 'gate1=false']);
+  const { repo, plan } = fixture([
+    ...GATE_BLOCK.filter((line) => !line.startsWith('gate1=')),
+    'gate1=false',
+  ]);
   touchDeclared(repo);
 
   const { code, output } = runGate(repo, 'commit', plan, '1');
