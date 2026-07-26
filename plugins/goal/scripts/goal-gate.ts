@@ -22,10 +22,12 @@ import {
 import { dirname, join } from 'node:path';
 
 const USAGE =
-  'usage: goal-gate.ts check|verify|commit <plan> <iteration> [plan_hash]\n       goal-gate.ts lock|unlock <plan>';
+  'usage: goal-gate.ts check|verify|commit <plan> <iteration> [plan_hash]\n       goal-gate.ts dod <plan> [plan_hash]\n       goal-gate.ts scan\n       goal-gate.ts lock|unlock <plan>';
 
 const ALLOWED_KEY = /^(test_files|impl_files|max_diff|commit_msg|gate[1-9][0-9]*)$/;
 const REQUIRED_KEYS = ['gate1', 'impl_files', 'commit_msg'] as const;
+const ALLOWED_DOD_KEY = /^dod[1-9][0-9]*$/;
+const SCANNERS = ['betterleaks', 'gitleaks'];
 
 const halt: (reason: string, detail: string) => never = (reason, detail) => {
   process.stdout.write(`HALT\n\nREASON: ${reason}\n\nDETAIL:\n${detail}\n`);
@@ -50,6 +52,24 @@ const readPlan = (path: string): string => {
 const planHash = (source: string): string =>
   createHash('sha256').update(source.replace(/^- \[x\]/gm, '- [ ]')).digest('hex');
 
+const lockedHash = (
+  plan: string,
+  source: string,
+  subject: string,
+  locked: string | undefined,
+): string => {
+  const hash = planHash(source);
+
+  if (locked !== undefined && locked !== hash) {
+    halt(
+      `The plan was modified during ${subject}, beyond ticking a box.`,
+      `Locked normalized hash ${locked}\nFound            ${hash}\n\nThe executor rewrote its own contract. Review ${plan} and the last diff before resuming.`,
+    );
+  }
+
+  return hash;
+};
+
 const sectionBounds = (lines: string[], iteration: string): [number, number] => {
   const heading = new RegExp(`^### Iteration ${iteration}\\b`);
   const start = lines.findIndex((line) => heading.test(line));
@@ -73,14 +93,14 @@ const iterationSection = (source: string, iteration: string): string[] => {
   return lines.slice(start, end);
 };
 
-const gateBlock = (section: string[], iteration: string): string[] => {
+const gateBlock = (section: string[], subject: string): string[] => {
   const open = section.findIndex((line) => line.trim() === '```gate');
   const body = section.slice(open + 1);
   const close = body.findIndex((line) => line.trim() === '```');
 
   if (open === -1 || close === -1) {
     halt(
-      `Iteration ${iteration} declares no gate block.`,
+      `${subject} declares no gate block.`,
       'The iteration section holds no closed ```gate fence.\n\nAn iteration with no gate block has no acceptance criterion, no declared scope and no commit message, so nothing can be verified about it. The global Definition of Done block is not a substitute: it belongs to the plan, not to this slice.',
     );
   }
@@ -88,7 +108,7 @@ const gateBlock = (section: string[], iteration: string): string[] => {
   return body.slice(0, close);
 };
 
-const declaredKeys = (block: string[], iteration: string): Map<string, string> => {
+const declaredKeys = (block: string[], subject: string): Map<string, string> => {
   const declared = new Map<string, string>();
   const twice: string[] = [];
 
@@ -109,7 +129,7 @@ const declaredKeys = (block: string[], iteration: string): Map<string, string> =
 
   if (twice.length > 0) {
     halt(
-      `Iteration ${iteration} declares the same key twice.`,
+      `${subject} declares the same key twice.`,
       `Duplicated: ${twice.join(' ')}\n\nOne occurrence would silently win over the other, so the slice would be judged by a criterion nobody chose: a block carrying both gate1=true and gate1=false has no defined meaning. Keep one line per key.`,
     );
   }
@@ -297,7 +317,10 @@ const determinismCheck = (declared: Map<string, string>, iteration: string): voi
 };
 
 const blockOf = (source: string, iteration: string): Map<string, string> =>
-  declaredKeys(gateBlock(iterationSection(source, iteration), iteration), iteration);
+  declaredKeys(
+    gateBlock(iterationSection(source, iteration), `Iteration ${iteration}`),
+    `Iteration ${iteration}`,
+  );
 
 const iterationNumbers = (source: string, ticked: boolean): string[] => {
   const lines = source.split('\n');
@@ -371,6 +394,85 @@ const resolvabilityCheck = (source: string, iteration: string): void => {
       `${unresolvable.join('\n')}\n\nThese directories exist in HEAD and no longer exist in the tree, so the iterations declaring paths inside them can no longer run. The check is made before the commit on purpose: committing first would leave a commit whose own plan is already broken. Restore the directory, or update the declarations of the iterations named above.`,
     );
   }
+};
+
+// The barrier replayed once before anything ships. Every slice gate only ever saw its own slice,
+// so a run that pushed on the strength of those alone would never have run the whole suite
+// against the whole branch.
+const dodCheck = (source: string): void => {
+  const lines = source.split('\n');
+  const start = lines.findIndex((line) => /^## Definition of Done\b/.test(line));
+
+  if (start === -1) {
+    halt(
+      'The plan declares no global Definition of Done.',
+      'No "## Definition of Done" heading found.\n\nThe DoD is the last barrier before anything is pushed: without it a run would ship on the strength of its per-slice gates alone, each of which only ever judged its own slice against its own commands.',
+    );
+  }
+
+  const next = lines.slice(start + 1).findIndex((line) => /^#{2,3} /.test(line));
+  const section = lines.slice(start + 1, next === -1 ? lines.length : start + 1 + next);
+  const declared = declaredKeys(
+    gateBlock(section, "The plan's Definition of Done"),
+    "The plan's Definition of Done",
+  );
+
+  const forbidden = [...declared.keys()].filter((key) => !ALLOWED_DOD_KEY.test(key));
+
+  if (forbidden.length > 0) {
+    halt(
+      "The plan's Definition of Done declares a key it may not set.",
+      `Refused: ${forbidden.join(' ')}\n\nThe global block sets dod1..N and nothing else. A gate1 written here would be read by no verb at all, so the command it names would never run while the plan claimed it as a barrier.`,
+    );
+  }
+
+  if ((declared.get('dod1') ?? '') === '') {
+    halt(
+      "The plan's Definition of Done names no command.",
+      'Missing or empty: dod1\n\nA barrier that runs nothing exits 0 on anything, which is the failure this harness exists to remove. Write the commands that prove the whole plan is done, or say that the plan cannot be verified.',
+    );
+  }
+
+  for (const [key, command] of [...declared.entries()].sort(([a], [b]) => Number(a.slice(3)) - Number(b.slice(3)))) {
+    const run = spawnSync(command, { shell: true, encoding: 'utf8' });
+
+    if (run.status !== 0) {
+      halt(
+        `The global Definition of Done fails at ${key}.`,
+        `Command: ${command}\nExit code: ${run.status}\n\nOutput:\n${`${run.stdout}${run.stderr}`.slice(-4000)}\n\nEvery slice was gated green and the plan as a whole is not. Nothing has been pushed.`,
+      );
+    }
+  }
+
+  process.stdout.write(`OK: the global Definition of Done passed ${declared.size} command(s).\n`);
+};
+
+// betterleaks first, gitleaks second, and a refusal if neither is installed: a push nobody
+// scanned is exactly how a halted branch publishes a .env. Both take `dir`, betterleaks being a
+// drop-in replacement for the gitleaks CLI.
+const secretScan = (): void => {
+  const scanner = SCANNERS.find(
+    (name) => spawnSync(`command -v ${name}`, { shell: true }).status === 0,
+  );
+
+  if (scanner === undefined) {
+    halt(
+      'No secret scanner is installed, so nothing may be pushed.',
+      `Looked for: ${SCANNERS.join(' ')}\n\nThe guard refuses rather than degrades: a run that pushed unscanned would publish whatever the tree holds, and a halted branch is pushed too. Install one of the above, or push by hand having read the diff.`,
+    );
+  }
+
+  const command = `${scanner} dir . --redact`;
+  const run = spawnSync(command, { shell: true, encoding: 'utf8' });
+
+  if (run.status !== 0) {
+    halt(
+      `${scanner} refuses this tree, so nothing was pushed.`,
+      `Command: ${command}\nExit code: ${run.status}\n\nOutput:\n${`${run.stdout}${run.stderr}`.slice(-4000)}\n\nEither the tree holds a secret — rotate it, it is already in the local history — or the scanner does not support this invocation, which the command above tells you.`,
+    );
+  }
+
+  process.stdout.write(`OK: ${scanner} found no secret.\n`);
 };
 
 const heldLocks: string[] = [];
@@ -564,12 +666,27 @@ const commitAndTick = (
 const main = (): void => {
   const [subcommand, plan, iteration, locked] = process.argv.slice(2);
 
-  if (plan === undefined || !['check', 'verify', 'commit', 'lock', 'unlock'].includes(subcommand ?? '')) {
+  if (subcommand === 'scan') {
+    return secretScan();
+  }
+
+  if (
+    plan === undefined ||
+    !['check', 'verify', 'commit', 'dod', 'lock', 'unlock'].includes(subcommand ?? '')
+  ) {
     misuse(USAGE);
   }
 
   if (subcommand === 'lock' || subcommand === 'unlock') {
     return runLock(subcommand, plan);
+  }
+
+  if (subcommand === 'dod') {
+    const source = readPlan(plan);
+
+    lockedHash(plan, source, 'the Definition of Done replay', iteration);
+
+    return dodCheck(source);
   }
 
   if (iteration === undefined) {
@@ -581,14 +698,8 @@ const main = (): void => {
   }
 
   const source = readPlan(plan);
-  const hash = planHash(source);
 
-  if (locked !== undefined && locked !== hash) {
-    halt(
-      `The plan was modified during iteration ${iteration}, beyond ticking a box.`,
-      `Locked normalized hash ${locked}\nFound            ${hash}\n\nThe executor rewrote its own contract. Review ${plan} and the last diff before resuming.`,
-    );
-  }
+  const hash = lockedHash(plan, source, `iteration ${iteration}`, locked);
 
   const declared = blockOf(source, iteration);
 
