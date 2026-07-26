@@ -54,12 +54,32 @@ untrusted content but holds no tools, while the *privileged* model holds the too
 sees the content.[^camel][^dual]
 
 Here it maps cleanly onto a mechanism the plugin already has. Define a dedicated subagent
-type in `.claude/agents/` whose frontmatter grants it **only** `Bash(gh api …)` — no `Write`,
-no `Edit`, no push, no network beyond the API call — and call it with `agentType`. It reads,
-it returns a validated value, and it structurally cannot act on what it read.
+type in `agents/` — `goal-reader` — that holds no `Write`, no `Edit` and no posting tool, and
+call it with `agentType`. It reads, it returns raw output, and the caller reduces that output to
+a validated value.
 
 Combined with L2, the reader agent is barely a model at all: it runs one command and returns
 its output. That is the intent.
+
+**What was earned, and what was not.** This section first said the frontmatter grants it *only*
+`Bash(gh api …)`. It cannot: the documented agent `tools:` field takes a list of tool **names**
+(`["Read", "Bash"]`), and the scoped `Bash(…)` form is permission-rule syntax, not a tools entry
+— checked against the official plugin component reference rather than assumed. So `goal-reader`
+holds plain `Bash`, which is strictly more than it needs.
+
+What is actually held, then:
+
+- The reader holds **no `Write`, no `Edit`**, and receives exactly one command, constructed by the
+  workflow, never by a model.
+- It is the **only** agent that reads GitHub. Every agent that can act — implementer, runner,
+  reporter — never sees remote text at all. That separation is real and it is the load-bearing
+  half of L3.
+- Its brief refuses a write command explicitly and reports the refusal, which is prose, therefore
+  a hint and not a guarantee.
+
+The residual gap is named in the risks below rather than papered over: a reader holding plain
+`Bash` could, if talked into it, run a writing command. Closing it mechanically needs a
+permission rule at the settings layer, which is a different surface from an agent definition.
 
 ## The channels, from safest to richest
 
@@ -84,13 +104,27 @@ own boxes are ticked*, which is a bit vector over a vocabulary it authored.
 
 ```markdown
 <!-- goal:control v1 -->
-### Run controls — tick and the run picks it up at the next iteration boundary
+### Run controls — tick one and the run picks it up at the next iteration boundary
 
-- [ ] stop after the current iteration
-- [ ] do not push, do not open PRs
-- [ ] skip the advisory lenses (saves tokens)
-- [ ] re-run the current iteration once before continuing
+- [ ] stop — end the run after the current iteration
+- [ ] no-ship — push nothing and open no pull request
+- [ ] skip-lenses — drop the advisory refutation stage
 ```
+
+**As implemented, and one verb short of the design.** `retry-current` is not there. It was listed
+as acceptable above — a forged retry costs one iteration twice — but the loop it would live in has
+no retry: a gate refuses, the run is over, and adding a remote verb whose only job is to
+contradict that would have been the first place the halt-is-final rule leaked. The three above are
+the whole vocabulary.
+
+Two implementation details that carry the safety:
+
+- **The panel's comment id comes from the URL `gh` printed when the run posted it**, so reading it
+  back is a lookup by id and never a search across an issue's comments. A forged panel posted by
+  someone else, marker and all, is never read.
+- **The label kill switch shares the same read**, as `goal:stop`, so a run can be stopped from the
+  issue's label picker without waiting for a panel comment to exist. One reader agent per iteration
+  boundary covers both, at `effort: 'low'`.
 
 No text written by anyone else is ever read. The attacker cannot edit this comment without
 write access, and someone with write access to your repository can already push code.
@@ -131,6 +165,9 @@ itself.
 
 ## Residual risks, stated plainly
 
+- **The reader holds plain `Bash`**, not a scoped `gh api` grant, because the agent `tools:` field
+  cannot express one (see L3). Its restriction to reading is a brief, not a capability, and that is
+  the weakest link in this design as implemented.
 - **Repository write access.** Tier 1 rests on it. Someone who has it does not need an
   injection.
 - **A compromised run can still write anything to GitHub.** Write-only protects the run from
