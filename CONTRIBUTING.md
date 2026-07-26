@@ -68,12 +68,14 @@ A diagnostic script orchestrates the native `claude plugin` commands:
 
 It (1) re-syncs upstream marketplaces, (2) validates the root `marketplace.json`, (3) validates each plugin manifest, (4) checks every `${CLAUDE_PLUGIN_ROOT}/...` reference in `hooks.json` and command files resolves to a real file — catching renames not propagated to JSON — and (5) lists installed plugins. It exits `1` on any failure, so it's usable in a pre-commit hook or local CI.
 
+`./scripts/validate-skills.sh` checks every `SKILL.md`'s frontmatter (present, `name:` present and matching the directory) and README skill counts — the same checks CI runs, runnable before you push.
+
 ## What CI enforces
 
 `.github/workflows/validate.yml` runs on every PR and nightly (`06:00 UTC`), across `ubuntu-latest` and `macos-latest`:
 
 - `marketplace.json` is valid JSON and every plugin has a `plugin.json`.
-- Every `SKILL.md` has valid frontmatter.
+- Every `SKILL.md` has valid frontmatter (`./scripts/validate-skills.sh`).
 - Every `marketplace.json` reference resolves.
 - `setup.sh` behaves (`--all` / `--pack` / `--remove` / `--status` / idempotency / `ts` alias).
 - `claude plugin validate` passes for the manifest and each plugin.
