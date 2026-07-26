@@ -26,6 +26,7 @@ export const meta = {
     { title: 'Report', detail: 'scan, push the branch, write the outcome to the issue' },
     { title: 'Ship', detail: 'replay the global Definition of Done, then mark the pull request ready' },
     { title: 'Lenses', detail: 'advisory refutation of what landed — never blocks, off by default' },
+    { title: 'Audit', detail: 'what the run cost, where it thrashed, and what recurs across runs' },
   ],
 };
 
@@ -340,6 +341,44 @@ const runLenses = async (landed, issue) => {
   return { asked: [...pairs, ...closing].length, findings };
 };
 
+const AUDIT = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['path', 'summary', 'recurring'],
+  properties: {
+    path: { type: 'string' },
+    summary: { type: 'string' },
+    recurring: { type: 'array', items: { type: 'string' } },
+  },
+};
+
+// Nobody watched the run, so something has to. The record is machine-made — token cost and the
+// outcome of every iteration entered — and the auditor turns it into a report plus whatever it
+// recognises from the runs before this one. It reads and writes its own directory, and it changes
+// no code: a run that ends badly must not be edited by the thing that measured it.
+const audit = async (report, record) => {
+  const sha = (await runner('git rev-parse --short HEAD', 'sha', 'Audit')).output.trim() || 'unknown';
+  const result = await agent(
+    [
+      `Audit the run that just ended on plan ${PLAN} and write its report to .claude/goal-runs/${sha}.md.`,
+      '',
+      'The machine record, one entry per iteration entered, tokens being this run\'s own output cost:',
+      '',
+      JSON.stringify({ status: report.status, landed: report.landed, notAttempted: report.notAttempted, record }),
+      '',
+      report.status === 'halted' ? `The halt, verbatim:\n\n${String(report.detail).slice(-3000)}` : '',
+      '',
+      'Read the reports already in .claude/goal-runs/ and say which failures recur across runs rather',
+      'than describing this one twice. Name what cost the most and what produced nothing. Do not edit',
+      'a single line of code, do not stage anything, and do not judge whether the work was correct —',
+      'the gate already did that, and it is not what you are for.',
+    ].join('\n'),
+    { agentType: 'goal-auditor', schema: AUDIT, label: `audit:${sha}`, phase: 'Audit' },
+  );
+
+  return result ?? { path: `.claude/goal-runs/${sha}.md`, summary: 'The auditor returned nothing.', recurring: [] };
+};
+
 const iterationsPending = (output) =>
   output
     .split('\n')
@@ -559,6 +598,7 @@ if (issue === undefined) {
 phase('Iterate');
 
 const landed = [];
+const record = [];
 const shipping = { pushed: false, pr: false, blocked: undefined, prError: undefined };
 let stopped;
 
@@ -597,10 +637,14 @@ const mirror = async (issue) => {
 };
 
 for (const [index, iteration] of pending.entries()) {
+  const before = budget.spent();
+  let gateExit;
+
   if (budget.total && budget.remaining() < ITERATION_FLOOR) {
     stopped = {
       status: 'paused',
       iteration,
+      outcome: 'never started, token floor reached',
       from: index,
       detail: `Stopped before iteration ${iteration}: ${Math.round(budget.remaining() / 1000)}k tokens left, under the ${ITERATION_FLOOR / 1000}k floor one iteration needs. Nothing is wrong; relaunch and the plan's checkboxes resume the run here.`,
     };
@@ -617,6 +661,7 @@ for (const [index, iteration] of pending.entries()) {
       stopped = {
         status: 'paused',
         iteration,
+        outcome: 'the implementer returned nothing',
         from: index + 1,
         detail: `The implementer of iteration ${iteration} returned nothing — skipped, or dead after retries. The tree holds whatever it wrote and no gate has judged it: review it before relaunching.`,
       };
@@ -630,10 +675,19 @@ for (const [index, iteration] of pending.entries()) {
       'Iterate',
     );
 
+    gateExit = gate.exitCode;
+
     if (gate.exitCode !== 0) {
-      stopped = { status: 'halted', iteration, from: index + 1, detail: gate.output };
+      stopped = { status: 'halted', iteration, outcome: 'the gate refused it', from: index + 1, detail: gate.output };
     }
   }
+
+  record.push({
+    iteration,
+    tokens: budget.spent() - before,
+    outcome: stopped?.outcome ?? 'landed',
+    gate: gateExit ?? null,
+  });
 
   // A halt is final: the iterations after it are never attempted, and the tree is left exactly
   // as the implementer left it.
@@ -650,6 +704,8 @@ for (const [index, iteration] of pending.entries()) {
     };
 
     if (report.status !== 'halted') {
+      report.audit = await audit(report, record);
+
       return report;
     }
 
@@ -666,6 +722,8 @@ for (const [index, iteration] of pending.entries()) {
     if (issue !== undefined) {
       report.reported = (await post(`issue #${issue}`, 'run halted', haltReport(report))).exitCode === 0;
     }
+
+    report.audit = await audit(report, record);
 
     return report;
   }
@@ -701,6 +759,8 @@ if (dod.exitCode !== 0) {
     refused.reported = (await post(`issue #${issue}`, 'run halted', haltReport(refused))).exitCode === 0;
   }
 
+  refused.audit = await audit(refused, record);
+
   return refused;
 }
 
@@ -710,7 +770,7 @@ const ready = shipping.pr ? await runner(inDir('gh pr ready'), 'pr:ready', 'Ship
 // shipped, which is the strongest form of "a lens never blocks" available.
 const lenses = args?.lenses === true && landed.length > 0 ? await runLenses(landed, issue) : undefined;
 
-return {
+const done = {
   status: 'done',
   lenses,
   plan: PLAN,
@@ -721,3 +781,7 @@ return {
   ready: ready?.exitCode === 0,
   detail: shipping.blocked ?? shipping.prError ?? ready?.output ?? '',
 };
+
+done.audit = await audit(done, record);
+
+return done;
