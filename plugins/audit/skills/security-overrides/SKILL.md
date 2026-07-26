@@ -1,6 +1,6 @@
 ---
 name: security-overrides
-description: "ACTIVATE when conducting a security audit / review / vulnerability assessment on a personal project. Loads alongside security-audit:security-audit (which provides the comprehensive 80+ checkpoint / OWASP / CWE / CVSS baseline). This skill adds personal/project overrides: stack scope (PHP/Symfony + TS/NestJS), false-positive filters, output format conventions, and cross-references to language-specific skills (e.g. audit:ts-security for Drizzle/JWT/bcrypt). DO NOT use as a primary audit skill — it is an overlay only."
+description: "ACTIVATE when conducting a security audit / review / vulnerability assessment on a personal project. Loads alongside security-audit:security-audit (which provides the comprehensive 80+ checkpoint / OWASP / CWE / CVSS baseline). This skill adds personal/project overrides: stack scope (PHP/Symfony + TS/NestJS), false-positive filters, output format conventions, and cross-references to language-specific skills (e.g. audit:ts-security for Drizzle/JWT/bcrypt). DO NOT use as a primary audit skill — it is an overlay only. DO NOT use for: persona-style framing of a security review (see common:expert-persona-skills)."
 version: "1.0"
 ---
 

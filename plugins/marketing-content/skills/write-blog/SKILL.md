@@ -1,7 +1,7 @@
 ---
 name: write-blog
 version: "1.0"
-description: "ACTIVATE when the user asks to GENERATE a full SEO-optimized blog post — E-E-A-T framework, keyword research, outline, sections with headings, meta description. Trigger phrases: 'write a blog post', 'blog article', 'write about', 'SEO article', 'blog content', 'write a post about', or a keyword + request for an article. For briefing a human writer instead, see seo-content-brief."
+description: "ACTIVATE when the user asks to GENERATE a full SEO-optimized blog post — E-E-A-T framework, keyword research, outline, sections with headings, meta description. Trigger phrases: 'write a blog post', 'blog article', 'SEO article', 'blog content', 'write a post about', or a keyword + request for an article. For briefing a human writer instead, see seo-content-brief."
 ---
 
 # Write Blog Post Skill

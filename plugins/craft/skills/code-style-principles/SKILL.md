@@ -1,6 +1,6 @@
 ---
 name: code-style-principles
-description: "ACTIVATE whenever writing or modifying production code in src/. ACTIVATE for code review, formatting questions, or 'coding standards'. Covers cross-language code style: control-structure spacing, early-return pattern, continue-vs-if/else in loops, explicit (non-truthy/falsy) checks, flattening nested null checks, parameter ordering. These rules go BEYOND standard linters. Language-specific syntax (no-empty in PHP, template literals in TS, nowdoc, optional chaining vs nullsafe) lives in php-code-conventions / ts-code-conventions."
+description: "ACTIVATE whenever writing or modifying production code in src/ in a language with no dedicated conventions skill. ACTIVATE for code review, formatting questions, or 'coding standards'. Covers cross-language code style: control-structure spacing, early-return pattern, continue-vs-if/else in loops, explicit (non-truthy/falsy) checks, flattening nested null checks, parameter ordering. These rules go BEYOND standard linters. Language-specific syntax (no-empty in PHP, template literals in TS, nowdoc, optional chaining vs nullsafe) lives in php-code-conventions / ts-code-conventions. DO NOT use for: a language with a dedicated conventions skill (see php:php-code-conventions + typescript:ts-code-conventions)."
 version: "1.0"
 ---
 

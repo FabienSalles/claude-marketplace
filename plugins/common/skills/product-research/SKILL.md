@@ -1,6 +1,6 @@
 ---
 name: product-research
-description: ACTIVATE when doing market research, competitive analysis, technology evaluation, or gathering data before BMAD product briefs. ACTIVATE for 'market research', 'competitive analysis', 'vendor evaluation', 'product research', 'gather data', 'tech evaluation'. Provides a 2-phase workflow (gather cheap, synthesize expensive) that feeds into BMAD. DO NOT use for implementation tasks.
+description: ACTIVATE when doing market research, competitive analysis, technology evaluation, or gathering data before BMAD product briefs. ACTIVATE for 'market research', 'competitive analysis', 'vendor evaluation', 'product research', 'gather data', 'tech evaluation'. Provides a 2-phase workflow (gather cheap, synthesize expensive) that feeds into BMAD. DO NOT use for implementation tasks, or a competitive matrix/SWOT against named competitors (see marketing-strategy:competitor-analysis).
 version: 1.0.0
 ---
 
