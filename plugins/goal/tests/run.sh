@@ -12,7 +12,10 @@ set -uo pipefail
 TESTS="$(cd "$(dirname "$0")" && pwd)"
 cd "$TESTS/../../.."
 
-out=$(node --test 'plugins/goal/tests/*.test.ts' 2>&1)
+# The summary is parsed below, so the child must not colour it: a caller exporting FORCE_COLOR
+# makes node emit `\033[34mℹ pass 79\033[39m`, the anchored sed stops matching, and this wrapper
+# declares the result unknown on a green suite.
+out=$(FORCE_COLOR=0 NO_COLOR=1 node --test 'plugins/goal/tests/*.test.ts' 2>&1)
 rc=$?
 
 printf '%s\n' "$out"
