@@ -269,8 +269,11 @@ Ask (this controls what an execution session is allowed to do, and how big a sli
 >   iteration I stop with a synthesis; you review and commit yourself.
 > - **commit** — I commit each iteration myself (conventional message, no
 >   `Co-Authored-By` trailer), but never push or open a PR.
-> - **commit+pr** — like commit, plus after the LAST iteration I push and open
->   the PR (requires a GitHub remote). This is what `/goal:auto` needs.
+> - **commit+pr** — like commit, plus I push and keep a PR (requires a GitHub
+>   remote). It is opened as a **draft at the first commit** and every later
+>   iteration updates that same PR, so you can watch the work land instead of
+>   waiting for the end. It goes ready for review at the last iteration. This
+>   is what `/goal:auto` needs.
 
 WAIT for the answer. Then **write it into the spec's `Policy:` header line**, and use the
 same value as `<policy>` in the handoff verbatim.

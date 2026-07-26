@@ -194,7 +194,19 @@ iteration as you start it so the run is readable from a phone.
    list: **set `state=halted`**, report, and do not commit again on top. Every halt writes
    `halted`, wherever it happens — that is what a later resume reads to know it is walking
    into a run that ended badly rather than one that was merely interrupted.
-7. **Next iteration**, or Phase 4 when none is left.
+7. **Push and open the draft PR**, only under `commit+pr`, and only on the **first commit
+   of the run**:
+   ```bash
+   git push -u <remote> <branch>
+   gh pr view --json number --jq .number || gh pr create --draft --title "<title>" --body "<body>"
+   ```
+   A branch already carrying a PR is pushed and nothing else is created — one branch, one
+   PR, for the whole run. On the iterations after the first, push and rewrite the existing
+   body with `gh pr edit --body`, so what is reviewable always matches what has landed.
+   Opening it at the first commit rather than at the end is what makes a halt visible: a
+   run that stops at iteration 3 of 15 still leaves a draft a human can read, instead of a
+   local branch nobody can see.
+8. **Next iteration**, or Phase 4 when none is left.
 
 ### The subagent brief
 
@@ -319,6 +331,12 @@ Never delete a branch.
    the PRs themselves, cleanup last and as a draft.
 4. **Policy `commit+pr`** → `git push -u <remote> <branch>` (never `--force`), then
    `gh pr create`, ready for review. Then set `state=done` and report the PR URL.
+
+   The PR is not created here for the first time: under `commit+pr` it was opened as a
+   **draft at the first commit of the run** (see Phase 4 step 7), so what happens here is
+   `gh pr ready` plus a final body rewrite covering every iteration the branch delivers.
+   A run that halts therefore already has a reviewable draft, which is what makes the
+   halted-branch report of `R19` land somewhere a human can read it.
 
 ### What goes in a PR body
 

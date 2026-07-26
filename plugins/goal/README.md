@@ -130,7 +130,7 @@ Commit behavior follows the policy:
 
 - **manual** — Claude commits nothing. You read the synthesis, review the diff, commit yourself.
 - **commit** — Claude commits the iteration (conventional message, **no `Co-Authored-By` trailer**), no push/PR.
-- **commit+pr** — plus, after the last iteration, push + `gh pr create`.
+- **commit+pr** — plus push, and one PR per branch: opened as a **draft at the first commit**, its body updated by every iteration after it, marked ready at the last. A run that halts halfway still leaves something reviewable.
 
 The execution log is refreshed at **every Stop** by the `issue-execution-log.sh` hook.
 

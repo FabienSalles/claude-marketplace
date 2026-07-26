@@ -147,8 +147,9 @@ a follow-up tracks plan, a plan for another work-id. The path removes the guess.
 
 When you offer `/goal:auto`, state in one line what it will do: how many iterations remain,
 that it halts hard on the first failing gate without attempting the rest, and — under
-`commit+pr` — that the last green iteration pushes and opens the PR. The developer is
-choosing to walk away; they should know where it stops.
+`commit+pr` — that the first green iteration already pushes and opens a draft PR the rest
+keep updating, so a halt is still reviewable. The developer is choosing to walk away; they
+should know where it stops.
 
 Emit the canonical `/goal` handoff from `templates/goal-handoff.template`, filled
 per that file's **"How to fill it"** section: `<plan path>` = the resolved plan path,
