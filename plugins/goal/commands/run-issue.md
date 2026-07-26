@@ -376,7 +376,21 @@ Delivery mode: <no-bc-break | allow-bc-break — filled in Phase 2c>
 Cleanup: <later | now | none — none when allow-bc-break or no flag was introduced>
 
 ## Business intent
-<1–3 paragraphs: what + why, in the developer's domain vocabulary>
+
+<Carry the four need fields forward **verbatim** when `/goal:draft-issue` produced them —
+Problem, Objective, Success signal, Affected. When the source came straight here without a
+draft, build them now: they are what the whole plan is measured against, and no later phase
+can reconstruct them.>
+
+**Problem.** <what fails today, with the evidence — an incident, a measurement, a file and line>
+
+**Objective.** <what must become true, as an outcome, not as a solution>
+
+**Success signal.** <how you would know it worked in the real world, distinct from the DoD>
+
+**Affected.** <who lives with the problem, and what changes for them>
+
+<Then 1–3 paragraphs connecting them, in the developer's domain vocabulary.>
 
 ## Scope IN
 - <what's in>
