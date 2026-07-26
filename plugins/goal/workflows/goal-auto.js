@@ -30,9 +30,25 @@ export const meta = {
   ],
 };
 
-const GATE = typeof args?.gate === 'string' && args.gate !== '' ? args.gate : 'node plugins/goal/scripts/goal-gate.ts';
+// The runtime hands a workflow its args as a JSON string, not as the object the launch site
+// wrote. Measured, not assumed: the first real launch died in 5 ms on `args.plan` being undefined,
+// and a probe returned `typeof args === 'string'`. Normalize once, here, and nothing downstream
+// has to know.
+const input = (() => {
+  if (typeof args !== 'string') {
+    return args ?? {};
+  }
 
-const PLAN = args?.plan;
+  try {
+    return JSON.parse(args);
+  } catch {
+    return {};
+  }
+})();
+
+const GATE = typeof input.gate === 'string' && input.gate !== '' ? input.gate : 'node plugins/goal/scripts/goal-gate.ts';
+
+const PLAN = input.plan;
 
 // An iteration that runs out of budget halfway leaves work no gate has judged. The loop stops
 // at a boundary instead, where the plan's own checkboxes are the whole state.
@@ -48,8 +64,8 @@ const RUN_RESULT = {
   },
 };
 
-const TRACK = args?.track;
-const DIR = args?.dir;
+const TRACK = input.track;
+const DIR = input.dir;
 
 // A track runs in its own worktree, so every command that judges or publishes code is prefixed
 // with the directory it belongs to: that prefix is what makes "a track's gate runs against that
@@ -58,7 +74,7 @@ const DIR = args?.dir;
 // gitignored `.claude/`, so it is absent from every worktree.
 const inDir = (command) => (DIR === undefined ? command : `cd ${DIR} && ${command}`);
 
-const PLAN_PATH = DIR === undefined ? args?.plan : `"$OLDPWD/${args?.plan}"`;
+const PLAN_PATH = DIR === undefined ? input.plan : `"$OLDPWD/${input.plan}"`;
 
 // Every command crosses back as {exitCode, output} rather than as transcript, so the
 // orchestrator's context does not grow with the number of iterations.
@@ -581,7 +597,7 @@ if (TRACK === undefined) {
 const survey =
   TRACK === undefined
     ? await runner(`${SURVEY} ${PLAN}`, 'survey', 'Survey')
-    : { exitCode: 0, output: (args?.iterations ?? []).join('\n') };
+    : { exitCode: 0, output: (input.iterations ?? []).join('\n') };
 
 if (survey.exitCode !== 0) {
   await release();
@@ -851,7 +867,7 @@ const ready = shipping.pr ? await runner(inDir('gh pr ready'), 'pr:ready', 'Ship
 // Last, and after the pull request is already ready: a finding cannot stop what has already
 // shipped, which is the strongest form of "a lens never blocks" available.
 const lenses =
-  args?.lenses === true && landed.length > 0 && !remote.has('skip-lenses')
+  input.lenses === true && landed.length > 0 && !remote.has('skip-lenses')
     ? await runLenses(landed, issue)
     : undefined;
 
