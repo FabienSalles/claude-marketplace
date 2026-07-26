@@ -4,10 +4,15 @@ Every guarantee `commands/auto.md` makes today, and where the workflow rebuild m
 The question is never "does the new thing do something similar" but "is the same property
 still held, and by what".
 
-**This is a target, not a status report.** The workflow does not exist yet; it is built
-iteration by iteration under `.claude/plans/issue-6-spec.md`. Each row is a claim the rebuild
-has to earn, and the reference spike on `wip/issue-6-harness-spike` is only evidence that the
-shape works — not that it is held.
+**This was a target. It is now a status report.** The workflow exists, it is checked in at
+`workflows/goal-auto.js`, the gate is `scripts/goal-gate.ts`, and both were built iteration by
+iteration under `.claude/plans/issue-6-spec.md`. On 2026-07-26 the harness ran a real plan —
+`.claude/plans/issue-3-spec.md`, four iterations, nobody watching — and finished green. What
+that run proved and what it cost is at the end of this file, under *The first real run*.
+
+Two things changed shape since the target was written, and every row below reflects them: the
+gate is TypeScript run natively by node rather than bash, and there are **two** locks beside the
+plan, `<plan>.run.lock` for the run and `<plan>.tick.lock` around the commit.
 
 Status legend: **held** (the rebuild must hold this property, same or stronger enforcement) ·
 **moved** (held, but by a different layer — say where) · **gap** (nothing holds it yet, even
@@ -34,7 +39,7 @@ first and launches only if it passes.
 | 4. `.claude/` is gitignored | **moved** | the command. Still load-bearing: the gate ticks the plan there on every iteration. |
 | 5. At least one unchecked iteration | **held** | the survey returns the unchecked set; empty → `done` with a reason, nothing runs. |
 | 6. No cleanup iteration (`Trigger:` line) in a feature plan | **held** | named explicitly in the survey's inconsistency list, with the `*-cleanup-spec.md` exemption. |
-| 7. No run already active | **replaced** | there is no run state to read. The command checks for a stale `<plan>.lock` instead, which is the only thing a dead run leaves behind. |
+| 7. No run already active | **replaced** | there is no run state to read. The command checks for a stale `<plan>.run.lock`, the only thing a dead run leaves behind. The first real run left exactly that when its process died, and `goal-gate.ts unlock` was the documented way out — the check earned its place the same day it was written. |
 | 8. `gh` auth, remote, no open PR | **moved** | the command. |
 
 ## Phase 2 — State and resume
@@ -56,11 +61,11 @@ first and launches only if it passes.
 | The gate reads its own inputs, never composed ones | **held, stronger** | it parses the plan itself; no intermediate file exists to go stale or be appended to. |
 | Declared paths are bare, no markdown, no glob | **held, stronger** | copied verbatim from the plan's `gate` block; the block is validated and the gate rejects backticks and globs. |
 | Acceptance commands are the plan's real commands | **held, stronger** | copied verbatim. No model composes one. |
-| An iteration with no gate halts rather than inventing one | **held** | `goal-gate.sh` refuses a block with no `gate1`; the workflow turns that into a `paused`. |
-| Gate decides, exit code only | **held** | `green` verifies, commits and ticks inside one script. |
+| An iteration with no gate halts rather than inventing one | **held** | `goal-gate.ts` refuses a block with no `gate1` (R2), and the survey runs `check` on every unchecked iteration **before** the first implementer, so an unrunnable slice is known at the start of the night. |
+| Gate decides, exit code only | **held** | `goal-gate.ts commit` verifies, commits and ticks inside one process, in that order. |
 | Halt is final, remaining iterations not attempted | **held, stronger** | `break` in JavaScript, and the not-attempted list is computed and reported. |
-| Tick only after the gate, commit only after the tick | **held, stronger** | all three inside one bash script, in that order. |
-| `git status --short` empty after commit | **held** | checked by `green` before it returns 0. |
+| Tick only after the gate, commit only after the tick | **held, stronger** | all three inside one process, in that order, under the tick lock. |
+| `git status --short` empty after commit | **held** | the scope check runs before the commit and stages only declared paths, so anything else halts first. |
 | Commit message carries no AI trailer | **held** | it comes from the plan's `commit_msg`, frozen by a human. |
 | Subagent brief built from `goal-handoff.template` | **dropped on purpose** | see *Deliberate divergences*. |
 
@@ -76,8 +81,8 @@ first and launches only if it passes.
 | One PR per track | **held** | the ship stage runs inside each track. |
 | Re-verify (gate + DoD) before pushing | **held** | the DoD runs per track, in its worktree, after its last iteration. |
 | **Only one writer to the spec** | **found broken, fixed** | see below. |
-| Tracks are provably disjoint before anything is created | **gap** | currently a survey judgement, not a proof. |
-| `Branch suffix:` collisions refused | **gap** | same. |
+| Tracks are provably disjoint before anything is created | **held, was a gap** | `goal-gate.ts tracks` intersects the declared paths of every track's iterations and refuses on overlap, naming both tracks and the shared path. Subtree declarations count. Iteration 11, with tests. |
+| `Branch suffix:` collisions refused | **held, was a gap** | same verb: a missing suffix, a duplicated suffix, or one iteration number claimed by two tracks each refuse the whole run before a worktree exists. |
 | Remove shipped worktrees, keep halted ones, never delete a branch | **held** | `git worktree remove` after a track ships; a halted track returns before reaching it. |
 
 ### The race this checklist exists to catch
@@ -90,10 +95,14 @@ read the whole file and both write the whole file, and one tick is silently lost
 collided on a fixed `$spec.new` temp filename.
 
 The spike answered it with a `mkdir`-based lock (atomic and portable, unlike `flock` on
-macOS) around the read-check-write, a PID-suffixed temp file, and an `EXIT` trap so no failure
-path leaves the lock behind, plus three regression tests: a held lock blocks the tick without
-committing, a green run releases it, a failing run releases it. **The rebuild must land the
-same three tests**, or the property is unproven whatever the code looks like.
+macOS). **The rebuild landed it, and split it in two**, which the spike had not: a
+`<plan>.tick.lock` around the read-check-write of the commit, and a `<plan>.run.lock` taken for
+the whole run — the second closes a hole the spike still had, where two *sessions* could
+implement the same iteration. The tick lock is registered in `heldLocks` and removed by a
+`process.on('exit')` handler; the run lock survives the process **on purpose**, and only
+`goal-gate.ts unlock` hands it back. Two regression tests pin them, in
+`tests/gate-commit.test.ts`: *a run lock is exclusive, and unlock hands it back*, and *a commit
+is refused while another writer holds the tick lock*.
 
 This is the class of bug the parity exercise exists to find: a property held *implicitly* by
 the old design's shape, silently lost when the shape changes.
@@ -133,20 +142,57 @@ rather than hidden.
 **The lens set is derived, not declared.** No plan syntax change; the derivation rules read
 sections `/goal:run-issue` already produces.
 
-## Answered in the spike, still to be earned by the rebuild
+## Answered in the spike, earned by the rebuild
 
 The spec-write race, history reshaping before the first push, worktree cleanup for shipped
-tracks, `Delivery mode:` / `Breaks:` in the PR body, and preflight check 6 in the survey. Each
-has a known answer on `wip/issue-6-harness-spike`; none of them is held until an iteration
-lands it with its own gate.
+tracks, `Delivery mode:` / `Breaks:` in the PR body, track disjointness as a proof. Each had a
+known answer on `wip/issue-6-harness-spike`; each is now held by an iteration that landed with
+its own gate. The spike was never merged and never read by an iteration, which was the point.
 
-## Known gaps, in priority order
+One of them changed on the way. **Reshaping became an assertion rather than a rewrite**: the
+gate is the only committer and it never amends, so a `fixup!` commit cannot come from the run.
+If one is there anyway the run **refuses to push** and says to fold it by hand — rewriting
+history nobody has reviewed, unattended, is worse than stopping.
 
-1. **Track disjointness as a proof, not a judgement.** `auto.md` requires proving the file
-   sets pairwise disjoint *before creating anything*, because a false track means two PRs that
-   conflict at merge. The workflow asks the survey agent to notice it, which is a judgement
-   about a mechanical property. The proof is easy — parse `impl_files` from each track's
-   gate blocks, intersect the sets, refuse on overlap or on a suffix collision — and it
-   belongs in a script called before the first `git worktree add`.
-That is the only remaining gap. It is not a correctness hole in what the gate enforces — it
-is a proof the prose version required and the script version currently assumes.
+## The first real run
+
+`.claude/plans/issue-3-spec.md`, four iterations, on 2026-07-26. Four commits, each carrying
+the `commit_msg` its slice froze, four boxes ticked, tree clean, the plan's own DoD green when
+replayed by hand afterwards. `ship: false` was enforced by the `goal:no-ship` label on the
+issue: nothing pushed, no PR opened. **82 438 tokens** across the four slices, 23 agents,
+about thirty minutes.
+
+The auditor's report is at `.claude/goal-runs/<sha>.md`, and its most useful finding is not
+about the plan it ran:
+
+> The most expensive iteration was the php rename — 28 039 tokens — and its diff is the
+> **smallest** of the run, +16/−12 across 6 files. Cost tracks the number of files and gates
+> touched, not the number of lines written.
+
+That matters for `max_diff`: a budget bounds the diff, and the diff is not what a slice costs.
+
+**What the run cost before it worked, which is the part worth keeping.** Three launches failed
+before this one, and none of the three was caught by a gate:
+
+1. `args` reaches a workflow script as a **JSON string**, not as the object the launch site
+   writes. `args.plan` was `undefined` and the run died in 5 ms having spawned nothing.
+2. Agents defined by a plugin are addressed **namespaced** — `goal:goal-runner`, not
+   `goal-runner`. Six call sites were wrong; the run died on its first `agent()`.
+3. The agent registry is a **snapshot taken when the session starts**. An agent created during
+   a session is unusable in that session, so the run has to be launched from a fresh one.
+
+Every iteration from 7 to 14 had a green gate, and every one of those gates was `node --check`.
+They proved the file **parses**. None of them proved it **starts**. That gap is the honest
+lesson of this exercise, and it is why the first real run is an iteration of the plan rather
+than a victory lap.
+
+## Known gaps
+
+1. **An uncaught throw leaves the run lock held.** The loop releases it on every exit path it
+   controls, but a crashed process is not one of them — observed once, when a run died mid-survey
+   and left `<plan>.run.lock` behind. Recovery is documented (preflight check 7,
+   `goal-gate.ts unlock`) and it worked, but it is prose, not machinery.
+2. **`node --check` is not a smoke test.** Nothing exercises the launch path itself, which is
+   how three consecutive dead-on-arrival defects reached a green branch.
+3. **The reader holds plain `Bash`**, not a scoped `gh api` grant — the agent `tools:` field
+   cannot express one. See `steering-and-injection.md`, which states the residual risk.

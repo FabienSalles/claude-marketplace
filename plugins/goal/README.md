@@ -259,6 +259,17 @@ Everything runs on your **Claude Code subscription** (no API surcharge) when you
 **interactive `claude`**. The `/goal` evaluator runs on your small fast model and is
 included. The 5-hour rate-limit window applies normally.
 
+**One measured unattended run**, for calibration: a four-iteration plan touching 30 files
+(a new validation script and its test suite, three directory renames, fourteen frontmatter
+edits) cost **82 000 tokens** across the slices, 23 agents and about thirty minutes, and ended
+with four gate-verified commits and a clean tree.
+
+The number that transfers is not the total but its shape: the most expensive slice had the
+**smallest diff** of the run. Cost tracks the number of files and gates a slice touches, not
+the lines it writes — so a `max_diff` bounds the diff, and the diff is not the cost. Budget by
+file count and gate count instead. Every run writes its own figures to
+`.claude/goal-runs/<sha>.md`, which is gitignored and meant to be read at breakfast.
+
 ---
 
 ## See also
