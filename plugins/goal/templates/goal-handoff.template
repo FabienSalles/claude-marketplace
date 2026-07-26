@@ -16,12 +16,22 @@ the `[x]` step and the policy block. Single source of truth — edit here, all t
 
 ## Hard limit — ≤ 4000 characters
 
-The emitted `/goal` argument MUST stay ≤ 4000 characters (the `/goal` command
-truncates its condition beyond that). Count the filled block; if it exceeds,
-compress — drop redundant phrasing, fold the `manual`/`commit`/`commit+pr`
-branches to the single active `<policy>`, fold the two delivery-mode branches to
-the single active `<delivery-mode>`, shorten the Done/synthesis wording — until
-it fits. Never truncate mid-sentence.
+The emitted `/goal` argument MUST stay ≤ 4000 characters — beyond that `/goal`
+refuses the whole condition (`Goal condition is limited to 4000 characters (got
+N)`) and the iteration never starts.
+
+Measure it, do not eyeball it. Before printing the block, write it to a file and
+count:
+
+```bash
+wc -m < <file>
+```
+
+If the count exceeds 4000, compress and re-count — drop redundant phrasing, fold
+the `manual`/`commit`/`commit+pr` branches to the single active `<policy>`, fold
+the two delivery-mode branches to the single active `<delivery-mode>`, shorten the
+Done/synthesis wording. Never truncate mid-sentence. Print the count alongside the
+block so the developer sees the margin.
 
 Fold both branch blocks by default, not only when you overflow: the emitted text is
 an instruction to one executor in one mode, and the branch it is not in is noise it

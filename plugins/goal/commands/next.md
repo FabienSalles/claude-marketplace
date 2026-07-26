@@ -156,7 +156,9 @@ per that file's **"How to fill it"** section: `<plan path>` = the resolved plan 
 « Done » line 1 = the **next iteration's** acceptance test command, line 2 = the
 project lint/QA command, `<policy>` = the plan's policy verbatim, `<delivery-mode>` =
 the plan's `Delivery mode:` line verbatim. Fold the policy and delivery-mode blocks to
-the single active branch of each. Respect its **≤ 4000-character hard limit**.
+the single active branch of each. Respect its **≤ 4000-character hard limit**: write
+the filled block to a file, run `wc -m < <file>`, compress and re-count while it
+exceeds 4000, and print the count with the block.
 
 Prepend the context-hygiene reminder (you cannot run these — the developer does),
 then the filled template as **one copy-paste block**:

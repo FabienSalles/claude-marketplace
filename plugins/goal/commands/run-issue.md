@@ -554,7 +554,9 @@ per that file's **"How to fill it"** section: `<plan path>` =
 `.claude/plans/<work-id>-spec.md`, the spec's real test/lint commands, `<policy>` =
 the chosen policy verbatim, `<delivery-mode>` = the spec's `Delivery mode:` line verbatim.
 Fold the policy and delivery-mode blocks to the single active branch of each — an executor
-reads its own mode, never the one it is not in. Respect the **≤ 4000-character hard limit**. The
+reads its own mode, never the one it is not in. Respect the **≤ 4000-character hard limit**:
+write the filled block to a file, run `wc -m < <file>`, compress and re-count while it exceeds
+4000, and print the count with the block. The
 developer pastes it once per iteration — it always picks the **next unchecked**
 iteration, so the same text works every round.
 
