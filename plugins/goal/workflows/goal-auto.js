@@ -25,6 +25,7 @@ export const meta = {
     { title: 'Tracks', detail: 'one worktree per independent track, run in parallel' },
     { title: 'Report', detail: 'scan, push the branch, write the outcome to the issue' },
     { title: 'Ship', detail: 'replay the global Definition of Done, then mark the pull request ready' },
+    { title: 'Lenses', detail: 'advisory refutation of what landed — never blocks, off by default' },
   ],
 };
 
@@ -228,6 +229,116 @@ const haltReport = (report) =>
     '',
     'Nothing was retried and no iteration after this one was attempted.',
   ].join('\n');
+
+// The advisory layer, off unless args.lenses is true. Measured judge reliability is low enough
+// that a false positive killing a provably-green run at 3am costs more than the finding is worth,
+// so a lens annotates and never decides. It is also the most expensive stage of the run.
+const LENSES = {
+  conformance:
+    "Does what landed implement the iteration's stated Goal, or a comfortable reading of it that happens to make the checks pass?",
+  sensitivity:
+    "Would this iteration's tests fail if the business rule they claim to cover broke? Name the assertion that would not.",
+  reversibility: 'Is the behaviour that existed before this iteration still reachable?',
+  invariant:
+    'Construct a concrete sequence that violates one of the invariants this iteration touches, now that it has landed.',
+  ripple: 'Does what landed leave the next unchecked iteration doable exactly as the plan writes it?',
+  accumulation:
+    'Read the whole branch rather than one slice: what broke between iterations rather than inside one?',
+  completeness: "What does the plan's Business intent imply that no iteration of it covers?",
+};
+
+const VERDICT = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['refuted', 'verdict', 'anchor'],
+  properties: {
+    refuted: { type: 'boolean' },
+    verdict: { type: 'string' },
+    anchor: { type: 'string' },
+  },
+};
+
+// One lens per verifier: diversity comes from asking different questions, not from asking the
+// same one twice. The set is derived from what the plan already declares, so the same plan always
+// yields the same lenses and nothing is composed at 3am.
+const lensesFor = (facts, last) => [
+  'conformance',
+  ...(facts.tests === '' ? [] : ['sensitivity']),
+  ...(facts.delivery === '' || /^additive/i.test(facts.delivery) ? [] : ['reversibility']),
+  ...(facts.invariants === '0' ? [] : ['invariant']),
+  ...(last ? [] : ['ripple']),
+];
+
+const FACTS = (numbers, plan) =>
+  numbers
+    .map(
+      (n) =>
+        `s=$(sed -n '/^### Iteration ${n} /,/^### Iteration /p' ${plan}); printf 'facts\\t${n}\\t%s\\t%s\\t%s\\n' "$(printf '%s' "$s" | sed -n 's/^- \\*\\*Delivery:\\*\\* *//p' | head -1)" "$(printf '%s' "$s" | grep -cE '(^| )I[0-9]' || true)" "$(printf '%s' "$s" | sed -n 's/^test_files=//p' | head -1)"`,
+    )
+    .join('; ');
+
+const parseFacts = (output) =>
+  output
+    .split('\n')
+    .filter((line) => line.startsWith('facts\t'))
+    .map((line) => line.split('\t'))
+    .map(([, iteration, delivery, invariants, tests]) => ({
+      iteration,
+      delivery: (delivery ?? '').trim(),
+      invariants: (invariants ?? '0').trim(),
+      tests: (tests ?? '').trim(),
+    }));
+
+const askLens = async (name, iteration) =>
+  agent(
+    [
+      `You are the ${name} lens. Refute iteration ${iteration} of the plan ${PLAN}, and nothing else.`,
+      '',
+      `The one question you answer: ${LENSES[name]}`,
+      '',
+      ...(DIR === undefined ? [] : [`The code to read is in ${DIR}, the worktree of this track.`]),
+      `Read the plan's own declarations for iteration ${iteration} — its Goal, its business rules, its`,
+      'decision bullets — and judge against those, never against a standard you invented. Read the code',
+      'and the commit; change nothing.',
+      '',
+      'Answer with a verdict of one sentence, an anchor of the form path:line, and refuted=true only if',
+      'you can point at the specific thing that is wrong. Default to refuted=false when you are unsure:',
+      'you are advisory, a false alarm costs a human their morning, and nothing you say stops anything.',
+    ].join('\n'),
+    { agentType: 'goal-lens', schema: VERDICT, label: `lens:${name}:${iteration}`, phase: 'Lenses' },
+  );
+
+const findingsReport = (findings) =>
+  [
+    '## Lens findings — advisory, nothing was blocked',
+    '',
+    'A lens is a model, not an exit code. Every line below is a hypothesis to adjudicate with the',
+    'code in front of you, and each was produced by an agent that could only read.',
+    '',
+    ...findings.map((finding) => `- **${finding.lens}**, iteration ${finding.iteration} — ${finding.verdict} (\`${finding.anchor}\`)`),
+  ].join('\n');
+
+const runLenses = async (landed, issue) => {
+  const facts = parseFacts((await runner(FACTS(landed, PLAN), 'lens-facts', 'Lenses')).output);
+  const pairs = facts.flatMap((entry, index) =>
+    lensesFor(entry, index === facts.length - 1).map((name) => ({ name, iteration: entry.iteration })),
+  );
+  const closing = ['accumulation', 'completeness'].map((name) => ({ name, iteration: 'the whole branch' }));
+
+  const verdicts = await parallel(
+    [...pairs, ...closing].map(({ name, iteration }) => () => askLens(name, iteration).then((verdict) => ({ ...verdict, lens: name, iteration }))),
+  );
+
+  const findings = verdicts.filter((verdict) => verdict?.refuted === true);
+
+  log(`${verdicts.filter(Boolean).length} lens verdict(s), ${findings.length} finding(s) — advisory`);
+
+  if (findings.length > 0 && issue !== undefined) {
+    await post('the pull request', 'lens findings', findingsReport(findings));
+  }
+
+  return { asked: [...pairs, ...closing].length, findings };
+};
 
 const iterationsPending = (output) =>
   output
@@ -595,8 +706,13 @@ if (dod.exitCode !== 0) {
 
 const ready = shipping.pr ? await runner(inDir('gh pr ready'), 'pr:ready', 'Ship') : undefined;
 
+// Last, and after the pull request is already ready: a finding cannot stop what has already
+// shipped, which is the strongest form of "a lens never blocks" available.
+const lenses = args?.lenses === true && landed.length > 0 ? await runLenses(landed, issue) : undefined;
+
 return {
   status: 'done',
+  lenses,
   plan: PLAN,
   landed,
   notAttempted: [],
