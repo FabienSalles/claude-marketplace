@@ -183,6 +183,67 @@ const scopeCheck = (paths: string[], iteration: string): Set<string> => {
   return changed;
 };
 
+// Both bounds are measured against HEAD: `git diff --numstat` with no revision misses a
+// staged deletion entirely, which would let a slice remove a file for free.
+const headDiff = (flag: string, paths: string[], iteration: string): string[] => {
+  const run = git('diff', flag, '-M', 'HEAD', '--', ...paths);
+
+  if (run.status !== 0) {
+    halt(
+      `git diff failed, so iteration ${iteration}'s bounds were never measured.`,
+      `${run.stderr}\n\nThe gate measures the tree it is standing in against HEAD: run it with the repository — or the track worktree — as the working directory.`,
+    );
+  }
+
+  return run.stdout.split('\n').filter((line) => line !== '');
+};
+
+const budgetCheck = (declared: Map<string, string>, paths: string[], iteration: string): void => {
+  const budget = declared.get('max_diff') ?? '';
+
+  if (budget === '') {
+    return;
+  }
+
+  if (!/^[0-9]+$/.test(budget)) {
+    halt(
+      `Iteration ${iteration} declares a max_diff that is not a number.`,
+      `Found: ${budget}\n\nA budget nothing can compare against is a budget nobody is held to: the slice would run unbounded while the plan claims otherwise. Write a plain line count.`,
+    );
+  }
+
+  const written = headDiff('--numstat', paths, iteration).reduce((total, line) => {
+    const [added, removed] = line.split('\t');
+
+    return total + (Number(added) || 0) + (Number(removed) || 0);
+  }, 0);
+
+  if (written > Number(budget)) {
+    halt(
+      `Iteration ${iteration} exceeds its declared diff budget.`,
+      `Written: ${written} line(s) across ${paths.join(' ')}\nBudget: ${budget}\n\nA slice that outgrows its own estimate is no longer the slice that was reviewed and frozen. Split it, or raise max_diff in the plan deliberately — before the halt, not after it.`,
+    );
+  }
+};
+
+const deliveryMode = (source: string): string =>
+  /^Delivery mode:\s*allow-bc-break\s*$/m.test(source) ? 'allow-bc-break' : 'no-bc-break';
+
+const removalCheck = (source: string, paths: string[], iteration: string): void => {
+  if (deliveryMode(source) === 'allow-bc-break') {
+    return;
+  }
+
+  const removals = headDiff('--name-status', paths, iteration).filter((line) => /^[DR]/.test(line));
+
+  if (removals.length > 0) {
+    halt(
+      `Iteration ${iteration} deletes or renames a pre-existing file under no-bc-break.`,
+      `${removals.join('\n')}\n\nThe plan header declares no-bc-break — or declares no delivery mode at all, which reads the same way — so every consumer of these paths must keep working. Add beside the old path and leave it standing, or change the plan header to allow-bc-break and name what breaks.`,
+    );
+  }
+};
+
 const runGates = (declared: Map<string, string>, iteration: string): number => {
   const commands = [...declared.entries()]
     .filter(([key]) => key.startsWith('gate'))
@@ -200,6 +261,26 @@ const runGates = (declared: Map<string, string>, iteration: string): number => {
   }
 
   return commands.length;
+};
+
+const DETERMINISM_RUNS = 3;
+
+// gate1 alone, for the same reason the bite check bites it alone: R2 makes it the one
+// mandatory command, where gate2..N are lints that cannot flake. runGates() already spent
+// the first of the three runs.
+const determinismCheck = (declared: Map<string, string>, iteration: string): void => {
+  const command = declared.get('gate1') ?? '';
+
+  for (let run = 2; run <= DETERMINISM_RUNS; run += 1) {
+    const result = spawnSync(command, { shell: true, encoding: 'utf8' });
+
+    if (result.status !== 0) {
+      halt(
+        `Iteration ${iteration}'s acceptance command does not pass ${DETERMINISM_RUNS} times in a row.`,
+        `Command: ${command}\nRun ${run} of ${DETERMINISM_RUNS} exited ${result.status}\n\nOutput:\n${`${result.stdout}${result.stderr}`.slice(-4000)}\n\nA command that passes once and fails on a replay depends on the leftovers of its own previous run, or on something outside the tree. An unattended loop cannot tell that apart from a real failure, so it stops here.`,
+      );
+    }
+  }
 };
 
 const heldLocks: string[] = [];
@@ -450,8 +531,13 @@ const main = (): void => {
 
   const paths = declaredPaths(declared);
   const changed = scopeCheck(paths, iteration);
+
+  budgetCheck(declared, paths, iteration);
+  removalCheck(source, paths, iteration);
+
   const passed = runGates(declared, iteration);
 
+  determinismCheck(declared, iteration);
   biteCheck(declared, iteration, changed);
 
   if (subcommand === 'verify') {
