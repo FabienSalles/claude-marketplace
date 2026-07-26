@@ -244,19 +244,32 @@ const removalCheck = (source: string, paths: string[], iteration: string): void 
   }
 };
 
-const runGates = (declared: Map<string, string>, iteration: string): number => {
-  const commands = [...declared.entries()]
+const gateCommands = (declared: Map<string, string>): [string, string][] =>
+  [...declared.entries()]
     .filter(([key]) => key.startsWith('gate'))
     .sort(([a], [b]) => Number(a.slice(4)) - Number(b.slice(4)));
+
+const runGates = (
+  declared: Map<string, string>,
+  iteration: string,
+  origin?: Map<string, string>,
+): number => {
+  const commands = gateCommands(declared);
 
   for (const [key, command] of commands) {
     const run = spawnSync(command, { shell: true, encoding: 'utf8' });
 
     if (run.status !== 0) {
-      halt(
-        `Acceptance command ${key} failed for iteration ${iteration}.`,
-        `Command: ${command}\nExit code: ${run.status}\n\nOutput:\n${`${run.stdout}${run.stderr}`.slice(-4000)}`,
-      );
+      const detail = `Command: ${command}\nExit code: ${run.status}\n\nOutput:\n${`${run.stdout}${run.stderr}`.slice(-4000)}`;
+
+      if (origin !== undefined) {
+        halt(
+          `A command iteration ${origin.get(command)} passed on fails at iteration ${iteration}.`,
+          `${detail}\n\nThe regression wall replays every checked iteration's commands, so the slice that broke an earlier one halts instead of the slice that merely runs after it. The wall cannot prove a replayed command is idempotent: if it writes state — a migration, a snapshot, a generated file — it may be failing on the leftovers of its own earlier runs rather than on this slice. Declare only commands that can be run twice.`,
+        );
+      }
+
+      halt(`Acceptance command ${key} failed for iteration ${iteration}.`, detail);
     }
   }
 
@@ -280,6 +293,83 @@ const determinismCheck = (declared: Map<string, string>, iteration: string): voi
         `Command: ${command}\nRun ${run} of ${DETERMINISM_RUNS} exited ${result.status}\n\nOutput:\n${`${result.stdout}${result.stderr}`.slice(-4000)}\n\nA command that passes once and fails on a replay depends on the leftovers of its own previous run, or on something outside the tree. An unattended loop cannot tell that apart from a real failure, so it stops here.`,
       );
     }
+  }
+};
+
+const blockOf = (source: string, iteration: string): Map<string, string> =>
+  declaredKeys(gateBlock(iterationSection(source, iteration), iteration), iteration);
+
+const iterationNumbers = (source: string, ticked: boolean): string[] => {
+  const lines = source.split('\n');
+  const numbers: string[] = [];
+
+  for (const line of lines) {
+    const heading = /^### Iteration ([0-9]+)\b/.exec(line);
+
+    if (heading === null) {
+      continue;
+    }
+
+    const [start, end] = sectionBounds(lines, heading[1]!);
+    const box = lines.slice(start, end).find((entry) => entry.startsWith('- ['));
+
+    if (box?.startsWith(ticked ? '- [x]' : '- [ ]') === true) {
+      numbers.push(heading[1]!);
+    }
+  }
+
+  return numbers;
+};
+
+// The checked iterations' commands, deduplicated by command string and replayed, so a slice that
+// breaks an earlier one halts where the cause is. It re-enters runGates(); the slice's own
+// commands are already spent there, so they count as seen.
+const regressionWall = (source: string, iteration: string, declared: Map<string, string>): void => {
+  const seen = new Set(gateCommands(declared).map(([, command]) => command));
+  const replay = new Map<string, string>();
+  const origin = new Map<string, string>();
+
+  for (const earlier of iterationNumbers(source, true)) {
+    for (const [, command] of gateCommands(blockOf(source, earlier))) {
+      if (seen.has(command)) {
+        continue;
+      }
+
+      seen.add(command);
+      replay.set(`gate${replay.size + 1}`, command);
+      origin.set(command, earlier);
+    }
+  }
+
+  runGates(replay, iteration, origin);
+};
+
+const inHead = (path: string): boolean => git('cat-file', '-e', `HEAD:${path}`).status === 0;
+
+// A later iteration declares paths that do not exist yet, which is the normal case, so the unit
+// is the parent directory and HEAD is what it is compared against: a directory present in HEAD
+// and gone from the tree was renamed or moved, where a directory nobody has created yet was
+// never there at all. The iteration being verified is excluded — the scope check, the budget and
+// the removal check judge its own declarations, and a deletion emptying a directory the mode
+// allows must not halt on itself.
+const resolvabilityCheck = (source: string, iteration: string): void => {
+  const unresolvable: string[] = [];
+
+  for (const later of iterationNumbers(source, false).filter((entry) => entry !== iteration)) {
+    for (const path of declaredPaths(blockOf(source, later))) {
+      const parent = path.endsWith('/') ? path.slice(0, -1) : dirname(path);
+
+      if (!existsSync(parent) && inHead(parent)) {
+        unresolvable.push(`iteration ${later}: ${path} (missing directory: ${parent})`);
+      }
+    }
+  }
+
+  if (unresolvable.length > 0) {
+    halt(
+      `Iteration ${iteration} leaves a path the plan still declares unresolvable.`,
+      `${unresolvable.join('\n')}\n\nThese directories exist in HEAD and no longer exist in the tree, so the iterations declaring paths inside them can no longer run. The check is made before the commit on purpose: committing first would leave a commit whose own plan is already broken. Restore the directory, or update the declarations of the iterations named above.`,
+    );
   }
 };
 
@@ -358,6 +448,7 @@ const biteCheck = (declared: Map<string, string>, iteration: string, changed: Se
     }
 
     if (inHead) {
+      mkdirSync(dirname(path), { recursive: true });
       writeFileSync(path, headBlob(path));
     } else {
       rmSync(path, { force: true });
@@ -499,7 +590,7 @@ const main = (): void => {
     );
   }
 
-  const declared = declaredKeys(gateBlock(iterationSection(source, iteration), iteration), iteration);
+  const declared = blockOf(source, iteration);
 
   const forbidden = [...declared.keys()].filter((key) => !ALLOWED_KEY.test(key));
 
@@ -534,10 +625,12 @@ const main = (): void => {
 
   budgetCheck(declared, paths, iteration);
   removalCheck(source, paths, iteration);
+  resolvabilityCheck(source, iteration);
 
   const passed = runGates(declared, iteration);
 
   determinismCheck(declared, iteration);
+  regressionWall(source, iteration, declared);
   biteCheck(declared, iteration, changed);
 
   if (subcommand === 'verify') {
