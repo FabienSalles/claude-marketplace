@@ -14,7 +14,7 @@ The community provides comprehensive audit skills (e.g. [`netresearch/security-a
 When you ask for a security audit, **both** load in parallel:
 
 ```
-🔵 netresearch:security-audit         → 80+ checkpoints, OWASP/CWE/CVSS, 61 refs
+🔵 security-audit:security-audit      → 80+ checkpoints, OWASP/CWE/CVSS, 61 refs
 🟢 audit:security-overrides           → your conventions, FP filters, output style
 🟢 audit:ts-security                  → TS/NestJS code patterns (Drizzle/JWT/bcrypt/…)
 ```

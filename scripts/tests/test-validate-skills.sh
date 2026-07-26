@@ -71,11 +71,18 @@ mutate_readme_count_off() {
   echo '| **git** | 999 |' >> "$tmp/README.md"
 }
 
+mutate_dead_pointer() {
+  local tmp="$1"
+  local skill="$tmp/plugins/git/skills/git/SKILL.md"
+  sed -i.bak 's/(see Eres marketplace)/(see nope:nothing)/' "$skill" && rm "$skill.bak"
+}
+
 run_case "unmodified tree passes"           mutate_none                  0
 run_case "frontmatter block removed fails"  mutate_frontmatter_removed   1
 run_case "name != directory fails"          mutate_name_mismatch         1
 run_case "uppercase in name fails"          mutate_name_uppercase        1
 run_case "README count off by one fails"    mutate_readme_count_off     1
+run_case "dead pointer fails"               mutate_dead_pointer          1
 
 echo ""
 if [[ $failures -gt 0 ]]; then

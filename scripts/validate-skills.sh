@@ -74,6 +74,34 @@ for skill_md in $(find plugins -name "SKILL.md" | sort); do
   fi
 
   echo "✓ $skill_name — frontmatter valid"
+
+  # Every "see <token>" pointer in the description must resolve to a real
+  # plugin:skill pair, or — for a bare token — to a skill of that name in any plugin.
+  while IFS= read -r raw_token; do
+    [[ -z "$raw_token" ]] && continue
+    token="${raw_token#see }"
+    token="${token%.}"
+    if [[ "$token" == *:* ]]; then
+      ptr_plugin="${token%%:*}"
+      ptr_skill="${token#*:}"
+      if [[ -d "plugins/$ptr_plugin" ]]; then
+        if [[ ! -f "plugins/$ptr_plugin/skills/$ptr_skill/SKILL.md" ]]; then
+          echo "✗ Dead pointer '$token' in $skill_md: plugins/$ptr_plugin/skills/$ptr_skill/SKILL.md does not exist"
+          errors=$((errors + 1))
+        fi
+      elif grep -qE "^      \"name\": \"$ptr_plugin\"" .claude-plugin/marketplace.json 2>/dev/null; then
+        : # externally-hosted plugin — not vendored, cannot verify the skill half locally
+      else
+        echo "✗ Dead pointer '$token' in $skill_md: plugin '$ptr_plugin' is not registered in marketplace.json"
+        errors=$((errors + 1))
+      fi
+    else
+      if ! ls plugins/*/skills/"$token"/SKILL.md >/dev/null 2>&1; then
+        echo "✗ Dead pointer '$token' in $skill_md: no plugin has plugins/*/skills/$token/SKILL.md"
+        errors=$((errors + 1))
+      fi
+    fi
+  done < <(echo "$fm_desc" | grep -oE '\bsee [a-z][a-z0-9_.:-]*' || true)
 done
 
 echo ""
