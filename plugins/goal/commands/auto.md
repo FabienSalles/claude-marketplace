@@ -138,6 +138,26 @@ one that never starts. Run the commands and show what failed.
     Say one more thing under `auto`, and only once: the classifier pauses auto mode after three
     consecutive blocks and resumes prompting. A run that stalls mid-way in the background with
     no halt report is that, not a crash — reattach and answer it.
+11. **The base is already green.** Every check above proves the run *can* start; this one proves
+    it is worth starting. Collect the distinct commands from the plan's `dod` block and from
+    every iteration's `gate2..N`, and run each one **now, on the untouched tree**. They are the
+    project's own CI — tests, lint, static analysis, container check — and they must already
+    pass before a single line is written.
+
+    **Exclude `gate1` from this sweep.** It is the bitten criterion: it is *supposed* to fail
+    without the implementation, so requiring it green here would refuse every honest plan.
+
+    Any other command failing means the base is red before the run touches it. **STOP**, print
+    the failing command and its output verbatim, and say the failure predates the plan. Do not
+    start, and do not fold the repair into the plan: an iteration that inherits a red base burns
+    its full implementation before the gate refuses it for something it never touched, and the
+    developer reads a halt that names their slice for a defect that was there first.
+
+    This is the cheapest check in the list and the one that saves the most: it costs one sweep
+    of commands that already exist, against a run that can otherwise spend its entire budget on
+    an iteration that was never going to land. It exists because a run halted at iteration 1 on
+    three pre-existing static-analysis errors, in files no iteration declared, after ten minutes
+    of implementation — every one of them visible from a single command nobody had run.
 
 Report each check with its real output, then state how many iterations remain and what will
 happen at the end.
