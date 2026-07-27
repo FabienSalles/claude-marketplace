@@ -112,6 +112,20 @@ export const declaredPaths = (declared: Map<string, string>): string[] =>
 export const covers = (entry: string, path: string): boolean =>
   entry === path || (entry.endsWith('/') && path.startsWith(entry));
 
+// Generated tooling a project cannot help producing: a lockfile, a tsconfig, a CLI's own
+// config file. Declared once for the whole plan rather than per iteration, because a lockfile
+// moves on whichever slice happens to touch a dependency — a per-slice list is a prediction
+// that is wrong by the next one, and the halt it produces refuses a complete implementation
+// over a file nobody authored.
+//
+// Tolerated is not ignored: these paths are staged with the commit, since a tsconfig the gate
+// waved through but left uncommitted turns the next iteration red on a file that is missing
+// from the repository. They are deliberately kept out of max_diff — thousands of generated
+// lockfile lines are not the slice's authored work, and counting them would make every budget
+// meaningless.
+export const incidentalPaths = (source: string): string[] =>
+  (/^Incidental:(.*)$/m.exec(source)?.[1] ?? '').split(/\s+/).filter((path) => path !== '');
+
 export const deliveryMode = (source: string): string =>
   /^Delivery mode:\s*allow-bc-break\s*$/m.test(source) ? 'allow-bc-break' : 'no-bc-break';
 

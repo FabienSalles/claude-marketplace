@@ -362,6 +362,19 @@ so now, because `/goal:auto` halts on an iteration with no `gate1`.
 Use the project's real commands, dockerized where the project is, and check each one runs
 today. A command that does not exist yet is a halt at iteration 1, not at review time.
 
+**Name the generated tooling once, on the header's `Incidental:` line.** A lockfile, a
+`tsconfig.json`, a CLI's own config file: the slice does not author them, it provokes them by
+installing a dependency or initialising a tool. Left undeclared they read as a scope leak, and
+the gate refuses an implementation that is otherwise exactly what the plan asked for — which is
+a complete slice discarded over a file nobody wrote. Declaring them per iteration does not work
+either: a lockfile moves on whichever slice touches a dependency, so the list is wrong by the
+next one. Ask what the first `install` or `init` of this stack drops in the tree, and write that.
+
+Incidental paths are tolerated by the scope check and **staged with the commit**, so the tooling
+lands in the repository; they are deliberately excluded from `max_diff`, since generated lines
+are not the slice's work. Never put a secret-bearing or vendored path there: `.env`,
+`node_modules/`, private keys and keystores are refused whatever any declaration says.
+
 **Cleanup never belongs to this plan.** Removing a flag, dropping the old column, deleting
 the compat shim: all of it waits on a condition this plan cannot satisfy, because the
 condition is that the change is *live* and the new path has proven itself. A cleanup slice
@@ -386,6 +399,7 @@ Policy: <manual | commit | commit+pr — filled in Phase 2c>
 Delivery mode: <no-bc-break | allow-bc-break — filled in Phase 2c>
 Cleanup: <later | now | none — none when allow-bc-break or no flag was introduced>
 PR base: <branch the pull request targets — omit entirely when it is the repository's default>
+Incidental: <generated tooling every slice may touch — a lockfile, a tsconfig, a CLI's own config. Omit when the project generates none>
 
 ## Business intent
 
