@@ -138,6 +138,11 @@ const post = async (target, subject, text) => {
   return result ?? { exitCode: -1, output: `The reporter returned nothing for ${target}.` };
 };
 
+// Publishing is the one action a policy may forbid outright: under `commit` the developer
+// keeps the tree and asked for nothing to be pushed, so nothing is. The halt report still goes
+// out — a diagnosis is not a publication.
+const POLICY_FROM_PLAN = String.raw`sed -n 's/^Policy:[[:space:]]*//p'`;
+
 // The issue number comes from the plan's own header, never from GitHub. A plan with no issue
 // reports locally and says so: the GitHub mirror is opt-in, by design, from /goal:draft-issue on.
 const ISSUE_FROM_PLAN = String.raw`sed -n 's/^Source: gh issue #\([0-9][0-9]*\).*/\1/p'`;
@@ -645,6 +650,13 @@ if (hash === undefined) {
   };
 }
 
+const policy = (await runner(`${POLICY_FROM_PLAN} ${PLAN} | head -1`, 'policy', 'Survey')).output.trim();
+const publishes = policy === 'commit+pr';
+
+if (!publishes) {
+  log(`Policy is ${policy || 'unreadable'}: this run commits, and publishes nothing.`);
+}
+
 const found = await runner(`${ISSUE_FROM_PLAN} ${PLAN} | head -1`, 'issue', 'Survey');
 const issue = /^[0-9]+$/.test(found.output.trim()) ? found.output.trim() : undefined;
 
@@ -687,6 +699,12 @@ let stopped;
 // can read instead of a local branch nobody can see.
 const mirror = async (issue) => {
   if (shipping.blocked !== undefined) {
+    return;
+  }
+
+  if (!publishes) {
+    shipping.blocked = `The plan's policy is ${policy || 'unreadable'}, not commit+pr, so nothing is pushed and no pull request is opened. The commits are on the branch, where the developer asked them to stay.`;
+
     return;
   }
 
@@ -809,7 +827,7 @@ for (const [index, iteration] of pending.entries()) {
       await mirror(issue);
       report.push = { pushed: shipping.pushed, detail: shipping.blocked ?? shipping.prError ?? '' };
       report.pr = shipping.pr;
-    } else {
+    } else if (publishes) {
       report.push = await pushBranch();
     }
 
