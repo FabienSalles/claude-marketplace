@@ -375,6 +375,18 @@ lands in the repository; they are deliberately excluded from `max_diff`, since g
 are not the slice's work. Never put a secret-bearing or vendored path there: `.env`,
 `node_modules/`, private keys and keystores are refused whatever any declaration says.
 
+**When the plan builds the project itself, say which iteration does it, on the `Bootstrap:`
+line.** `/goal:auto` refuses to start against a base whose own commands are already failing, and
+on an empty repository they all are: there is no manifest yet, so the test runner exits before it
+looks for a test. That is not a defect the run would inherit, it is the absence the plan exists to
+fill — but the check cannot tell the two apart, and left to itself it makes a bootstrap plan
+unrunnable. Name the iteration that creates the toolchain and the check stands down until it is
+ticked, then resumes for every launch after it.
+
+Write it only when it is true. A plan that builds and tests today has a base worth checking from
+the first launch, and a `Bootstrap:` line there buys nothing while switching off the check that
+catches a red base before it costs a full implementation.
+
 **Cleanup never belongs to this plan.** Removing a flag, dropping the old column, deleting
 the compat shim: all of it waits on a condition this plan cannot satisfy, because the
 condition is that the change is *live* and the new path has proven itself. A cleanup slice
@@ -400,6 +412,7 @@ Delivery mode: <no-bc-break | allow-bc-break — filled in Phase 2c>
 Cleanup: <later | now | none — none when allow-bc-break or no flag was introduced>
 PR base: <branch the pull request targets — omit entirely when it is the repository's default>
 Incidental: <generated tooling every slice may touch — a lockfile, a tsconfig, a CLI's own config. Omit when the project generates none>
+Bootstrap: <the iteration that creates the toolchain the acceptance commands need. Omit when the project already builds and tests today>
 
 ## Business intent
 

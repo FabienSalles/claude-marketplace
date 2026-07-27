@@ -153,6 +153,21 @@ one that never starts. Run the commands and show what failed.
     its full implementation before the gate refuses it for something it never touched, and the
     developer reads a halt that names their slice for a defect that was there first.
 
+    **A base that does not exist yet is not a red base.** On a plan that bootstraps a project the
+    sweep's commands cannot run at all: `pnpm exec vitest run` against a tree with no
+    `package.json` exits 1 on `ERR_PNPM_NO_PKG_MANIFEST`, and it keeps exiting 1 until the
+    iteration that creates the toolchain lands. Refusing there makes every bootstrap plan
+    unrunnable by the one command written to run it, and the developer's only way out is to
+    build by hand the thing they wrote a plan for.
+
+    So the plan says so, rather than the sweep guessing. A `Bootstrap: <iteration>` header line
+    names the iteration that brings the toolchain into existence, and the sweep is **skipped
+    while that iteration is still unticked**. Once it is ticked every later launch sweeps
+    normally, which is what stops the exemption from becoming a permanent hole in the check —
+    the run that most needs a green base is the second one, not the first. No `Bootstrap:` line
+    means the sweep always runs. Report the skip and name the iteration, so a reader never
+    mistakes an exempted sweep for a green one.
+
     This is the cheapest check in the list and the one that saves the most: it costs one sweep
     of commands that already exist, against a run that can otherwise spend its entire budget on
     an iteration that was never going to land. It exists because a run halted at iteration 1 on
