@@ -112,7 +112,7 @@ Turns the source into a locked, executable plan.
    independently reviewable slice with its own files + acceptance criteria.
 5. **Asks the commit/PR policy**: `manual` (default) / `commit` / `commit+pr`.
 6. **Locks**: creates `feature/<work-id>-<slug>` and writes the plan
-   (never committed: `.claude/` is gitignored in most projects, and the plan reaches
+   (never committed: `.claude/plans/` is gitignored in most projects, and the plan reaches
    the reviewer through the PR body instead).
 7. **Echoes** the per-iteration `/goal` text for you to paste.
 
@@ -269,7 +269,7 @@ The number that transfers is not the total but its shape: the most expensive sli
 **smallest diff** of the run. Cost tracks the number of files and gates a slice touches, not
 the lines it writes — so a `max_diff` bounds the diff, and the diff is not the cost. Budget by
 file count and gate count instead. Every run writes its own figures to
-`.claude/goal-runs/<sha>.md`, which is gitignored and meant to be read at breakfast.
+`.claude/goal-runs/<sha>.md`, local evidence meant to be read at breakfast, never committed.
 
 ---
 

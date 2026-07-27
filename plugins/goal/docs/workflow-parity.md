@@ -36,7 +36,7 @@ launches only if it passes.
 | 1. Policy is `commit` / `commit+pr` | **held twice** | the command. The gate no longer needs to re-check it: there is no state file to write. |
 | 2. Branch is `feature/<work-id>…` | **moved** | the command. For tracks the workflow creates the branches itself, named from the plan. |
 | 3. Clean tree | **moved** | the command. |
-| 4. `.claude/` is gitignored | **moved** | the command. Still load-bearing: the gate ticks the plan there on every iteration. |
+| 4. the plan's directory is gitignored | **moved** | the command. Still load-bearing: the gate ticks the plan there on every iteration. Scoped to `.claude/plans/`, so a repository that tracks the rest of `.claude/` still runs. |
 | 5. At least one unchecked iteration | **held** | the survey returns the unchecked set; empty → `done` with a reason, nothing runs. |
 | 6. No cleanup iteration (`Trigger:` line) in a feature plan | **held** | named explicitly in the survey's inconsistency list, with the `*-cleanup-spec.md` exemption. |
 | 7. No run already active | **replaced** | there is no run state to read. The command checks for a stale `<plan>.run.lock`, the only thing a dead run leaves behind. The first real run left exactly that when its process died, and `goal-gate.ts unlock` was the documented way out — the check earned its place the same day it was written. |

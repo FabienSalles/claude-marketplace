@@ -93,7 +93,7 @@ safe depends on the commit policy, and in **manual** mode staging is the
   ```
   Confirm nothing is lost (every piece of the iteration's work is present on disk —
   staged or not), then **list plainly what remains for the developer to review and
-  stage manually**. `.claude/` is gitignored, so the plan file stays on disk — that is
+  stage manually**. `.claude/plans/` is gitignored, so the plan file stays on disk — that is
   fine, it is durable there.
   - If a prior step (or you) already staged something in manual mode, you may
     **unstage only what was wrongly added** (`git restore --staged <files>`) — never

@@ -71,7 +71,7 @@ const DIR = input.dir;
 // with the directory it belongs to: that prefix is what makes "a track's gate runs against that
 // track's own code" a fact rather than an intention — the gate reads the tree it stands in.
 // `cd` sets OLDPWD, which is how the plan keeps resolving: it lives in the main tree's
-// gitignored `.claude/`, so it is absent from every worktree.
+// gitignored `.claude/plans/`, so it is absent from every worktree.
 const inDir = (command) => (DIR === undefined ? command : `cd ${DIR} && ${command}`);
 
 const PLAN_PATH = DIR === undefined ? input.plan : `"$OLDPWD/${input.plan}"`;
