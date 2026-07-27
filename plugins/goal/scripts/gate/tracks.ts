@@ -18,7 +18,7 @@ export const trackField = (section: string[], key: string): string => {
     const found = pattern.exec(line);
 
     if (found !== null) {
-      return (found[1] ?? '').trim();
+      return (found[1] ?? '').trim().replace(/^`+|`+$/g, '').trim();
     }
   }
 
@@ -75,6 +75,13 @@ export const tracksCheck = (source: string): void => {
       halt(
         `Track ${track.name} declares no branch suffix.`,
         'Every track needs a "Branch suffix:" line: it is what names the branch and the worktree. Without it two tracks would fight over one branch, so nothing is created.',
+      );
+    }
+
+    if (!/^[a-z0-9._-]+$/.test(track.suffix)) {
+      halt(
+        `Track ${track.name} declares an unusable branch suffix: ${track.suffix}`,
+        'The suffix names a git branch and a worktree directory, and it reaches the shell that creates them, so anything outside [a-z0-9._-] is refused rather than interpolated. A markdown code span around it is stripped; write the rest bare.',
       );
     }
 
