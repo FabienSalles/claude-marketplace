@@ -10,7 +10,8 @@
     "verbatimModuleSyntax": true,
     "erasableSyntaxOnly": true,
     "noEmit": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "allowImportingTsExtensions": true
   },
-  "include": ["plugins/goal/scripts/*.ts", "plugins/goal/tests/*.ts"]
+  "include": ["plugins/goal/scripts/**/*.ts", "plugins/goal/tests/*.ts"]
 }
