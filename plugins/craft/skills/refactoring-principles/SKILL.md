@@ -1,6 +1,6 @@
 ---
 name: refactoring-principles
-description: "ACTIVATE for any refactoring, extract, redesign, simplify, or cleanup request across languages. Covers cross-language refactoring principles: trace business flow before refactoring, consumer-driven value object design, imports as coupling signals, value object completeness checklist. Language-specific examples live in companion skills (php-refactoring, ts-refactoring, etc.). DO NOT use for: writing new features from scratch (see *-tdd-workflow), general OOP principles (see *-oop)."
+description: "ACTIVATE for any refactoring, extract, redesign, simplify, or cleanup request across languages. Covers cross-language refactoring principles: trace business flow before refactoring, consumer-driven value object design, imports as coupling signals, value object completeness checklist. Language-specific examples live in companion skills (php-refactoring, ts-refactoring, etc.). DO NOT use for: writing new features from scratch (see craft:tdd-workflow-principles + phpunit:php-tdd-workflow + vitest:vitest-tdd-workflow), general OOP principles (see craft:oop-principles)."
 version: "1.0"
 ---
 

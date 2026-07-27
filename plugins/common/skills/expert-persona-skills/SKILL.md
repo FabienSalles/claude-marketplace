@@ -1,6 +1,6 @@
 ---
 name: expert-persona-skills
-description: ACTIVATE when the user asks for expert analysis in non-code domains like security audits, product management, competitive analysis, vendor evaluation, or architecture review. ACTIVATE for 'security audit', 'product review', 'competitive analysis', 'vendor evaluation', 'expert opinion', 'persona'. Provides short persona prompts to activate domain expertise. DO NOT use for regular coding tasks.
+description: ACTIVATE when the user asks for expert analysis in non-code domains like security audits, product management, or architecture review. ACTIVATE for 'security audit', 'product review', 'expert opinion', 'persona'. Provides short persona prompts to activate domain expertise. DO NOT use for regular coding tasks, or auditing an actual codebase (see audit:security-overrides + security-audit:security-audit).
 version: 1.0.0
 ---
 

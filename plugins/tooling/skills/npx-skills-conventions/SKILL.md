@@ -21,6 +21,10 @@ Best practices for creating skills compatible with `npx skills add`, skills.sh l
 | `metadata` | No | Arbitrary string->string key-value map |
 | `allowed-tools` | No | Space-delimited pre-approved tools |
 
+A top-level `version` key is a de-facto convention — Anthropic's own template ships it, but
+the spec's reference validator rejects unlisted keys. The spec-compliant location is
+`metadata.version`. Claude Code itself ignores both.
+
 ### Claude Code Extensions (Claude-specific)
 
 | Field | Description |
@@ -34,9 +38,9 @@ Best practices for creating skills compatible with `npx skills add`, skills.sh l
 ### Critical: name must match directory
 
 ```
-php-8.3/          <- directory name
+php-8-3/          <- directory name
 └── SKILL.md
-    name: php-8.3  <- must match exactly
+    name: php-8-3  <- must match exactly
 ```
 
 ## Description -- The Most Important Field

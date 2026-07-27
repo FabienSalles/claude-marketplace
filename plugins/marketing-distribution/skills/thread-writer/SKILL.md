@@ -1,7 +1,7 @@
 ---
 name: thread-writer
 version: "1.0"
-description: "ACTIVATE when the user asks to write a Twitter/X thread or long Reddit post — story threads, listicles, contrarian takes, tutorials, case studies with hooks and engagement mechanics. Can post directly to Reddit. Trigger phrases: 'write a thread', 'Twitter thread', 'X thread', 'viral thread', 'tweetstorm', 'thread template', 'turn this into a thread', 'reddit post'. For single-post multi-platform social copy, see social-content."
+description: "ACTIVATE when the user asks to write a Twitter/X thread or long Reddit post — story threads, listicles, contrarian takes, tutorials, case studies with hooks and engagement mechanics. Can post directly to Reddit. Trigger phrases: 'write a thread', 'Twitter thread', 'X thread', 'viral thread', 'tweetstorm', 'thread template', 'turn this into a thread', 'reddit post'. For single-post multi-platform social copy, see social-content. Produces one thread or post, not a multi-platform plan. DO NOT use for fanning one pillar piece out across many platforms/formats (see marketing-content:content-repurposing)."
 allowed-tools:
   - Bash
 ---
