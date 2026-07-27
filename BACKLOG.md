@@ -86,6 +86,142 @@ Each of the three carries content that the official NestJS docs don't cover well
 
 ---
 
+## 🎯 Goal plugin — autonomous execution
+
+Design lives in [`plugins/goal/docs/autonomous-architecture.md`](plugins/goal/docs/autonomous-architecture.md), [`target-harness.md`](plugins/goal/docs/target-harness.md) and [`adversarial-verification.md`](plugins/goal/docs/adversarial-verification.md). **None of it is built.** The harness is rebuilt iteration by iteration under `.claude/plans/issue-6-spec.md`; a reference spike sits on `wip/issue-6-harness-spike` and is not merged. Everything below assumes the rebuild lands first.
+
+### Prove track disjointness in a script, not in a survey agent
+- **Why:** `/goal:auto` Phase 3 bis requires proving track file sets pairwise disjoint *before creating anything*, because a false track means two PRs that conflict at merge. The workflow currently asks the survey agent to notice it, which makes a mechanical property depend on a judgement. Parse `iteration_files` from each track's gate blocks, intersect, refuse on any overlap or on a duplicated `Branch suffix:`.
+- **Effort:** ~1 h, plus tests.
+- **Trigger:** before the first run of a plan that declares more than one track.
+- **Path:** a script in `plugins/goal/scripts/`, called before the first `git worktree add`. Gap 1 in [`plugins/goal/docs/workflow-parity.md`](plugins/goal/docs/workflow-parity.md).
+
+### Close the CI feedback loop after a PR opens
+- **Why:** the largest remaining hole in the run's awareness. A run ends at `gh pr create` and never learns that CI went red on the runner — the gate passing locally is not the same claim. A `Monitor` polling `gh pr checks`, emitting one line per check that lands and exiting when the run completes, closes it. Coverage rule: the filter must match every terminal state, or a crashed CI run looks identical to a slow one.
+- **Effort:** ~1 h.
+- **Trigger:** after the first PR opened by a workflow run.
+- **Path:** the command, after the workflow returns. See [`plugins/goal/docs/loops.md`](plugins/goal/docs/loops.md) §C.
+
+### Bounded escalation on infrastructure failures only
+- **Why:** "a halt is final" is absolute because prose could not carry anything finer. A script can: map an observable failure signal to a failure class, attach a targeted recovery and a recovery budget, re-verify after. Retry `git worktree add`, a `gh` 5xx or a network timeout twice; never retry a failed assertion, a scope leak or spec tampering. Recovery applies to the infrastructure around the verification, never to the verdict.
+- **Effort:** ~2 h, and the failure-signature table matters more than the code.
+- **Trigger:** the first halt that turns out to be infrastructure rather than code.
+- **Path:** `plugins/goal/workflows/goal-auto.js`. Table and anti-patterns in [`plugins/goal/docs/loops.md`](plugins/goal/docs/loops.md) §A.
+
+### Write `state=done` at the end of a run
+- **Why:** preflight check 7 ("no run already active") reads `state=running`, and nothing ever writes `done`. Benign today because check 5 stops a completed plan first, but check 7 rests on a value nothing sets.
+- **Effort:** ~20 min.
+- **Trigger:** any change to the preflight order.
+- **Path:** `plugins/goal/workflows/goal-auto.js` ship stage, or a `--done` mode on the gate.
+
+### Queue several plans in one unattended run
+- **Why:** once one plan runs reliably, a `for` over the locked plans in `.claude/plans/` runs them overnight in sequence, stopping the queue at the first halt. Nothing in the design forbids it and it is where the autonomy actually pays off.
+- **Effort:** ~1 h.
+- **Trigger:** after three or four single-plan runs have gone green.
+- **Path:** `plugins/goal/workflows/goal-auto.js`, or a thin wrapper workflow calling it via `workflow()`.
+
+### Prove the workflow on a real plan (do this first)
+- **Why:** the loop, the survey, the lens derivation and the GitHub reporting have only ever been read, never run. Every item below builds on code whose behaviour is currently assumed.
+- **Effort:** ~1 h, needs a plan with gate blocks — `.claude/plans/issue-3-spec.md` has them.
+- **Trigger:** now.
+- **Path:** `/goal:auto --workflow`, ideally after the `--dry-run` below exists so nothing can commit during the first attempt.
+
+### `--dry-run` mode for the workflow
+- **Why:** the highest-value missing control. Survey + `goal-gate.sh` for **every** iteration, implementing nothing. Thirty seconds and you know, before going to bed, whether a gate block is missing, a declared path does not exist, or two tracks share a file. Today those are discovered mid-run, hours in.
+- **Effort:** ~1 h — an `args.dryRun` that runs the survey and the state stage for each iteration, then returns, skipping implement/gate/lenses.
+- **Trigger:** before the first real unattended run.
+- **Path:** `plugins/goal/workflows/goal-auto.js`.
+
+### Remote steering — tier 0, kill switch by label
+- **Why:** the run is deliberately write-only towards GitHub, which means you cannot stop it from your phone. Reading whether a **label** exists is a boolean, not free text, so it carries no injection surface. Between two iterations, `gh api` checks for `agent-stop` on the issue and the run halts at the next boundary.
+- **Effort:** ~1 h.
+- **Trigger:** the first time a run does something you want to stop and cannot.
+- **Path:** `plugins/goal/workflows/goal-auto.js`, per-iteration loop. Design in [`plugins/goal/docs/steering-and-injection.md`](plugins/goal/docs/steering-and-injection.md).
+
+### Remote steering — tier 1, checkbox control panel
+- **Why:** richer than a label and still injection-free, because of a permission asymmetry: anyone can create a comment, but only someone with repo write access can edit *the run's own* comment. The run posts a control panel of task-list checkboxes it authored, you tick them from mobile, and what crosses the boundary is a bit vector over a vocabulary the run wrote. Gives `stop`, `no-ship`, `skip-lenses`, `retry-current` in one place.
+- **Effort:** ~2 h — post the panel at run start, `gh api` + `jq` read at each boundary, honour the bits.
+- **Trigger:** once tier 0 exists and proves too coarse.
+- **Path:** `plugins/goal/workflows/goal-auto.js`. **Respect the vocabulary rule**: every remotely triggerable verb may only *subtract*. `ship` and `skip-iteration` are explicitly rejected — see the doc's table.
+
+### Quarantined reader agent type
+- **Why:** the structural half of the injection defense (dual-LLM / CaMeL): the agent that reads GitHub must hold no tool that can act. A dedicated subagent type in `.claude/agents/` granted only `Bash(gh api …)` — no `Write`, no `Edit`, no push — invoked via `agentType`, cannot act on what it read even if it is talked into wanting to.
+- **Effort:** ~30 min.
+- **Trigger:** together with tier 0. Neither steering tier should ship without it.
+- **Path:** `.claude/agents/goal-reader.md`, then `agentType: 'goal-reader'` on the reading call.
+
+### Secret scan before any push
+- **Why:** **a risk introduced by this design, not a pre-existing one.** Halted branches are now pushed so the diagnosis survives the machine going to sleep. If an implementer accidentally committed a `.env`, a token or a key, pushing publishes it — and a halted run is exactly the situation where the tree is unusual. A scan (gitleaks, or a grep for known prefixes plus high-entropy strings) gating every `git push` in the workflow.
+- **Effort:** ~1 h.
+- **Trigger:** **before the first unattended run that can push.** This one is not optional.
+- **Path:** `plugins/goal/workflows/goal-auto.js`, in front of every push; ideally a script so it cannot be skipped by a caller.
+
+### Report whether a failing gate is deterministic
+- **Why:** "a halt is final" is the right rule and must not weaken. But re-running the failing command once, purely for information, tells you whether you are looking at a real failure or a flaky test — without changing the verdict. The halt comment says "reproduced 2/2" or "passed on retry, suspect flakiness", which is the difference between reading it at 7am and re-running it blind.
+- **Effort:** ~30 min.
+- **Trigger:** the first halt you cannot reproduce by hand.
+- **Path:** `plugins/goal/scripts/goal-gate.sh`, failure path only, and the halt comment in the workflow.
+
+### Resume integrity audit
+- **Why:** the durable state is the `[x]` checkboxes, so a resume trusts them. Nothing currently checks that they match reality: N ticked iterations should mean N commits carrying the plan's `commit_msg` values. A mismatch means history was rewritten or the plan was edited between runs, and resuming on top of it silently builds on a false premise. The `spec_hash` does not catch this — it only guards *within* a run.
+- **Effort:** ~1 h.
+- **Trigger:** the first time a run is resumed after any manual git work on the branch.
+- **Path:** a check in `plugins/goal/scripts/`, called by the workflow survey stage.
+
+### Environment fingerprint on halt
+- **Why:** a gate failing because Docker, PHP or Node moved under you is a different problem from a gate failing because the code is wrong, and at 7am the halt output looks identical in both cases. Capturing the versions the gates depend on at lock time and again on halt makes the difference visible immediately.
+- **Effort:** ~45 min.
+- **Trigger:** the first halt that turns out to be a toolchain upgrade.
+- **Path:** `plugins/goal/commands/run-issue.md` (record at lock), workflow halt comment (record at halt).
+
+### Archive the workflow journal on the PR
+- **Why:** every run writes a `journal.jsonl` holding each agent's real return value. It is the only artefact that explains *why* a run behaved as it did, and it currently lives in a session directory that disappears. Attaching it to the PR makes a run auditable after the fact.
+- **Effort:** ~30 min.
+- **Trigger:** the first run whose behaviour you cannot reconstruct.
+- **Path:** the ship stage of `plugins/goal/workflows/goal-auto.js`.
+
+### Budget forecast before starting
+- **Why:** pairs with cost-per-iteration below. Once a few runs have recorded their cost, a plan's iteration count gives an estimate, and the preflight can say "this looks like ~350k, you have 200k" *before* burning the first 200k. Cheapest possible way to avoid a run that dies two thirds of the way through.
+- **Effort:** ~1 h, and it needs the cost data to exist first.
+- **Trigger:** after cost-per-iteration has run on three or four plans.
+- **Path:** `plugins/goal/commands/auto.md` preflight.
+
+### Smoke-test the gate commands at lock time
+- **Why:** a gate command that already fails on the untouched tree is a typo, and it currently surfaces as a halt on iteration 1 hours later. Running each one once while the plan is being frozen catches it while the developer is still there. Done manually on `issue-3-spec.md` and it caught real problems.
+- **Effort:** ~30 min, mostly prose in `/goal:run-issue` Phase 3.
+- **Trigger:** next time a plan is locked.
+- **Path:** `plugins/goal/commands/run-issue.md`.
+
+### Canary iteration
+- **Why:** a plan that is wrong systematically is wrong from iteration 1. Running the first slice alone, stopping and notifying costs one iteration instead of ten to find out.
+- **Effort:** ~30 min — an `args.stopAfter` honoured by the loop.
+- **Trigger:** the first plan longer than ~5 iterations.
+- **Path:** `plugins/goal/workflows/goal-auto.js`.
+
+### Turn cap per iteration
+- **Why:** `templates/done-criteria.template` declares "maximum 15 turns per iteration" and nothing enforces it. An implementer stuck in a loop burns tokens silently, and the budget floor only notices once the damage is done.
+- **Effort:** unknown — there is no documented per-agent turn limit in the workflow API. Needs a mechanism before it needs an implementation. Investigate before estimating.
+- **Trigger:** the first run that burns a suspicious amount on one iteration.
+- **Path:** `plugins/goal/workflows/goal-auto.js`.
+
+### OpenTelemetry traces
+- **Why:** Claude Code emits GenAI-convention traces, metrics and events. Turning it on gives span-level observability (tools considered vs invoked, tokens per hop, latency) in any OTLP backend, well past what `/workflows` shows. Vendor-neutral, and the standard graduated in 2026.
+- **Effort:** ~30 min to try, then whatever a backend costs.
+- **Trigger:** when `/workflows` stops being enough to explain why a run behaved as it did.
+- **Path:** Claude Code settings, not this repo. See <https://opentelemetry.io/blog/2026/genai-observability/>.
+
+### Cost per iteration in the PR body
+- **Why:** `budget.spent()` deltas around each iteration make slice sizing empirical instead of intuitive. Over a few plans it tells you which shapes of iteration are expensive, which is exactly what `/goal:run-issue` Phase 3 currently guesses at.
+- **Effort:** ~30 min.
+- **Trigger:** after three or four workflow runs, when there is data worth reading.
+- **Path:** `plugins/goal/workflows/goal-auto.js`.
+
+### Promote the sensitivity lens to a command
+- **Why:** the evaluation literature is clear that the mitigation which actually moves judge accuracy is executing code, not refining prompts. "Would this test fail if the rule broke?" is mechanisable: revert the implementation hunk, run the slice's test, require RED, restore. That turns an advisory opinion into an exit code, which means it can halt.
+- **Effort:** ~1 h for the script, plus wiring it into the iteration `gate` blocks that `/goal:run-issue` produces.
+- **Trigger:** after the lens layer has run on a few iterations and you trust the shape.
+- **Path:** `plugins/goal/scripts/`, then `docs/adversarial-verification.md` §Promotion principle.
+
 ## 🗂️ How to add to this list
 
 - Append a new section under the relevant category.

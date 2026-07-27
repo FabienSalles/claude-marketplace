@@ -112,12 +112,13 @@ never stage), and note which policy you assumed.
 
 Read the next `[ ]` iteration and confirm it is **fully self-contained** for a
 context-free start:
-- *Goal*, *Files to touch*, *Business rules covered*, and *Acceptance commands* are
-  all present and concrete in the plan.
+- *Goal*, *Files to touch*, *Business rules covered*, and its `gate` block are all
+  present and concrete in the plan.
 - Nothing it needs exists **only in this conversation** — a decision, a value, a name
   you introduced but never wrote into the plan or the code. If you find such a thing,
   write it into the plan now.
-- Its acceptance commands run as-is (paths/targets exist).
+- Its `gate` commands run as-is (paths/targets exist), and `test_files` + `impl_files`
+  still match what the slice really touches after the ripple you just reconciled.
 
 Under-specified for a cold start → fix the plan (add the missing detail) before
 emitting the handoff; if it needs a human decision, say so and ASK.
@@ -129,9 +130,10 @@ so — a developer who chose `commit` or `commit+pr` chose autonomy, and handing
 per-iteration prompt anyway makes them drive a loop they asked to be driven for them.
 
 Read `Policy:` from the spec header, then check the **remaining unchecked** iterations for
-any that cannot be gated: an explicit "cannot be verified unattended" note, or an
-acceptance criterion no command can express. `/goal:auto` drops what it cannot run, so such
-an iteration would pass its gate on a half-proof.
+any that cannot be gated: a missing `gate` block, a block with no `gate1`, or a **Not
+machine-verifiable** line carrying the slice's core deliverable. `/goal:auto` halts on the
+first of these rather than run, so naming them now saves a run that would stop at iteration
+one.
 
 | `Policy:` | Remaining iterations | Emit |
 |---|---|---|
@@ -145,15 +147,18 @@ a follow-up tracks plan, a plan for another work-id. The path removes the guess.
 
 When you offer `/goal:auto`, state in one line what it will do: how many iterations remain,
 that it halts hard on the first failing gate without attempting the rest, and — under
-`commit+pr` — that the last green iteration pushes and opens the PR. The developer is
-choosing to walk away; they should know where it stops.
+`commit+pr` — that the first green iteration already pushes and opens a draft PR the rest
+keep updating, so a halt is still reviewable. The developer is choosing to walk away; they
+should know where it stops.
 
 Emit the canonical `/goal` handoff from `templates/goal-handoff.template`, filled
 per that file's **"How to fill it"** section: `<plan path>` = the resolved plan path,
 « Done » line 1 = the **next iteration's** acceptance test command, line 2 = the
 project lint/QA command, `<policy>` = the plan's policy verbatim, `<delivery-mode>` =
 the plan's `Delivery mode:` line verbatim. Fold the policy and delivery-mode blocks to
-the single active branch of each. Respect its **≤ 4000-character hard limit**.
+the single active branch of each. Respect its **≤ 4000-character hard limit**: write
+the filled block to a file, run `wc -m < <file>`, compress and re-count while it
+exceeds 4000, and print the count with the block.
 
 Prepend the context-hygiene reminder (you cannot run these — the developer does),
 then the filled template as **one copy-paste block**:
