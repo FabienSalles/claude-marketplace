@@ -1,6 +1,6 @@
 ---
-name: php-8.2
-description: "ACTIVATE when writing PHP classes, DTOs, or value objects in a PHP 8.2+ project. Covers: mandatory readonly class usage (class-level, not per-property). DO NOT use for: general PHP syntax, PHP 8.3 features (see php-8.3)."
+name: php-8-2
+description: "ACTIVATE when writing PHP classes, DTOs, or value objects in a PHP 8.2+ project. Covers: mandatory readonly class usage (class-level, not per-property). DO NOT use for: general PHP syntax, PHP 8.3 features (see php-8-3)."
 version: "1.1"
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: systematic-debugging
-description: Use when encountering any bug, test failure, or unexpected behavior, before proposing fixes
+description: "Use when encountering any bug, test failure, or unexpected behavior, before proposing fixes. Covers: root-cause investigation, reproduction, recent-changes review, evidence gathering across component boundaries, hypothesis-driven fixing. DO NOT use for: purely visual/layout bugs inspectable in devtools (see frontend:frontend-best-practices)."
 version: "obra@030a222"
 ---
 

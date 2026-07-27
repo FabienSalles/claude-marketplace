@@ -1,6 +1,6 @@
 ---
-name: php-8.1
-description: "ACTIVATE when passing a method as a callback in a PHP 8.1+ project — event listeners, validator callbacks, Twig functions, array_map/usort callables. Covers: mandatory first-class callable syntax `$this->method(...)` over array/string callables. DO NOT use for: general PHP syntax, PHP 8.2 features (see php-8.2), PHP 8.3 features (see php-8.3)."
+name: php-8-1
+description: "ACTIVATE when passing a method as a callback in a PHP 8.1+ project — event listeners, validator callbacks, Twig functions, array_map/usort callables. Covers: mandatory first-class callable syntax `$this->method(...)` over array/string callables. DO NOT use for: general PHP syntax, PHP 8.2 features (see php-8-2), PHP 8.3 features (see php-8-3)."
 version: "1.0"
 ---
 

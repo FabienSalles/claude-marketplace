@@ -1,6 +1,6 @@
 ---
-name: php-8.3
-description: "ACTIVATE when writing PHP class constants in a PHP 8.3+ project. Covers: mandatory typed class constants and default visibility. DO NOT use for: general PHP syntax, PHP 8.2 features (see php-8.2)."
+name: php-8-3
+description: "ACTIVATE when writing PHP class constants in a PHP 8.3+ project. Covers: mandatory typed class constants and default visibility. DO NOT use for: general PHP syntax, PHP 8.2 features (see php-8-2)."
 version: "1.2"
 ---
 

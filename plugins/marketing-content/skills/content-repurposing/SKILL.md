@@ -1,7 +1,7 @@
 ---
 name: content-repurposing
 version: "1.0"
-description: "ACTIVATE when the user asks to repurpose or atomize existing content across platforms/formats — blog → thread, video → carousel, article → newsletter. Trigger phrases: 'repurpose this', 'turn this into', 'convert blog to', 'make a thread from', 'content atomization', 'turn this article into social posts', 'adapt content'."
+description: "ACTIVATE when the user asks to repurpose or atomize existing content across platforms/formats — blog → thread, video → carousel, article → newsletter. Trigger phrases: 'repurpose this', 'convert blog to', 'make a thread from', 'content atomization', 'turn this article into social posts', 'adapt content'. Fans one pillar piece out into a multi-platform plan. DO NOT use for a single Twitter/X thread or Reddit post (see marketing-distribution:thread-writer)."
 ---
 
 # Content Repurposing Skill

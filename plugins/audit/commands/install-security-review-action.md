@@ -33,4 +33,4 @@ Target: `<repo>/.github/workflows/security-review.yml`
 ## Pairs with
 
 - `audit:security-overrides` (output format conventions + FP filters that apply to PR comments)
-- `netresearch:security-audit` (the patterns the action is based on, conceptually)
+- `security-audit:security-audit` (the patterns the action is based on, conceptually)

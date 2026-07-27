@@ -1,7 +1,7 @@
 ---
 name: competitor-analysis
 version: "1.0"
-description: "ACTIVATE when the user asks to analyze competitors across SEO, ads, social, email, pricing, positioning — competitive matrix, SWOT, competitor weakness discovery. Trigger phrases: 'competitor analysis', 'competitive analysis', 'who are my competitors', 'competitor research', 'competitive landscape', 'benchmark competitors', 'competitor ads', 'competitor SEO', 'competitor pricing', 'SWOT analysis', 'competitive matrix'."
+description: "ACTIVATE when the user asks to analyze competitors across SEO, ads, social, email, pricing, positioning — competitive matrix, SWOT, competitor weakness discovery. Trigger phrases: 'competitor analysis', 'competitive analysis', 'who are my competitors', 'competitor research', 'competitive landscape', 'benchmark competitors', 'competitor ads', 'competitor SEO', 'competitor pricing', 'SWOT analysis', 'competitive matrix'. DO NOT use for market/technology research with no named competitors yet (see common:product-research)."
 ---
 
 # Competitor Analysis Framework
