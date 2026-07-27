@@ -16,12 +16,22 @@ the `[x]` step and the policy block. Single source of truth — edit here, all t
 
 ## Hard limit — ≤ 4000 characters
 
-The emitted `/goal` argument MUST stay ≤ 4000 characters (the `/goal` command
-truncates its condition beyond that). Count the filled block; if it exceeds,
-compress — drop redundant phrasing, fold the `manual`/`commit`/`commit+pr`
-branches to the single active `<policy>`, fold the two delivery-mode branches to
-the single active `<delivery-mode>`, shorten the Done/synthesis wording — until
-it fits. Never truncate mid-sentence.
+The emitted `/goal` argument MUST stay ≤ 4000 characters — beyond that `/goal`
+refuses the whole condition (`Goal condition is limited to 4000 characters (got
+N)`) and the iteration never starts.
+
+Measure it, do not eyeball it. Before printing the block, write it to a file and
+count:
+
+```bash
+wc -m < <file>
+```
+
+If the count exceeds 4000, compress and re-count — drop redundant phrasing, fold
+the `manual`/`commit`/`commit+pr` branches to the single active `<policy>`, fold
+the two delivery-mode branches to the single active `<delivery-mode>`, shorten the
+Done/synthesis wording. Never truncate mid-sentence. Print the count alongside the
+block so the developer sees the margin.
 
 Fold both branch blocks by default, not only when you overflow: the emitted text is
 an instruction to one executor in one mode, and the branch it is not in is noise it
@@ -81,7 +91,12 @@ Politique commit/PR : <policy>
                 Le hook `git-add-empty` pose les fichiers neufs en intent-to-add (` A`), ce
                 qui ressemble à « stagé » sans l'être : sans l'étape 1 leur contenu reste
                 hors du commit et la PR part incomplète. Sans push ni PR.
-- commit+pr   → idem ; si c'est la DERNIÈRE itération non cochée, push puis gh pr create.
+- commit+pr   → idem, puis push et PR. La PR existe dès le PREMIER commit, en draft :
+                `gh pr view --json number` ne trouve rien pour cette branche → push puis
+                `gh pr create --draft` ; elle en trouve une → push seul, et mets à jour le
+                corps de la PR existante avec l'itération que tu viens de livrer. Jamais
+                une seconde PR pour la même branche. Passe-la en ready (`gh pr ready`) à
+                la dernière itération non cochée.
                 Le corps de la PR décrit UNIQUEMENT les itérations qu'elle livre (but,
                 règles métier, commande qui les prouve), jamais le plan entier. Si une
                 issue GitHub existe, ajoute « Refs #N » : elle porte déjà le plan. Jamais

@@ -269,8 +269,11 @@ Ask (this controls what an execution session is allowed to do, and how big a sli
 >   iteration I stop with a synthesis; you review and commit yourself.
 > - **commit** — I commit each iteration myself (conventional message, no
 >   `Co-Authored-By` trailer), but never push or open a PR.
-> - **commit+pr** — like commit, plus after the LAST iteration I push and open
->   the PR (requires a GitHub remote). This is what `/goal:auto` needs.
+> - **commit+pr** — like commit, plus I push and keep a PR (requires a GitHub
+>   remote). It is opened as a **draft at the first commit** and every later
+>   iteration updates that same PR, so you can watch the work land instead of
+>   waiting for the end. It goes ready for review at the last iteration. This
+>   is what `/goal:auto` needs.
 
 WAIT for the answer. Then **write it into the spec's `Policy:` header line**, and use the
 same value as `<policy>` in the handoff verbatim.
@@ -334,13 +337,30 @@ tracks and the file sets that make them disjoint. If it does not, say so and kee
 sequential list. Do not invent tracks to look parallel: a false track means two PRs that
 conflict at merge.
 
-**Under `commit` or `commit+pr`, every acceptance criterion is a command.** `/goal:auto`
-builds its gate from these lines and **silently drops the ones it cannot run** — its own
-rule is "an acceptance criterion you cannot express as a command is not a gate: leave it
-out". A criterion written as prose therefore does not merely weaken the gate, it vanishes
-from it, and the iteration ships certified by whatever is left. Reread each criterion
-before freezing and ask what exits 0. If a slice's core deliverable has no such command,
-write one, or state in the spec that this slice cannot be verified unattended.
+**Under `commit` or `commit+pr`, every iteration carries a `gate` block, and that block is
+what runs.** The acceptance criteria used to be prose, and `/goal:auto` translated them into
+gate commands at run time: a model reading "the project test command exits 0" and deciding,
+alone and unattended, which command that is. The block removes the translation. It is written
+here, while the developer is present to read it, in the exact `key=value` form `goal-gate.ts`
+already consumes, so it is copied verbatim rather than interpreted.
+
+Four things the block's shape asks of you, all mechanical downstream. `test_files` and
+`impl_files` are separate because the gate sets the second aside and requires `gate1` to fail
+without it: a slice whose test passes either way is refused. `gate1` is therefore the one
+acceptance criterion — it is bitten, and it must pass three times in a row — where `gate2..N`
+are supporting lints. `max_diff` is the line ceiling you set while awake, enforced while you
+are not. And a slice with nothing to test declares `test_files=` empty, which skips the bite
+rather than faking it.
+
+Write only commands that can fail. `git diff --stat` and `git status` do not belong in it:
+the gate script checks scope leak and parasitic artifacts structurally, so such a line is a
+gate that always exits 0. A criterion no command can express does not go in the block either
+— put it under **Not machine-verifiable**, where it stays visible instead of vanishing from
+the gate. **A slice whose core deliverable lands there cannot be verified unattended**: say
+so now, because `/goal:auto` halts on an iteration with no `gate1`.
+
+Use the project's real commands, dockerized where the project is, and check each one runs
+today. A command that does not exist yet is a halt at iteration 1, not at review time.
 
 **Cleanup never belongs to this plan.** Removing a flag, dropping the old column, deleting
 the compat shim: all of it waits on a condition this plan cannot satisfy, because the
@@ -357,7 +377,7 @@ parallel, and cleanup is strictly after.
 
 Persist at `.claude/plans/<work-id>-spec.md`:
 
-```markdown
+````markdown
 # Spec: <title>
 
 Source: <Jira CT-1234 | gh issue #42 URL | spec file path | inline>
@@ -367,7 +387,21 @@ Delivery mode: <no-bc-break | allow-bc-break — filled in Phase 2c>
 Cleanup: <later | now | none — none when allow-bc-break or no flag was introduced>
 
 ## Business intent
-<1–3 paragraphs: what + why, in the developer's domain vocabulary>
+
+<Carry the four need fields forward **verbatim** when `/goal:draft-issue` produced them —
+Problem, Objective, Success signal, Affected. When the source came straight here without a
+draft, build them now: they are what the whole plan is measured against, and no later phase
+can reconstruct them.>
+
+**Problem.** <what fails today, with the evidence — an incident, a measurement, a file and line>
+
+**Objective.** <what must become true, as an outcome, not as a solution>
+
+**Success signal.** <how you would know it worked in the real world, distinct from the DoD>
+
+**Affected.** <who lives with the problem, and what changes for them>
+
+<Then 1–3 paragraphs connecting them, in the developer's domain vocabulary.>
 
 ## Scope IN
 - <what's in>
@@ -399,11 +433,15 @@ section.>
 Built here because the source had none. Use the project's real commands
 (dockerized where applicable — e.g. `make …` / `docker compose run --rm …`,
 not host `php`/`composer`/`npm`).
-1. <whole-scope test command> exits 0
-2. <project lint/QA command> exits 0
-3. Every business rule above has a passing covering test
-4. `git status` clean (no untracked artifacts)
-5. Project convention skills were loaded before coding (see handoff)
+
+```gate
+dod1=<whole-scope test command>
+dod2=<project lint/QA command>
+```
+
+Also true, and not expressible as a command of its own:
+- Every business rule above has a passing covering test (proven by `dod1`)
+- Project convention skills were loaded before coding (see handoff)
 
 ## Functional iterations
 
@@ -418,10 +456,16 @@ numbered once across the whole plan, whether or not tracks are used.>
 - **Files to touch:** `<path>` (+ `<path>` (test))
 - **Business rules covered:** <subset of the rules above>
 - **Delivery:** <additive | flag `<name>` off by default | expand step of expand/contract | …>
-- **Acceptance criteria (command-line):**
-  - <test command scoped to this slice> exits 0
-  - `git diff --stat` shows only this iteration's files
-  - <project lint/QA> exits 0
+- **Not machine-verifiable:** <criteria no command can express, or "none">
+
+```gate
+test_files=<the slice's test paths, or empty when it has nothing to test>
+impl_files=<bare space-separated repo-relative paths, a subtree as a trailing slash>
+max_diff=<added+removed line ceiling for this slice>
+commit_msg=<conventional message, no Co-Authored-By trailer>
+gate1=<test command scoped to this slice — the one criterion, bitten without the implementation>
+gate2=<project lint/QA>
+```
 
 ### Iteration 2 — <name>
 - [ ] Not done yet
@@ -434,9 +478,16 @@ column goes to `.claude/plans/<work-id>-cleanup-spec.md`, in this shape:>
 - [ ] Not done yet
 - **Trigger:** <what must be true in production before this can start>
 - **Delete:** <flag + config entry, losing implementation + its tests, compat shim, old column>
-- **Acceptance criteria (command-line):**
-  - `grep -r <flag name> <src dirs>` returns nothing
-  - <test command> exits 0 · <project lint/QA> exits 0
+
+```gate
+test_files=
+impl_files=<bare space-separated repo-relative paths>
+max_diff=<added+removed line ceiling for this slice>
+commit_msg=<conventional message>
+gate1=! grep -rq <flag name> <src dirs>
+gate2=<test command>
+gate3=<project lint/QA>
+```
 
 <With tracks, wrap the iterations in `## Track` headings instead. Everything inside a
 track stays sequential; tracks are independent of each other and each becomes its own
@@ -445,6 +496,8 @@ branch and its own PR:>
 ## Track astro — <what this track delivers>
 - **Branch suffix:** `astro`
 - **Files owned:** `plugins/astro/**`
+- **Prepare:** <command making the fresh worktree runnable — its own compose project, its own ports. Omit when there is nothing to prepare>
+- **Teardown:** <command undoing it, run on every exit path including a halt>
 
 ### Iteration 1 — <name>
 - [ ] Not done yet
@@ -458,10 +511,18 @@ branch and its own PR:>
 - [ ] Not done yet
 - ...
 
+<Three things the harness enforces about tracks, before it creates anything: independence is
+proven from the `test_files` + `impl_files` of each track's iterations, so `Files owned` is
+prose for the reader and one shared path refuses the whole run; iteration numbers are global
+to the plan, so two tracks may not carry the same one; and a `Prepare:` that brings containers
+up needs the `Teardown:` that takes them down. What it cannot check is that your preparation
+genuinely isolates anything — it verifies the command exits 0 in a fresh worktree, not your
+mount points.>
+
 ## Out-of-band decisions captured during grill
 - Q: <question>
   A: <answer>
-```
+````
 
 Show the plan. Ask: **"Does this plan match our conversation? The iterations
 are the review checkpoints — edit the split or any criterion before I lock it?"**
@@ -495,16 +556,31 @@ follows exits 1 too: an instruction to "lock the contract" as a commit silently
 achieves nothing. The plan does not need to be tracked anyway. It is durable on disk
 and every session reads it from there.
 
-**Publish the plan to the GitHub issue, when one exists.** The issue is the right home
-for it: one plan can produce several PRs (parallel tracks, and always a separate cleanup
-plan), so a plan pasted into a PR body would repeat the whole contract on every PR while
-each realises only a slice of it. In the issue it is stated once, and every PR points back
-to it.
+**Refresh the issue's intent projection, when an issue exists — and never publish the plan
+there.** The **intent projection** is the part of the spec that does not move: `## Business
+intent`, `## Scope IN`, `## Scope OUT`, and the gaps. That is what an issue is for.
 
-- The issue exists and `/goal:draft-issue` created it → update its body with the locked plan.
-- The issue exists but you do not own it → post the plan as a comment.
+The iterations, the Definition of Done and the `gate` blocks stay **out** of it. They are the
+part that lives: every slice adds an "As built" note, decisions get refined, iterations are
+appended when a real run finds something. An issue holding a copy of that is stale by the
+second commit and actively misleads a reader — this happened on this plugin's own issue, which
+advertised a script the PR had deleted. Duplication is the fault; refreshing a copy more often
+does not fix it, it only pays for it more often.
+
+Where each thing lives, and why: the **plan** is local and gitignored, so it can move freely.
+The **PR body** is rewritten at every slice, so it is the live view of what actually landed.
+The **issue** is the log — the why, the boundaries, and the pointers.
+
+- The issue exists and you can edit it → rewrite its body with the intent projection, and add
+  one line saying the executable plan lives locally and that the PR body is what shows the work.
+- The issue exists but you do not own it → post the projection as a comment instead.
 - **No issue** → publish nothing. The plan stays on disk only, and PR bodies stand alone.
   Do not create an issue for this: `gh` stays untouched unless the developer asked for one.
+
+**Refresh it whenever the intent changes, and only then.** The grill routinely sharpens the
+problem statement or moves a line of scope; when it does, the projection is republished before
+you hand off. An autonomous run never touches those sections — the plan hash forbids it — so it
+has nothing to resynchronise, which is why this is a Session 1 responsibility and not a loop's.
 
 Tell the developer where the plan now lives, and read the branch name back.
 
@@ -515,7 +591,9 @@ per that file's **"How to fill it"** section: `<plan path>` =
 `.claude/plans/<work-id>-spec.md`, the spec's real test/lint commands, `<policy>` =
 the chosen policy verbatim, `<delivery-mode>` = the spec's `Delivery mode:` line verbatim.
 Fold the policy and delivery-mode blocks to the single active branch of each — an executor
-reads its own mode, never the one it is not in. Respect the **≤ 4000-character hard limit**. The
+reads its own mode, never the one it is not in. Respect the **≤ 4000-character hard limit**:
+write the filled block to a file, run `wc -m < <file>`, compress and re-count while it exceeds
+4000, and print the count with the block. The
 developer pastes it once per iteration — it always picks the **next unchecked**
 iteration, so the same text works every round.
 
