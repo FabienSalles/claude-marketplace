@@ -86,6 +86,16 @@ test('disjoint tracks are listed with their suffix, iterations and preparation',
   assert.match(output, /^track\tphp\tphp\t2\t/m);
 });
 
+// The plan template documents the suffix as a markdown code span, and the value reaches the
+// shell that creates the branch — unstripped, the backticks ran as a command substitution and
+// every track collapsed onto one empty suffix.
+test('a suffix written as a code span is used bare', () => {
+  const { code, output } = runGate(repo(), 'tracks', planFile(trackPlan([{ ...ASTRO, suffix: '`astro`' }, PHP])));
+
+  assert.equal(code, 0, output);
+  assert.match(output, /^track\tastro\tastro\t1\tdocker compose up -d/m);
+});
+
 for (const [claim, tracks, said] of [
   [
     'two tracks declare the same file',
@@ -99,6 +109,11 @@ for (const [claim, tracks, said] of [
   ],
   ['two tracks share a branch suffix', [ASTRO, { ...PHP, suffix: 'astro' }], /same branch suffix/],
   ['a track declares no branch suffix', [ASTRO, { ...PHP, suffix: undefined }], /declares no branch suffix/],
+  [
+    'a branch suffix carries a shell metacharacter',
+    [ASTRO, { ...PHP, suffix: '$(id)' }],
+    /unusable branch suffix/,
+  ],
   [
     'one iteration number belongs to two tracks',
     [ASTRO, { ...PHP, iterations: [{ number: 1, impl: 'src/b.ts' }] }],
