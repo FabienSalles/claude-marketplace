@@ -183,6 +183,7 @@ deliver against it**, iteration by iteration.
 | `tests/run.sh` | `tests/run.sh` | The gate's own suite, one file per group of rules. It wraps `node --test` because that exits 0 on a glob matching nothing: the wrapper additionally requires at least one pass and no failure. Run it with `bash plugins/goal/tests/run.sh` |
 | `extract-execution-log.py` | `scripts/extract-execution-log.py` | Parses the session JSONL into a readable markdown summary keyed by `<work-id>` |
 | `done-criteria.template` | `templates/done-criteria.template` | Reusable baseline for the acceptance-criteria / DoD section of any plan |
+| `post-merge.template` | `templates/post-merge.template` | What a merged run leaves behind (branches both sides, safety refs, control labels, plan checkboxes, unblocked follow-up plan). Emitted by `/goal:auto`'s final report and by `/goal:next` when no iteration remains. Printed, never executed — no goal command may delete a branch or a label |
 
 The **work-id** generalizes the old issue number: `issue-<N>` for a GitHub issue, the
 lowercased key (`ct-1234`) for Jira, a slug for a file/inline source.

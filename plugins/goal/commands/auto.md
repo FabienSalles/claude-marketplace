@@ -197,6 +197,21 @@ Report both PRs at the end, and state the sequence: the feature PR merges, produ
 confirms, then the developer marks the cleanup PR ready and merges it. Never mark it
 ready yourself, and never merge either one.
 
+## Phase 5 — What the merge will leave behind
+
+Close the report with the checklist from `templates/post-merge.template`, filled per that
+file's **"How to fill it"** section. It is the last thing you print.
+
+The run ends with a PR open, and the merge happens later — hours, days, in a session that
+carries none of this context. Everything the run created and cannot itself remove (the
+branch on both sides, the safety refs, the control labels on the issue, the plan's
+placeholder checkboxes) survives that gap unless it is written down before the gap opens.
+A run that reports only its PR is a run whose leftovers are found weeks later, by which
+point a stale `goal:no-ship` has already blocked somebody's next launch.
+
+Print it, never do it. Deleting a branch, a tag or a label is outside what this command
+may touch, and the developer may be keeping any of them on purpose.
+
 ## Rules for THIS command
 
 Four, where there were seventeen. The rest became machinery, which is the point.
