@@ -14,7 +14,7 @@
 // Exit codes: 0 the iteration is runnable · 1 HALT, with a reason · 2 misuse.
 
 import { halt, misuse } from './gate/halt.ts';
-import { blockOf, declaredPaths, lockedHash, readPlan } from './gate/plan.ts';
+import { blockOf, declaredPaths, incidentalPaths, lockedHash, readPlan } from './gate/plan.ts';
 import { determinismCheck, runGates } from './gate/commands.ts';
 import { commitAndTick, runLock, scopeCheck } from './gate/scope.ts';
 import { budgetCheck, removalCheck } from './gate/bounds.ts';
@@ -59,8 +59,12 @@ const keysAreLegal = (declared: Map<string, string>, iteration: string): void =>
 // on anyway; the bite check runs last because it is the only one that touches the tree.
 const verify = (source: string, iteration: string, declared: Map<string, string>) => {
   const paths = declaredPaths(declared);
-  const changed = scopeCheck(paths, iteration);
+  const incidental = incidentalPaths(source);
+  const changed = scopeCheck(paths, iteration, incidental);
 
+  // The two bounds stay measured against the declared paths alone: generated tooling is not
+  // authored work, so counting a lockfile against max_diff would blow every budget, and a
+  // regenerated file is not the deletion removalCheck exists to catch.
   budgetCheck(declared, paths, iteration);
   removalCheck(source, paths, iteration);
   resolvabilityCheck(source, iteration);
@@ -71,7 +75,7 @@ const verify = (source: string, iteration: string, declared: Map<string, string>
   regressionWall(source, iteration, declared);
   biteCheck(declared, iteration, changed);
 
-  return { paths, changed, passed };
+  return { paths, incidental, changed, passed };
 };
 
 const main = (): void => {
@@ -125,7 +129,7 @@ const main = (): void => {
     return;
   }
 
-  const { paths, changed, passed } = verify(source, iteration, declared);
+  const { paths, incidental, changed, passed } = verify(source, iteration, declared);
 
   if (subcommand === 'verify') {
     process.stdout.write(
@@ -135,7 +139,7 @@ const main = (): void => {
     return;
   }
 
-  commitAndTick(plan, source, iteration, declared, paths, changed);
+  commitAndTick(plan, source, iteration, declared, paths, changed, incidental);
 };
 
 main();

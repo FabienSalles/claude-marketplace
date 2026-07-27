@@ -3,12 +3,17 @@
 import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 
 import { git, halt, heldLocks } from './halt.ts';
+import { neverVersionedCheck } from './never.ts';
 import { covers, sectionBounds } from './plan.ts';
 
 // Returns the paths git reports as changed, so the commit stages what the tree really holds
 // rather than what the plan hoped for.
-export const scopeCheck = (paths: string[], iteration: string): Set<string> => {
-  const unusable = paths.filter((path) => /[`()*?[\]]/.test(path));
+export const scopeCheck = (
+  paths: string[],
+  iteration: string,
+  incidental: string[] = [],
+): Set<string> => {
+  const unusable = [...paths, ...incidental].filter((path) => /[`()*?[\]]/.test(path));
 
   if (unusable.length > 0) {
     halt(
@@ -47,14 +52,21 @@ export const scopeCheck = (paths: string[], iteration: string): Set<string> => {
     }
   }
 
+  neverVersionedCheck([...changed, ...paths, ...incidental], `Iteration ${iteration}`);
+
   // The porcelain code is not evidence: the git-add-empty hook runs `git add -N` on every
   // created file, so a parasite shows up as " A" and never as "??".
-  const undeclared = [...changed].filter((path) => !paths.some((entry) => covers(entry, path)));
+  //
+  // Incidental paths widen what is tolerated, never what is expected: the slice is still
+  // judged on `paths`, and a generated lockfile no longer refuses an implementation that is
+  // otherwise exactly what the plan asked for.
+  const allowed = [...paths, ...incidental];
+  const undeclared = [...changed].filter((path) => !allowed.some((entry) => covers(entry, path)));
 
   if (undeclared.length > 0) {
     halt(
       `Scope leak on iteration ${iteration}.`,
-      `Changed but not declared: ${undeclared.join(' ')}\n\nDeclared: ${paths.join(' ')}\n\ngit status --short -uall:\n${git('status', '--short', '-uall').stdout}`,
+      `Changed but not declared: ${undeclared.join(' ')}\n\nDeclared: ${paths.join(' ')}\n\nIncidental (plan header): ${incidental.length > 0 ? incidental.join(' ') : '(none)'}\n\ngit status --short -uall:\n${git('status', '--short', '-uall').stdout}\n\nGenerated tooling a project cannot help producing — a lockfile, a tsconfig — belongs on the plan's "Incidental:" header line, declared once for the whole plan. Anything else here is either out of this slice's scope or should not be versioned at all.`,
     );
   }
 
@@ -102,6 +114,7 @@ export const commitAndTick = (
   declared: Map<string, string>,
   paths: string[],
   changed: Set<string>,
+  incidental: string[] = [],
 ): void => {
   const lines = source.split('\n');
   const [start, end] = sectionBounds(lines, iteration);
@@ -116,7 +129,10 @@ export const commitAndTick = (
 
   takeLock(`${plan}.tick.lock`, iteration);
 
-  const staged = paths.filter((path) => existsSync(path) || changed.has(path));
+  // Incidental paths are staged too, and only when the tree actually moved them: a tsconfig
+  // tolerated by the scope check but left out of the commit would turn the next iteration red
+  // on a file missing from the repository — a deferred failure in place of an honest halt.
+  const staged = [...paths, ...incidental].filter((path) => existsSync(path) || changed.has(path));
   const add = git('add', '--', ...staged);
 
   if (add.status !== 0) {
