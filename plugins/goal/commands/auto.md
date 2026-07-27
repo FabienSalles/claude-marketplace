@@ -114,6 +114,30 @@ one that never starts. Run the commands and show what failed.
    Expect the usage lines on stderr and `exit=2` — misuse, which is the gate answering. Any
    other output is node refusing to execute the file: STOP and report it verbatim. Types are
    **not** checked at run time; that is a CI concern and never a gate.
+10. **Nothing in the run may stop to ask the developer.** This is the check that makes a
+    backgrounded run possible, and skipping it is what makes one look dead. The run executes
+    `git commit`, `git push`, `gh pr create`, the gate, and every acceptance command the plan
+    declares — in Manual mode, which is the default, each of those is a permission prompt.
+    Nobody is watching, so nothing answers: the session parks in `Needs input`, no iteration
+    advances, and from the outside that is indistinguishable from agents that died.
+
+    Read what the settings ask for, then confirm what the session actually runs, because
+    `Shift+Tab` overrides the file and only the status bar badge knows:
+
+    ```bash
+    python3 -c "import json,os;[print(p, json.load(open(p)).get('permissions',{}).get('defaultMode')) for p in [os.path.expanduser('~/.claude/settings.json'),'.claude/settings.json','.claude/settings.local.json'] if os.path.exists(p)]"
+    ```
+
+    Accept `auto` — the classifier approves, and pushing the working branch plus opening the
+    pull request for the work asked for run unprompted — or `bypassPermissions`. Accept Manual
+    or `acceptEdits` only when the developer states that allow rules already cover git, `gh`,
+    node and the plan's gate commands; that is their call to make, not yours to infer from a
+    settings file. Anything else → **STOP** and say what to relaunch with:
+    `claude --permission-mode auto`, or `Shift+Tab` before launching.
+
+    Say one more thing under `auto`, and only once: the classifier pauses auto mode after three
+    consecutive blocks and resumes prompting. A run that stalls mid-way in the background with
+    no halt report is that, not a crash — reattach and answer it.
 
 Report each check with its real output, then state how many iterations remain and what will
 happen at the end.
@@ -135,6 +159,28 @@ Workflow({
 
 Then wait. Do not implement, do not run the gate yourself, do not tick anything, and do not
 "help" a slow iteration. Announce that the run has started and how it will end.
+
+### Backgrounding the run
+
+Say this once the workflow is launched, because the whole point of `/goal:auto` is that the
+developer leaves. **Backgrounding does not stop anything**: `←` on an empty prompt, or `/bg`,
+hands the conversation to the supervisor process, and the workflow, its subagents and their
+shell commands carry over and keep running. The terminal is free, and the machine has to stay
+awake — this is local, not cloud.
+
+Coming back: `claude agents` lists the session, `←` from a row attaches to it, and `/workflows`
+shows the live progress tree. Read a row before concluding anything from it:
+
+| Row says | What it means |
+|---|---|
+| running | the loop is advancing, nothing to do |
+| `Needs input` | a permission prompt is waiting, which preflight 10 exists to prevent. Attach and answer it; the run resumes where it parked |
+| finished | Phase 3 below, the report is in the transcript |
+
+`Ctrl+X Ctrl+K` stops every background subagent in the session, and that is the only thing
+that kills a run from the outside — never suggest it as a way to "check" on one. A run stopped
+that way leaves the plan's checkboxes exactly where they were, so relaunching resumes at the
+first unchecked box.
 
 ## Phase 3 — Read what came back
 
