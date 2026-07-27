@@ -158,6 +158,23 @@ one that never starts. Run the commands and show what failed.
     an iteration that was never going to land. It exists because a run halted at iteration 1 on
     three pre-existing static-analysis errors, in files no iteration declared, after ten minutes
     of implementation — every one of them visible from a single command nobody had run.
+12. **The branch is up to date with what it forked from.** Run `git fetch --prune` in its own
+    call, then prove the base is an ancestor of `HEAD`:
+
+    ```bash
+    git merge-base --is-ancestor <base> HEAD
+    git log --oneline HEAD..<base>
+    ```
+
+    `<base>` is the plan's `PR base:` line when it has one, the repository's default branch
+    otherwise. Behind it → **STOP** and say which commits are missing. Never rebase or merge
+    yourself: history is the developer's, and an unattended run is the worst moment to move it.
+
+    A stale branch poisons both of the checks before it. Check 11 sweeps a base that is not the
+    one the work will merge into, so it certifies green against the past; and the run implements
+    against files the base has since changed, so its diff conflicts at merge and its gates judge
+    code nobody will ship. Both failures surface long after the tokens are spent. The fix is one
+    fetch and one ancestry test, and it belongs here rather than in the developer's habits.
 
 Report each check with its real output, then state how many iterations remain and what will
 happen at the end.
