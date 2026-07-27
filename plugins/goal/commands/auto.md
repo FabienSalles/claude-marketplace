@@ -162,6 +162,10 @@ several PRs come from one plan and only one of them could close the issue, so cl
 the developer's call once every PR is merged. With no issue, the PR body stands alone and
 no plan is copied anywhere.
 
+The PR targets the repository's default branch, unless the plan header carries a
+`PR base: <branch>` line — a plan that stacks on an integration branch must, or its PR opens
+against the wrong base and shows every commit the two branches do not share.
+
 Under `commit+pr` the PR is not created at the end: it is opened as a **draft at the first
 commit of the run** and its body is rewritten by every iteration after it, so a run that
 halts at iteration 3 of 15 still leaves a draft a human can read instead of a local branch
