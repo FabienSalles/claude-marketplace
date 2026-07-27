@@ -556,16 +556,31 @@ follows exits 1 too: an instruction to "lock the contract" as a commit silently
 achieves nothing. The plan does not need to be tracked anyway. It is durable on disk
 and every session reads it from there.
 
-**Publish the plan to the GitHub issue, when one exists.** The issue is the right home
-for it: one plan can produce several PRs (parallel tracks, and always a separate cleanup
-plan), so a plan pasted into a PR body would repeat the whole contract on every PR while
-each realises only a slice of it. In the issue it is stated once, and every PR points back
-to it.
+**Refresh the issue's intent projection, when an issue exists — and never publish the plan
+there.** The **intent projection** is the part of the spec that does not move: `## Business
+intent`, `## Scope IN`, `## Scope OUT`, and the gaps. That is what an issue is for.
 
-- The issue exists and `/goal:draft-issue` created it → update its body with the locked plan.
-- The issue exists but you do not own it → post the plan as a comment.
+The iterations, the Definition of Done and the `gate` blocks stay **out** of it. They are the
+part that lives: every slice adds an "As built" note, decisions get refined, iterations are
+appended when a real run finds something. An issue holding a copy of that is stale by the
+second commit and actively misleads a reader — this happened on this plugin's own issue, which
+advertised a script the PR had deleted. Duplication is the fault; refreshing a copy more often
+does not fix it, it only pays for it more often.
+
+Where each thing lives, and why: the **plan** is local and gitignored, so it can move freely.
+The **PR body** is rewritten at every slice, so it is the live view of what actually landed.
+The **issue** is the log — the why, the boundaries, and the pointers.
+
+- The issue exists and you can edit it → rewrite its body with the intent projection, and add
+  one line saying the executable plan lives locally and that the PR body is what shows the work.
+- The issue exists but you do not own it → post the projection as a comment instead.
 - **No issue** → publish nothing. The plan stays on disk only, and PR bodies stand alone.
   Do not create an issue for this: `gh` stays untouched unless the developer asked for one.
+
+**Refresh it whenever the intent changes, and only then.** The grill routinely sharpens the
+problem statement or moves a line of scope; when it does, the projection is republished before
+you hand off. An autonomous run never touches those sections — the plan hash forbids it — so it
+has nothing to resynchronise, which is why this is a Session 1 responsibility and not a loop's.
 
 Tell the developer where the plan now lives, and read the branch name back.
 

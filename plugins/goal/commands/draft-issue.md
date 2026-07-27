@@ -175,7 +175,16 @@ If **no** → skip to Phase 5 with no GitHub involvement.
 If **yes**:
 1. Now verify `gh auth status` and that `gh repo view` works. If either fails,
    STOP, report, and fall back to the local-only handoff.
-2. Render the issue body from the spec (same sections), write it to a temp file:
+2. Render the **intent projection** — and only it — into a temp file. The projection is
+   `## Business intent`, `## Scope IN`, `## Scope OUT` and the gaps: the sections that will
+   still be true in three weeks. Add one closing line saying the executable plan lives locally
+   (gitignored) and that the pull request body is where the delivered work is read.
+
+   Everything `/goal:run-issue` will later produce — the Definition of Done, the iterations,
+   the `gate` blocks — stays **out**. Those change at every slice, and an issue holding a copy
+   of them is wrong by the second commit while looking authoritative. The issue is the log; the
+   PR is the deliverable.
+
    ```bash
    TMP=$(mktemp -t draft-issue-XXXXXX.md)
    ```
