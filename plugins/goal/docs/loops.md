@@ -156,7 +156,7 @@ runs.
 
 ## Ranked, for this plugin
 
-1. **`ScheduleWakeup` for quota** — already documented in `/goal:auto --workflow`, costs nothing.
+1. **`ScheduleWakeup` for quota** — the command documents the relaunch, and it costs nothing.
 2. **`Monitor` on PR checks** — closes the largest open gap: nobody currently learns that CI went red.
 3. **`Monitor` on the control panel** — makes remote steering work without touching the write-only invariant.
 4. **Bounded escalation on infrastructure failures only** — kills the class of halts that are not about the code.

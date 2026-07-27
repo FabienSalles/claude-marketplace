@@ -12,7 +12,7 @@ executed. A rule written in bash is a fact. Push each one down until it stops mo
 | # | Layer | Medium | Holds |
 |---|---|---|---|
 | 0 | The plan | markdown, gitignored, hashed | what to build, and the exact commands that prove it |
-| 1 | Verification | bash (`goal-gate.sh`) | did this iteration pass — the only authority |
+| 1 | Verification | TypeScript run natively by node (`scripts/goal-gate.ts`) | did this iteration pass — the only authority |
 | 2 | Orchestration | JavaScript (`workflows/goal-auto.js`) | order, parallelism, halt, budget, model tiering |
 | 3 | Advisory quality | agents (lenses, review skills) | what the gate structurally cannot see |
 | 4 | Session lifecycle | the command + `/loop` | quota waits, context budget, resume |
@@ -21,7 +21,7 @@ executed. A rule written in bash is a fact. Push each one down until it stops mo
 Layers 0–2 are where correctness lives. Layer 3 can only ever *inform*. Layers 4–5 cannot
 live inside the workflow at all, for reasons given below.
 
-## Layer 1 is the trust anchor, and stays bash
+## Layer 1 is the trust anchor, and it is a script
 
 The external evidence is unambiguous: LLM judges are poor at deciding whether code is
 correct. Measured agreement with human ground truth sits at Kappa ≈ 0.21 (Java) and ≈ 0.10
@@ -31,7 +31,7 @@ correct.[^judge] Nothing built on that signal may decide whether work advances.
 An exit code has none of those properties. It is the anchor, and every other layer is
 arranged so that no path reaches a commit without passing through it.
 
-Concretely: `goal-gate.sh green` verifies, commits and ticks **inside one script**.
+Concretely: `goal-gate.ts commit` verifies, commits and ticks **inside one process**, in that order.
 The orchestrator does not commit. It calls a script that commits only after it has verified,
 so an orchestrator that misreads a result cannot produce a bad commit.
 
@@ -54,7 +54,7 @@ The workflow also buys three things prose cannot express at all:
 **The workflow cannot touch the filesystem.** That is the load-bearing constraint of the
 whole design: JS in a workflow has no disk and no shell, only `agent()`. Everything that
 must read the repo goes through a script invoked by an agent — which is why
-`goal-gate.sh` exists. It is not plumbing between two files; it is the boundary
+`goal-gate.ts` exists. It is not plumbing between two files; it is the boundary
 between a language that cannot read the plan and a plan that must not be interpreted.
 
 ## Layer 3 informs and never blocks

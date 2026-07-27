@@ -28,8 +28,8 @@ in the spike) · **dropped on purpose**.
 ## Phase 1 — Preflight, eight refusals
 
 All eight stay in the command, **on purpose**: each is a refusal that may need a human, and a
-workflow script has no way to ask a question. `/goal:auto --workflow` runs the preflight
-first and launches only if it passes.
+workflow script has no way to ask a question. `/goal:auto` runs the preflight first and
+launches only if it passes.
 
 | Check | Status | Note |
 |---|---|---|

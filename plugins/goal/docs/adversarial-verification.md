@@ -4,7 +4,7 @@ Not implemented. Parked here so the reasoning is not re-derived from scratch.
 
 ## The hole this addresses
 
-`goal-gate.sh` proves that a command exited 0. It cannot prove that the command
+`goal-gate.ts` proves that a command exited 0. It cannot prove that the command
 *means* anything. A test that asserts nothing exits 0. A test whose mock makes the truth
 unreachable exits 0. A business rule "covered" by a test that exercises something else
 exits 0.

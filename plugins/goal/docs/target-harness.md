@@ -40,13 +40,21 @@ Eleven mechanical, two advisory. That ratio is the design.
 
 ## The four new mechanisms
 
-Everything above that is bold does not exist yet. They are the reason this document exists.
+Everything above that is bold did not exist when this was written. All four shipped — three of
+them as described, and **A took a different form**, recorded below where it was designed.
 
-### A. The test author is not the implementer
+### A. A test must fail without the implementation
 
-The single largest hole in the current design. When one agent writes both the test and the
+The single largest hole in the original design. When one agent writes both the test and the
 code, it writes the test its code passes. That is specification gaming, structurally, and no
 amount of judging catches it reliably.
+
+**What shipped is not the split below.** The design here was a separate author agent and a RED
+gate; what landed is the **bite check** (iteration 3): at verification time the gate sets the
+implementation aside, re-runs the acceptance command, and requires it to **fail**. Same property,
+one agent instead of two, and it is checked on the finished slice rather than trusted from an
+ordering. The design that follows is kept because it explains what the property is and why it
+cannot be a judgement — read it as the reasoning, not as the implementation.
 
 Split the iteration into two agents with **disjoint write permissions**, enforced by the same
 scope check that already exists:
@@ -115,11 +123,15 @@ plugin `agents/` definitions express directly:
 
 | Role | Tools | Why |
 |---|---|---|
-| author | Read, Write, Edit | writes tests, cannot run the suite to tune them |
-| implementer | Read, Write, Edit, Bash | writes code, cannot open test files (scope check) |
+| implementer | Read, Write, Edit, Grep, Glob, Bash | writes the slice, cannot commit, push or tick |
 | runner | Bash | runs one command, reports the exit code, cannot edit anything |
-| lens | Read, Grep, Bash | reads and judges, cannot change what it judges |
+| lens | Read, Grep, Glob, Bash | reads and judges, cannot change what it judges |
 | reporter | Bash | posts pre-written text, never reads GitHub |
+| auditor | Read, Write, Grep, Glob, Bash | measures a finished run, never corrects it |
+| reader | Bash | reads one piece of GitHub state, holds nothing that writes |
+
+Six shipped, and **no author**: the bite check replaced it. The reader is the one whose
+restriction could not be expressed in the `tools:` field — see `steering-and-injection.md`.
 
 Restriction, not hierarchy. Nobody supervises anybody: the script sequences, the gate decides.
 
@@ -142,24 +154,24 @@ runs next. Here, what runs next is the product.
 
 Per iteration, before: **one** subagent.
 
-Per iteration, after: author + implementer + 2 runners (RED and GREEN gates, cheap model) +
-up to 4 lenses. Six to eight agents where there was one.
+Per iteration, as shipped: implementer + one runner for the gate + one reader for the steering
+channel, plus up to 5 lenses when they are switched on. Measured on a real four-iteration run:
+23 agents and 82 000 tokens for the whole run, lenses off.
 
 That is not free and it should not be defended as if it were. Two consequences to accept
 deliberately:
 
 - **Lenses default to off.** They are advisory, they are measurably unreliable, and they are
   the most expensive stage. Turn them on for a plan that matters.
-- **The mechanical additions are cheap**: B, C and D are shell, run by the existing runner.
-  The expensive part is the agents, and only A adds one.
+- **The mechanical additions are cheap**: B, C and D are one script, run by the existing runner.
+  The expensive part is the agents, and A ended up adding none.
 
 ## What this changes in what already exists
 
-- `goal-gate.sh` gains: RED mode, prior-gate replay, diff budget, deletion refusal,
-  N-run determinism. It stays the single authority.
-- The plan's `gate` block gains `test_files`, `impl_files`, `max_diff`.
-  the scope checked at each gate is whichever of the two belongs to that stage.
-- The workflow's per-iteration body becomes: state → author → RED gate → implementer →
-  GREEN gate → lenses.
-- `docs/adversarial-verification.md` loses its most important lens to mechanism A. That is
-  the promotion principle working as intended: the sensitivity lens stops being a judgement.
+- The gate became `scripts/goal-gate.ts`, TypeScript run natively by node, and gained the bite
+  check, prior-gate replay, the diff budget, deletion refusal and N-run determinism. It is the
+  single authority.
+- The plan's `gate` block gained `test_files`, `impl_files` and `max_diff`.
+- The workflow's per-iteration body is: steering read → implementer → gate → publish.
+- `docs/adversarial-verification.md` lost its most important lens to the bite check. That is the
+  promotion principle working as intended: the sensitivity lens stopped being a judgement.
