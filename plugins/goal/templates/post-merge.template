@@ -1,0 +1,49 @@
+# Post-merge checklist — canonical instruction
+
+What a run leaves behind once its PR is merged. Both `/goal:auto` (final report) and
+`/goal:next` (when no unchecked iteration remains) emit THIS text, filled from the plan.
+Single source of truth — edit here, both follow.
+
+The run itself never performs any of it. `/goal:auto` may not delete a branch, a tag or a
+label, so every line below is the developer's to run. The point of printing it is that the
+merge happens hours or days after the run ends, in a session that has no memory of it:
+whatever is not written down at that moment is what gets forgotten.
+
+## How to fill it
+
+- `<default>` = the repository's default branch (`main` unless the plan says otherwise).
+- `<branch>` = the run's branch, one line per branch when the plan had parallel tracks.
+- `<work-id>` = the plan's `Work-id:` header.
+- `<backup refs>` = any tag or branch created as a safety net during the run; drop the
+  line when there is none.
+- `<issue>` = the backing issue number; drop lines 5 and 6 when no issue backs the work.
+- `<follow-up>` = `.claude/plans/<work-id>-tracks-spec.md` or `-cleanup-spec.md` when the
+  plan named one; drop the line when it did not.
+
+## The block
+
+```text
+The PR is merged. What that leaves behind, none of which the run may do for you:
+
+1. Update <default> locally — git fetch --prune, then fast-forward.
+2. Delete <branch>, local AND remote. Verify by CONTENT, not ancestry: a squash-merge
+   leaves the branch looking unmerged to `git branch --merged` while its work is on
+   <default>. Check a file the PR added is present there.
+3. Delete <backup refs> — the rebase net, useless once the merge holds.
+4. Reconcile .claude/plans/<work-id>-spec.md: its checkboxes still carry the placeholder
+   label the plan was written with. Say what landed, with the PR number and merge commit.
+5. Clear the run controls on issue #<issue> — `goal:no-ship`, `goal:stop`,
+   `goal:skip-lenses`. They persist across runs, and a stale one silently blocks the next.
+6. Close issue #<issue> if every PR from this plan is merged. One plan can produce
+   several, which is why the PR bodies say `Refs`, never `Closes`.
+7. <follow-up> — its Trigger now holds. Run the workflow on it when you want it.
+```
+
+## Rules
+
+- **Print it, never execute it.** Deleting branches, tags and labels is outside what any
+  goal command is allowed to do, and the developer may have reasons to keep any of them.
+- **Drop the lines that do not apply** rather than emit them with an empty placeholder. A
+  checklist carrying `<follow-up>` unfilled teaches the reader to skim it.
+- **Never assert a branch is merged from `git branch --merged` alone.** Under squash-merge
+  it is wrong, and a wrong deletion here loses unpushed work.

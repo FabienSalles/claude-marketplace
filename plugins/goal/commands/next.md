@@ -170,6 +170,14 @@ then the filled template as **one copy-paste block**:
 <filled templates/goal-handoff.template>
 ```
 
+**When no unchecked iteration remains**, there is no handoff to emit and the plan is done.
+Emit the checklist from `templates/post-merge.template` instead, filled per that file's
+**"How to fill it"** section, and say plainly which of its lines are already true. Under
+`commit+pr` the PR still has to be merged by the developer, so the checklist describes what
+that merge will leave behind; under `manual` the same leftovers exist minus the remote
+branch. This is the only moment the workflow reaches the end of a plan, so it is the only
+place the leftovers can be named before the context is gone.
+
 Then close with two or three lines: the finished iteration is **verified** (name it),
 the plan is **reconciled** (list the edits you made), the tree is **safe**
 (clean / staged — say which), and the next iteration is **cold-start ready** — clear
