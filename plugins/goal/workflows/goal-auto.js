@@ -147,6 +147,12 @@ const POLICY_FROM_PLAN = String.raw`sed -n 's/^Policy:[[:space:]]*//p'`;
 // reports locally and says so: the GitHub mirror is opt-in, by design, from /goal:draft-issue on.
 const ISSUE_FROM_PLAN = String.raw`sed -n 's/^Source: gh issue #\([0-9][0-9]*\).*/\1/p'`;
 
+// `gh pr create` targets the repository's default branch unless told otherwise. A plan that
+// stacks on an integration branch says which one in its header, or its pull request opens
+// against the wrong base and shows every commit the two branches do not share — unreviewable,
+// and discovered only once the run is over.
+const PR_BASE_FROM_PLAN = String.raw`sed -n 's/^PR base:[[:space:]]*//p'`;
+
 // Scan, then push: a halted branch is pushed on purpose — unattended, the alternative is that
 // the only machine that knows what happened is the one that is now asleep — and nothing is
 // pushed that a scanner has not passed.
@@ -213,7 +219,7 @@ const prBody = (facts, issue) =>
 // A body carries backticks and newlines, so it travels as a file. Push failure and pull-request
 // failure are reported separately: "pushed, no PR" is a real state and reading it as one
 // ambiguous failure is how a run ends up with an invisible branch.
-const publish = async (verb, facts, body) => {
+const publish = async (verb, facts, body, base) => {
   const create = verb === 'create';
   const command = [
     'body="$(git rev-parse --git-dir)/goal-pr-body.md"',
@@ -221,7 +227,7 @@ const publish = async (verb, facts, body) => {
     body,
     'GOALPRBODY',
     create
-      ? `gh pr create --draft --title '${facts.title}' --body-file "$body"`
+      ? `gh pr create --draft${base === undefined ? '' : ` --base '${base}'`} --title '${facts.title}' --body-file "$body"`
       : 'gh pr edit --body-file "$body"',
     'rc=$?',
     'rm -f "$body"',
@@ -657,6 +663,13 @@ if (!publishes) {
   log(`Policy is ${policy || 'unreadable'}: this run commits, and publishes nothing.`);
 }
 
+const declaredBase = (await runner(`${PR_BASE_FROM_PLAN} ${PLAN} | head -1`, 'pr-base', 'Survey')).output.trim();
+const prBase = /^[A-Za-z0-9._\/-]+$/.test(declaredBase) ? declaredBase : undefined;
+
+if (publishes && prBase !== undefined) {
+  log(`The plan stacks on \`${prBase}\`: the pull request will open against it, not the default branch.`);
+}
+
 const found = await runner(`${ISSUE_FROM_PLAN} ${PLAN} | head -1`, 'issue', 'Survey');
 const issue = /^[0-9]+$/.test(found.output.trim()) ? found.output.trim() : undefined;
 
@@ -728,7 +741,7 @@ const mirror = async (issue) => {
   shipping.pushed = true;
 
   const facts = await planFacts(landed);
-  const published = await publish(shipping.pr ? 'edit' : 'create', facts, prBody(facts, issue));
+  const published = await publish(shipping.pr ? 'edit' : 'create', facts, prBody(facts, issue), prBase);
 
   shipping.prError = published.exitCode === 0 ? undefined : published.output.slice(-1500);
   shipping.pr = shipping.pr || published.exitCode === 0;

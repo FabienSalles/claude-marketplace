@@ -385,6 +385,7 @@ Work-id: <work-id>
 Policy: <manual | commit | commit+pr — filled in Phase 2c>
 Delivery mode: <no-bc-break | allow-bc-break — filled in Phase 2c>
 Cleanup: <later | now | none — none when allow-bc-break or no flag was introduced>
+PR base: <branch the pull request targets — omit entirely when it is the repository's default>
 
 ## Business intent
 
