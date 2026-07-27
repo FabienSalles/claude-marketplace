@@ -60,8 +60,19 @@ export const dodCheck = (source: string): void => {
 };
 
 // betterleaks first, gitleaks second, and a refusal if neither is installed: a push nobody
-// scanned is exactly how a halted branch publishes a .env. Both take `dir`, betterleaks being a
-// drop-in replacement for the gitleaks CLI.
+// scanned is exactly how a halted branch publishes a .env. betterleaks is a drop-in replacement
+// for the gitleaks CLI, so both take the same verbs.
+//
+// `git`, not `dir`: the scan exists to judge what a push publishes, and a push carries commits,
+// not the working directory. `dir` reads everything on disk including gitignored files, so a
+// finding there refuses a push over something the push could never have carried. That is not
+// hypothetical — a run's own execution log, gitignored and rewritten on every iteration, held
+// the Supabase local demo anon key and blocked every push permanently, over a credential that is
+// a published default identical on every machine.
+//
+// The trade-off is deliberate: `git` reads the branch's history, so a secret committed three
+// slices ago still refuses. That is the correct answer, because pushing the branch publishes
+// that commit too, and a scan of the current tree alone would wave it through.
 export const secretScan = (): void => {
   const scanner = SCANNERS.find(
     (name) => spawnSync(`command -v ${name}`, { shell: true }).status === 0,
@@ -74,13 +85,13 @@ export const secretScan = (): void => {
     );
   }
 
-  const command = `${scanner} dir . --redact`;
+  const command = `${scanner} git . --redact`;
   const run = spawnSync(command, { shell: true, encoding: 'utf8' });
 
   if (run.status !== 0) {
     halt(
-      `${scanner} refuses this tree, so nothing was pushed.`,
-      `Command: ${command}\nExit code: ${run.status}\n\nOutput:\n${`${run.stdout}${run.stderr}`.slice(-4000)}\n\nEither the tree holds a secret — rotate it, it is already in the local history — or the scanner does not support this invocation, which the command above tells you.`,
+      `${scanner} refuses this branch's commits, so nothing was pushed.`,
+      `Command: ${command}\nExit code: ${run.status}\n\nOutput:\n${`${run.stdout}${run.stderr}`.slice(-4000)}\n\nThe finding is in committed content, so pushing would publish it: rotate whatever it holds, it is already in the local history, and a later deletion does not remove it. An untracked or gitignored file cannot produce this — the scan reads commits, not the working directory.`,
     );
   }
 
