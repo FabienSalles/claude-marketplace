@@ -44,6 +44,6 @@ breakfast: a run that halted at iteration 3 does not need three pages.
 
 ## Where the file goes
 
-`.claude/goal-runs/<sha>.md`, the path is given to you. That directory is gitignored along with
-the rest of `.claude/`, so the report is local evidence and never a diff — which is why it can
-be blunt.
+`.claude/goal-runs/<sha>.md`, the path is given to you. The report is local evidence and never
+a diff — which is why it can be blunt. Never commit it, and never stage it, whatever the
+repository ignores.

@@ -59,12 +59,26 @@ one that never starts. Run the commands and show what failed.
 2. **Branch.** `git branch --show-current` must be `feature/<work-id>` or `feature/<work-id>-…`.
 3. **Clean tree.** `git status --short` must be empty. Uncommitted work would end up in the
    first iteration's commit without anyone having reviewed it.
-4. **The plan is out of git's sight.** `git check-ignore -q .claude/` must succeed. The run
-   ticks `[x]` in the spec on every iteration, and the spec lives under `.claude/`. Tracked,
-   it turns into an undeclared modification the gate reads as a scope leak, so the run would
-   halt on iteration 2 in a repository that is otherwise perfectly fine. STOP and tell the
-   developer to add `.claude/` to `.gitignore` — never add it yourself, and never work around
-   it by declaring the plan in `impl_files`.
+4. **What the run writes is out of git's sight.** Check the plan's own directory, not the
+   whole `.claude/`: many repositories track `.claude/` on purpose for the commands, skills
+   and settings shared with the team, and that is none of this run's business.
+
+   ```bash
+   git check-ignore -q "$(dirname <plan>)"
+   ```
+
+   That directory is what the run writes into: the spec, ticked `[x]` on every iteration,
+   the execution log the Stop hook rewrites next to it, and the run lock. Visible to git,
+   each becomes an undeclared modification the gate reads as a scope leak, so the run would
+   halt on iteration 2 in a repository that is otherwise perfectly fine. The command also
+   fails when a spec was committed before the ignore rule existed — `check-ignore` answers no
+   for a tracked path, and a tracked plan leaks exactly the same way. STOP and tell the
+   developer to ignore `.claude/plans/`, untracking any spec already committed. Never add the
+   rule yourself, and never work around it by declaring the plan in `impl_files`.
+
+   `.claude/goal-runs/`, where the audit report lands, is written after the last commit and
+   no gate call follows it. Not ignored, it leaves one untracked file behind and nothing
+   halts: mention it in the launch report, do not refuse over it.
 5. **Iterations.** The spec must hold at least one `- [ ]`. None left → report the plan is
    already complete and STOP.
 6. **No cleanup iteration in a feature plan.** An iteration carrying a **Trigger** line

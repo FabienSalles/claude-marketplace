@@ -551,7 +551,7 @@ Never fold it back into the main plan. Its header depends on the `Cleanup:` answ
   from the feature branch, and its PR targets that branch and stays a **draft** so merging
   the feature never drags the cleanup in with it.
 
-**Never commit the plan, whatever the policy.** `.claude/` is gitignored in most
+**Never commit the plan, whatever the policy.** `.claude/plans/` is gitignored in most
 projects, so `git add .claude/plans/<work-id>-spec.md` exits 1 and the commit that
 follows exits 1 too: an instruction to "lock the contract" as a commit silently
 achieves nothing. The plan does not need to be tracked anyway. It is durable on disk
