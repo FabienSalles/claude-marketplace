@@ -11,6 +11,9 @@ export type Reply = (call: AgentCall) => unknown;
 
 export type RunOutcome = {
   result: unknown;
+  // Surfaced rather than thrown: what the run did on its way out is exactly what a test about
+  // cleanup has to read, and a rejection would take the recording with it.
+  error?: unknown;
   agents: AgentCall[];
   commands: string[];
   logs: string[];
@@ -73,16 +76,23 @@ export const runWorkflow = async (args: unknown, reply: Reply, budget: Budget = 
   const parallel = (thunks: Array<() => unknown>) =>
     Promise.all(thunks.map((thunk) => Promise.resolve().then(thunk).catch(() => null)));
 
-  const result = await compile()(
-    agent,
-    parallel,
-    notModelled('pipeline'),
-    (message: string) => logs.push(message),
-    (title: string) => phases.push(title),
-    args,
-    budget,
-    notModelled('workflow'),
-  );
+  let result: unknown;
+  let error: unknown;
 
-  return { result, agents, commands, logs, phases };
+  try {
+    result = await compile()(
+      agent,
+      parallel,
+      notModelled('pipeline'),
+      (message: string) => logs.push(message),
+      (title: string) => phases.push(title),
+      args,
+      budget,
+      notModelled('workflow'),
+    );
+  } catch (thrown) {
+    error = thrown;
+  }
+
+  return { result, error, agents, commands, logs, phases };
 };

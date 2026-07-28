@@ -199,11 +199,15 @@ than a victory lap.
 
 ## Known gaps
 
-1. **An uncaught throw leaves the run lock held.** The loop releases it on every exit path it
-   controls, but a crashed process is not one of them — observed once, when a run died mid-survey
-   and left `<plan>.run.lock` behind. Recovery is documented (preflight check 8,
-   `goal-gate.ts unlock`) and it worked, but it is prose, not machinery.
-2. **`node --check` is not a smoke test.** Nothing exercises the launch path itself, which is
-   how three consecutive dead-on-arrival defects reached a green branch.
+1. **A killed process still leaves the run lock held.** A throw no longer does: the run body sits
+   in a `try`/`finally` and `release()` is idempotent, so the lock comes back on every exit the
+   process survives. `kill -9` is not one of them. Recovery stays prose — preflight check 8, then
+   `goal-gate.ts unlock` — and that remains the right trade: a lock that frees itself on a signal
+   is a lock that frees itself while another run holds it.
+2. **No test drives the script through the real runtime.** `goal-auto.test.ts` executes it under
+   a fake one, which is the same wrap the runtime applies — the script's top-level `return`
+   proves the runtime wraps its body in a function — and `goal-launch.test.ts` executes the
+   launcher. Both are simulations. Nothing has yet run a whole plan through the real `Workflow`
+   engine, and that gap is where the three consecutive dead-on-arrival defects came from.
 3. **The reader holds plain `Bash`**, not a scoped `gh api` grant — the agent `tools:` field
    cannot express one. See `steering-and-injection.md`, which states the residual risk.

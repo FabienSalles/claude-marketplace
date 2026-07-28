@@ -82,10 +82,9 @@ test('the gate the caller names is the gate every command runs', async () => {
 });
 
 test('a run with no plan refuses to start at all', async () => {
-  await assert.rejects(
-    () => runWorkflow({ gate: GATE }, answering({})),
-    /goal-auto needs args\.plan/,
-  );
+  const { error } = await runWorkflow({ gate: GATE }, answering({}));
+
+  assert.match(String(error), /goal-auto needs args\.plan/);
 });
 
 // R8 — the auditor's memory belongs to the repository, not to the worktree the run stands in.
@@ -260,5 +259,44 @@ test('a run whose publication was blocked does not mark its stale pull request r
   assert.ok(
     !commands.some((command) => command.includes('gh pr ready')),
     `a stale pull request was marked ready:\n${commands.join('\n')}`,
+  );
+});
+
+// R10 — the run lock is the only inter-run exclusion left since the tracks were removed, and
+// release() used to be reached only on the returns the loop controls. A throw held it forever,
+// blocking every later run including the relaunch of this one.
+test('an agent that throws mid-run still gives the lock back', async () => {
+  const { commands, error } = await runWorkflow({ plan: PLAN, gate: GATE }, (call) =>
+    commandOf(call).includes(`${GATE} commit`) ? (() => { throw new Error('the runner died'); })() : answering(wholeRun)(call),
+  );
+
+  assert.match(String(error), /the runner died/, 'the throw was swallowed');
+  assert.ok(
+    commands.some((command) => command === `${GATE} unlock ${PLAN}`),
+    `the lock was never released:\n${commands.join('\n')}`,
+  );
+});
+
+// A throw inside a finally REPLACES the original error, and release() runs through the very
+// agent layer whose failure is the scenario. The diagnosis must survive its own cleanup.
+test('a release that fails too does not bury the error that killed the run', async () => {
+  const { error, logs } = await runWorkflow({ plan: PLAN, gate: GATE }, (call) => {
+    const command = commandOf(call);
+
+    if (command.includes(`${GATE} commit`)) {
+      throw new Error('the runner died');
+    }
+
+    if (command.includes('unlock')) {
+      throw new Error('the unlock died too');
+    }
+
+    return answering(wholeRun)(call);
+  });
+
+  assert.match(String(error), /the runner died/, 'the cleanup replaced the diagnosis');
+  assert.ok(
+    logs.some((line) => line.includes('unlock')),
+    `nothing said the lock is still held:\n${logs.join('\n')}`,
   );
 });
