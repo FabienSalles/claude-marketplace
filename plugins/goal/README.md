@@ -69,7 +69,7 @@ It refuses rather than guesses: no plan named, an unreadable plan, or a worktree
 holding that work-id. The plan is always an argument — a bare `/goal:auto` resolves the most
 recently modified `*-spec.md`, which is ambiguous the moment a split produced several.
 
-**Learn more:** which workflow fits your task → [decision guide](../../docs/workflows-decision-guide.md) · the *unknown-unknowns* engine → [`grill-adversarial`](skills/grill-adversarial/SKILL.md) · how it's audited against competing frameworks → [`self-audit`](../self-audit/README.md).
+**Learn more:** which workflow fits your task → [decision guide](../../docs/workflows-decision-guide.md) · the *unknown-unknowns* engine → [`grill-adversarial`](skills/grill-adversarial/SKILL.md) · why a run is not parallel, with the two runs that measured it → [`docs/why-not-parallel.md`](docs/why-not-parallel.md) · how it's audited against competing frameworks → [`self-audit`](../self-audit/README.md).
 
 ## How it works
 
