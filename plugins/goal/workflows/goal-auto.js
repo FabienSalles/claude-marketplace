@@ -387,7 +387,7 @@ const PANEL = [
   'the run reads nothing else here — not a title, not a body, not another comment.',
   '',
   '- [ ] stop — end the run after the current iteration',
-  '- [ ] no-ship — push nothing and open no pull request',
+  '- [ ] no-ship — push nothing, open or update no pull request, and mark none ready',
   '- [ ] skip-lenses — drop the advisory refutation stage',
 ].join('\n');
 
@@ -730,7 +730,18 @@ for (const [index, iteration] of pending.entries()) {
 
     gateExit = gate.exitCode;
 
-    if (gate.exitCode !== 0) {
+    // A runner that returns nothing is given exitCode -1 upstream, and that is not a refusal:
+    // the gate may never have run at all. Reporting it as one tells someone asleep that their
+    // work was judged and rejected, on the only channel they have.
+    if (gate.exitCode === -1) {
+      stopped = {
+        status: 'paused',
+        iteration,
+        outcome: 'the gate could not be run',
+        from: index + 1,
+        detail: `The runner that should have replayed the gate for iteration ${iteration} returned nothing, so no verdict exists: the gate may never have run. The tree holds whatever the implementer wrote and nothing was committed. Review it, then relaunch — the plan's checkboxes resume here.\n\n${gate.output}`,
+      };
+    } else if (gate.exitCode !== 0) {
       stopped = { status: 'halted', iteration, outcome: 'the gate refused it', from: index + 1, detail: gate.output };
     }
   }
@@ -816,7 +827,14 @@ if (dod.exitCode !== 0) {
   return refused;
 }
 
-const ready = shipping.pr ? await runner('gh pr ready', 'pr:ready', 'Ship') : undefined;
+// Both flags are sticky, and consulting only the first is how a run marks ready a pull request
+// that stops at the iteration publication was blocked on — or one the developer said not to ship.
+// The repository and the branch are named for the same reason every other gh call names them:
+// on a fork, gh resolves to the parent.
+const ready =
+  shipping.pr && shipping.blocked === undefined
+    ? await runner(`repo="$(${repoOf(REMOTE)})" && gh pr ready --repo "$repo" "${BRANCH}"`, 'pr:ready', 'Ship')
+    : undefined;
 
 // Last, and after the pull request is already ready: a finding cannot stop what has already
 // shipped, which is the strongest form of "a lens never blocks" available.

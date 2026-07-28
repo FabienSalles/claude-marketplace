@@ -186,3 +186,79 @@ test('a completed run reports the tree, the branch and the commit it is talking 
   assert.equal(done.branch, WHERE.branch);
   assert.equal(done.sha, WHERE.sha);
 });
+
+// R7 — `runner()` fabricates { exitCode: -1 } when an agent returns nothing, and that -1 used to
+// fall straight through the "the gate refused it" branch. The run then told someone asleep that
+// the gate had refused, when the gate may never have run.
+test('a gate that never ran is a pause, not a refusal it never gave', async () => {
+  const { result } = await runWorkflow(
+    { plan: PLAN, gate: GATE },
+    (call) => (commandOf(call).includes(`${GATE} commit`) ? undefined : answering(wholeRun)(call)),
+  );
+
+  const paused = result as { status: string; iteration: string; detail: string };
+
+  assert.equal(paused.status, 'paused');
+  assert.equal(paused.iteration, '1');
+  assert.match(paused.detail, /no verdict exists/);
+});
+
+const HEX = `plan_hash=${'b'.repeat(64)}`;
+
+// Two iterations, publishing, and a push that fails on the second: the pull request exists from
+// the first, and `shipping.blocked` is sticky from the second.
+const publishingRun = (onPush: () => { exitCode: number; output: string }) => {
+  const table = {
+    'git-common-dir': ok(PROBE),
+    unlock: ok(),
+    check: ok(HEX),
+    commit: ok(),
+    dod: ok(),
+    'Policy:': ok('commit+pr'),
+    'Remote:': ok('origin'),
+    'PR base:': ok(''),
+    'gh issue': ok(''),
+    awk: ok('1\n2'),
+    scan: ok(),
+    'fixup|squash': ok('0'),
+    '# Spec: ': ok('# Spec: demo\nallow-bc-break\n### Iteration 1 — one'),
+    'gh pr': ok(),
+    lock: ok(),
+  };
+
+  return (call: AgentCall) => (commandOf(call).includes('git push -u') ? onPush() : answering(table)(call));
+};
+
+// R5 — every other gh call names its repository; this one is the last write of the run.
+test('the pull request is marked ready on a named repository and a named branch', async () => {
+  const { commands } = await runWorkflow({ plan: PLAN, gate: GATE }, publishingRun(() => ok()));
+
+  const readied = commands.find((command) => command.includes('gh pr ready'));
+
+  assert.ok(readied, `the run never marked the pull request ready:\n${commands.join('\n')}`);
+  assert.match(readied, /--repo/);
+  assert.match(readied, /feature\/demo/);
+});
+
+// R6 — `shipping.pr` is sticky and so is `shipping.blocked`, and the ready call used to consult
+// only the first. A run blocked at iteration 2 of 2 would still mark ready a pull request that
+// holds iteration 1 alone.
+test('a run whose publication was blocked does not mark its stale pull request ready', async () => {
+  let pushes = 0;
+
+  const { commands, result } = await runWorkflow(
+    { plan: PLAN, gate: GATE },
+    publishingRun(() => {
+      pushes += 1;
+
+      return pushes === 1 ? ok() : { exitCode: 1, output: 'rejected: non-fast-forward' };
+    }),
+  );
+
+  assert.equal((result as { status: string }).status, 'done');
+  assert.equal(pushes, 2, 'the second iteration never tried to publish');
+  assert.ok(
+    !commands.some((command) => command.includes('gh pr ready')),
+    `a stale pull request was marked ready:\n${commands.join('\n')}`,
+  );
+});
