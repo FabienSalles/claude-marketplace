@@ -52,6 +52,23 @@ claude
 > /clear                                   # then paste the next handoff in a fresh session
 ```
 
+Or hand the whole plan to an unattended run, in a session of its own:
+
+```bash
+./plugins/goal/scripts/goal-launch.sh .claude/plans/<work-id>-spec.md
+```
+
+It creates the worktree, names the branch `feature/<work-id>` after the plan, and opens a
+tmux session inside it running `/goal:auto` on the plan — passed as an absolute path, since
+`.claude/` is gitignored and therefore absent from the worktree it just made. Three gestures
+become one, and the two that matter are not conveniences: your checkout stays free while the
+run works, and the run stops living in your interactive session, where navigating out of its
+progress view interrupts it. Looking at a run should not be what kills it.
+
+It refuses rather than guesses: no plan named, an unreadable plan, or a worktree already
+holding that work-id. The plan is always an argument — a bare `/goal:auto` resolves the most
+recently modified `*-spec.md`, which is ambiguous the moment a split produced several.
+
 **Learn more:** which workflow fits your task → [decision guide](../../docs/workflows-decision-guide.md) · the *unknown-unknowns* engine → [`grill-adversarial`](skills/grill-adversarial/SKILL.md) · how it's audited against competing frameworks → [`self-audit`](../self-audit/README.md).
 
 ## How it works
