@@ -352,6 +352,81 @@ common config, migrations that must run in order.
 Do not invent a split to look parallel: a false split is two pull requests that conflict at
 merge, discovered after both runs have paid for themselves.
 
+### What a split actually writes
+
+One file per part, named `.claude/plans/<work-id>-<suffix>-spec.md`, where the suffix says
+what the part delivers — `astro`, `marketing`, `foundation`. Each is an ordinary plan and is
+run the ordinary way: `/goal:auto .claude/plans/<work-id>-<suffix>-spec.md`.
+
+**Every one carries the full header**, copied rather than inherited: `Policy:`,
+`Delivery mode:`, `Cleanup:` and `Remote:`. Nothing inherits anything, because each file is
+read alone by its own run — and a plan whose header lacks `Remote:` is refused at preflight
+rather than defaulted. "Self-sufficient" is literal here, not a figure of speech.
+
+Then one index, `.claude/plans/<work-id>-plans.md`. **Not `-spec.md`**: `/goal:auto` with no
+argument resolves the most recently modified `*-spec.md`, and the index is written last, so
+naming it `-spec.md` would make it the file a bare launch picks up and tries to run.
+
+The index carries three things and nothing else — the set, the order, and the command:
+
+````markdown
+# Plans: <title>
+
+Work-id: <work-id>
+Written by /goal:run-issue on <date>. Ordering only — each plan is authoritative about
+itself, and its own `Trigger:` line is what a run reads.
+
+## Order
+
+1. `.claude/plans/<work-id>-foundation-spec.md` — <one line>. Nothing waits on it.
+2. Then, in parallel, one run each:
+   - `.claude/plans/<work-id>-astro-spec.md` — <one line>
+   - `.claude/plans/<work-id>-marketing-spec.md` — <one line>
+
+## Launch
+
+```bash
+/goal:auto .claude/plans/<work-id>-foundation-spec.md
+# once its pull request is merged, then in separate sessions:
+/goal:auto .claude/plans/<work-id>-astro-spec.md
+/goal:auto .claude/plans/<work-id>-marketing-spec.md
+```
+````
+
+**It never copies a plan's content.** Not the iterations, not the Definition of Done, not the
+gate blocks: those change at every slice, and a copy of them is stale by the second commit.
+This plugin's own issue once advertised a script its pull request had deleted — duplication
+is the fault, and refreshing a copy more often does not fix it.
+
+**The dependency lives in each plan's `Trigger:` line, not in the index.** The index displays
+the order; the plan enforces its own precondition. When the two disagree it is the plan that a
+run obeys, which is also why an index nobody updated cannot silently reorder anything.
+
+### The index is checked, not trusted
+
+A list written once and never verified is a list whose holes are found the day a pull request
+is missing. So **every split plan's global DoD carries this line**, which fails if any sibling
+plan is absent from the index or any listed file has disappeared:
+
+```
+dodN=for f in .claude/plans/<work-id>*-spec.md; do grep -q "$(basename "$f")" .claude/plans/<work-id>-plans.md || exit 1; done; for f in $(grep -oE '<work-id>[a-z-]*-spec\.md' .claude/plans/<work-id>-plans.md); do test -f ".claude/plans/$f" || exit 1; done
+```
+
+Both directions matter and neither implies the other: the first catches a plan added later and
+never listed, the second an entry pointing at a file that was renamed or deleted.
+
+**Two `for` loops, and deliberately not a pipeline.** `grep … | while read -r f; do … exit 1;
+done` reads better and is wrong here: the `exit` fires inside the pipeline's subshell, and
+whether that ends the loop, the gate command, or the calling shell depends on which shell runs
+it. Measured on this repository, the pipeline form killed the parent shell outright. Command
+substitution in a `for` keeps `exit` in the one shell the gate spawned, which is the only shell
+whose exit code anything reads. Adding a
+sibling to the split therefore breaks every sibling's DoD until the index names it, which is
+the cheapest possible reminder and the whole point of the line.
+
+A single-plan spec writes no index and carries no such line — there is nothing to lose track
+of, and a checklist with one entry is ceremony.
+
 **Under `commit` or `commit+pr`, every iteration carries a `gate` block, and that block is
 what runs.** The acceptance criteria used to be prose, and `/goal:auto` translated them into
 gate commands at run time: a model reading "the project test command exits 0" and deciding,
@@ -562,6 +637,16 @@ Never fold it back into the main plan. Its header depends on the `Cleanup:` answ
   marked ready. Its iterations run in this session after the feature plan, on a branch cut
   from the feature branch, and its PR targets that branch and stays a **draft** so merging
   the feature never drags the cleanup in with it.
+
+**Write the split plans and their index**, if Phase 3 produced a split. One
+`.claude/plans/<work-id>-<suffix>-spec.md` per part, each with the full header copied, then
+`.claude/plans/<work-id>-plans.md` listing them in order — and the index-check line in every
+split plan's global DoD. Write the index **last**, once every plan it names exists, or its
+own check fails on the first plan the developer runs.
+
+Read the launch commands back to them, one per plan, and say plainly which may run at the
+same time and which waits on a merge. A split whose order lives only in this conversation is
+a split the developer reconstructs from file names at midnight.
 
 **Never commit the plan, whatever the policy.** `.claude/plans/` is gitignored in most
 projects, so `git add .claude/plans/<work-id>-spec.md` exits 1 and the commit that

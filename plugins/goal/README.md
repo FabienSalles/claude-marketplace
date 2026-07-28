@@ -115,10 +115,16 @@ Turns the source into a locked, executable plan.
    There is no default: `/goal:auto` refuses a plan that does not carry one. On a fork
    this is what keeps both the push and the pull request on *your* fork, since
    `gh pr create` targets a fork's parent otherwise.
-7. **Locks**: creates `feature/<work-id>-<slug>` and writes the plan
+7. **Splits, when the work really splits**: one self-sufficient plan per part
+   (`<work-id>-<suffix>-spec.md`, full header copied — nothing inherits), plus an ordering
+   index at `<work-id>-plans.md` carrying the set, the order and the launch command. Named
+   outside the `*-spec.md` glob on purpose, so a bare `/goal:auto` never tries to run the
+   index. Every split plan's DoD checks the index both ways, so adding a sibling without
+   listing it breaks the others until you do.
+8. **Locks**: creates `feature/<work-id>-<slug>` and writes the plan
    (never committed: `.claude/plans/` is gitignored in most projects, and the plan reaches
    the reviewer through the PR body instead).
-8. **Echoes** the per-iteration `/goal` text for you to paste.
+9. **Echoes** the per-iteration `/goal` text for you to paste.
 
 ### Session 2 — `/goal` (native), one iteration at a time
 
