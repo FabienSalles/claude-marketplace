@@ -83,6 +83,10 @@ const brief = (iteration) =>
   [
     `Implement iteration ${iteration} of the locked plan ${PLAN}.`,
     '',
+    `You are working in ${DIR}, on branch ${BRANCH}. Every path you write is inside that tree, and`,
+    'nowhere else. The plan is given as an absolute path and lives outside it on purpose, because',
+    'its directory is gitignored and therefore absent here: read it there, write nothing near it.',
+    '',
     `Read the whole of its "### Iteration ${iteration}" section: the goal, the files to touch, the`,
     'business rules it covers, every decision bullet, and its gate block. Those bullets were written',
     'at a checkpoint by someone who was there — they are binding, do not re-decide them.',
@@ -422,6 +426,16 @@ const readControls = async (issue, panel) => {
   );
 };
 
+// Read by key, never by position: a probe that loses a field must not silently shift the rest.
+const fieldsOf = (output) =>
+  Object.fromEntries(
+    output
+      .split('\n')
+      .map((line) => line.split('\t'))
+      .filter((parts) => parts.length === 2 && parts[0] !== '')
+      .map(([key, value]) => [key, value.trim()]),
+  );
+
 const iterationsPending = (output) =>
   output
     .split('\n')
@@ -440,40 +454,67 @@ if (typeof PLAN !== 'string' || PLAN === '') {
 
 phase('Survey');
 
-const lock = await runner(`${GATE} lock ${PLAN}`, 'lock', 'Survey');
+// A workflow has no disk and no shell, so asking is the only way it can know where it stands.
+// It runs before the lock on purpose: the probe is read-only, and a lock refusal is the one that
+// most needs to name the tree — it is how the developer finds out the holder is themselves, in
+// another worktree.
+const located = await runner(
+  String.raw`printf 'dir\t%s\nbranch\t%s\nsha\t%s\nroot\t%s\n' "$(pwd)" "$(git rev-parse --abbrev-ref HEAD)" "$(git rev-parse --short HEAD)" "$(cd "$(dirname "$(git rev-parse --git-common-dir)")" && pwd)"`,
+  'locate',
+  'Survey',
+);
 
-// The lock is not held, so this exit path is the one that must not release it.
-if (lock.exitCode !== 0) {
-  return { status: 'refused', plan: PLAN, landed: [], notAttempted: [], detail: lock.output };
+const where = fieldsOf(located.output);
+
+// The one report that cannot name its tree: naming it is exactly what failed.
+if (located.exitCode !== 0 || ['dir', 'branch', 'sha', 'root'].some((key) => where[key] === undefined || where[key] === '')) {
+  return {
+    status: 'refused',
+    plan: PLAN,
+    landed: [],
+    notAttempted: [],
+    detail: `The run could not establish where it stands, so it will write nowhere:\n${located.output}`,
+  };
 }
+
+const DIR = where.dir;
+const BRANCH = where.branch;
+const SHA = where.sha;
 
 // The reports belong to the repository, not to the worktree this run stands in. `.claude/` is
 // gitignored, so it does not exist in a freshly created worktree, and a relative path would make
 // every launched run read an empty directory and write where the worktree's deletion takes it.
 // `--git-common-dir` names the main `.git` from any worktree, so its parent is the one checkout
 // where `.claude/` really is.
-const root = await runner('cd "$(dirname "$(git rev-parse --git-common-dir)")" && pwd', 'runs-dir', 'Survey');
+const RUNS = `${where.root}/.claude/goal-runs`;
 
-if (root.exitCode !== 0 || root.output.trim() === '') {
-  await release();
+const early = (fields) => ({ plan: PLAN, dir: DIR, branch: BRANCH, sha: SHA, landed: [], notAttempted: [], ...fields });
 
-  return {
+const WORK_ID = PLAN.split('/').pop().replace(/-spec\.md$/, '');
+
+// A run publishes the branch its checkout is on, so standing on the wrong one publishes the
+// wrong one. The suffix form is accepted because `commands/auto.md` preflight accepts it, and a
+// fact held twice has to say the same thing both times.
+if (BRANCH !== `feature/${WORK_ID}` && !BRANCH.startsWith(`feature/${WORK_ID}-`)) {
+  return early({
     status: 'refused',
-    plan: PLAN,
-    landed: [],
-    notAttempted: [],
-    detail: `The repository root did not resolve, so the run has nowhere durable to write its report:\n${root.output}`,
-  };
+    detail: `This run stands on \`${BRANCH}\` in ${DIR}, and ${PLAN} is delivered on \`feature/${WORK_ID}\`. It publishes the branch its checkout is on, so running it here would publish the wrong one. Launch it with scripts/goal-launch.sh, which creates the worktree and the branch together.`,
+  });
 }
 
-const RUNS = `${root.output.trim()}/.claude/goal-runs`;
+const lock = await runner(`${GATE} lock ${PLAN}`, 'lock', 'Survey');
+
+// The lock is not held, so this exit path is the one that must not release it.
+if (lock.exitCode !== 0) {
+  return early({ status: 'refused', detail: lock.output });
+}
 
 const survey = await runner(`${SURVEY} ${PLAN}`, 'survey', 'Survey');
 
 if (survey.exitCode !== 0) {
   await release();
 
-  return { status: 'refused', plan: PLAN, landed: [], notAttempted: [], detail: survey.output };
+  return early({ status: 'refused', detail: survey.output });
 }
 
 const pending = iterationsPending(survey.output);
@@ -483,7 +524,7 @@ log(`${pending.length} unchecked iteration(s): ${pending.join(' ') || 'none'}`);
 if (pending.length === 0) {
   await release();
 
-  return { status: 'done', plan: PLAN, landed: [], notAttempted: [] };
+  return early({ status: 'done' });
 }
 
 // Refusing every unrunnable iteration before implementing anything is the whole point of the
@@ -497,7 +538,7 @@ const runnable = await runner(
 if (runnable.exitCode !== 0) {
   await release();
 
-  return { status: 'refused', plan: PLAN, landed: [], notAttempted: pending, detail: runnable.output };
+  return early({ status: 'refused', notAttempted: pending, detail: runnable.output });
 }
 
 // The hash the whole run is judged against: published by check, passed back to every gate call,
@@ -507,13 +548,11 @@ const hash = (/^plan_hash=([0-9a-f]{64})$/m.exec(runnable.output) ?? [])[1];
 if (hash === undefined) {
   await release();
 
-  return {
+  return early({
     status: 'refused',
-    plan: PLAN,
-    landed: [],
     notAttempted: pending,
     detail: `The survey published no plan_hash, so nothing locks the contract:\n${runnable.output}`,
-  };
+  });
 }
 
 const policy = (await runner(`${POLICY_FROM_PLAN} ${PLAN} | head -1`, 'policy', 'Survey')).output.trim();
@@ -531,13 +570,11 @@ const declaredRemote = (await runner(`${REMOTE_FROM_PLAN} ${PLAN} | head -1`, 'r
 if (!/^[A-Za-z0-9._-]+$/.test(declaredRemote)) {
   await release();
 
-  return {
+  return early({
     status: 'refused',
-    plan: PLAN,
-    landed: [],
     notAttempted: pending,
     detail: `The plan declares no usable remote, so nothing can be pushed on its behalf.\n\nFound: ${declaredRemote === '' ? '(nothing)' : declaredRemote}\n\nAdd a \`Remote:\` line to the plan header naming the git remote this run pushes to — the same name \`git remote\` lists. It is also the repository its pull request opens on, which on a fork is the fork and not the upstream.`,
-  };
+  });
 }
 
 const REMOTE = declaredRemote;
@@ -584,6 +621,18 @@ const landed = [];
 const record = [];
 const remote = new Set();
 const shipping = { pushed: false, pr: false, blocked: undefined, prError: undefined };
+
+// What is true of every report once the loop exists. `early` carries the same three facts before
+// it, where neither `landed` nor `shipping` does.
+const outcome = (fields) => ({
+  plan: PLAN,
+  dir: DIR,
+  branch: BRANCH,
+  sha: SHA,
+  landed,
+  notAttempted: [],
+  ...fields,
+});
 let stopped;
 
 // The pull request is opened as a draft at the **first** commit and its body rewritten by every
@@ -698,14 +747,12 @@ for (const [index, iteration] of pending.entries()) {
   if (stopped !== undefined) {
     await release();
 
-    const report = {
+    const report = outcome({
       status: stopped.status,
-      plan: PLAN,
       iteration: stopped.iteration,
       detail: stopped.detail,
-      landed,
       notAttempted: pending.slice(stopped.from),
-    };
+    });
 
     if (report.status !== 'halted') {
       report.audit = await audit(report, record);
@@ -752,16 +799,13 @@ phase('Ship');
 const dod = await runner(`${GATE} dod ${PLAN} ${hash}`, 'dod', 'Ship');
 
 if (dod.exitCode !== 0) {
-  const refused = {
+  const refused = outcome({
     status: 'halted',
-    plan: PLAN,
     iteration: 'the global Definition of Done',
     detail: dod.output,
-    landed,
-    notAttempted: [],
     push: { pushed: shipping.pushed, detail: shipping.blocked ?? shipping.prError ?? '' },
     pr: shipping.pr,
-  };
+  });
 
   if (issue !== undefined) {
     refused.reported = (await post(`issue #${issue}`, 'run halted', haltReport(refused))).exitCode === 0;
@@ -781,17 +825,14 @@ const lenses =
     ? await runLenses(landed, issue)
     : undefined;
 
-const done = {
+const done = outcome({
   status: 'done',
   lenses,
-  plan: PLAN,
-  landed,
-  notAttempted: [],
   pushed: shipping.pushed,
   pr: shipping.pr,
   ready: ready?.exitCode === 0,
   detail: shipping.blocked ?? shipping.prError ?? ready?.output ?? '',
-};
+});
 
 done.audit = await audit(done, record);
 
