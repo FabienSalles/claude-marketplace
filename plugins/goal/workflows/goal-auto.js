@@ -4,15 +4,13 @@
 // makes that separation structural rather than a promise.
 //
 // Invoked by scriptPath, with args:
-//   plan  (required) the locked plan, repo-relative
+//   plan  (required) the locked plan; absolute, or relative to where the run was launched
 //   gate  (optional) how to invoke the gate; defaults to this repository's own path
 //
-// A plan declaring tracks re-enters this same script once per track, so there is one loop and
-// one set of rules rather than two. Those child runs carry three more args, and nothing else
-// should ever set them by hand:
-//   track       the branch suffix, which is also what marks a run as a child
-//   dir         the track's worktree, every command of that run is prefixed with it
-//   iterations  the track's iteration numbers, in plan order
+// A run has one shape. It works in the directory it was launched from, so isolation is a
+// property of that directory rather than of a mode this script has to carry: launch it from a
+// worktree and the run is isolated, launch it from the checkout and it is not. Parallelism is
+// several runs, not a second code path.
 
 export const meta = {
   name: 'goal-auto',
@@ -22,7 +20,6 @@ export const meta = {
   phases: [
     { title: 'Survey', detail: 'take the run lock, list the unchecked iterations, refuse an unrunnable one' },
     { title: 'Iterate', detail: 'one implementer, then the gate, per iteration' },
-    { title: 'Tracks', detail: 'one worktree per independent track, run in parallel' },
     { title: 'Report', detail: 'scan, push the branch, write the outcome to the issue' },
     { title: 'Ship', detail: 'replay the global Definition of Done, then mark the pull request ready' },
     { title: 'Lenses', detail: 'advisory refutation of what landed — never blocks, off by default' },
@@ -63,18 +60,6 @@ const RUN_RESULT = {
     output: { type: 'string' },
   },
 };
-
-const TRACK = input.track;
-const DIR = input.dir;
-
-// A track runs in its own worktree, so every command that judges or publishes code is prefixed
-// with the directory it belongs to: that prefix is what makes "a track's gate runs against that
-// track's own code" a fact rather than an intention — the gate reads the tree it stands in.
-// `cd` sets OLDPWD, which is how the plan keeps resolving: it lives in the main tree's
-// gitignored `.claude/plans/`, so it is absent from every worktree.
-const inDir = (command) => (DIR === undefined ? command : `cd ${DIR} && ${command}`);
-
-const PLAN_PATH = DIR === undefined ? input.plan : `"$OLDPWD/${input.plan}"`;
 
 // Every command crosses back as {exitCode, output} rather than as transcript, so the
 // orchestrator's context does not grow with the number of iterations.
@@ -147,6 +132,16 @@ const POLICY_FROM_PLAN = String.raw`sed -n 's/^Policy:[[:space:]]*//p'`;
 // reports locally and says so: the GitHub mirror is opt-in, by design, from /goal:draft-issue on.
 const ISSUE_FROM_PLAN = String.raw`sed -n 's/^Source: gh issue #\([0-9][0-9]*\).*/\1/p'`;
 
+// The remote is declared in the plan and never inferred. A bare push falls back to the
+// default remote and `gh pr create` targets a fork's **parent**, so a run on a fork would push
+// to the fork and open its pull request upstream — silently, at 3am, on somebody else's
+// repository. Both now name what they act on, and a plan that declares nothing is refused.
+const REMOTE_FROM_PLAN = String.raw`sed -n 's/^Remote:[[:space:]]*//p'`;
+
+// `gh` needs owner/name, git gives a URL: SSH, HTTPS, with or without the `.git` suffix.
+const repoOf = (remote) =>
+  String.raw`git remote get-url ${remote} | sed -E 's#\.git$##; s#^.*[:/]([^/]+/[^/]+)$#\1#'`;
+
 // `gh pr create` targets the repository's default branch unless told otherwise. A plan that
 // stacks on an integration branch says which one in its header, or its pull request opens
 // against the wrong base and shows every commit the two branches do not share — unreviewable,
@@ -156,14 +151,14 @@ const PR_BASE_FROM_PLAN = String.raw`sed -n 's/^PR base:[[:space:]]*//p'`;
 // Scan, then push: a halted branch is pushed on purpose — unattended, the alternative is that
 // the only machine that knows what happened is the one that is now asleep — and nothing is
 // pushed that a scanner has not passed.
-const pushBranch = async () => {
-  const scan = await runner(inDir(`${GATE} scan`), 'scan', 'Report');
+const pushBranch = async (remote) => {
+  const scan = await runner(`${GATE} scan`, 'scan', 'Report');
 
   if (scan.exitCode !== 0) {
     return { pushed: false, scanned: false, detail: scan.output };
   }
 
-  const push = await runner(inDir('git push -u origin HEAD'), 'push', 'Report');
+  const push = await runner(`git push -u ${remote} HEAD`, 'push', 'Report');
 
   return { pushed: push.exitCode === 0, scanned: true, detail: push.output };
 };
@@ -174,7 +169,7 @@ const pushBranch = async () => {
 // because rewriting history nobody has reviewed, unattended, is worse than stopping.
 const reshape = async (count) => {
   const shape = await runner(
-    inDir(String.raw`git log --format=%s -${count} | grep -cE '^(fixup|squash)!' || true`),
+    String.raw`git log --format=%s -${count} | grep -cE '^(fixup|squash)!' || true`,
     'reshape',
     'Report',
   );
@@ -219,22 +214,24 @@ const prBody = (facts, issue) =>
 // A body carries backticks and newlines, so it travels as a file. Push failure and pull-request
 // failure are reported separately: "pushed, no PR" is a real state and reading it as one
 // ambiguous failure is how a run ends up with an invisible branch.
-const publish = async (verb, facts, body, base) => {
+const publish = async (verb, facts, body, base, remote) => {
   const create = verb === 'create';
   const command = [
     'body="$(git rev-parse --git-dir)/goal-pr-body.md"',
+    `repo="$(${repoOf(remote)})"`,
+    'branch="$(git branch --show-current)"',
     'cat > "$body" <<\'GOALPRBODY\'',
     body,
     'GOALPRBODY',
     create
-      ? `gh pr create --draft${base === undefined ? '' : ` --base '${base}'`} --title '${facts.title}' --body-file "$body"`
-      : 'gh pr edit --body-file "$body"',
+      ? `gh pr create --repo "$repo" --draft${base === undefined ? '' : ` --base '${base}'`} --title '${facts.title}' --body-file "$body"`
+      : 'gh pr edit "$branch" --repo "$repo" --body-file "$body"',
     'rc=$?',
     'rm -f "$body"',
     'exit $rc',
   ].join('\n');
 
-  return runner(inDir(command), `pr:${verb}`, 'Report');
+  return runner(command, `pr:${verb}`, 'Report');
 };
 
 const haltReport = (report) =>
@@ -324,7 +321,6 @@ const askLens = async (name, iteration) =>
       '',
       `The one question you answer: ${LENSES[name]}`,
       '',
-      ...(DIR === undefined ? [] : [`The code to read is in ${DIR}, the worktree of this track.`]),
       `Read the plan's own declarations for iteration ${iteration} — its Goal, its business rules, its`,
       'decision bullets — and judge against those, never against a standard you invented. Read the code',
       'and the commit; change nothing.',
@@ -471,79 +467,7 @@ const iterationsPending = (output) =>
 // section. Kept to one awk expression so it stays mechanical rather than a reading of the plan.
 const SURVEY = String.raw`awk '/^### Iteration [0-9]+/ { n = $3; seen = 0 } /^- \[/ { if (n != "" && seen == 0) { seen = 1; if ($0 ~ /^- \[ \]/) print n } }'`;
 
-// The run lock belongs to the run, not to a track: a child never takes it and never releases it.
-const release = async () => (TRACK === undefined ? runner(`${GATE} unlock ${PLAN}`, 'unlock', 'Iterate') : undefined);
-
-const WORK_ID = (PLAN ?? '').split('/').pop()?.replace(/-spec\.md$/, '') ?? 'run';
-
-// Deriving this script's own path from the gate's is what lets a track re-enter the same loop
-// instead of a second copy of it. Tracks therefore need an absolute `args.gate`, which is what
-// /goal:auto passes: a relative one would resolve inside the worktree, against that branch's
-// older copy of the gate.
-const SELF = GATE.replace(/^node\s+/, '').replace(/scripts\/goal-gate\.ts$/, 'workflows/goal-auto.js');
-
-const parseTracks = (output) =>
-  output
-    .split('\n')
-    .filter((line) => line.startsWith('track\t'))
-    .map((line) => line.split('\t'))
-    .map(([, suffix, name, iterations, prepare, teardown]) => ({
-      suffix,
-      name,
-      iterations: (iterations ?? '').split(' ').filter((entry) => entry !== ''),
-      prepare: (prepare ?? '').trim(),
-      teardown: (teardown ?? '').trim(),
-    }));
-
-// One worktree per track, branched from the default branch so every pull request is
-// independently mergeable, and a teardown on every exit path — a preparation that brought
-// containers up and then failed must not leave them up. A halted track keeps its worktree: it
-// holds the state the developer needs.
-const runTrack = async (track) => {
-  const dir = `.worktrees/${WORK_ID}-${track.suffix}`;
-  const branch = `feature/${WORK_ID}-${track.suffix}`;
-  const created = await runner(
-    `git worktree add ${dir} -b ${branch} "$(git rev-parse --abbrev-ref origin/HEAD 2>/dev/null || echo main)"`,
-    `worktree:${track.suffix}`,
-    'Tracks',
-  );
-
-  if (created.exitCode !== 0) {
-    return { status: 'refused', track: track.suffix, landed: [], notAttempted: track.iterations, detail: created.output };
-  }
-
-  const finish = async (report) => {
-    if (track.teardown !== '') {
-      await runner(`cd ${dir} && ${track.teardown}`, `teardown:${track.suffix}`, 'Tracks');
-    }
-
-    if (report.status === 'done') {
-      await runner(`git worktree remove ${dir}`, `remove:${track.suffix}`, 'Tracks');
-    }
-
-    return { ...report, track: track.suffix, worktree: report.status === 'done' ? undefined : dir };
-  };
-
-  if (track.prepare !== '') {
-    const prepared = await runner(`cd ${dir} && ${track.prepare}`, `prepare:${track.suffix}`, 'Tracks');
-
-    if (prepared.exitCode !== 0) {
-      return finish({
-        status: 'refused',
-        landed: [],
-        notAttempted: track.iterations,
-        detail: `The declared preparation failed, so no iteration was attempted:\n${prepared.output}`,
-      });
-    }
-  }
-
-  return finish(
-    await workflow(
-      { scriptPath: SELF },
-      { plan: PLAN, gate: GATE, dir, track: track.suffix, iterations: track.iterations },
-    ),
-  );
-};
+const release = async () => runner(`${GATE} unlock ${PLAN}`, 'unlock', 'Iterate');
 
 if (typeof PLAN !== 'string' || PLAN === '') {
   throw new Error('goal-auto needs args.plan: the repo-relative path of a locked plan.');
@@ -551,64 +475,15 @@ if (typeof PLAN !== 'string' || PLAN === '') {
 
 phase('Survey');
 
-const lock =
-  TRACK === undefined ? await runner(`${GATE} lock ${PLAN}`, 'lock', 'Survey') : { exitCode: 0, output: '' };
+const lock = await runner(`${GATE} lock ${PLAN}`, 'lock', 'Survey');
 
 // The lock is not held, so this exit path is the one that must not release it.
 if (lock.exitCode !== 0) {
   return { status: 'refused', plan: PLAN, landed: [], notAttempted: [], detail: lock.output };
 }
 
-// Independence is proven before a worktree exists, and a halted track never cancels a healthy
-// one: parallel() resolves a thrown thunk to null instead of rejecting, so a sibling's failure
-// cannot take down a track that is provably fine.
-if (TRACK === undefined) {
-  const listed = await runner(`${GATE} tracks ${PLAN}`, 'tracks', 'Survey');
 
-  if (listed.exitCode !== 0) {
-    await release();
-
-    return { status: 'refused', plan: PLAN, landed: [], notAttempted: [], detail: listed.output };
-  }
-
-  const tracks = parseTracks(listed.output);
-
-  if (tracks.length > 0) {
-    log(`${tracks.length} independent track(s): ${tracks.map((track) => track.suffix).join(' ')}`);
-    phase('Tracks');
-
-    const reports = (await parallel(tracks.map((track) => () => runTrack(track)))).map(
-      (report, index) =>
-        report ?? {
-          status: 'refused',
-          track: tracks[index]?.suffix,
-          landed: [],
-          notAttempted: tracks[index]?.iterations ?? [],
-          detail: 'The track returned nothing: it was skipped, or it died after retries.',
-        },
-    );
-
-    await release();
-
-    const broken = reports.filter((report) => report.status !== 'done');
-
-    return {
-      status: broken.length === 0 ? 'done' : 'halted',
-      plan: PLAN,
-      tracks: reports,
-      landed: reports.flatMap((report) => report.landed ?? []),
-      notAttempted: reports.flatMap((report) => report.notAttempted ?? []),
-      detail: broken.map((report) => `[${report.track}] ${report.status}\n${report.detail ?? ''}`).join('\n\n'),
-    };
-  }
-}
-
-// A child is told which iterations are its own, so it parses a list it was handed rather than
-// reading the plan a second time.
-const survey =
-  TRACK === undefined
-    ? await runner(`${SURVEY} ${PLAN}`, 'survey', 'Survey')
-    : { exitCode: 0, output: (input.iterations ?? []).join('\n') };
+const survey = await runner(`${SURVEY} ${PLAN}`, 'survey', 'Survey');
 
 if (survey.exitCode !== 0) {
   await release();
@@ -663,6 +538,25 @@ if (!publishes) {
   log(`Policy is ${policy || 'unreadable'}: this run commits, and publishes nothing.`);
 }
 
+const declaredRemote = (await runner(`${REMOTE_FROM_PLAN} ${PLAN} | head -1`, 'remote', 'Survey')).output.trim();
+
+// Refused rather than defaulted, and refused for every policy: a plan that says nothing about
+// where it pushes is a plan whose author never decided, and the cost of guessing is borne by
+// whoever owns the repository the guess lands on.
+if (!/^[A-Za-z0-9._-]+$/.test(declaredRemote)) {
+  await release();
+
+  return {
+    status: 'refused',
+    plan: PLAN,
+    landed: [],
+    notAttempted: pending,
+    detail: `The plan declares no usable remote, so nothing can be pushed on its behalf.\n\nFound: ${declaredRemote === '' ? '(nothing)' : declaredRemote}\n\nAdd a \`Remote:\` line to the plan header naming the git remote this run pushes to — the same name \`git remote\` lists. It is also the repository its pull request opens on, which on a fork is the fork and not the upstream.`,
+  };
+}
+
+const REMOTE = declaredRemote;
+
 const declaredBase = (await runner(`${PR_BASE_FROM_PLAN} ${PLAN} | head -1`, 'pr-base', 'Survey')).output.trim();
 const prBase = /^[A-Za-z0-9._\/-]+$/.test(declaredBase) ? declaredBase : undefined;
 
@@ -675,7 +569,7 @@ const issue = /^[0-9]+$/.test(found.output.trim()) ? found.output.trim() : undef
 
 if (issue === undefined) {
   log('The plan names no GitHub issue, so the run reports to its return value alone.');
-} else if (TRACK === undefined) {
+} else {
   await post(
     `issue #${issue}`,
     'run started',
@@ -695,7 +589,7 @@ if (issue === undefined) {
 // The comment id comes from the URL gh printed when posting it, so no search over other people's
 // comments is ever needed — and a forged panel elsewhere on the issue is never read.
 const panel =
-  issue === undefined || TRACK !== undefined
+  issue === undefined
     ? undefined
     : (/issuecomment-([0-9]+)/.exec((await post(`issue #${issue}`, 'run controls', PANEL)).output) ?? [])[1];
 
@@ -728,7 +622,7 @@ const mirror = async (issue) => {
     return;
   }
 
-  const push = await pushBranch();
+  const push = await pushBranch(REMOTE);
 
   if (!push.pushed) {
     shipping.blocked = push.scanned
@@ -741,7 +635,7 @@ const mirror = async (issue) => {
   shipping.pushed = true;
 
   const facts = await planFacts(landed);
-  const published = await publish(shipping.pr ? 'edit' : 'create', facts, prBody(facts, issue), prBase);
+  const published = await publish(shipping.pr ? 'edit' : 'create', facts, prBody(facts, issue), prBase, REMOTE);
 
   shipping.prError = published.exitCode === 0 ? undefined : published.output.slice(-1500);
   shipping.pr = shipping.pr || published.exitCode === 0;
@@ -795,7 +689,7 @@ for (const [index, iteration] of pending.entries()) {
 
   if (stopped === undefined) {
     const gate = await runner(
-      inDir(`${GATE} commit ${PLAN_PATH} ${iteration} ${hash}`),
+      `${GATE} commit ${PLAN} ${iteration} ${hash}`,
       `gate:${iteration}`,
       'Iterate',
     );
@@ -841,7 +735,7 @@ for (const [index, iteration] of pending.entries()) {
       report.push = { pushed: shipping.pushed, detail: shipping.blocked ?? shipping.prError ?? '' };
       report.pr = shipping.pr;
     } else if (publishes) {
-      report.push = await pushBranch();
+      report.push = await pushBranch(REMOTE);
     }
 
     if (issue !== undefined) {
@@ -870,7 +764,7 @@ phase('Ship');
 // Nothing ships unverified: every slice was gated against its own commands, which is not the
 // same claim as the whole plan holding. Marking the pull request ready is what "shipped" means
 // here, and it happens on the other side of this barrier or not at all.
-const dod = await runner(inDir(`${GATE} dod ${PLAN_PATH} ${hash}`), 'dod', 'Ship');
+const dod = await runner(`${GATE} dod ${PLAN} ${hash}`, 'dod', 'Ship');
 
 if (dod.exitCode !== 0) {
   const refused = {
@@ -893,7 +787,7 @@ if (dod.exitCode !== 0) {
   return refused;
 }
 
-const ready = shipping.pr ? await runner(inDir('gh pr ready'), 'pr:ready', 'Ship') : undefined;
+const ready = shipping.pr ? await runner('gh pr ready', 'pr:ready', 'Ship') : undefined;
 
 // Last, and after the pull request is already ready: a finding cannot stop what has already
 // shipped, which is the strongest form of "a lens never blocks" available.

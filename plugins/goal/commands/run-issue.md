@@ -283,6 +283,30 @@ back to `manual` when it cannot find it, so a policy that lives only in the past
 is lost to a fresh session or a compaction, and the run silently degrades to manual.
 `/goal:auto` has the same need, and reads it before it will start at all.
 
+### D — The remote it pushes to
+
+Ask this **here**, while the developer is in front of you, because an execution session runs
+without them: a command that stops at 3am to ask which remote to push to does not ask, it
+blocks — or worse, it guesses.
+
+Run `git remote -v` first and show what exists, then ask:
+
+> **Which remote should a run push to?** It is also the repository its pull request opens on.
+> - **origin** (usual) — the repository you cloned.
+> - **another name** — on a fork, this is what keeps the work on *your* fork. `gh pr create`
+>   targets a fork's **parent** by default, so without this a run would push to your fork and
+>   open its pull request on somebody else's repository. You then open the real pull request
+>   upstream yourself, once the work convinces you.
+
+WAIT for the answer, then **write it into the spec's `Remote:` header line**. There is no
+default and none is inferred: `/goal:auto` refuses a plan whose header does not carry it,
+which is the point — the cost of a wrong guess is borne by whoever owns the repository the
+guess lands on.
+
+One line, not two. Pushing to one repository and opening the pull request on another is a
+real thing to want, and deliberately not automated here: that second step is the manual
+validation gesture.
+
 ## Phase 3 — Decompose into functional iterations, then write the plan
 
 **Load `product:vertical-slice` and `product:delivery` before decomposing.** This is the
@@ -300,42 +324,108 @@ one an unattended agent must gate on a command). Do not restate its rules here �
 them, and let the plan show the result.
 
 What this command owns, and the skill does not, is everything below: the plan's file
-format, the parallel-track mechanics, the cleanup carve-out, and persistence.
+format, the cleanup carve-out, and persistence.
 
-**Ask whether the iterations split into independent tracks.** A track is a group
-of iterations that shares no file with any other track and needs nothing another track
-produces. Tracks matter because `/goal:auto` runs them **in parallel**, each in its own
-git worktree, each ending in its **own PR**. Three focused PRs a reviewer can merge
-separately beat one PR touching everything.
+**A plan is one sequence, and `/goal:auto` runs one plan.** The workflow has no parallel
+mode: it works in the directory it was launched from and knows nothing of worktrees. So a
+plan is a flat list of iterations, with no parallel section inside it.
 
-The test for a real track is mechanical, not editorial: **the union of its "Files to
-touch" must be disjoint from every other track's.** One shared file and the tracks are
-not independent, whatever the story says. Check it before you propose the split.
+**When the work genuinely splits, that is several plans, not one plan with branches.** Write
+each part as its own self-sufficient plan file, and the developer launches one run per file —
+the concurrency cap is per workflow, so nothing is lost. Two things make that split real
+rather than decorative, and both are your job here, while a human can read the result:
 
-Good candidates: work organized per module, per plugin, per bounded context, per package
-in a monorepo. Bad candidates: a shared refactor everything else builds on, anything
-touching a common config, migrations that must run in order.
+- **The file sets must be provably disjoint.** The union of one plan's `test_files` +
+  `impl_files` shares no path with another's. One shared file and the two runs conflict at
+  merge, whatever the story says. Check it before proposing the split.
+- **A shared foundation is extracted, not ignored.** Candidate parts usually share one
+  artefact the others depend on — a validation script, a schema, a rename that renumbers
+  every call site. That overlap is not proof the work is sequential: it is a foundation. It
+  becomes its own plan, first, and the remainder splits behind it with a **Trigger** line
+  naming the merge it waits on. Only conclude "sequential" when the remainder, foundation
+  removed, still shares files.
 
-**When the candidates share a foundation, extract it — do not fall back to sequential.**
-Tracks are rarely disjoint on the first pass. They usually share one artefact the others
-depend on: a validation script, a schema, a config, a rename that renumbers every call
-site. That overlap is not proof the work is sequential — it is a **foundation**, and the
-resolution is to pull it out rather than abandon the split:
+Good candidates: work organized per module, per plugin, per bounded context, per package in
+a monorepo. Bad candidates: a shared refactor everything else builds on, anything touching a
+common config, migrations that must run in order.
 
-- The shared artefact, plus every change whose halves are incoherent apart (a reciprocal
-  cross-module pointer, a rename and its callers), goes into a **foundation plan** — one
-  sequential list, one PR.
-- The remainder forks into tracks in a **follow-up plan**, written at lock time as
-  `.claude/plans/<work-id>-tracks-spec.md`, carrying a **Trigger** line: the foundation PR
-  is merged. Tracks branched before that sit on a tree without the artefact their DoD
-  calls, so their acceptance commands cannot run.
+Do not invent a split to look parallel: a false split is two pull requests that conflict at
+merge, discovered after both runs have paid for themselves.
 
-Only conclude "sequential" when the remainder, foundation removed, still shares files.
+### What a split actually writes
 
-If a split exists, ask the developer (`AskUserQuestion`) whether to use it, showing the
-tracks and the file sets that make them disjoint. If it does not, say so and keep a single
-sequential list. Do not invent tracks to look parallel: a false track means two PRs that
-conflict at merge.
+One file per part, named `.claude/plans/<work-id>-<suffix>-spec.md`, where the suffix says
+what the part delivers — `astro`, `marketing`, `foundation`. Each is an ordinary plan and is
+run the ordinary way: `/goal:auto .claude/plans/<work-id>-<suffix>-spec.md`.
+
+**Every one carries the full header**, copied rather than inherited: `Policy:`,
+`Delivery mode:`, `Cleanup:` and `Remote:`. Nothing inherits anything, because each file is
+read alone by its own run — and a plan whose header lacks `Remote:` is refused at preflight
+rather than defaulted. "Self-sufficient" is literal here, not a figure of speech.
+
+Then one index, `.claude/plans/<work-id>-plans.md`. **Not `-spec.md`**: `/goal:auto` with no
+argument resolves the most recently modified `*-spec.md`, and the index is written last, so
+naming it `-spec.md` would make it the file a bare launch picks up and tries to run.
+
+The index carries three things and nothing else — the set, the order, and the command:
+
+````markdown
+# Plans: <title>
+
+Work-id: <work-id>
+Written by /goal:run-issue on <date>. Ordering only — each plan is authoritative about
+itself, and its own `Trigger:` line is what a run reads.
+
+## Order
+
+1. `.claude/plans/<work-id>-foundation-spec.md` — <one line>. Nothing waits on it.
+2. Then, in parallel, one run each:
+   - `.claude/plans/<work-id>-astro-spec.md` — <one line>
+   - `.claude/plans/<work-id>-marketing-spec.md` — <one line>
+
+## Launch
+
+```bash
+/goal:auto .claude/plans/<work-id>-foundation-spec.md
+# once its pull request is merged, then in separate sessions:
+/goal:auto .claude/plans/<work-id>-astro-spec.md
+/goal:auto .claude/plans/<work-id>-marketing-spec.md
+```
+````
+
+**It never copies a plan's content.** Not the iterations, not the Definition of Done, not the
+gate blocks: those change at every slice, and a copy of them is stale by the second commit.
+This plugin's own issue once advertised a script its pull request had deleted — duplication
+is the fault, and refreshing a copy more often does not fix it.
+
+**The dependency lives in each plan's `Trigger:` line, not in the index.** The index displays
+the order; the plan enforces its own precondition. When the two disagree it is the plan that a
+run obeys, which is also why an index nobody updated cannot silently reorder anything.
+
+### The index is checked, not trusted
+
+A list written once and never verified is a list whose holes are found the day a pull request
+is missing. So **every split plan's global DoD carries this line**, which fails if any sibling
+plan is absent from the index or any listed file has disappeared:
+
+```
+dodN=for f in .claude/plans/<work-id>*-spec.md; do grep -q "$(basename "$f")" .claude/plans/<work-id>-plans.md || exit 1; done; for f in $(grep -oE '<work-id>[a-z-]*-spec\.md' .claude/plans/<work-id>-plans.md); do test -f ".claude/plans/$f" || exit 1; done
+```
+
+Both directions matter and neither implies the other: the first catches a plan added later and
+never listed, the second an entry pointing at a file that was renamed or deleted.
+
+**Two `for` loops, and deliberately not a pipeline.** `grep … | while read -r f; do … exit 1;
+done` reads better and is wrong here: the `exit` fires inside the pipeline's subshell, and
+whether that ends the loop, the gate command, or the calling shell depends on which shell runs
+it. Measured on this repository, the pipeline form killed the parent shell outright. Command
+substitution in a `for` keeps `exit` in the one shell the gate spawned, which is the only shell
+whose exit code anything reads. Adding a
+sibling to the split therefore breaks every sibling's DoD until the index names it, which is
+the cheapest possible reminder and the whole point of the line.
+
+A single-plan spec writes no index and carries no such line — there is nothing to lose track
+of, and a checklist with one entry is ceremony.
 
 **Under `commit` or `commit+pr`, every iteration carries a `gate` block, and that block is
 what runs.** The acceptance criteria used to be prose, and `/goal:auto` translated them into
@@ -397,8 +487,8 @@ the same PR that introduces the thing it falls back to.
 So collect every cleanup slice into a separate **follow-up plan**, written at lock time as
 `.claude/plans/<work-id>-cleanup-spec.md`. Each keeps its **Trigger** line (the production
 evidence that must hold first) and its proof. It becomes its own PR later, when the
-developer runs the workflow on that plan. Do not put it in a track either: tracks run in
-parallel, and cleanup is strictly after.
+developer runs the workflow on that plan. Nor does it become one of the sibling plans a
+split produced: those are launched alongside each other, and cleanup is strictly after.
 
 Persist at `.claude/plans/<work-id>-spec.md`:
 
@@ -410,6 +500,7 @@ Work-id: <work-id>
 Policy: <manual | commit | commit+pr — filled in Phase 2c>
 Delivery mode: <no-bc-break | allow-bc-break — filled in Phase 2c>
 Cleanup: <later | now | none — none when allow-bc-break or no flag was introduced>
+Remote: <the git remote a run pushes to, and the repo its PR opens on — filled in Phase 2c D>
 PR base: <branch the pull request targets — omit entirely when it is the repository's default>
 Incidental: <generated tooling every slice may touch — a lockfile, a tsconfig, a CLI's own config. Omit when the project generates none>
 Bootstrap: <the iteration that creates the toolchain the acceptance commands need. Omit when the project already builds and tests today>
@@ -473,9 +564,8 @@ Also true, and not expressible as a command of its own:
 
 ## Functional iterations
 
-<Sequential by default: one flat list of iterations, no `## Track` heading. Add tracks
-ONLY when the split is real and the file sets are provably disjoint. Iterations are
-numbered once across the whole plan, whether or not tracks are used.>
+<One flat list of iterations, numbered once across the plan. A plan that splits becomes
+several plan files, each with its own flat list, never one file with parallel sections.>
 
 ### Iteration 1 — <name>
 - [ ] Not done yet
@@ -517,36 +607,6 @@ gate2=<test command>
 gate3=<project lint/QA>
 ```
 
-<With tracks, wrap the iterations in `## Track` headings instead. Everything inside a
-track stays sequential; tracks are independent of each other and each becomes its own
-branch and its own PR:>
-
-## Track astro — <what this track delivers>
-- **Branch suffix:** `astro`
-- **Files owned:** `plugins/astro/**`
-- **Prepare:** <command making the fresh worktree runnable — its own compose project, its own ports. Omit when there is nothing to prepare>
-- **Teardown:** <command undoing it, run on every exit path including a halt>
-
-### Iteration 1 — <name>
-- [ ] Not done yet
-- ...
-
-## Track php — <what this track delivers>
-- **Branch suffix:** `php`
-- **Files owned:** `plugins/php/**`
-
-### Iteration 3 — <name>
-- [ ] Not done yet
-- ...
-
-<Three things the harness enforces about tracks, before it creates anything: independence is
-proven from the `test_files` + `impl_files` of each track's iterations, so `Files owned` is
-prose for the reader and one shared path refuses the whole run; iteration numbers are global
-to the plan, so two tracks may not carry the same one; and a `Prepare:` that brings containers
-up needs the `Teardown:` that takes them down. What it cannot check is that your preparation
-genuinely isolates anything — it verifies the command exits 0 in a fresh worktree, not your
-mount points.>
-
 ## Out-of-band decisions captured during grill
 - Q: <question>
   A: <answer>
@@ -577,6 +637,16 @@ Never fold it back into the main plan. Its header depends on the `Cleanup:` answ
   marked ready. Its iterations run in this session after the feature plan, on a branch cut
   from the feature branch, and its PR targets that branch and stays a **draft** so merging
   the feature never drags the cleanup in with it.
+
+**Write the split plans and their index**, if Phase 3 produced a split. One
+`.claude/plans/<work-id>-<suffix>-spec.md` per part, each with the full header copied, then
+`.claude/plans/<work-id>-plans.md` listing them in order — and the index-check line in every
+split plan's global DoD. Write the index **last**, once every plan it names exists, or its
+own check fails on the first plan the developer runs.
+
+Read the launch commands back to them, one per plan, and say plainly which may run at the
+same time and which waits on a merge. A split whose order lives only in this conversation is
+a split the developer reconstructs from file names at midnight.
 
 **Never commit the plan, whatever the policy.** `.claude/plans/` is gitignored in most
 projects, so `git add .claude/plans/<work-id>-spec.md` exits 1 and the commit that

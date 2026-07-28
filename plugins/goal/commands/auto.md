@@ -56,10 +56,17 @@ one that never starts. Run the commands and show what failed.
      nothing to chain. Autonomous execution needs `commit` or `commit+pr`. Change the
      Policy line in the spec, or run the manual loop with `/goal` and `/goal:next`."_
    - Missing or unreadable → **STOP** and ask which policy applies. Never assume.
-2. **Branch.** `git branch --show-current` must be `feature/<work-id>` or `feature/<work-id>-…`.
-3. **Clean tree.** `git status --short` must be empty. Uncommitted work would end up in the
+2. **Remote.** Read the `Remote:` line in the spec header. It names the git remote this run
+   pushes to, and the repository its pull request opens on. Missing, empty, or not a plain
+   remote name → **STOP**: _"The plan declares no remote. Add a `Remote:` line to its header."_
+   **Never fall back to `origin`.** A bare push takes the default remote and `gh pr create`
+   targets a fork's **parent**, so guessing here means a run on a fork pushes to the fork and
+   opens its pull request upstream — on somebody else's repository, unattended, with nobody
+   watching. The refusal is the feature; a default would reintroduce exactly what it removes.
+3. **Branch.** `git branch --show-current` must be `feature/<work-id>` or `feature/<work-id>-…`.
+4. **Clean tree.** `git status --short` must be empty. Uncommitted work would end up in the
    first iteration's commit without anyone having reviewed it.
-4. **What the run writes is out of git's sight.** Check the plan's own directory, not the
+5. **What the run writes is out of git's sight.** Check the plan's own directory, not the
    whole `.claude/`: many repositories track `.claude/` on purpose for the commands, skills
    and settings shared with the team, and that is none of this run's business.
 
@@ -79,9 +86,9 @@ one that never starts. Run the commands and show what failed.
    `.claude/goal-runs/`, where the audit report lands, is written after the last commit and
    no gate call follows it. Not ignored, it leaves one untracked file behind and nothing
    halts: mention it in the launch report, do not refuse over it.
-5. **Iterations.** The spec must hold at least one `- [ ]`. None left → report the plan is
+6. **Iterations.** The spec must hold at least one `- [ ]`. None left → report the plan is
    already complete and STOP.
-6. **No cleanup iteration in a feature plan.** An iteration carrying a **Trigger** line
+7. **No cleanup iteration in a feature plan.** An iteration carrying a **Trigger** line
    ("flag at 100% for 7 days", "zero reads logged") asserts something about production
    that this run cannot observe, and that will only become true after the PR it sits in is
    merged and live. Running it inside the feature plan would delete the fallback in the
@@ -94,15 +101,17 @@ one that never starts. Run the commands and show what failed.
    draft and waits for it, and under `later` the developer decided the trigger holds by
    running the plan at all. Do not re-litigate it here, or the cleanup plan becomes
    unrunnable by the very command written to run it.
-7. **No run already holds the plan.** `<plan>.run.lock` present means another session is
+8. **No run already holds the plan.** `<plan>.run.lock` present means another session is
    driving this branch, or one died without releasing it. STOP rather than run two loops on
    one tree, and report the two ways forward: wait, or release it yourself with
    `node <gate> unlock <plan>` once you know the holder's process is gone. Never remove the
    directory by hand — the gate is what took it.
-8. **`gh` and the remote**, only when the policy is `commit+pr`: `gh auth status` succeeds,
-   `git remote` is non-empty, and `gh pr list --head <branch>` shows no open PR. Check these
-   now: discovering them after twelve green iterations wastes the whole run.
-9. **node runs the gate**, which is TypeScript with no build step and no dependency. Prove it
+9. **`gh` and the declared remote**, only when the policy is `commit+pr`: `gh auth status`
+   succeeds, `git remote get-url <the Remote: line>` resolves, and `gh pr list --head <branch>`
+   shows no open PR. Check the remote by the name the plan gave, not merely that some remote
+   exists: a plan naming `upstream` on a clone that only has `origin` fails at the push, twelve
+   green iterations later.
+10. **node runs the gate**, which is TypeScript with no build step and no dependency. Prove it
    rather than assume it, because a node too old to strip types fails at the first gate call,
    twelve iterations of work later:
 
@@ -114,7 +123,7 @@ one that never starts. Run the commands and show what failed.
    Expect the usage lines on stderr and `exit=2` — misuse, which is the gate answering. Any
    other output is node refusing to execute the file: STOP and report it verbatim. Types are
    **not** checked at run time; that is a CI concern and never a gate.
-10. **Nothing in the run may stop to ask the developer.** This is the check that makes a
+11. **Nothing in the run may stop to ask the developer.** This is the check that makes a
     backgrounded run possible, and skipping it is what makes one look dead. The run executes
     `git commit`, `git push`, `gh pr create`, the gate, and every acceptance command the plan
     declares — in Manual mode, which is the default, each of those is a permission prompt.
@@ -138,7 +147,7 @@ one that never starts. Run the commands and show what failed.
     Say one more thing under `auto`, and only once: the classifier pauses auto mode after three
     consecutive blocks and resumes prompting. A run that stalls mid-way in the background with
     no halt report is that, not a crash — reattach and answer it.
-11. **The base is already green.** Every check above proves the run *can* start; this one proves
+12. **The base is already green.** Every check above proves the run *can* start; this one proves
     it is worth starting. Collect the distinct commands from the plan's `dod` block and from
     every iteration's `gate2..N`, and run each one **now, on the untouched tree**. They are the
     project's own CI — tests, lint, static analysis, container check — and they must already
@@ -173,7 +182,7 @@ one that never starts. Run the commands and show what failed.
     an iteration that was never going to land. It exists because a run halted at iteration 1 on
     three pre-existing static-analysis errors, in files no iteration declared, after ten minutes
     of implementation — every one of them visible from a single command nobody had run.
-12. **The branch is up to date with what it forked from.** Run `git fetch --prune` in its own
+13. **The branch is up to date with what it forked from.** Run `git fetch --prune` in its own
     call, then prove the base is an ancestor of `HEAD`:
 
     ```bash
@@ -248,20 +257,25 @@ The workflow returns one object, and it is the report:
 
 A halt leaves the tree **exactly as the implementer left it** — not clean. That is deliberate:
 the evidence is what the developer needs. It also means the next launch fails preflight check
-3 until they deal with it, which is the intended friction.
+4 until they deal with it, which is the intended friction.
 
-Parallel tracks are the workflow's concern, not this command's. A plan carrying `## Track`
-headings has its independence **proved** before anything is created — one path declared by two
-tracks refuses the whole run — then each track gets its own worktree, its declared preparation,
-its own branch and its own PR, and they run at the same time. A halted track never cancels a
-healthy sibling, so the report carries one entry per track under `tracks`, and the worktree of a
-halted one is kept for you to inspect. Tracks need `gate` passed as an absolute path.
+**A run works where you launched it, and that is the whole of its isolation.** It creates no
+worktree and knows of none: launch it from a checkout and it uses that checkout, launch it from
+a worktree and it is isolated. So run it from a session of its own — `cd` into a worktree, then
+`claude` — for two reasons that both cost a whole run when ignored. The main checkout stays free
+while it works. And a run living in your interactive session dies from a keystroke: navigating
+out of its progress view interrupts it, which makes looking at the run the gesture that kills it.
+
+**Parallelism is several runs, not a mode.** One plan that splits into independent parts is
+written as several plan files, each self-sufficient, and you launch one run per file. The
+concurrency cap is per workflow, so nothing is lost by moving the parallelism up here — and
+proving the parts disjoint happens once, at planning time, where a human can read the file lists.
 
 ### What goes in a PR body
 
 **Only the iterations this PR actually delivers.** Never the whole plan. One plan can
-produce several PRs (parallel tracks, plus the separate cleanup plan), so pasting the
-contract into each would repeat it three times over PRs that each realise a third of it,
+produce several PRs — the separate cleanup plan, and any sibling plan a split produced — so
+pasting the contract into each would repeat it over PRs that each realise a part of it,
 and a reviewer could not tell which part is theirs to check.
 
 Write, for each iteration in this PR: its goal in one line, the business rules it covers,
@@ -297,7 +311,7 @@ PR is open, with two differences that matter:
   sense once the new path is in: cutting from the default branch would produce a PR that
   deletes something its own base still depends on. The name matters because the cleanup run
   goes through the same preflight, whose branch check expects `feature/<work-id>-…` — an
-  unnamed convention here is a refusal on check 2 at the worst moment.
+  unnamed convention here is a refusal on check 3 at the worst moment.
 - **Target the feature branch, and open it as a draft**:
   `gh pr create --draft --base feature/<work-id>-<slug>`. GitHub shows only the cleanup
   diff and retargets the PR when the feature PR merges. The draft is what preserves the

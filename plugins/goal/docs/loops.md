@@ -55,7 +55,7 @@ whole thing.[^selfheal] The classes worth distinguishing:
 
 | Signal | Class | Recovery | Budget |
 |---|---|---|---|
-| `git worktree add` fails, `gh` 5xx, network timeout | transient infrastructure | retry the command | 2 |
+| `git push` rejected, `gh` 5xx, network timeout | transient infrastructure | retry the command | 2 |
 | gate output matches a known flaky signature | suspected flakiness | re-run **for information only**, verdict unchanged | 1 |
 | gate fails on a test assertion | the code is wrong | none — halt | 0 |
 | gate fails on scope leak or spec tampering | the executor misbehaved | none — halt | 0 |

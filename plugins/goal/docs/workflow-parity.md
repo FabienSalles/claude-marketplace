@@ -34,7 +34,7 @@ launches only if it passes.
 | Check | Status | Note |
 |---|---|---|
 | 1. Policy is `commit` / `commit+pr` | **held twice** | the command. The gate no longer needs to re-check it: there is no state file to write. |
-| 2. Branch is `feature/<work-id>…` | **moved** | the command. For tracks the workflow creates the branches itself, named from the plan. |
+| 2. Branch is `feature/<work-id>…` | **moved** | the command. The workflow creates no branch of its own. |
 | 3. Clean tree | **moved** | the command. |
 | 4. the plan's directory is gitignored | **moved** | the command. Still load-bearing: the gate ticks the plan there on every iteration. Scoped to `.claude/plans/`, so a repository that tracks the rest of `.claude/` still runs. |
 | 5. At least one unchecked iteration | **held** | the survey returns the unchecked set; empty → `done` with a reason, nothing runs. |
@@ -69,49 +69,60 @@ launches only if it passes.
 | Commit message carries no AI trailer | **held** | it comes from the plan's `commit_msg`, frozen by a human. |
 | Subagent brief built from `goal-handoff.template` | **dropped on purpose** | see *Deliberate divergences*. |
 
-## Phase 3 bis — Parallel tracks
+## Phase 3 bis — Parallel tracks — **dropped on purpose**
 
-| Guarantee | Status | Where |
-|---|---|---|
-| Tracks run concurrently | **held** | `parallel()` over tracks. |
-| A halted track never cancels a healthy one | **held, stronger** | each track returns a result object; nothing throws across tracks. |
-| One worktree per track, branched from the **default** branch | **held** | `git worktree add … -b feature/<work-id>-<suffix> <defaultBranch>`. |
-| Each track addresses the plan by an **absolute** path | **held** | the workflow builds absolute paths, since the plan is absent from the worktrees. |
-| Gate runs from the worktree root | **held** | every runner is given the track's directory as cwd. |
-| One PR per track | **held** | the ship stage runs inside each track. |
-| Re-verify (gate + DoD) before pushing | **held** | the DoD runs per track, in its worktree, after its last iteration. |
-| **Only one writer to the spec** | **found broken, fixed** | see below. |
-| Tracks are provably disjoint before anything is created | **held, was a gap** | `goal-gate.ts tracks` intersects the declared paths of every track's iterations and refuses on overlap, naming both tracks and the shared path. Subtree declarations count. Iteration 11, with tests. |
-| `Branch suffix:` collisions refused | **held, was a gap** | same verb: a missing suffix, a duplicated suffix, or one iteration number claimed by two tracks each refuse the whole run before a worktree exists. |
-| Remove shipped worktrees, keep halted ones, never delete a branch | **held** | `git worktree remove` after a track ships; a halted track returns before reaching it. |
+Every guarantee below was held, and all of it was removed on 2026-07-28 under
+`.claude/plans/goal-single-run-spec.md`. Recorded rather than deleted, because the reasoning
+is the useful part.
 
-### The race this checklist exists to catch
+The workflow served two execution modes — sequential, and parallel by worktree — in one code
+path, with the mode inferred from an absence (`DIR === undefined` meant sequential). Nine sites
+branched on it. The run of 2026-07-27 failed on the two sites where the branch had been
+forgotten: the implementer's brief never mentioned the worktree, so two of four tracks wrote
+into the main checkout while their gates judged an untouched one; and the regression wall
+replayed a sibling track's gate command against a branch that could not carry its fix. Both
+failures were silent, because a site that never asked got sequential behaviour by default —
+which is precisely wrong in track mode.
 
-`auto.md` holds "only one writer to the spec" by being single-threaded: *"You are
-single-threaded, so there is no race on the shared file."* The workflow is not. Tracks run in
-separate worktrees, but the plan lives in the main tree's `.claude/` and every track addresses
-it by absolute path — so two tracks reaching their GREEN gate at the same moment both
-read the whole file and both write the whole file, and one tick is silently lost. They also
-collided on a fixed `$spec.new` temp filename.
+Measured, not argued: that run cost 942,390 tokens and landed 1 iteration of 6, against 82,438
+tokens for 4 of 4 on the sequential run the day before. Parallelism never saved tokens — same
+work plus N orchestrations — and the only thing it could buy was wall-clock, which is the
+cheapest resource an unattended overnight run has.
 
-The spike answered it with a `mkdir`-based lock (atomic and portable, unlike `flock` on
-macOS). **The rebuild landed it, and split it in two**, which the spike had not: a
-`<plan>.tick.lock` around the read-check-write of the commit, and a `<plan>.run.lock` taken for
-the whole run — the second closes a hole the spike still had, where two *sessions* could
-implement the same iteration. The tick lock is registered in `heldLocks` and removed by a
-`process.on('exit')` handler; the run lock survives the process **on purpose**, and only
-`goal-gate.ts unlock` hands it back. Two regression tests pin them, in
-`tests/gate-commit.test.ts`: *a run lock is exclusive, and unlock hands it back*, and *a commit
-is refused while another writer holds the tick lock*.
+**What replaces it.** A run works in the directory it was launched from, so isolation is a
+property of that directory rather than a mode: `cd` into a worktree, then `claude`. Parallelism
+is several runs, one per plan file, and the concurrency cap being per workflow means nothing is
+lost by moving it up. Disjointness is proven once at planning time, where a human reads the file
+lists, instead of at run time where discovering it costs the whole run.
 
-This is the class of bug the parity exercise exists to find: a property held *implicitly* by
-the old design's shape, silently lost when the shape changes.
+The one guarantee that had to survive is *the gate judges the tree it stands in* — the property
+the whole launch-from-a-worktree flow rests on. It moved out of the deleted `gate-tracks.test.ts`
+into `gate-plan.test.ts` before the deletion, so coverage never dipped.
+
+### The race this section existed to catch, and why it is now moot
+
+`auto.md` held "only one writer to the spec" by being single-threaded: *"You are single-threaded,
+so there is no race on the shared file."* The workflow was not, and two tracks reaching GREEN at
+the same moment both read and wrote the whole plan, losing a tick.
+
+The rebuild answered it with two `mkdir`-based locks (atomic and portable, unlike `flock` on
+macOS): a `<plan>.tick.lock` around the read-check-write of the commit, and a `<plan>.run.lock`
+taken for the whole run — the second closing a hole where two *sessions* could implement the same
+iteration. **Both remain, and both still matter**: one run per plan does not mean one run per
+machine, and the run lock is what stops a second session driving the same plan. The tick lock is
+registered in `heldLocks` and removed by a `process.on('exit')` handler; the run lock survives the
+process on purpose, and only `goal-gate.ts unlock` hands it back. Two regression tests pin them in
+`tests/gate-commit.test.ts`.
+
+This is the class of bug the parity exercise exists to find: a property held *implicitly* by the
+old design's shape, silently lost when the shape changes. It is also, twice over, the class this
+section documents — the second time being the mode conditionals that removing tracks deleted.
 
 ## Phase 4 — Ship
 
 | Guarantee | Status | Where |
 |---|---|---|
-| Global DoD as a last barrier, nothing pushed if it fails | **held** | per track; on failure the branch is pushed and the issue commented, no PR. |
+| Global DoD as a last barrier, nothing pushed if it fails | **held** | on failure the branch is pushed and the issue commented, no PR. |
 | **Reshape the history before the first push, under either policy** | **held** | a reshape stage runs after the DoD and before the ship branch, so it happens under `commit` too and never needs a force. |
 | `commit` → report, no push | **held** | `ship` is false, or the policy is not `commit+pr`. |
 | `commit+pr` → push then `gh pr create`, never `--force` | **held** | stated in the ship prompt. |
@@ -190,7 +201,7 @@ than a victory lap.
 
 1. **An uncaught throw leaves the run lock held.** The loop releases it on every exit path it
    controls, but a crashed process is not one of them — observed once, when a run died mid-survey
-   and left `<plan>.run.lock` behind. Recovery is documented (preflight check 7,
+   and left `<plan>.run.lock` behind. Recovery is documented (preflight check 8,
    `goal-gate.ts unlock`) and it worked, but it is prose, not machinery.
 2. **`node --check` is not a smoke test.** Nothing exercises the launch path itself, which is
    how three consecutive dead-on-arrival defects reached a green branch.

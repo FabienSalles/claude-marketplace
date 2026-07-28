@@ -52,7 +52,24 @@ claude
 > /clear                                   # then paste the next handoff in a fresh session
 ```
 
-**Learn more:** which workflow fits your task → [decision guide](../../docs/workflows-decision-guide.md) · the *unknown-unknowns* engine → [`grill-adversarial`](skills/grill-adversarial/SKILL.md) · how it's audited against competing frameworks → [`self-audit`](../self-audit/README.md).
+Or hand the whole plan to an unattended run, in a session of its own:
+
+```bash
+./plugins/goal/scripts/goal-launch.sh .claude/plans/<work-id>-spec.md
+```
+
+It creates the worktree, names the branch `feature/<work-id>` after the plan, and opens a
+tmux session inside it running `/goal:auto` on the plan — passed as an absolute path, since
+`.claude/` is gitignored and therefore absent from the worktree it just made. Three gestures
+become one, and the two that matter are not conveniences: your checkout stays free while the
+run works, and the run stops living in your interactive session, where navigating out of its
+progress view interrupts it. Looking at a run should not be what kills it.
+
+It refuses rather than guesses: no plan named, an unreadable plan, or a worktree already
+holding that work-id. The plan is always an argument — a bare `/goal:auto` resolves the most
+recently modified `*-spec.md`, which is ambiguous the moment a split produced several.
+
+**Learn more:** which workflow fits your task → [decision guide](../../docs/workflows-decision-guide.md) · the *unknown-unknowns* engine → [`grill-adversarial`](skills/grill-adversarial/SKILL.md) · why a run is not parallel, with the two runs that measured it → [`docs/why-not-parallel.md`](docs/why-not-parallel.md) · how it's audited against competing frameworks → [`self-audit`](../self-audit/README.md).
 
 ## How it works
 
@@ -64,7 +81,7 @@ claude
 | 1 | `/goal:run-issue <source>` | Session 1 · interactive | Grill to close gaps + build a command-checkable **DoD** → decompose into small functional iterations → lock the plan on `feature/<id>` → echo the first `/goal` handoff. |
 | 2 | `/goal` *(native)* | Session 2 · per iteration | Implement the next unchecked iteration test-first, verify each rule by **running its command**, then stop with a synthesis. |
 | ↻ | `/goal:next` | between iterations | Verify the finished iteration's DoD, reconcile plan ↔ code, emit the next handoff. You `/clear` and paste it into a fresh session. |
-| ⚡ *alternative to 2 + ↻* | `/goal:auto` | once, then unattended | Runs **every** remaining iteration in one turn and ends with a pushed branch and an open PR. One subagent per iteration (isolated context, so the orchestrator's context stays flat), and after each one a **verification script** replays the acceptance commands: the loop advances only on its exit code, never on what the subagent claims. Halts hard on the first failure without attempting the ones after it. Needs `commit` or `commit+pr`; refuses under `manual`. No new hook. **Parallel tracks:** when the plan declares independent tracks with disjoint file sets, each runs in its own git worktree and ends in its **own PR**, and one track halting never stops the others. |
+| ⚡ *alternative to 2 + ↻* | `/goal:auto` | once, then unattended | Runs **every** remaining iteration in one turn and ends with a pushed branch and an open PR. One subagent per iteration (isolated context, so the orchestrator's context stays flat), and after each one a **verification script** replays the acceptance commands: the loop advances only on its exit code, never on what the subagent claims. Halts hard on the first failure without attempting the ones after it. Needs `commit` or `commit+pr`; refuses under `manual`. No new hook. **One run, one plan, one branch, one PR** — it works in the directory it was launched from, so `cd` into a worktree first and the run is isolated while your checkout stays free. Parallelism is several runs, one per plan file, not a second mode inside the workflow. |
 
 Everything runs on your **Claude Code subscription** (no API surcharge); **GitHub is optional at every step** — you're asked whether you want an issue, and whether Claude should commit or open the PR.
 
@@ -111,10 +128,20 @@ Turns the source into a locked, executable plan.
 4. **Decomposes** the work into small functional iterations, each an
    independently reviewable slice with its own files + acceptance criteria.
 5. **Asks the commit/PR policy**: `manual` (default) / `commit` / `commit+pr`.
-6. **Locks**: creates `feature/<work-id>-<slug>` and writes the plan
+6. **Asks which remote** a run pushes to, and writes it on the plan's `Remote:` line.
+   There is no default: `/goal:auto` refuses a plan that does not carry one. On a fork
+   this is what keeps both the push and the pull request on *your* fork, since
+   `gh pr create` targets a fork's parent otherwise.
+7. **Splits, when the work really splits**: one self-sufficient plan per part
+   (`<work-id>-<suffix>-spec.md`, full header copied — nothing inherits), plus an ordering
+   index at `<work-id>-plans.md` carrying the set, the order and the launch command. Named
+   outside the `*-spec.md` glob on purpose, so a bare `/goal:auto` never tries to run the
+   index. Every split plan's DoD checks the index both ways, so adding a sibling without
+   listing it breaks the others until you do.
+8. **Locks**: creates `feature/<work-id>-<slug>` and writes the plan
    (never committed: `.claude/plans/` is gitignored in most projects, and the plan reaches
    the reviewer through the PR body instead).
-7. **Echoes** the per-iteration `/goal` text for you to paste.
+9. **Echoes** the per-iteration `/goal` text for you to paste.
 
 ### Session 2 — `/goal` (native), one iteration at a time
 
@@ -130,7 +157,7 @@ Commit behavior follows the policy:
 
 - **manual** — Claude commits nothing. You read the synthesis, review the diff, commit yourself.
 - **commit** — Claude commits the iteration (conventional message, **no `Co-Authored-By` trailer**), no push/PR.
-- **commit+pr** — plus push, and one PR per branch: opened as a **draft at the first commit**, its body updated by every iteration after it, marked ready at the last. A run that halts halfway still leaves something reviewable.
+- **commit+pr** — plus push to the plan's declared `Remote:`, and one PR per branch on that same repository: opened as a **draft at the first commit**, its body updated by every iteration after it, marked ready at the last. A run that halts halfway still leaves something reviewable.
 
 The execution log is refreshed at **every Stop** by the `issue-execution-log.sh` hook.
 
@@ -250,7 +277,7 @@ commands fall back to inlined behavior when they're absent.
 | `/goal:auto` halted mid-run | a gate refused: an acceptance command failed, a scope leak, a hollow test, a blown diff budget, a regression in an earlier slice, a plan rewrite | the halt is printed verbatim: reason, command, exit code, real output, then the iterations that were not attempted. Reproduce it from the repository root: `node ~/.claude/plugins/…/goal/scripts/goal-gate.ts verify .claude/plans/<work-id>-spec.md <n>` (the gate reads the tree it stands in) |
 | `/goal:auto` stopped mid-run without halting | the turn ended (rate limit, closed session, interruption), or the run paused on its token floor | relaunch `/goal:auto`: the plan's checkboxes are the whole state, so it resumes at the first unchecked iteration. A dirty tree is refused by preflight first — deal with it yourself |
 | `/goal:auto` refuses on `<plan>.run.lock` | another session holds the plan, or one died without releasing it | wait, or release it with `node <gate> unlock <plan>` once you know the holder is gone. Never remove the directory by hand |
-| The run seems to stop the moment you background the session (`←` or `/bg`) | backgrounding kills nothing — the supervisor keeps the workflow, its subagents and their shells running. What stopped is a **permission prompt** nobody answered: the session sits in `Needs input` and no iteration advances | `claude agents`, attach with `←`, answer it. To stop it happening, launch the run in a mode that never prompts (preflight check 10): `claude --permission-mode auto`, or `Shift+Tab` to `auto` / `bypass permissions` before `/goal:auto` |
+| The run seems to stop the moment you background the session (`←` or `/bg`) | backgrounding kills nothing — the supervisor keeps the workflow, its subagents and their shells running. What stopped is a **permission prompt** nobody answered: the session sits in `Needs input` and no iteration advances | `claude agents`, attach with `←`, answer it. To stop it happening, launch the run in a mode that never prompts (preflight check 11): `claude --permission-mode auto`, or `Shift+Tab` to `auto` / `bypass permissions` before `/goal:auto` |
 | The gate halts on files you did consider in scope | the iteration's *Files to touch* list does not match reality | the declared list is the contract. Fix the list in the spec, or keep the change out of this iteration |
 
 ---
