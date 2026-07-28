@@ -300,42 +300,33 @@ one an unattended agent must gate on a command). Do not restate its rules here �
 them, and let the plan show the result.
 
 What this command owns, and the skill does not, is everything below: the plan's file
-format, the parallel-track mechanics, the cleanup carve-out, and persistence.
+format, the cleanup carve-out, and persistence.
 
-**Ask whether the iterations split into independent tracks.** A track is a group
-of iterations that shares no file with any other track and needs nothing another track
-produces. Tracks matter because `/goal:auto` runs them **in parallel**, each in its own
-git worktree, each ending in its **own PR**. Three focused PRs a reviewer can merge
-separately beat one PR touching everything.
+**A plan is one sequence, and `/goal:auto` runs one plan.** The workflow has no parallel
+mode: it works in the directory it was launched from and knows nothing of worktrees. So a
+plan is a flat list of iterations, with no parallel section inside it.
 
-The test for a real track is mechanical, not editorial: **the union of its "Files to
-touch" must be disjoint from every other track's.** One shared file and the tracks are
-not independent, whatever the story says. Check it before you propose the split.
+**When the work genuinely splits, that is several plans, not one plan with branches.** Write
+each part as its own self-sufficient plan file, and the developer launches one run per file —
+the concurrency cap is per workflow, so nothing is lost. Two things make that split real
+rather than decorative, and both are your job here, while a human can read the result:
 
-Good candidates: work organized per module, per plugin, per bounded context, per package
-in a monorepo. Bad candidates: a shared refactor everything else builds on, anything
-touching a common config, migrations that must run in order.
+- **The file sets must be provably disjoint.** The union of one plan's `test_files` +
+  `impl_files` shares no path with another's. One shared file and the two runs conflict at
+  merge, whatever the story says. Check it before proposing the split.
+- **A shared foundation is extracted, not ignored.** Candidate parts usually share one
+  artefact the others depend on — a validation script, a schema, a rename that renumbers
+  every call site. That overlap is not proof the work is sequential: it is a foundation. It
+  becomes its own plan, first, and the remainder splits behind it with a **Trigger** line
+  naming the merge it waits on. Only conclude "sequential" when the remainder, foundation
+  removed, still shares files.
 
-**When the candidates share a foundation, extract it — do not fall back to sequential.**
-Tracks are rarely disjoint on the first pass. They usually share one artefact the others
-depend on: a validation script, a schema, a config, a rename that renumbers every call
-site. That overlap is not proof the work is sequential — it is a **foundation**, and the
-resolution is to pull it out rather than abandon the split:
+Good candidates: work organized per module, per plugin, per bounded context, per package in
+a monorepo. Bad candidates: a shared refactor everything else builds on, anything touching a
+common config, migrations that must run in order.
 
-- The shared artefact, plus every change whose halves are incoherent apart (a reciprocal
-  cross-module pointer, a rename and its callers), goes into a **foundation plan** — one
-  sequential list, one PR.
-- The remainder forks into tracks in a **follow-up plan**, written at lock time as
-  `.claude/plans/<work-id>-tracks-spec.md`, carrying a **Trigger** line: the foundation PR
-  is merged. Tracks branched before that sit on a tree without the artefact their DoD
-  calls, so their acceptance commands cannot run.
-
-Only conclude "sequential" when the remainder, foundation removed, still shares files.
-
-If a split exists, ask the developer (`AskUserQuestion`) whether to use it, showing the
-tracks and the file sets that make them disjoint. If it does not, say so and keep a single
-sequential list. Do not invent tracks to look parallel: a false track means two PRs that
-conflict at merge.
+Do not invent a split to look parallel: a false split is two pull requests that conflict at
+merge, discovered after both runs have paid for themselves.
 
 **Under `commit` or `commit+pr`, every iteration carries a `gate` block, and that block is
 what runs.** The acceptance criteria used to be prose, and `/goal:auto` translated them into
@@ -397,8 +388,8 @@ the same PR that introduces the thing it falls back to.
 So collect every cleanup slice into a separate **follow-up plan**, written at lock time as
 `.claude/plans/<work-id>-cleanup-spec.md`. Each keeps its **Trigger** line (the production
 evidence that must hold first) and its proof. It becomes its own PR later, when the
-developer runs the workflow on that plan. Do not put it in a track either: tracks run in
-parallel, and cleanup is strictly after.
+developer runs the workflow on that plan. Nor does it become one of the sibling plans a
+split produced: those are launched alongside each other, and cleanup is strictly after.
 
 Persist at `.claude/plans/<work-id>-spec.md`:
 
@@ -473,9 +464,8 @@ Also true, and not expressible as a command of its own:
 
 ## Functional iterations
 
-<Sequential by default: one flat list of iterations, no `## Track` heading. Add tracks
-ONLY when the split is real and the file sets are provably disjoint. Iterations are
-numbered once across the whole plan, whether or not tracks are used.>
+<One flat list of iterations, numbered once across the plan. A plan that splits becomes
+several plan files, each with its own flat list, never one file with parallel sections.>
 
 ### Iteration 1 — <name>
 - [ ] Not done yet
@@ -516,36 +506,6 @@ gate1=! grep -rq <flag name> <src dirs>
 gate2=<test command>
 gate3=<project lint/QA>
 ```
-
-<With tracks, wrap the iterations in `## Track` headings instead. Everything inside a
-track stays sequential; tracks are independent of each other and each becomes its own
-branch and its own PR:>
-
-## Track astro — <what this track delivers>
-- **Branch suffix:** `astro`
-- **Files owned:** `plugins/astro/**`
-- **Prepare:** <command making the fresh worktree runnable — its own compose project, its own ports. Omit when there is nothing to prepare>
-- **Teardown:** <command undoing it, run on every exit path including a halt>
-
-### Iteration 1 — <name>
-- [ ] Not done yet
-- ...
-
-## Track php — <what this track delivers>
-- **Branch suffix:** `php`
-- **Files owned:** `plugins/php/**`
-
-### Iteration 3 — <name>
-- [ ] Not done yet
-- ...
-
-<Three things the harness enforces about tracks, before it creates anything: independence is
-proven from the `test_files` + `impl_files` of each track's iterations, so `Files owned` is
-prose for the reader and one shared path refuses the whole run; iteration numbers are global
-to the plan, so two tracks may not carry the same one; and a `Prepare:` that brings containers
-up needs the `Teardown:` that takes them down. What it cannot check is that your preparation
-genuinely isolates anything — it verifies the command exits 0 in a fresh worktree, not your
-mount points.>
 
 ## Out-of-band decisions captured during grill
 - Q: <question>

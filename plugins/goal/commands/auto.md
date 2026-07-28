@@ -250,18 +250,23 @@ A halt leaves the tree **exactly as the implementer left it** — not clean. Tha
 the evidence is what the developer needs. It also means the next launch fails preflight check
 3 until they deal with it, which is the intended friction.
 
-Parallel tracks are the workflow's concern, not this command's. A plan carrying `## Track`
-headings has its independence **proved** before anything is created — one path declared by two
-tracks refuses the whole run — then each track gets its own worktree, its declared preparation,
-its own branch and its own PR, and they run at the same time. A halted track never cancels a
-healthy sibling, so the report carries one entry per track under `tracks`, and the worktree of a
-halted one is kept for you to inspect. Tracks need `gate` passed as an absolute path.
+**A run works where you launched it, and that is the whole of its isolation.** It creates no
+worktree and knows of none: launch it from a checkout and it uses that checkout, launch it from
+a worktree and it is isolated. So run it from a session of its own — `cd` into a worktree, then
+`claude` — for two reasons that both cost a whole run when ignored. The main checkout stays free
+while it works. And a run living in your interactive session dies from a keystroke: navigating
+out of its progress view interrupts it, which makes looking at the run the gesture that kills it.
+
+**Parallelism is several runs, not a mode.** One plan that splits into independent parts is
+written as several plan files, each self-sufficient, and you launch one run per file. The
+concurrency cap is per workflow, so nothing is lost by moving the parallelism up here — and
+proving the parts disjoint happens once, at planning time, where a human can read the file lists.
 
 ### What goes in a PR body
 
 **Only the iterations this PR actually delivers.** Never the whole plan. One plan can
-produce several PRs (parallel tracks, plus the separate cleanup plan), so pasting the
-contract into each would repeat it three times over PRs that each realise a third of it,
+produce several PRs — the separate cleanup plan, and any sibling plan a split produced — so
+pasting the contract into each would repeat it over PRs that each realise a part of it,
 and a reviewer could not tell which part is theirs to check.
 
 Write, for each iteration in this PR: its goal in one line, the business rules it covers,

@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
@@ -35,8 +35,8 @@ const writePlan = (content: string): string => {
   return path;
 };
 
-const runGate = (args: string[]): { code: number; output: string } => {
-  const run = spawnSync('node', [GATE, ...args], { encoding: 'utf8' });
+const runGate = (args: string[], cwd?: string): { code: number; output: string } => {
+  const run = spawnSync('node', [GATE, ...args], { encoding: 'utf8', ...(cwd === undefined ? {} : { cwd }) });
 
   return { code: run.status ?? -1, output: `${run.stdout}${run.stderr}` };
 };
@@ -173,4 +173,40 @@ test('an unreadable plan exits 2 rather than reporting a bad plan', () => {
   const { code } = runGate(['check', join(tmpdir(), 'goal-gate-absent-plan.md'), '1']);
 
   assert.equal(code, 2);
+});
+
+// R3 — the plan is read by absolute path, so the gate judges the tree it stands in and not
+// the one it was launched from. This is what lets a run live in a directory that has no
+// `.claude/` of its own.
+test('the gate judges the directory it stands in, not the one beside it', () => {
+  const git = (cwd: string, ...args: string[]) => spawnSync('git', args, { cwd, encoding: 'utf8' });
+  const main = mkdtempSync(join(tmpdir(), 'goal-gate-standing-'));
+
+  git(main, 'init', '-q');
+  git(main, 'config', 'user.email', 'gate@example.com');
+  git(main, 'config', 'user.name', 'Gate');
+  mkdirSync(join(main, 'src'));
+  writeFileSync(join(main, 'src', 'a.ts'), 'export const a = 1;\n');
+  git(main, 'add', '-A');
+  git(main, 'commit', '-qm', 'init');
+
+  const beside = join(main, 'beside');
+  git(main, 'worktree', 'add', '-q', beside, '-b', 'feature/beside');
+  writeFileSync(join(beside, 'src', 'a.ts'), 'export const a = 2;\n');
+
+  const plan = writePlan(
+    planWith([
+      'test_files=',
+      'impl_files=src/a.ts',
+      'max_diff=100',
+      'commit_msg=feat(a): do a thing',
+      'gate1=grep -q "a = 2" src/a.ts',
+    ]),
+  );
+
+  const inside = runGate(['verify', plan, '1'], beside);
+  const outside = runGate(['verify', plan, '1'], main);
+
+  assert.equal(inside.code, 0, inside.output);
+  assert.equal(outside.code, 1, outside.output);
 });

@@ -7,7 +7,6 @@
 //
 // Usage: node goal-gate.ts check|verify|commit <plan> <iteration> [plan_hash]
 //        node goal-gate.ts dod <plan> [plan_hash]
-//        node goal-gate.ts tracks <plan>
 //        node goal-gate.ts scan
 //        node goal-gate.ts lock|unlock <plan>
 //
@@ -21,12 +20,11 @@ import { budgetCheck, removalCheck } from './gate/bounds.ts';
 import { regressionWall, resolvabilityCheck } from './gate/cross-iteration.ts';
 import { biteCheck } from './gate/bite.ts';
 import { dodCheck, secretScan } from './gate/ship.ts';
-import { tracksCheck } from './gate/tracks.ts';
 
 const USAGE =
-  'usage: goal-gate.ts check|verify|commit <plan> <iteration> [plan_hash]\n       goal-gate.ts dod <plan> [plan_hash]\n       goal-gate.ts tracks <plan>\n       goal-gate.ts scan\n       goal-gate.ts lock|unlock <plan>';
+  'usage: goal-gate.ts check|verify|commit <plan> <iteration> [plan_hash]\n       goal-gate.ts dod <plan> [plan_hash]\n       goal-gate.ts scan\n       goal-gate.ts lock|unlock <plan>';
 
-const SUBCOMMANDS = ['check', 'verify', 'commit', 'dod', 'tracks', 'lock', 'unlock'];
+const SUBCOMMANDS = ['check', 'verify', 'commit', 'dod', 'lock', 'unlock'];
 
 const ALLOWED_KEY = /^(test_files|impl_files|max_diff|commit_msg|gate[1-9][0-9]*)$/;
 const REQUIRED_KEYS = ['gate1', 'impl_files', 'commit_msg'] as const;
@@ -91,10 +89,6 @@ const main = (): void => {
 
   if (subcommand === 'lock' || subcommand === 'unlock') {
     return runLock(subcommand, plan);
-  }
-
-  if (subcommand === 'tracks') {
-    return tracksCheck(readPlan(plan));
   }
 
   if (subcommand === 'dod') {
