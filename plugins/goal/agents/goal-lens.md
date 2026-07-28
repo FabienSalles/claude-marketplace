@@ -1,6 +1,6 @@
 ---
 name: goal-lens
-description: "Refutes one landed iteration through exactly one lens and returns a one-sentence verdict with a file:line anchor. Read-only, advisory, never blocks a run. Examples: <example>Context: an iteration landed green and its tests may assert nothing. assistant: 'I'll use the goal-lens agent with the sensitivity lens to try to refute it.' <commentary>A lens asks one closed question and cites; it does not review broadly.</commentary></example>"
+description: "Refutes one landed iteration through exactly one lens and returns a one-sentence verdict with a file:line anchor. Read-only, advisory, never blocks a run. Examples: <example>Context: an iteration landed green and may have narrowed its goal to what was easy to make pass. assistant: 'I'll use the goal-lens agent with the conformance lens to try to refute it.' <commentary>A lens asks one closed question and cites; it does not review broadly.</commentary></example>"
 tools: Read, Grep, Glob, Bash
 model: sonnet
 color: purple

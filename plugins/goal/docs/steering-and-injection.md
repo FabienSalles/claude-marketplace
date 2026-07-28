@@ -30,7 +30,7 @@ candidate:
 | `pause-after <n>` | the run ends earlier | acceptable |
 | `retry-current` | one iteration costs twice | acceptable |
 | `skip-lenses` | advisory findings are lost | acceptable, nothing blocking is lost |
-| `no-ship` | nothing is pushed or opened | acceptable |
+| `no-ship` | nothing is pushed, opened, updated **or marked ready** | acceptable |
 | `ship` | verified work is published early | **rejected** — publication is not remotely triggerable |
 | `skip-iteration <n>` | a slice is silently omitted and the rest still ships | **rejected** |
 | anything carrying a path, a command or free text | arbitrary | **rejected** |
@@ -107,7 +107,7 @@ own boxes are ticked*, which is a bit vector over a vocabulary it authored.
 ### Run controls — tick one and the run picks it up at the next iteration boundary
 
 - [ ] stop — end the run after the current iteration
-- [ ] no-ship — push nothing and open no pull request
+- [ ] no-ship — push nothing, open or update no pull request, and mark none ready
 - [ ] skip-lenses — drop the advisory refutation stage
 ```
 

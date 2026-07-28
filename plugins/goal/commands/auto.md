@@ -64,6 +64,9 @@ one that never starts. Run the commands and show what failed.
    opens its pull request upstream — on somebody else's repository, unattended, with nobody
    watching. The refusal is the feature; a default would reintroduce exactly what it removes.
 3. **Branch.** `git branch --show-current` must be `feature/<work-id>` or `feature/<work-id>-…`.
+   The workflow now holds this one too, and refuses before taking the lock. That is not a
+   pointless duplicate: the version here is executed by a model, the one in the workflow is a
+   fact — the same reasoning `workflow-parity.md` applies to the policy.
 4. **Clean tree.** `git status --short` must be empty. Uncommitted work would end up in the
    first iteration's commit without anyone having reviewed it.
 5. **What the run writes is out of git's sight.** Check the plan's own directory, not the
@@ -246,7 +249,12 @@ first unchecked box.
 ## Phase 3 — Read what came back
 
 The workflow returns one object, and it is the report:
-`{ status, plan, iteration, detail, landed, notAttempted }`.
+`{ status, plan, dir, branch, sha, iteration, detail, landed, notAttempted }`.
+
+`dir`, `branch` and `sha` say which tree, which branch and which commit the report is about, on
+every exit path but one: a run whose probe could not establish where it stands says so instead,
+because naming the tree is exactly what failed. Report them — with several worktrees on one
+machine, "the working tree of the halted iteration" is not an address.
 
 | `status` | What happened | What you do |
 |---|---|---|

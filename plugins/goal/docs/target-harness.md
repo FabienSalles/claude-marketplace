@@ -155,7 +155,7 @@ runs next. Here, what runs next is the product.
 Per iteration, before: **one** subagent.
 
 Per iteration, as shipped: implementer + one runner for the gate + one reader for the steering
-channel, plus up to 5 lenses when they are switched on. Measured on a real four-iteration run:
+channel, plus up to 2 lenses when they are switched on. Measured on a real four-iteration run:
 23 agents and 82 000 tokens for the whole run, lenses off.
 
 That is not free and it should not be defended as if it were. Two consequences to accept

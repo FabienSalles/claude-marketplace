@@ -1,6 +1,8 @@
 # Adversarial verification — design note
 
-Not implemented. Parked here so the reasoning is not re-derived from scratch.
+Three lenses are implemented in `workflows/goal-auto.js`, off unless `args.lenses` is true.
+The rest of this note is the reasoning behind them, kept so it is not re-derived from scratch —
+and, below, the record of which lenses were retired and to what.
 
 ## The hole this addresses
 
@@ -75,72 +77,65 @@ mitigation that actually moves judge accuracy is a *fix-guided verification filt
 **executes** the original and the corrected implementation against tests, rather than any
 refinement of the prompt.[^complexity]
 
-The sensitivity lens is the worked example. As a question it is "would this test fail if the
-rule broke?" As a command it is: revert the implementation hunk, run the slice's test,
-require RED, restore. That is an exit code, not an opinion. The industrial form is mutation
-testing (Infection, Stryker) scoped to the touched files — already listed as an opt-in
-criterion in `templates/done-criteria.template`.
+The sensitivity lens is the worked example, and it has since been carried out. As a question
+it was "would this test fail if the rule broke?" As a command it is: set the implementation
+aside, run the slice's test, require RED, restore. That is an exit code, not an opinion, and
+`goal-gate.ts` runs it on every iteration from the `test_files` / `impl_files` split. The finer
+industrial form is mutation testing (Infection, Stryker) scoped to the touched files — listed as
+an opt-in criterion in `templates/done-criteria.template`, not wired in.
 
 A lens promoted to a command moves out of this document and into the iteration's `gate`
 block, where it halts like everything else.
 
 ## The lenses
 
-| Lens | The question | What it catches |
-|---|---|---|
-| **Sensitivity** | Would this test fail if the rule it claims to cover broke? | the test that asserts nothing, the mock that hides the truth |
-| **Reversibility** | Is the previous behaviour still reachable? | the executor that "tidied up" the fallback in the PR that introduces what falls back to it |
-| **Specification conformance** | Does the delivery match the iteration's *Goal*, or a comfortable reading of it? | scope quietly narrowed to what was easy to make green |
-| **Invariant** | Construct a sequence that violates `<I_n>` after this iteration. | broken state machines on interactive/front slices |
-| **Blast radius** | Name a caller of something in `## Blast radius` whose behaviour changed. | an undeclared contract break under `no-bc-break` |
-| **Ripple** | Does this iteration leave iteration N+1 doable exactly as written? | plan drift, discovered at iteration N+3 instead of N |
-| **Accumulation** | Run against the whole branch, not the slice. | regressions that live between iterations, not inside one |
-| **Completeness** | What did the plan not cover that its Business intent implies? | the gap nobody wrote down |
+Three, and the set is fixed rather than derived: what survives is what no mechanism already
+asks.
 
-The invariant, blast-radius and ripple lenses read sections `/goal:run-issue` already
-produces (`## States, invariants & transitions`, `## Blast radius`, the next iteration).
-They cost nothing to declare and are the return on investment of the adversarial grill.
+| Lens | The question | What it catches | When |
+|---|---|---|---|
+| **Specification conformance** | Does the delivery match the iteration's *Goal*, or a comfortable reading of it? | scope quietly narrowed to what was easy to make green | every landed iteration |
+| **Ripple** | Does this iteration leave iteration N+1 doable exactly as written? | plan drift, discovered at iteration N+3 instead of N | every landed iteration but the last |
+| **Completeness** | What did the plan not cover that its Business intent implies? | the gap nobody wrote down | once, over the whole branch |
 
-## When a lens is required, and when it is not
+Both surviving per-iteration lenses compare code to **intent**, which is the one comparison
+no exit code performs. That is the whole selection rule.
 
-Derived from what the iteration already declares. No new judgment at run time.
+## What was retired, and to what
 
-**Required:**
+A lens whose question a mechanism already answers is not a second opinion, it is a second
+bill. Four were removed for that reason, and one had never existed outside this document.
 
-| Condition, read from the plan | Lens |
+| Retired lens | Answered instead by |
 |---|---|
-| The iteration touches an invariant listed in `## States, invariants & transitions` | **Invariant**, one verifier per invariant touched |
-| Its `Delivery:` is anything other than `additive` (flag, expand step, compat path) | **Reversibility** |
-| Plan is `no-bc-break` **and** the iteration touches a `## Blast radius` entry | **Blast radius** |
-| It adds or changes a test covering a business rule | **Sensitivity** — and prefer the command form |
-| It is not the last iteration | **Ripple** |
-| Once, at the end of the run | **Accumulation** + **Completeness** |
+| **Sensitivity** | the gate's bite check — `impl_files` set aside, `gate1` required to fail — on every iteration, not just the ones a lens was dispatched for |
+| **Invariant** | the sequence test `grill-adversarial` assigns to an owning iteration, which lands in that iteration's `gate1` |
+| **Accumulation** | the regression wall, which replays the gate commands of every ticked iteration |
+| **Reversibility** | the existing suite staying green, already `dod1`, and the lens was already skipped whenever `Delivery:` was additive |
+| **Blast radius** | nothing: it was specified here and never implemented. The blast radius is established at planning time by `/goal:run-issue`, with a human reading the consumer list. |
 
-**Optional, and usually skipped:**
+Removing them also removed the per-iteration fact extraction that only they consumed — the
+`Delivery:`, invariant-count and `test_files` probe, and the tab-positional parsing that read
+it back.
 
-- A purely mechanical iteration: rename, move, path rewrite. The diff is verifiable by
-  `grep`, and `gate1` already does it. No lens.
-- A documentation-only iteration. No lens.
-- An iteration whose *Goal* is fully expressed by its gates, so that passing them leaves
-  nothing to interpret. Rare, but real: "`grep -r <flag>` returns nothing" is the whole
-  goal.
+## When a lens runs at all
 
-**Specification conformance** is the odd one: it applies to every iteration that is not
-mechanical, because it is the lens for the failure mode the gate structurally cannot see.
-Treat it as the default lens and the others as additions.
+The set no longer depends on the plan, so there is nothing to derive and nothing to compose
+at 3am. `conformance` runs on every landed iteration, `ripple` on all but the last,
+`completeness` once at the end. The whole stage is off unless `args.lenses` is true, and the
+`skip-lenses` control drops it remotely.
 
-**The lens set is derived, not declared.** The rules above read sections `/goal:run-issue`
-already produces, so no new plan syntax is needed and the derivation is reproducible: the
-same plan always yields the same lenses. `workflows/goal-auto.js` applies them in its survey
-stage. Nothing here is composed at 3am by whatever is running the loop — the inputs were all
-frozen when the plan was locked.
+Judgement about *whether* a lens is worth running moved where judgement belongs: a mechanical
+slice, a documentation-only slice, or one whose goal is fully expressed by its gates simply is
+not worth `args.lenses`, and that is the developer's call before the run, not the loop's during
+it.
 
 ## Cost
 
-One verifier per lens, per iteration. A mechanical slice costs nothing extra; a slice
-touching two invariants under a flag costs four verifiers. Under a token budget, drop the
-lenses in this order: Completeness, Ripple, Accumulation, Blast radius, Reversibility,
-Invariant, Specification conformance. Never drop the last one.
+One verifier per lens. A run of N landed iterations costs `2N` verifiers, minus one for the
+last iteration, plus one closing verifier. Under a token budget, leave `args.lenses` off: the
+stage is all-or-nothing on purpose, because a partial advisory pass invites reading its silence
+as a verdict.
 
 ## Honest limit
 

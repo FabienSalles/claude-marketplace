@@ -83,6 +83,10 @@ const brief = (iteration) =>
   [
     `Implement iteration ${iteration} of the locked plan ${PLAN}.`,
     '',
+    `You are working in ${DIR}, on branch ${BRANCH}. Every path you write is inside that tree, and`,
+    'nowhere else. The plan is given as an absolute path and lives outside it on purpose, because',
+    'its directory is gitignored and therefore absent here: read it there, write nothing near it.',
+    '',
     `Read the whole of its "### Iteration ${iteration}" section: the goal, the files to touch, the`,
     'business rules it covers, every decision bullet, and its gate block. Those bullets were written',
     'at a checkpoint by someone who was there — they are binding, do not re-decide them.',
@@ -261,14 +265,7 @@ const haltReport = (report) =>
 const LENSES = {
   conformance:
     "Does what landed implement the iteration's stated Goal, or a comfortable reading of it that happens to make the checks pass?",
-  sensitivity:
-    "Would this iteration's tests fail if the business rule they claim to cover broke? Name the assertion that would not.",
-  reversibility: 'Is the behaviour that existed before this iteration still reachable?',
-  invariant:
-    'Construct a concrete sequence that violates one of the invariants this iteration touches, now that it has landed.',
   ripple: 'Does what landed leave the next unchecked iteration doable exactly as the plan writes it?',
-  accumulation:
-    'Read the whole branch rather than one slice: what broke between iterations rather than inside one?',
   completeness: "What does the plan's Business intent imply that no iteration of it covers?",
 };
 
@@ -284,35 +281,8 @@ const VERDICT = {
 };
 
 // One lens per verifier: diversity comes from asking different questions, not from asking the
-// same one twice. The set is derived from what the plan already declares, so the same plan always
-// yields the same lenses and nothing is composed at 3am.
-const lensesFor = (facts, last) => [
-  'conformance',
-  ...(facts.tests === '' ? [] : ['sensitivity']),
-  ...(facts.delivery === '' || /^additive/i.test(facts.delivery) ? [] : ['reversibility']),
-  ...(facts.invariants === '0' ? [] : ['invariant']),
-  ...(last ? [] : ['ripple']),
-];
-
-const FACTS = (numbers, plan) =>
-  numbers
-    .map(
-      (n) =>
-        `s=$(sed -n '/^### Iteration ${n} /,/^### Iteration /p' ${plan}); printf 'facts\\t${n}\\t%s\\t%s\\t%s\\n' "$(printf '%s' "$s" | sed -n 's/^- \\*\\*Delivery:\\*\\* *//p' | head -1)" "$(printf '%s' "$s" | grep -cE '(^| )I[0-9]' || true)" "$(printf '%s' "$s" | sed -n 's/^test_files=//p' | head -1)"`,
-    )
-    .join('; ');
-
-const parseFacts = (output) =>
-  output
-    .split('\n')
-    .filter((line) => line.startsWith('facts\t'))
-    .map((line) => line.split('\t'))
-    .map(([, iteration, delivery, invariants, tests]) => ({
-      iteration,
-      delivery: (delivery ?? '').trim(),
-      invariants: (invariants ?? '0').trim(),
-      tests: (tests ?? '').trim(),
-    }));
+// same one twice. Only the last iteration is spared the ripple question, since nothing follows it.
+const lensesFor = (last) => ['conformance', ...(last ? [] : ['ripple'])];
 
 const askLens = async (name, iteration) =>
   agent(
@@ -343,11 +313,10 @@ const findingsReport = (findings) =>
   ].join('\n');
 
 const runLenses = async (landed, issue) => {
-  const facts = parseFacts((await runner(FACTS(landed, PLAN), 'lens-facts', 'Lenses')).output);
-  const pairs = facts.flatMap((entry, index) =>
-    lensesFor(entry, index === facts.length - 1).map((name) => ({ name, iteration: entry.iteration })),
+  const pairs = landed.flatMap((iteration, index) =>
+    lensesFor(index === landed.length - 1).map((name) => ({ name, iteration })),
   );
-  const closing = ['accumulation', 'completeness'].map((name) => ({ name, iteration: 'the whole branch' }));
+  const closing = [{ name: 'completeness', iteration: 'the whole branch' }];
 
   const verdicts = await parallel(
     [...pairs, ...closing].map(({ name, iteration }) => () => askLens(name, iteration).then((verdict) => ({ ...verdict, lens: name, iteration }))),
@@ -383,7 +352,7 @@ const audit = async (report, record) => {
   const sha = (await runner('git rev-parse --short HEAD', 'sha', 'Audit')).output.trim() || 'unknown';
   const result = await agent(
     [
-      `Audit the run that just ended on plan ${PLAN} and write its report to .claude/goal-runs/${sha}.md.`,
+      `Audit the run that just ended on plan ${PLAN} and write its report to ${RUNS}/${sha}.md.`,
       '',
       'The machine record, one entry per iteration entered, tokens being this run\'s own output cost:',
       '',
@@ -391,7 +360,7 @@ const audit = async (report, record) => {
       '',
       report.status === 'halted' ? `The halt, verbatim:\n\n${String(report.detail).slice(-3000)}` : '',
       '',
-      'Read the reports already in .claude/goal-runs/ and say which failures recur across runs rather',
+      `Read the reports already in ${RUNS}/ and say which failures recur across runs rather`,
       'than describing this one twice. Name what cost the most and what produced nothing. Do not edit',
       'a single line of code, do not stage anything, and do not judge whether the work was correct —',
       'the gate already did that, and it is not what you are for.',
@@ -399,7 +368,7 @@ const audit = async (report, record) => {
     { agentType: 'goal:goal-auditor', schema: AUDIT, label: `audit:${sha}`, phase: 'Audit' },
   );
 
-  return result ?? { path: `.claude/goal-runs/${sha}.md`, summary: 'The auditor returned nothing.', recurring: [] };
+  return result ?? { path: `${RUNS}/${sha}.md`, summary: 'The auditor returned nothing.', recurring: [] };
 };
 
 // Remote steering, and the only reason it is safe: every verb here **subtracts**. A fully
@@ -418,7 +387,7 @@ const PANEL = [
   'the run reads nothing else here — not a title, not a body, not another comment.',
   '',
   '- [ ] stop — end the run after the current iteration',
-  '- [ ] no-ship — push nothing and open no pull request',
+  '- [ ] no-ship — push nothing, open or update no pull request, and mark none ready',
   '- [ ] skip-lenses — drop the advisory refutation stage',
 ].join('\n');
 
@@ -457,6 +426,16 @@ const readControls = async (issue, panel) => {
   );
 };
 
+// Read by key, never by position: a probe that loses a field must not silently shift the rest.
+const fieldsOf = (output) =>
+  Object.fromEntries(
+    output
+      .split('\n')
+      .map((line) => line.split('\t'))
+      .filter((parts) => parts.length === 2 && parts[0] !== '')
+      .map(([key, value]) => [key, value.trim()]),
+  );
+
 const iterationsPending = (output) =>
   output
     .split('\n')
@@ -467,7 +446,20 @@ const iterationsPending = (output) =>
 // section. Kept to one awk expression so it stays mechanical rather than a reading of the plan.
 const SURVEY = String.raw`awk '/^### Iteration [0-9]+/ { n = $3; seen = 0 } /^- \[/ { if (n != "" && seen == 0) { seen = 1; if ($0 ~ /^- \[ \]/) print n } }'`;
 
-const release = async () => runner(`${GATE} unlock ${PLAN}`, 'unlock', 'Iterate');
+// Idempotent, so the `finally` that guarantees it can coexist with the explicit calls on the
+// paths that already released. Removing those in the same diff would hide a re-indentation
+// under a real change.
+let released = false;
+
+const release = async () => {
+  if (released) {
+    return undefined;
+  }
+
+  released = true;
+
+  return runner(`${GATE} unlock ${PLAN}`, 'unlock', 'Iterate');
+};
 
 if (typeof PLAN !== 'string' || PLAN === '') {
   throw new Error('goal-auto needs args.plan: the repo-relative path of a locked plan.');
@@ -475,339 +467,415 @@ if (typeof PLAN !== 'string' || PLAN === '') {
 
 phase('Survey');
 
+// A workflow has no disk and no shell, so asking is the only way it can know where it stands.
+// It runs before the lock on purpose: the probe is read-only, and a lock refusal is the one that
+// most needs to name the tree — it is how the developer finds out the holder is themselves, in
+// another worktree.
+const located = await runner(
+  String.raw`printf 'dir\t%s\nbranch\t%s\nsha\t%s\nroot\t%s\n' "$(pwd)" "$(git rev-parse --abbrev-ref HEAD)" "$(git rev-parse --short HEAD)" "$(cd "$(dirname "$(git rev-parse --git-common-dir)")" && pwd)"`,
+  'locate',
+  'Survey',
+);
+
+const where = fieldsOf(located.output);
+
+// The one report that cannot name its tree: naming it is exactly what failed.
+if (located.exitCode !== 0 || ['dir', 'branch', 'sha', 'root'].some((key) => where[key] === undefined || where[key] === '')) {
+  return {
+    status: 'refused',
+    plan: PLAN,
+    landed: [],
+    notAttempted: [],
+    detail: `The run could not establish where it stands, so it will write nowhere:\n${located.output}`,
+  };
+}
+
+const DIR = where.dir;
+const BRANCH = where.branch;
+const SHA = where.sha;
+
+// The reports belong to the repository, not to the worktree this run stands in. `.claude/` is
+// gitignored, so it does not exist in a freshly created worktree, and a relative path would make
+// every launched run read an empty directory and write where the worktree's deletion takes it.
+// `--git-common-dir` names the main `.git` from any worktree, so its parent is the one checkout
+// where `.claude/` really is.
+const RUNS = `${where.root}/.claude/goal-runs`;
+
+const early = (fields) => ({ plan: PLAN, dir: DIR, branch: BRANCH, sha: SHA, landed: [], notAttempted: [], ...fields });
+
+const WORK_ID = PLAN.split('/').pop().replace(/-spec\.md$/, '');
+
+// A run publishes the branch its checkout is on, so standing on the wrong one publishes the
+// wrong one. The suffix form is accepted because `commands/auto.md` preflight accepts it, and a
+// fact held twice has to say the same thing both times.
+if (BRANCH !== `feature/${WORK_ID}` && !BRANCH.startsWith(`feature/${WORK_ID}-`)) {
+  return early({
+    status: 'refused',
+    detail: `This run stands on \`${BRANCH}\` in ${DIR}, and ${PLAN} is delivered on \`feature/${WORK_ID}\`. It publishes the branch its checkout is on, so running it here would publish the wrong one. Launch it with scripts/goal-launch.sh, which creates the worktree and the branch together.`,
+  });
+}
+
 const lock = await runner(`${GATE} lock ${PLAN}`, 'lock', 'Survey');
 
 // The lock is not held, so this exit path is the one that must not release it.
 if (lock.exitCode !== 0) {
-  return { status: 'refused', plan: PLAN, landed: [], notAttempted: [], detail: lock.output };
+  return early({ status: 'refused', detail: lock.output });
 }
 
+try {
+  const survey = await runner(`${SURVEY} ${PLAN}`, 'survey', 'Survey');
 
-const survey = await runner(`${SURVEY} ${PLAN}`, 'survey', 'Survey');
+  if (survey.exitCode !== 0) {
+    await release();
 
-if (survey.exitCode !== 0) {
-  await release();
-
-  return { status: 'refused', plan: PLAN, landed: [], notAttempted: [], detail: survey.output };
-}
-
-const pending = iterationsPending(survey.output);
-
-log(`${pending.length} unchecked iteration(s): ${pending.join(' ') || 'none'}`);
-
-if (pending.length === 0) {
-  await release();
-
-  return { status: 'done', plan: PLAN, landed: [], notAttempted: [] };
-}
-
-// Refusing every unrunnable iteration before implementing anything is the whole point of the
-// survey: a missing gate block is worth knowing at the start of the night, not at iteration 9.
-const runnable = await runner(
-  `for n in ${pending.join(' ')}; do ${GATE} check ${PLAN} $n || exit 1; done`,
-  'check-all',
-  'Survey',
-);
-
-if (runnable.exitCode !== 0) {
-  await release();
-
-  return { status: 'refused', plan: PLAN, landed: [], notAttempted: pending, detail: runnable.output };
-}
-
-// The hash the whole run is judged against: published by check, passed back to every gate call,
-// and never recomputed. Recomputing it per iteration would bless a plan rewritten at iteration 1.
-const hash = (/^plan_hash=([0-9a-f]{64})$/m.exec(runnable.output) ?? [])[1];
-
-if (hash === undefined) {
-  await release();
-
-  return {
-    status: 'refused',
-    plan: PLAN,
-    landed: [],
-    notAttempted: pending,
-    detail: `The survey published no plan_hash, so nothing locks the contract:\n${runnable.output}`,
-  };
-}
-
-const policy = (await runner(`${POLICY_FROM_PLAN} ${PLAN} | head -1`, 'policy', 'Survey')).output.trim();
-const publishes = policy === 'commit+pr';
-
-if (!publishes) {
-  log(`Policy is ${policy || 'unreadable'}: this run commits, and publishes nothing.`);
-}
-
-const declaredRemote = (await runner(`${REMOTE_FROM_PLAN} ${PLAN} | head -1`, 'remote', 'Survey')).output.trim();
-
-// Refused rather than defaulted, and refused for every policy: a plan that says nothing about
-// where it pushes is a plan whose author never decided, and the cost of guessing is borne by
-// whoever owns the repository the guess lands on.
-if (!/^[A-Za-z0-9._-]+$/.test(declaredRemote)) {
-  await release();
-
-  return {
-    status: 'refused',
-    plan: PLAN,
-    landed: [],
-    notAttempted: pending,
-    detail: `The plan declares no usable remote, so nothing can be pushed on its behalf.\n\nFound: ${declaredRemote === '' ? '(nothing)' : declaredRemote}\n\nAdd a \`Remote:\` line to the plan header naming the git remote this run pushes to — the same name \`git remote\` lists. It is also the repository its pull request opens on, which on a fork is the fork and not the upstream.`,
-  };
-}
-
-const REMOTE = declaredRemote;
-
-const declaredBase = (await runner(`${PR_BASE_FROM_PLAN} ${PLAN} | head -1`, 'pr-base', 'Survey')).output.trim();
-const prBase = /^[A-Za-z0-9._\/-]+$/.test(declaredBase) ? declaredBase : undefined;
-
-if (publishes && prBase !== undefined) {
-  log(`The plan stacks on \`${prBase}\`: the pull request will open against it, not the default branch.`);
-}
-
-const found = await runner(`${ISSUE_FROM_PLAN} ${PLAN} | head -1`, 'issue', 'Survey');
-const issue = /^[0-9]+$/.test(found.output.trim()) ? found.output.trim() : undefined;
-
-if (issue === undefined) {
-  log('The plan names no GitHub issue, so the run reports to its return value alone.');
-} else {
-  await post(
-    `issue #${issue}`,
-    'run started',
-    [
-      `## Run started on \`${PLAN}\``,
-      '',
-      `Iterations to run, in order: ${pending.join(' ')}`,
-      `Plan hash locked for the run: \`${hash}\``,
-      '',
-      'Each one is implemented by an agent that cannot commit, then judged by the gate, which',
-      'commits and ticks only after every check passed. The first refusal ends the run.',
-    ].join('\n'),
-  );
-}
-
-// The run authors its own control panel, then reads back only which of its own boxes are ticked.
-// The comment id comes from the URL gh printed when posting it, so no search over other people's
-// comments is ever needed — and a forged panel elsewhere on the issue is never read.
-const panel =
-  issue === undefined
-    ? undefined
-    : (/issuecomment-([0-9]+)/.exec((await post(`issue #${issue}`, 'run controls', PANEL)).output) ?? [])[1];
-
-phase('Iterate');
-
-const landed = [];
-const record = [];
-const remote = new Set();
-const shipping = { pushed: false, pr: false, blocked: undefined, prError: undefined };
-let stopped;
-
-// The pull request is opened as a draft at the **first** commit and its body rewritten by every
-// iteration after it, so a run that halts at iteration 3 of 15 still leaves something a human
-// can read instead of a local branch nobody can see.
-const mirror = async (issue) => {
-  if (shipping.blocked !== undefined) {
-    return;
+    return early({ status: 'refused', detail: survey.output });
   }
+
+  const pending = iterationsPending(survey.output);
+
+  log(`${pending.length} unchecked iteration(s): ${pending.join(' ') || 'none'}`);
+
+  if (pending.length === 0) {
+    await release();
+
+    return early({ status: 'done' });
+  }
+
+  // Refusing every unrunnable iteration before implementing anything is the whole point of the
+  // survey: a missing gate block is worth knowing at the start of the night, not at iteration 9.
+  const runnable = await runner(
+    `for n in ${pending.join(' ')}; do ${GATE} check ${PLAN} $n || exit 1; done`,
+    'check-all',
+    'Survey',
+  );
+
+  if (runnable.exitCode !== 0) {
+    await release();
+
+    return early({ status: 'refused', notAttempted: pending, detail: runnable.output });
+  }
+
+  // The hash the whole run is judged against: published by check, passed back to every gate call,
+  // and never recomputed. Recomputing it per iteration would bless a plan rewritten at iteration 1.
+  const hash = (/^plan_hash=([0-9a-f]{64})$/m.exec(runnable.output) ?? [])[1];
+
+  if (hash === undefined) {
+    await release();
+
+    return early({
+      status: 'refused',
+      notAttempted: pending,
+      detail: `The survey published no plan_hash, so nothing locks the contract:\n${runnable.output}`,
+    });
+  }
+
+  const policy = (await runner(`${POLICY_FROM_PLAN} ${PLAN} | head -1`, 'policy', 'Survey')).output.trim();
+  const publishes = policy === 'commit+pr';
 
   if (!publishes) {
-    shipping.blocked = `The plan's policy is ${policy || 'unreadable'}, not commit+pr, so nothing is pushed and no pull request is opened. The commits are on the branch, where the developer asked them to stay.`;
-
-    return;
+    log(`Policy is ${policy || 'unreadable'}: this run commits, and publishes nothing.`);
   }
 
-  if (!shipping.pushed && !(await reshape(landed.length))) {
-    shipping.blocked =
-      'The run carries a fixup or squash commit, so the history is not the sequence a reviewer should read. Nothing was pushed: fold them yourself, then push.';
+  const declaredRemote = (await runner(`${REMOTE_FROM_PLAN} ${PLAN} | head -1`, 'remote', 'Survey')).output.trim();
 
-    return;
-  }
+  // Refused rather than defaulted, and refused for every policy: a plan that says nothing about
+  // where it pushes is a plan whose author never decided, and the cost of guessing is borne by
+  // whoever owns the repository the guess lands on.
+  if (!/^[A-Za-z0-9._-]+$/.test(declaredRemote)) {
+    await release();
 
-  const push = await pushBranch(REMOTE);
-
-  if (!push.pushed) {
-    shipping.blocked = push.scanned
-      ? `The push failed:\n${push.detail.slice(-1500)}`
-      : `The secret scanner refused this tree, so nothing was pushed:\n${push.detail.slice(-1500)}`;
-
-    return;
-  }
-
-  shipping.pushed = true;
-
-  const facts = await planFacts(landed);
-  const published = await publish(shipping.pr ? 'edit' : 'create', facts, prBody(facts, issue), prBase, REMOTE);
-
-  shipping.prError = published.exitCode === 0 ? undefined : published.output.slice(-1500);
-  shipping.pr = shipping.pr || published.exitCode === 0;
-};
-
-for (const [index, iteration] of pending.entries()) {
-  const before = budget.spent();
-  let gateExit;
-
-  const controls = issue === undefined ? new Set() : await readControls(issue, panel);
-
-  controls.forEach((control) => remote.add(control));
-
-  if (controls.has('stop')) {
-    stopped = {
-      status: 'paused',
-      iteration,
-      outcome: 'stopped remotely before it started',
-      from: index,
-      detail: `Stopped remotely before iteration ${iteration}: a control was ticked, or the issue carries the goal:stop label. Nothing is wrong with what landed, and relaunching resumes at the first unchecked box — untick it first.`,
-    };
-  }
-
-  if (budget.total && budget.remaining() < ITERATION_FLOOR) {
-    stopped = {
-      status: 'paused',
-      iteration,
-      outcome: 'never started, token floor reached',
-      from: index,
-      detail: `Stopped before iteration ${iteration}: ${Math.round(budget.remaining() / 1000)}k tokens left, under the ${ITERATION_FLOOR / 1000}k floor one iteration needs. Nothing is wrong; relaunch and the plan's checkboxes resume the run here.`,
-    };
-  }
-
-  if (stopped === undefined) {
-    const implemented = await agent(brief(iteration), {
-      agentType: 'goal:goal-implementer',
-      label: `implement:${iteration}`,
-      phase: 'Iterate',
+    return early({
+      status: 'refused',
+      notAttempted: pending,
+      detail: `The plan declares no usable remote, so nothing can be pushed on its behalf.\n\nFound: ${declaredRemote === '' ? '(nothing)' : declaredRemote}\n\nAdd a \`Remote:\` line to the plan header naming the git remote this run pushes to — the same name \`git remote\` lists. It is also the repository its pull request opens on, which on a fork is the fork and not the upstream.`,
     });
+  }
 
-    if (implemented === null) {
+  const REMOTE = declaredRemote;
+
+  const declaredBase = (await runner(`${PR_BASE_FROM_PLAN} ${PLAN} | head -1`, 'pr-base', 'Survey')).output.trim();
+  const prBase = /^[A-Za-z0-9._\/-]+$/.test(declaredBase) ? declaredBase : undefined;
+
+  if (publishes && prBase !== undefined) {
+    log(`The plan stacks on \`${prBase}\`: the pull request will open against it, not the default branch.`);
+  }
+
+  const found = await runner(`${ISSUE_FROM_PLAN} ${PLAN} | head -1`, 'issue', 'Survey');
+  const issue = /^[0-9]+$/.test(found.output.trim()) ? found.output.trim() : undefined;
+
+  if (issue === undefined) {
+    log('The plan names no GitHub issue, so the run reports to its return value alone.');
+  } else {
+    await post(
+      `issue #${issue}`,
+      'run started',
+      [
+        `## Run started on \`${PLAN}\``,
+        '',
+        `Iterations to run, in order: ${pending.join(' ')}`,
+        `Plan hash locked for the run: \`${hash}\``,
+        '',
+        'Each one is implemented by an agent that cannot commit, then judged by the gate, which',
+        'commits and ticks only after every check passed. The first refusal ends the run.',
+      ].join('\n'),
+    );
+  }
+
+  // The run authors its own control panel, then reads back only which of its own boxes are ticked.
+  // The comment id comes from the URL gh printed when posting it, so no search over other people's
+  // comments is ever needed — and a forged panel elsewhere on the issue is never read.
+  const panel =
+    issue === undefined
+      ? undefined
+      : (/issuecomment-([0-9]+)/.exec((await post(`issue #${issue}`, 'run controls', PANEL)).output) ?? [])[1];
+
+  phase('Iterate');
+
+  const landed = [];
+  const record = [];
+  const remote = new Set();
+  const shipping = { pushed: false, pr: false, blocked: undefined, prError: undefined };
+
+  // What is true of every report once the loop exists. `early` carries the same three facts before
+  // it, where neither `landed` nor `shipping` does.
+  const outcome = (fields) => ({
+    plan: PLAN,
+    dir: DIR,
+    branch: BRANCH,
+    sha: SHA,
+    landed,
+    notAttempted: [],
+    ...fields,
+  });
+  let stopped;
+
+  // The pull request is opened as a draft at the **first** commit and its body rewritten by every
+  // iteration after it, so a run that halts at iteration 3 of 15 still leaves something a human
+  // can read instead of a local branch nobody can see.
+  const mirror = async (issue) => {
+    if (shipping.blocked !== undefined) {
+      return;
+    }
+
+    if (!publishes) {
+      shipping.blocked = `The plan's policy is ${policy || 'unreadable'}, not commit+pr, so nothing is pushed and no pull request is opened. The commits are on the branch, where the developer asked them to stay.`;
+
+      return;
+    }
+
+    if (!shipping.pushed && !(await reshape(landed.length))) {
+      shipping.blocked =
+        'The run carries a fixup or squash commit, so the history is not the sequence a reviewer should read. Nothing was pushed: fold them yourself, then push.';
+
+      return;
+    }
+
+    const push = await pushBranch(REMOTE);
+
+    if (!push.pushed) {
+      shipping.blocked = push.scanned
+        ? `The push failed:\n${push.detail.slice(-1500)}`
+        : `The secret scanner refused this tree, so nothing was pushed:\n${push.detail.slice(-1500)}`;
+
+      return;
+    }
+
+    shipping.pushed = true;
+
+    const facts = await planFacts(landed);
+    const published = await publish(shipping.pr ? 'edit' : 'create', facts, prBody(facts, issue), prBase, REMOTE);
+
+    shipping.prError = published.exitCode === 0 ? undefined : published.output.slice(-1500);
+    shipping.pr = shipping.pr || published.exitCode === 0;
+  };
+
+  for (const [index, iteration] of pending.entries()) {
+    const before = budget.spent();
+    let gateExit;
+
+    const controls = issue === undefined ? new Set() : await readControls(issue, panel);
+
+    controls.forEach((control) => remote.add(control));
+
+    if (controls.has('stop')) {
       stopped = {
         status: 'paused',
         iteration,
-        outcome: 'the implementer returned nothing',
-        from: index + 1,
-        detail: `The implementer of iteration ${iteration} returned nothing — skipped, or dead after retries. The tree holds whatever it wrote and no gate has judged it: review it before relaunching.`,
+        outcome: 'stopped remotely before it started',
+        from: index,
+        detail: `Stopped remotely before iteration ${iteration}: a control was ticked, or the issue carries the goal:stop label. Nothing is wrong with what landed, and relaunching resumes at the first unchecked box — untick it first.`,
       };
     }
-  }
 
-  if (stopped === undefined) {
-    const gate = await runner(
-      `${GATE} commit ${PLAN} ${iteration} ${hash}`,
-      `gate:${iteration}`,
-      'Iterate',
-    );
-
-    gateExit = gate.exitCode;
-
-    if (gate.exitCode !== 0) {
-      stopped = { status: 'halted', iteration, outcome: 'the gate refused it', from: index + 1, detail: gate.output };
+    if (budget.total && budget.remaining() < ITERATION_FLOOR) {
+      stopped = {
+        status: 'paused',
+        iteration,
+        outcome: 'never started, token floor reached',
+        from: index,
+        detail: `Stopped before iteration ${iteration}: ${Math.round(budget.remaining() / 1000)}k tokens left, under the ${ITERATION_FLOOR / 1000}k floor one iteration needs. Nothing is wrong; relaunch and the plan's checkboxes resume the run here.`,
+      };
     }
-  }
 
-  record.push({
-    iteration,
-    tokens: budget.spent() - before,
-    outcome: stopped?.outcome ?? 'landed',
-    gate: gateExit ?? null,
-  });
+    if (stopped === undefined) {
+      const implemented = await agent(brief(iteration), {
+        agentType: 'goal:goal-implementer',
+        label: `implement:${iteration}`,
+        phase: 'Iterate',
+      });
 
-  // A halt is final: the iterations after it are never attempted, and the tree is left exactly
-  // as the implementer left it.
-  if (stopped !== undefined) {
-    await release();
+      if (implemented === null) {
+        stopped = {
+          status: 'paused',
+          iteration,
+          outcome: 'the implementer returned nothing',
+          from: index + 1,
+          detail: `The implementer of iteration ${iteration} returned nothing — skipped, or dead after retries. The tree holds whatever it wrote and no gate has judged it: review it before relaunching.`,
+        };
+      }
+    }
 
-    const report = {
-      status: stopped.status,
-      plan: PLAN,
-      iteration: stopped.iteration,
-      detail: stopped.detail,
-      landed,
-      notAttempted: pending.slice(stopped.from),
-    };
+    if (stopped === undefined) {
+      const gate = await runner(
+        `${GATE} commit ${PLAN} ${iteration} ${hash}`,
+        `gate:${iteration}`,
+        'Iterate',
+      );
 
-    if (report.status !== 'halted') {
+      gateExit = gate.exitCode;
+
+      // A runner that returns nothing is given exitCode -1 upstream, and that is not a refusal:
+      // the gate may never have run at all. Reporting it as one tells someone asleep that their
+      // work was judged and rejected, on the only channel they have.
+      if (gate.exitCode === -1) {
+        stopped = {
+          status: 'paused',
+          iteration,
+          outcome: 'the gate could not be run',
+          from: index + 1,
+          detail: `The runner that should have replayed the gate for iteration ${iteration} returned nothing, so no verdict exists: the gate may never have run. The tree holds whatever the implementer wrote and nothing was committed. Review it, then relaunch — the plan's checkboxes resume here.\n\n${gate.output}`,
+        };
+      } else if (gate.exitCode !== 0) {
+        stopped = { status: 'halted', iteration, outcome: 'the gate refused it', from: index + 1, detail: gate.output };
+      }
+    }
+
+    record.push({
+      iteration,
+      tokens: budget.spent() - before,
+      outcome: stopped?.outcome ?? 'landed',
+      gate: gateExit ?? null,
+    });
+
+    // A halt is final: the iterations after it are never attempted, and the tree is left exactly
+    // as the implementer left it.
+    if (stopped !== undefined) {
+      await release();
+
+      const report = outcome({
+        status: stopped.status,
+        iteration: stopped.iteration,
+        detail: stopped.detail,
+        notAttempted: pending.slice(stopped.from),
+      });
+
+      if (report.status !== 'halted') {
+        report.audit = await audit(report, record);
+
+        return report;
+      }
+
+      phase('Report');
+
+      if (landed.length > 0) {
+        await mirror(issue);
+        report.push = { pushed: shipping.pushed, detail: shipping.blocked ?? shipping.prError ?? '' };
+        report.pr = shipping.pr;
+      } else if (publishes) {
+        report.push = await pushBranch(REMOTE);
+      }
+
+      if (issue !== undefined) {
+        report.reported = (await post(`issue #${issue}`, 'run halted', haltReport(report))).exitCode === 0;
+      }
+
       report.audit = await audit(report, record);
 
       return report;
     }
 
-    phase('Report');
+    landed.push(iteration);
+    log(`iteration ${iteration} landed, gate-verified`);
 
-    if (landed.length > 0) {
+    if (controls.has('no-ship')) {
+      shipping.blocked = 'no-ship was ticked remotely, so nothing was pushed and no pull request was opened or updated.';
+    } else {
       await mirror(issue);
-      report.push = { pushed: shipping.pushed, detail: shipping.blocked ?? shipping.prError ?? '' };
-      report.pr = shipping.pr;
-    } else if (publishes) {
-      report.push = await pushBranch(REMOTE);
     }
+  }
+
+  await release();
+
+  phase('Ship');
+
+  // Nothing ships unverified: every slice was gated against its own commands, which is not the
+  // same claim as the whole plan holding. Marking the pull request ready is what "shipped" means
+  // here, and it happens on the other side of this barrier or not at all.
+  const dod = await runner(`${GATE} dod ${PLAN} ${hash}`, 'dod', 'Ship');
+
+  if (dod.exitCode !== 0) {
+    const refused = outcome({
+      status: 'halted',
+      iteration: 'the global Definition of Done',
+      detail: dod.output,
+      push: { pushed: shipping.pushed, detail: shipping.blocked ?? shipping.prError ?? '' },
+      pr: shipping.pr,
+    });
 
     if (issue !== undefined) {
-      report.reported = (await post(`issue #${issue}`, 'run halted', haltReport(report))).exitCode === 0;
+      refused.reported = (await post(`issue #${issue}`, 'run halted', haltReport(refused))).exitCode === 0;
     }
 
-    report.audit = await audit(report, record);
+    refused.audit = await audit(refused, record);
 
-    return report;
+    return refused;
   }
 
-  landed.push(iteration);
-  log(`iteration ${iteration} landed, gate-verified`);
+  // Both flags are sticky, and consulting only the first is how a run marks ready a pull request
+  // that stops at the iteration publication was blocked on — or one the developer said not to ship.
+  // The repository and the branch are named for the same reason every other gh call names them:
+  // on a fork, gh resolves to the parent.
+  const ready =
+    shipping.pr && shipping.blocked === undefined
+      ? await runner(`repo="$(${repoOf(REMOTE)})" && gh pr ready --repo "$repo" "${BRANCH}"`, 'pr:ready', 'Ship')
+      : undefined;
 
-  if (controls.has('no-ship')) {
-    shipping.blocked = 'no-ship was ticked remotely, so nothing was pushed and no pull request was opened or updated.';
-  } else {
-    await mirror(issue);
-  }
-}
+  // Last, and after the pull request is already ready: a finding cannot stop what has already
+  // shipped, which is the strongest form of "a lens never blocks" available.
+  const lenses =
+    input.lenses === true && landed.length > 0 && !remote.has('skip-lenses')
+      ? await runLenses(landed, issue)
+      : undefined;
 
-await release();
-
-phase('Ship');
-
-// Nothing ships unverified: every slice was gated against its own commands, which is not the
-// same claim as the whole plan holding. Marking the pull request ready is what "shipped" means
-// here, and it happens on the other side of this barrier or not at all.
-const dod = await runner(`${GATE} dod ${PLAN} ${hash}`, 'dod', 'Ship');
-
-if (dod.exitCode !== 0) {
-  const refused = {
-    status: 'halted',
-    plan: PLAN,
-    iteration: 'the global Definition of Done',
-    detail: dod.output,
-    landed,
-    notAttempted: [],
-    push: { pushed: shipping.pushed, detail: shipping.blocked ?? shipping.prError ?? '' },
+  const done = outcome({
+    status: 'done',
+    lenses,
+    pushed: shipping.pushed,
     pr: shipping.pr,
-  };
+    ready: ready?.exitCode === 0,
+    detail: shipping.blocked ?? shipping.prError ?? ready?.output ?? '',
+  });
 
-  if (issue !== undefined) {
-    refused.reported = (await post(`issue #${issue}`, 'run halted', haltReport(refused))).exitCode === 0;
+  done.audit = await audit(done, record);
+
+  return done;
+} finally {
+  // A throw in a `finally` REPLACES the error that reached it, and `release()` runs through
+  // the same agent layer whose failure is the reason we are here. The diagnosis the developer
+  // wakes up to has to survive its own cleanup, so a failed release is reported beside it.
+  try {
+    await release();
+  } catch (failure) {
+    log(`The run lock could not be released: ${failure?.message ?? failure}. Free it with \`${GATE} unlock ${PLAN}\`.`);
   }
-
-  refused.audit = await audit(refused, record);
-
-  return refused;
 }
-
-const ready = shipping.pr ? await runner('gh pr ready', 'pr:ready', 'Ship') : undefined;
-
-// Last, and after the pull request is already ready: a finding cannot stop what has already
-// shipped, which is the strongest form of "a lens never blocks" available.
-const lenses =
-  input.lenses === true && landed.length > 0 && !remote.has('skip-lenses')
-    ? await runLenses(landed, issue)
-    : undefined;
-
-const done = {
-  status: 'done',
-  lenses,
-  plan: PLAN,
-  landed,
-  notAttempted: [],
-  pushed: shipping.pushed,
-  pr: shipping.pr,
-  ready: ready?.exitCode === 0,
-  detail: shipping.blocked ?? shipping.prError ?? ready?.output ?? '',
-};
-
-done.audit = await audit(done, record);
-
-return done;
