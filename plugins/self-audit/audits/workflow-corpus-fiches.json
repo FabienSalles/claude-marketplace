@@ -1,0 +1,2351 @@
+{
+  "fiches": [
+    {
+      "file": "redoz/Synto:implement-plan.js",
+      "archetype": "A",
+      "lines": 1036,
+      "purpose": "Implements ONE approved markdown plan end-to-end inside an isolated jj workspace by spawning successive self-rotating implementer agent generations that commit small green units carrying \"Plan-Tasks\" trailers and integrate each onto the shared bookmark B, then runs a bounded deep end-review with fix-forward rounds and archives the plan file.",
+      "verdictAuthority": {
+        "kind": "schema",
+        "quote": "    if (f.critical.length || f.high.length) {",
+        "line": 931
+      },
+      "contextBoundary": {
+        "structured": true,
+        "quote": "  required: ['done', 'allDone', 'escalate', 'handoffNote'],",
+        "line": 194
+      },
+      "state": {
+        "kind": "commit",
+        "resumable": true,
+        "quote": "'The single source of truth for progress is the commit trailers. Every landed unit of THIS plan carries TWO trailers',",
+        "line": 424
+      },
+      "bounds": [
+        {
+          "kind": "maxRounds",
+          "value": "MAX_GENERATIONS = 25 implementer generations",
+          "line": 73
+        },
+        {
+          "kind": "maxRounds",
+          "value": "MAX_REVIEW_FIX_ROUNDS = 3 deep-review -> fix-forward iterations",
+          "line": 74
+        },
+        {
+          "kind": "maxRounds",
+          "value": "MAX_ATTEMPTS = 3 in-generation green-gate fix-and-retry attempts",
+          "line": 93
+        },
+        {
+          "kind": "maxRounds",
+          "value": "FF_PUSH_MAX_ATTEMPTS = 8 bookmark-advance retries with backoff",
+          "line": 98
+        },
+        {
+          "kind": "maxRounds",
+          "value": "GATE_INFRA_MAX_RECHECKS = 3 backoff-retries before parking transient",
+          "line": 126
+        },
+        {
+          "kind": "budget",
+          "value": "ROTATE_MAX_TOKENS = 175000 context-token quality-zone cap driving self-rotation",
+          "line": 69
+        },
+        {
+          "kind": "noProgress",
+          "value": "if (landed <= prevLanded) { ... -> parking",
+          "line": 813
+        },
+        {
+          "kind": "other",
+          "value": "loop guard: while (gen < MAX_GENERATIONS)",
+          "line": 761
+        }
+      ],
+      "writeScope": {
+        "commits": true,
+        "pushes": true,
+        "opensPR": false,
+        "merges": true,
+        "gatedBy": "integrate.sh must exit 0 — it rebases the unit onto the latest tip of bookmark B and re-runs the FULL acceptance green-gate BEFORE advancing B; the archive/push step additionally requires the deep-review hard gate (no unresolved introduced critical/high) to have passed. Push itself is further gated on SYNTO_FLOW_INTEGRATE=push read inside the agent shell.",
+        "line": 363
+      },
+      "trustSurface": {
+        "readsUntrusted": true,
+        "sources": [
+          "the plan markdown file under docs/superpowers/plans/, handed to the implementer as its 'COMPLETE instruction set'",
+          "args.planReviewConcerns strings, JSON-stringified straight into the deep-review prompt",
+          "jj commit descriptions/trailers read back from the shared bookmark history",
+          "stdout JSON of base-branch.sh / probe.sh / integrate.sh / context-fill.py",
+          "free-text handoffNote passed from one generation's prompt into the next"
+        ],
+        "sanitized": false,
+        "quote": "        JSON.stringify(concerns, null, 2),",
+        "line": 550
+      },
+      "robustness": {
+        "argsNormalized": true,
+        "nullHandled": true,
+        "hardcodedPaths": [
+          "REPO_DIR = 'C:/dev/Synto' (l.32)",
+          "PLANS_DIR = 'docs/superpowers/plans' (l.29)",
+          "COMPLETED_DIR = 'docs/superpowers/plans/completed' (l.30)",
+          "WORKSPACES_DIR = '.claude/workspaces' (l.31)",
+          "SCRIPTS_DIR = REPO_DIR + '/.claude/scripts' with integrate.sh and context-fill.py (l.63-65)"
+        ],
+        "notes": "args may arrive as a JSON string and are re-parsed defensively (l.26-27); planReviewConcerns are type-filtered and trimmed (l.47-49); every agent return is guarded with `x && x.field` before use (l.735, l.774, l.801, l.855-858, l.960); the whole per-plan body sits in try/catch returning a uniform planResult (l.979-985). Code/comment divergences worth recording: the comment at l.34-35 says 'local mode pushes NOTHING', and the JS itself never pushes — but the archive prompt DOES emit a `jj git push --bookmark` instruction whose selection is delegated to an env var the JS cannot read (l.649-651, l.662), so the pushing decision is outside this file's control. Comment l.679 calls `pushedTasks` 'how many unit increments landed on bookmark B' while it is actually assigned lastProbe.landedCommits, a count of commits carrying the Plan trailer (l.911, l.938, l.966). `merged: true` is returned on paths the run explicitly failed (fix-forward transient park l.910, unresolved critical/high l.937). baseSha silently falls back to the bookmark NAME when setup omits it (l.744: `const baseSha = setup.baseSha || B`), changing every `baseSha..@` revset in later prompts. The no-progress guard treats a null probe as 'no progress' because `landed` falls back to prevLanded (l.802, l.813). Structural plan-path validation is fail-closed (l.85-91) but file existence is delegated to the setup agent."
+      },
+      "maintainability": {
+        "commentRatio": 0.14,
+        "promptsInline": true,
+        "tested": false,
+        "notes": "1036 lines, 150 of them `//` comment lines and no block comments; ~40% of the file is inline prompt-builder string arrays (l.262-672). Comments are unusually load-bearing rationale (why 175k, why FF_PUSH_MAX_ATTEMPTS > MAX_ATTEMPTS, why `dotnet format whitespace` only) rather than restatement. Exit-code semantics of integrate.sh are duplicated in two prompt builders (l.365-375 and l.628-630) and could drift; GREEN_GATE is deliberately a single string to avoid that same drift (l.100-114). No tests, no assertions, no dry-run of the prompt text itself; the only self-check is the schema `additionalProperties: false` on every agent contract."
+      },
+      "primitives": [
+        "agent",
+        "phase",
+        "log",
+        "args",
+        "schema",
+        "model",
+        "agentType",
+        "label"
+      ],
+      "techniques": [
+        "Progress state lives in git/jj commit trailers ('Plan:' + 'Plan-Tasks:'), so a fresh agent generation resumes mechanically from history rather than from a passed-in summary (l.424-437)",
+        "Self-rotation: the implementer agent polls its own transcript via an external script and stops at an absolute ~175k-token quality-zone cap instead of a window fraction (l.67-69, l.474-477)",
+        "The orchestrator never trusts the worker's `allDone`; a separate cheap probe agent re-derives completeness from the trailers and the JS computes the gate (l.179-180, l.710-719, l.805-806)",
+        "Per-agent model tiering by judgement content: haiku for the mechanical probe, sonnet for rule-following shell steps, session model for implement/review/fix (l.51-58)",
+        "Deployment-pipeline split: fast commit-stage build per unit inside the agent, full acceptance gate run by integrate.sh on the REBASED-onto-B tree before the bookmark advances (l.107-112, l.360-364)",
+        "One canonical GREEN_GATE string shared by every call site so the gate cannot drift (l.100-114)",
+        "Transient-vs-code failure taxonomy shipped as a reusable prompt block (GATE_INFRA_GUARD) injected into both the implementer and the fix-forward agents (l.127-144, l.491, l.632)",
+        "Numeric exit codes 20-25 from the helper script mapped to explicit per-code agent behaviour (stop / bounded fix / backoff / retry-once) (l.365-375)",
+        "Severity partitioned by INTRODUCED vs DEFERRED so the run fixes only what this change caused, with a hard gate on critical/high and a soft warn-and-proceed gate on medium (l.588-600, l.931-953)",
+        "Handoff between generations is explicitly restricted to SOFT context and forbidden from carrying progress (l.450, l.487-489)",
+        "Uniform planResult shape built by one helper so every early return is structurally identical (l.680-705)",
+        "Higher retry budget on the SHARED-resource operation (bookmark advance) than on local gate fixes, with incremental backoff, because contention starves a small budget (l.94-98)"
+      ],
+      "antipatterns": [
+        "Absolute machine-specific Windows repo root hardcoded as a constant the whole run depends on (l.32)",
+        "A single meta.description sentence running ~1200 characters, packing the entire architecture into one unreadable blob (l.4)",
+        "The `plan` object passed in is mutated in place with setup results instead of being rebuilt, so later prompt builders depend on hidden assignment order (l.745-746)",
+        "`merged: true` is reported on failure paths — an unresolved critical/high review verdict and a parked fix-forward both return merged (l.910, l.937)",
+        "baseSha silently degrades to the bookmark NAME when the setup agent omits it, changing the meaning of every `baseSha..@` revset downstream without any log or warning (l.744)",
+        "integrate.sh's exit-code contract is restated in prose in two separate prompt builders and can drift between them (l.365-375, l.628-630)",
+        "The deep-review agent is spawned with no explicit agentType while sibling agents pin 'general-purpose', an inconsistency in otherwise uniform call options (l.852-854, l.882-884)",
+        "Push authority is delegated to an env var the workflow runtime cannot read or verify, so the JS can never assert whether the run pushed (l.34-35, l.649-651)"
+      ]
+    },
+    {
+      "file": "Entelligentsia/grove:wfl-run-sprint.js",
+      "archetype": "A",
+      "lines": 421,
+      "purpose": "Drives every non-terminal task of a Forge sprint: an agent loads the sprint graph, JS topo-sorts it into Kahn waves, each task is run through the wfl:run-task sub-workflow (parallel within a wave, one re-dispatch before escalating), then an agent collates, updates sprint status and emits the sprint-complete event.",
+      "verdictAuthority": {
+        "kind": "schema",
+        "quote": "  const terminal = child.skipped || TERMINAL_OK_SET.has(status)",
+        "line": 208
+      },
+      "contextBoundary": {
+        "structured": true,
+        "quote": "  { label: `load:${sprintId}`, phase: 'Load', schema: LOAD_SCHEMA }",
+        "line": 266
+      },
+      "state": {
+        "kind": "external",
+        "resumable": true,
+        "quote": "const active = loaded.tasks.filter(t => !TERMINAL.includes(t.status))",
+        "line": 272
+      },
+      "bounds": [
+        {
+          "kind": "maxRounds",
+          "value": "2 dispatch attempts per task: one initial workflow('wfl:run-task') then exactly one re-dispatch before escalating",
+          "line": 218
+        },
+        {
+          "kind": "concurrency",
+          "value": "parallel() over every task of a wave, no explicit cap declared in this file (relies on the runtime's shared concurrency cap noted at l.165)",
+          "line": 339
+        },
+        {
+          "kind": "other",
+          "value": "cycle in the dependency graph throws instead of looping: `throw new Error(`Dependency cycle detected among: ${remaining.join(', ')}`)`",
+          "line": 115
+        }
+      ],
+      "writeScope": {
+        "commits": false,
+        "pushes": false,
+        "opensPR": false,
+        "merges": true,
+        "gatedBy": "nothing — the post-dispatch rebase agent runs on any non-sequential mode whatever the child workflow returned; only `if (worktreeActive)` guards it",
+        "line": 186
+      },
+      "trustSurface": {
+        "readsUntrusted": true,
+        "sources": [
+          "Forge store sprint/task records read by the load agent (l.260-261)",
+          "return objects of the wfl:run-task sub-workflow, re-injected into a later agent prompt (l.351)",
+          ".forge/cache/FRICTION-*.jsonl files drained and re-emitted as store events (l.357-359)"
+        ],
+        "sanitized": false,
+        "quote": "    `Escalated task outcomes: ${JSON.stringify(results.filter(r => !r.terminal || r.status === 'escalated').map(r => ({ id: r.taskId, status: r.status, note: r.note })))}.`,",
+        "line": 351
+      },
+      "robustness": {
+        "argsNormalized": true,
+        "nullHandled": true,
+        "hardcodedPaths": [
+          "../worktrees/${taskId} (l.154)",
+          ".forge/store/tasks/ (l.261)",
+          ".forge/tools/forge-usage-report.cjs (l.376)",
+          ".forge/tools/build-context-pack.cjs (l.398)",
+          "engineering/architecture (l.398)",
+          ".forge/cache/context-pack.md / .forge/cache/context-pack.json (l.398)",
+          ".forge/cache/FRICTION-*.jsonl (l.357)",
+          "origin/main (l.186)"
+        ],
+        "notes": "args accepts a string or an object and refuses an empty id (l.251-252); every agent/workflow return is null-checked (l.268, l.194, l.227) and errors read `err?.message || err` (l.170, l.224). Code/comment disagreements recorded as CODE: (1) l.142-147 calls the worktree isolation a 'documented-latent stub' implemented 'for sequential mode only', but the code at l.149-192 really issues `git worktree add`, `git -C ../worktrees/<id> rebase origin/main` and `git worktree remove --force` agent calls whenever mode !== 'sequential' — the writes are live, not latent; (2) the phase banner at l.8 says 'run collate.cjs' while the code calls `mcp__forge__collate` (l.381). The rebase prompt says '(If rebase conflicts: log and escalate — do NOT halt.)' (l.187) but nothing in the script inspects that agent's result, so a conflicted rebase is invisible to the JS. Both worktree teardown paths use the same label `worktree-remove:${taskId}` (l.175, l.190). Collate counts are recomputed in JS (l.369-371) yet the returned `counts` prefers the agent's schema'd report (l.420), so the two can disagree silently."
+      },
+      "maintainability": {
+        "commentRatio": 0.22,
+        "promptsInline": true,
+        "tested": false,
+        "notes": "93 of 421 lines are `//` comments (no block comments). A 30-line header block (l.12-42) documents the runtime constraint, the one-level nesting rule and step-by-step parity with run_sprint.md; most inline comments cite the ported spec by section/line or a gap id (#3, #4, #15, #16, #17, #18, #22, #23). All agent prompts are inline template literals joined with ' ' — several are 15+ lines (l.373-408) mixing MCP calls, Bash commands and a Skill invocation in one instruction. `BANNER_MAP` (l.50-54) is defined and never referenced — dead code. No test file or self-check is present in this file."
+      },
+      "primitives": [
+        "agent",
+        "parallel",
+        "workflow",
+        "phase",
+        "log",
+        "args",
+        "schema"
+      ],
+      "techniques": [
+        "Kahn's-algorithm wave sort implemented in JS with sorted queues for deterministic wave ordering, cycle detection promoted to a hard throw (l.92)",
+        "execution mode reshapes the same wave list three ways instead of three code paths: full-parallel collapses to one wave, sequential expands to one task per step (l.283)",
+        "sub-workflow composition with an explicit one-level nesting argument written down next to the call (l.24)",
+        "escalate-don't-halt: the child workflow call is wrapped in try/catch so one throwing task returns an `escalated` record instead of killing the sprint (l.169)",
+        "closed-vocabulary terminal check via a Set built from a constant list (l.46, l.208)",
+        "bounded re-dispatch that relies on the child's own store-based resume rather than a resumeFrom argument (l.213)",
+        "distinguishing 'child skipped deliberately' from 'child stalled', so a blocked task carries over instead of being retried then escalated (l.203)",
+        "JSON schemas pinned with additionalProperties:false + enum on executionMode for the two agent boundaries (l.56, l.79)",
+        "best-effort side steps explicitly marked non-aborting in the prompt itself ('log and continue — do NOT abort collation', l.380)"
+      ],
+      "antipatterns": [
+        "worktree lifecycle described in comments as a latent stub while the code actually runs `git worktree add` / `rebase origin/main` / `worktree remove --force` through agents (l.142)",
+        "the rebase-conflict escalation is only a sentence inside a prompt, with no return value inspected by the JS, so the outcome cannot influence control flow (l.187)",
+        "`BANNER_MAP` defined with a justifying comment and never used anywhere (l.50)",
+        "one agent prompt bundles collation, a Bash token-reconcile script, a sprint status write, an event emit, a second Bash script, a store read, a file write and a Skill invocation (l.373)",
+        "sub-workflow return notes are stringified straight back into a later agent prompt without any narrowing (l.351)",
+        "counts computed twice — once in JS, once by the collate agent — and the agent's version silently wins in the returned object (l.369, l.420)",
+        "two different agent calls share the identical label `worktree-remove:${taskId}` (l.175, l.190)",
+        "shell paths and refs (`../worktrees/`, `origin/main`, `.forge/tools/*.cjs`, `engineering/architecture`) hardcoded inside prompt strings with no configuration hook (l.154, l.186, l.398)"
+      ]
+    },
+    {
+      "file": "rvdbreemen/OTGW-firmware:implement-next-task.js",
+      "archetype": "A",
+      "lines": 361,
+      "purpose": "Drains a labelled backlog epic task by task in a fixed worktree — audit, select, implement, adversarial review, commit+push, Discord announce — then runs one end-of-run pass that enumerates architectural decisions across everything landed and commits Proposed ADRs.",
+      "verdictAuthority": {
+        "kind": "schema",
+        "quote": "  if (!rev.pass) {",
+        "line": 174
+      },
+      "contextBoundary": {
+        "structured": true,
+        "quote": "const REV = { type: 'object', required: ['pass', 'issues'], properties: { pass: { type: 'boolean' }, issues: { type: 'string' } } }",
+        "line": 112
+      },
+      "state": {
+        "kind": "commit",
+        "resumable": true,
+        "quote": "The ADR-PENDING token is mandatory — it is the persistent marker the end-of-loop pass (and the NEXT run's Audit, if this run dies) uses to know this task still needs ADR evaluation.",
+        "line": 142
+      },
+      "bounds": [
+        {
+          "kind": "maxRounds",
+          "value": "const MAX_TASKS = A.maxTasks || 25          // safety cap on tasks drained per run",
+          "line": 27
+        },
+        {
+          "kind": "noProgress",
+          "value": "if (!rev.pass) { await cleanup(sel.taskId, `review failed twice: ${rev.issues}`); endReason = `${sel.taskId} failed review twice (needs attention): ${rev.issues}`; break }",
+          "line": 180
+        },
+        {
+          "kind": "other",
+          "value": "if (!sel) { endReason = 'select agent died (transient)'; break }",
+          "line": 163
+        },
+        {
+          "kind": "other",
+          "value": "if (!land.committed) { endReason = `land did not commit ${sel.taskId}: ${land.note}`; break }",
+          "line": 186
+        }
+      ],
+      "writeScope": {
+        "commits": true,
+        "pushes": true,
+        "opensPR": false,
+        "merges": false,
+        "gatedBy": "a schema-typed adversarial review must return pass=true (one fix+re-review retry allowed) before the Land agent is invoked; the ADR docs commit is gated only on an ADR file having been authored",
+        "line": 184
+      },
+      "trustSurface": {
+        "readsUntrusted": true,
+        "sources": [
+          "backlog task markdown bodies read by the Select agent and re-injected verbatim into the implement/review/land prompts",
+          "git diffs and task notes read by the audit and ADR-enumerate agents",
+          "agent-returned strings (rev.issues, land.note, sel.title) interpolated into later prompts and Discord messages"
+        ],
+        "sanitized": false,
+        "quote": "  `TASK ${sel.taskId}: ${sel.title}\\n\\n${sel.body}\\n\\n` +",
+        "line": 132
+      },
+      "robustness": {
+        "argsNormalized": true,
+        "nullHandled": true,
+        "hardcodedPaths": [
+          "D:/Users/Robert/Documents/GitHub/RvdB/OTGW-firmware (l.19)",
+          "channel_id 1105556725714649128 (l.152)",
+          "channel_id 1514720723980259460 (l.154)",
+          "docs/adr/README.md (l.312)",
+          "bin/bump-prerelease.sh (l.145)"
+        ],
+        "notes": "args is guarded (l.15), TARGET trimmed (l.26), every agent() result is null-checked before use and each null path either cleans up or breaks with an endReason. Code/comment conflicts recorded as code: (1) RULES line 31 orders agents `Never touch dev` yet BRANCH defaults to 'dev' (l.20) and Land pushes to ${BRANCH} (l.147) — the code pushes to dev. (2) The comment calls the ADR guard a DETERMINISTIC post-step (l.305) and line 313 asserts `The loop NEVER accepts an ADR`, but the guard is itself an LLM agent() call (l.307) with no code-level verification of the resulting files. (3) Line 251 says the JS not an LLM assigns the numbers — true for the increment (l.273-274), but maxAdrNumber itself is an LLM-reported integer. adrsDrafted is only assigned inside the decisions branch (l.329), so on other paths it stays [] and the ADR-EVALUATED stamp maps every covered task to 'none' (l.354)."
+      },
+      "maintainability": {
+        "commentRatio": 0.14,
+        "promptsInline": true,
+        "tested": false,
+        "notes": "Single 361-line file, all prompts inline as template literals; schemas declared as JS objects next to their agent call. Comments are unusually load-bearing: they carry dated maintainer directives, task ids (TASK-928) and upstream file:line citations (agents/adr-generator.md:52,174 at l.290/l.303). No tests, no dry-run mode, no way to exercise the loop without the real repo and the Discord MCP."
+      },
+      "primitives": [
+        "agent",
+        "phase",
+        "log",
+        "args",
+        "schema",
+        "agentType"
+      ],
+      "techniques": [
+        "Capture git HEAD before any work so the end-of-run pass has one stable `startHead..HEAD` diff range instead of fragile per-commit ranges (l.58)",
+        "Persist a resumable marker in committed content: Land stamps ADR-PENDING in the task note, the end pass stamps ADR-EVALUATED, and the next run's Audit returns unstamped tasks as adrOrphans (l.142, l.232, l.237)",
+        "Only stamp completion on confirmed success so a transient death leaves the pending marker intact for the next run (l.351)",
+        "Take number assignment away from the LLM: the agent returns maxAdrNumber, JS increments and pre-assigns each ADR its number, and the author prompt forbids picking its own (l.273, l.287)",
+        "Idempotency grep before drafting — each candidate decision is checked against existing docs/adr/*.md so a partially-completed prior run does not double-draft (l.257)",
+        "Single-flight guard on the worktree: if any sibling task is already In Progress, return none rather than collide with another lane (l.127)",
+        "Refuse to reset an In Progress task whose worktree is dirty, on the ground that dirt means a live lane (l.79)",
+        "Bounded repair: exactly one fix pass, then cleanup and abort the whole run (l.174)",
+        "Distinguish transient death after a successful implement from other failures and deliberately preserve the dirty worktree instead of cleaning it (l.173)",
+        "Shared cleanup closure that reverts tracked edits, removes only new untracked files, and resets status to To Do (l.42)",
+        "Delegate one step to a named specialist agent type via agentType while explicitly overriding that agent's known default in the prompt (l.294, l.290)",
+        "Explicit staging discipline pushed into every land prompt: `git add <explicit paths>`, never `git add -A` (l.146, l.323)"
+      ],
+      "antipatterns": [
+        "Absolute Windows developer path as the default repo, making the workflow unrunnable anywhere else (l.19)",
+        "Discord channel IDs hardcoded inline in prompt strings rather than args or config (l.152)",
+        "The binding RULES block tells every agent `Never touch dev` while the workflow's default branch is dev and Land pushes to it (l.31)",
+        "A governance control described as deterministic is implemented as another LLM agent with a `MECHANICAL ... NO judgment` prompt and no code-side verification of the result (l.307)",
+        "Autonomous commit and push to a shared branch with no PR and no human gate anywhere in the loop (l.147)",
+        "Instructing the commit step to add a Co-author trailer as a bare phrase with no specified value (l.147)",
+        "Prompts encode upstream file line numbers (agents/adr-generator.md:52,174) that silently rot when that template changes (l.290)",
+        "Rules, prompts, schemas, control flow and rationale comments all in one 361-line file with no extraction (l.29)"
+      ]
+    },
+    {
+      "file": "hivellm/rulebook:feature-pipeline.js",
+      "archetype": "A",
+      "lines": 88,
+      "purpose": "Runs a feature description through six sequential single-agent phases (Research, Design, Implement, Test, Review, Document), feeding each stage's prose output into the next prompt, and returns the design, the review verdict and a boolean pass flag.",
+      "verdictAuthority": {
+        "kind": "schema",
+        "quote": "  { label: 'review', phase: 'Review', model: 'opus', schema: VERDICT_SCHEMA }",
+        "line": 79
+      },
+      "contextBoundary": {
+        "structured": false,
+        "quote": "${research}",
+        "line": 50
+      },
+      "state": {
+        "kind": "memory",
+        "resumable": false,
+        "quote": "const research = await agent(",
+        "line": 39
+      },
+      "bounds": [],
+      "writeScope": {
+        "commits": false,
+        "pushes": false,
+        "opensPR": false,
+        "merges": false,
+        "gatedBy": "nothing",
+        "line": 57
+      },
+      "trustSurface": {
+        "readsUntrusted": true,
+        "sources": [
+          "args.feature interpolated into every prompt",
+          "codebase files read by the research agent",
+          "git --no-pager diff output read by test/review/document agents"
+        ],
+        "sanitized": false,
+        "quote": "Feature: \"${feature}\"",
+        "line": 59
+      },
+      "robustness": {
+        "argsNormalized": true,
+        "nullHandled": true,
+        "hardcodedPaths": [
+          "README.md (l.84)",
+          "CHANGELOG.md (l.84)"
+        ],
+        "notes": "args accepts both an object with .feature and a plain trimmed string (l.15-20) and bails early with { error: 'missing-feature' } when neither is present (l.22-25). The only structured output in the run is the review verdict (l.79), and nothing acts on it: the Document phase (l.83) runs unconditionally after the review, and the script returns passed: !!(review && review.pass) (l.88) without ever branching on it. The Review prompt says 'Return pass=true only if it is genuinely ready to merge' (l.76), an intention the code never enforces — recorded as the CODE: a failing review changes nothing about execution. No budget, no retry, no round cap, no timeout anywhere. Every agent output is interpolated whole and unbounded into the next prompt (l.50, l.62, l.77-78), so prompt size is driven entirely by upstream agent verbosity."
+      },
+      "maintainability": {
+        "commentRatio": 0,
+        "promptsInline": true,
+        "tested": false,
+        "notes": "Zero comment lines; the meta.description (l.3-4) is the only documentation and it accurately states the pipeline is sequential because each stage depends on the previous. All six prompts are inline template literals, each 1-5 lines, readable in place. meta.phases (l.5-12) duplicates the per-agent model choice already passed at each call site (l.42, 53, 65, 71, 79, 85) — two places to keep in sync. No tests, no self-check, no assertions on agent output shape beyond the single VERDICT_SCHEMA."
+      },
+      "primitives": [
+        "agent",
+        "phase",
+        "log",
+        "args",
+        "schema",
+        "model"
+      ],
+      "techniques": [
+        "args normalized to accept either an object with a named field or a bare string, with a single null check gating the whole run (l.15-25)",
+        "declaring meta.phases with a per-phase model so the pipeline's cost/quality profile is readable before any code runs (l.5-12)",
+        "per-phase model tiering: haiku for read-only research and docs, sonnet for implement/test, opus for design and review (l.42, 53, 65, 71, 79, 85)",
+        "a named VERDICT_SCHEMA with additionalProperties:false and required pass/issues/summary, reused as the review agent's output contract (l.27-36, 79)",
+        "instructing later agents to re-derive ground truth from `git --no-pager diff` rather than trusting the prior agent's prose alone (l.70, 76, 84)",
+        "explicit read-only scoping in the research prompt: 'Read-only — do not modify anything' (l.41)",
+        "prompt-level scope discipline: 'SDD: trace every behavior to the design; add nothing unspecified' (l.58) and 'document only what exists in the diff' (l.84)",
+        "triple-quote fencing around interpolated agent output so the model can tell prior output from instructions (l.49-51, 61-63)"
+      ],
+      "antipatterns": [
+        "the review verdict is schema-typed and then ignored — Document runs unconditionally right after it and the run returns normally whatever pass is (l.83, l.88)",
+        "passed is surfaced as a return field but never used as control flow, so a failed review and a passed review produce identical side effects on the working tree (l.88)",
+        "each stage's full prose output is interpolated verbatim and unbounded into the next prompt, with no truncation or summarization step (l.50, l.62, l.77-78)",
+        "an implementing agent is allowed to write production code and run a type-checker with nothing gating it beforehand — the design phase output is advisory prose, not a checked contract (l.57-66)",
+        "the model for each phase is declared twice, in meta.phases and again in each agent's options, with no shared constant tying them together (l.6-11 vs l.42-85)",
+        "the Test agent is told to 'run them until green' with no iteration cap, budget, or no-progress guard (l.70)",
+        "hardcoded README.md and CHANGELOG.md targets assume a repo layout the script never verifies (l.84)"
+      ]
+    },
+    {
+      "file": "DingJWuyu/Picka:ticket-inner-loop.js",
+      "archetype": "B",
+      "lines": 321,
+      "purpose": "Drives one ticket's batches through a strictly serial single-writer implement lane, fires a non-blocking adversarial review agent per batch, then runs one final full gates agent, returning a structured record of every batch, review, and the launch order.",
+      "verdictAuthority": {
+        "kind": "schema",
+        "quote": "  required: ['commands', 'allGreen'],",
+        "line": 78
+      },
+      "contextBoundary": {
+        "structured": true,
+        "quote": "      schema: IMPL_SCHEMA,",
+        "line": 225
+      },
+      "state": {
+        "kind": "memory",
+        "resumable": false,
+        "quote": "const batchRecords = [];",
+        "line": 209
+      },
+      "bounds": [
+        {
+          "kind": "concurrency",
+          "value": "implement lane strictly serial — `implResult = await agent(implPromptText, {` inside `for (const batch of batches) {`, one writer at a time",
+          "line": 221
+        },
+        {
+          "kind": "concurrency",
+          "value": "reviews are unbounded floating promises collected then drained: `floatingReviews.push(reviewPromise);` — no cap on in-flight reviewers",
+          "line": 260
+        },
+        {
+          "kind": "noProgress",
+          "value": "first batch whose impl agent returns nothing halts the run: `stopped = true;` then `break;`",
+          "line": 238
+        },
+        {
+          "kind": "noProgress",
+          "value": "self-declared stop halts remaining batches: `if (implResult.stopReport) {` … `break;`",
+          "line": 267
+        }
+      ],
+      "writeScope": {
+        "commits": false,
+        "pushes": false,
+        "opensPR": false,
+        "merges": false,
+        "gatedBy": "nothing — the only pre-flight is the seat fail-fast at l.199-206, which checks `batch.seat` presence, not any test or gate; implementer agents edit the worktree before any verification runs",
+        "line": 108
+      },
+      "trustSurface": {
+        "readsUntrusted": true,
+        "sources": [
+          "args.batches[].touchset / tasks / rules / upstreamRefs interpolated into prompts",
+          "args.spec and args.specPath interpolated into prompts",
+          "agent-returned JSON (stopReport, evidence, findings) logged and returned upward"
+        ],
+        "sanitized": false,
+        "quote": "  const touch = batch.touchset.join(' ');",
+        "line": 100
+      },
+      "robustness": {
+        "argsNormalized": true,
+        "nullHandled": true,
+        "hardcodedPaths": [
+          ".auto_copilot/skills/spec-lifecycle.md (l.87)",
+          ".auto_copilot/skills/adversarial-review.md (l.102)",
+          "tests/integration/ (l.91, l.112)",
+          "server/ (l.125)",
+          "uv run mypy src (l.125)",
+          "E:\\Projects\\sgm1a (l.129)",
+          "dryrun/${batch.id}.txt (l.163)"
+        ],
+        "notes": "args string-vs-object normalized at l.192 `const input = typeof args === 'string' ? JSON.parse(args) : args;`. Null/throw handled on all three agent calls: impl try/catch plus falsy check (l.227-238), review .catch (l.256-259), gates try/catch plus a synthesized `{ commands: [], allGreen: false, error }` placeholder (l.307, l.311). No guard on `input` itself — if `batches` is absent, `batches.filter` (l.200) or the for…of (l.214) throws uncaught. Code vs comment: the l.95 prompt line forbids the agent from committing or pushing, but that is an instruction to a model, not enforcement — the script has no shell and cannot prevent it, so writeScope records what the script itself does (nothing), not what the prompt promises. The l.118-121 comment openly documents that the gate list is a hand-mirrored copy of root CLAUDE.md that already drifted once; the code carries no check that the five commands are current. `stopReport` truthiness (l.263) means an empty-string stop report is treated as no-stop."
+      },
+      "maintainability": {
+        "commentRatio": 0.14,
+        "promptsInline": true,
+        "tested": false,
+        "notes": "No test file or assertion in this script; the dryRun path (l.148-186) is an in-band regression harness — mock objects are echoed back through the real orchestration so the mechanics run without agents, but nothing in the file asserts on the result. Comments are dense, dated and traceable (each carries a spec id and a decision date: D11 calibration 2026-07-11 at l.143, seat check 2026-07-13 at l.195, gate drift at l.118-121), which makes rationale auditable but ties the file tightly to an external spec repo it cannot see. Prompts are long Chinese multi-line templates built with array-join, three functions of 15-20 lines each."
+      },
+      "primitives": [
+        "agent",
+        "log",
+        "args",
+        "phase",
+        "agentType",
+        "schema",
+        "effort"
+      ],
+      "techniques": [
+        "Launch-order ledger recorded before the call, not after, so `order` reflects dispatch sequence rather than completion sequence: `order.push(implLabel); // 发起序：push 在调用 agent() 之前` (l.217)",
+        "Floating overlap: the reviewer promise is created but not awaited, letting the serial writer lane advance to the next batch while review runs, with the result written back into a shared record object by closure (l.247-260)",
+        "In-flight work is drained even on abort — `await Promise.all(floatingReviews);` sits before the stopped return so no launched reviewer is orphaned (l.272)",
+        "Fail-fast on a missing dispatch field before any agent starts, to stop a silent seat downgrade: `拒绝启动，防静默降席` (l.203)",
+        "dryRun swaps only the prompt and drops agentType, keeping the orchestration path identical: `...(dryRun ? {} : { agentType: batch.seat }),` (l.222)",
+        "Two distinct nulls by design — `gates: null` for an intentional skip vs a synthesized crash placeholder `gatesResult = { commands: [], allGreen: false, error: message };` (l.307)",
+        "Execution rights split between seats to avoid a shared-resource clash: the review prompt forbids the reviewer from running integration/serve/smoke because qdrant is single-instance (l.112)",
+        "Argument shape normalization for the scriptPath transport: `const input = typeof args === 'string' ? JSON.parse(args) : args;` (l.192)"
+      ],
+      "antipatterns": [
+        "Untrusted `batch.touchset` is string-joined and pasted straight into shell commands the reviewer is told to run — `git add -N ${touch}` and `git diff -- ${touch}` — so a crafted touchset entry becomes arbitrary command text (l.108)",
+        "Verification gate list is a manually mirrored copy of another file, with the drift already recorded in a comment instead of detected by code (l.118)",
+        "Absolute machine-specific Windows path baked into a prompt: `E:\\Projects\\sgm1a` (l.129)",
+        "No validation that `input.batches` exists or is an array before `batches.filter` — a malformed args object throws an uncaught TypeError rather than a diagnosable error (l.200)",
+        "`allGreen` is whatever the gates agent asserts about itself; the script never re-checks the reported exitCodes, and nothing in the file branches on it: `gates: gatesResult || null,` (l.319)",
+        "Mutation of a shared record object from inside a detached promise callback: `record.review = r || null;` (l.254)",
+        "Behavior smuggled in via an undeclared arg key, acknowledged as out-of-spec in the comment above it: `stopReport: batch.dryRunStopReport || null,` (l.168)",
+        "Truthiness test on a free-text field decides the halt: `if (implResult.stopReport) {` (l.263)"
+      ]
+    },
+    {
+      "file": "jairosoft-com/jodex-plugins:story-ship-review-loop.js",
+      "archetype": "B",
+      "lines": 238,
+      "purpose": "Runs a bounded review/fix loop inside a pre-existing implementation worktree: a preflight agent smoke-tests the codex companion, then each round an agent runs `adversarial-review --json` and returns a schema-constrained verdict, and if blocking findings survive a confidence filter a second agent applies minimal fixes, re-runs the green-gate and commits locally, until approval, repeated findings, max rounds, or a tooling error.",
+      "verdictAuthority": {
+        "kind": "schema",
+        "quote": "  required: ['status', 'blocking', 'verdictParsed', 'summary', 'findings'],",
+        "line": 58
+      },
+      "contextBoundary": {
+        "structured": true,
+        "quote": "    { schema: REVIEW_SCHEMA, phase: 'Review', label: `review-r${r}` }",
+        "line": 142
+      },
+      "state": {
+        "kind": "memory",
+        "resumable": false,
+        "quote": "const rounds = []",
+        "line": 106
+      },
+      "bounds": [
+        {
+          "kind": "maxRounds",
+          "value": "const maxRounds = args.maxRounds || 4",
+          "line": 18
+        },
+        {
+          "kind": "noProgress",
+          "value": "if (r > 1 && key === prevKey) { stopReason = 'diminishing_returns'; break }",
+          "line": 174
+        },
+        {
+          "kind": "other",
+          "value": "const CONF_THRESHOLD = 0.5 — findings below this confidence are dropped from the blocking set",
+          "line": 19
+        }
+      ],
+      "writeScope": {
+        "commits": true,
+        "pushes": false,
+        "opensPR": false,
+        "merges": false,
+        "gatedBy": "the Fix agent is instructed to commit only after the green-gate (check-plugin-standards.py --changed, plus jx-pm npm tests when touched) is green; the loop additionally aborts unless the returned fix has edited=true, a commit sha and greenGate==='green' (l.227)",
+        "line": 206
+      },
+      "trustSurface": {
+        "readsUntrusted": true,
+        "sources": [
+          "stdout/JSON envelope of `node <companionPath> adversarial-review --json` (l.123)",
+          "codex finding titles/bodies/recommendations re-injected into the Fix prompt (l.188)",
+          "acceptanceCriteria passed through args into the Review prompt (l.139)"
+        ],
+        "sanitized": false,
+        "quote": "${JSON.stringify(blockers, null, 2)}",
+        "line": 188
+      },
+      "robustness": {
+        "argsNormalized": false,
+        "nullHandled": true,
+        "hardcodedPaths": [
+          "origin/main (l.14, default baseRef)",
+          "${worktreePath}/scripts/check-plugin-standards.py (l.196)",
+          "${worktreePath}/plugins/jx-pm/tests (l.199-200)",
+          "user.email=vaseniero@jairosoft.com (l.206)"
+        ],
+        "notes": "Only baseRef, acceptanceCriteria and maxRounds get `||` defaults (l.14, l.17, l.18); repoRoot, worktreePath, branch, companionPath and storyId are consumed raw with no presence check, so an undefined worktreePath is interpolated as the literal string \"undefined\" into every shell command in the prompts. Null/failed agent returns are handled at l.95, l.145 and l.215, and unparseable codex output is explicitly refused rather than treated as approval (l.130-131, l.151). Code and comments agree on the write scope: the Fix prompt says \"commit locally (NO push)\" (l.181) and no push, PR or merge command appears anywhere. maxRounds is taken from args with no upper clamp and no numeric validation. The diminishing-returns fingerprint only compares finding titles lowercased/sorted (l.173), so a reworded title resets it. A commit author email is hardcoded into the commit command (l.206) — not a secret, but a personal identifier baked into the script."
+      },
+      "maintainability": {
+        "commentRatio": 0.01,
+        "promptsInline": true,
+        "tested": false,
+        "notes": "Three `//` comment lines total (l.75, l.105, l.172) over 238 lines. All three agent prompts are inline template literals (l.78-91, l.113-141, l.180-211), the longest ~30 lines, carrying the shell commands, the anti-false-approval invariant and the green-gate recipe. Structure is flat and linear: meta + args + three JSON schemas + preflight + one for-loop + final return; no helper functions, no imports, no test file or self-check. Schemas are declared as top-level consts (l.21-73), which keeps the loop body readable, but the project-specific gate commands are buried in prose inside the Fix prompt rather than parameterised."
+      },
+      "primitives": [
+        "agent",
+        "phase",
+        "log",
+        "args",
+        "schema"
+      ],
+      "techniques": [
+        "Anti-false-approval invariant stated as a CRITICAL INVARIANT in the prompt and mirrored by a required `verdictParsed` boolean in the schema, so empty JSON or a non-zero exit can never read as approval (l.115)",
+        "Separate `codexExit` number and `verdictParsed` boolean fields let the script distinguish tooling failure from a genuine clean verdict (l.37)",
+        "Confidence threshold filter turning a raw findings list into a blocking set, with null confidence defaulting to fully-confident (l.161)",
+        "Diminishing-returns detection by fingerprinting the sorted, lowercased blocking titles and comparing to the previous round (l.173)",
+        "Preflight agent that smoke-tests the external tool's config before any round is spent (l.87)",
+        "Per-round agent labels so each iteration is separately identifiable in the run log (l.142)",
+        "Green-gate is required to be green before the fix agent is allowed to commit, and the loop independently re-checks greenGate/commit/edited before continuing (l.227)",
+        "Structured terminal result with an explicit stopReason vocabulary (approved / diminishing_returns / max_rounds / codex_error / fix_failed) rather than a boolean (l.233)"
+      ],
+      "antipatterns": [
+        "Prompt hands the agent a documented way to bypass a safety guard: if worktree-isolation blocks Edit, fall back to a python3 one-liner that rewrites the file (l.193)",
+        "A commit author email is hardcoded into the commit command instead of being an arg (l.206)",
+        "Repo-specific gate commands (check-plugin-standards.py, plugins/jx-pm/tests npm scripts) are hardcoded in prose inside the Fix prompt, so the workflow only runs against this one repo layout (l.196)",
+        "Required args (worktreePath, companionPath, storyId, branch, repoRoot) are interpolated into shell commands with no presence or shape validation (l.11)",
+        "The python3 fallback builds a command by string-substituting `<old>`/`<new>` placeholders, an unquoted find-and-replace over a whole file with no anchoring (l.193)",
+        "Untrusted codex finding text is dumped verbatim into the Fix agent's instruction prompt with no delimiting or neutralisation (l.188)",
+        "Diminishing-returns key is title-only, so a fix that renames the symptom without resolving it escapes the guard (l.173)",
+        "`blockingCount` is derived from `review.blocking` rather than from the filtered set, so a review reporting blocking=false with high-confidence findings exits as approved (l.163)",
+        "maxRounds accepted straight from args with no upper clamp, so an oversized value uncaps the loop (l.18)",
+        "Loop state lives only in an in-memory array; a crash mid-loop loses every round record even though commits already landed in the worktree (l.106)"
+      ]
+    },
+    {
+      "file": "Inebrio/Routerly:dev-loop.js",
+      "archetype": "B",
+      "lines": 221,
+      "purpose": "Creates a git worktree, runs one deep analysis pass, then walks a fixed task list one task at a time through developer → checker → smoker agents, retrying each task up to 6 times and halting the whole run at the first task that never passes.",
+      "verdictAuthority": {
+        "kind": "schema",
+        "quote": "    if (lastSmoke && lastSmoke.status === 'PASS') {",
+        "line": 172
+      },
+      "contextBoundary": {
+        "structured": true,
+        "quote": "      { label: `checker:task${task.id}:${loops}`, agentType: 'checker', schema: CHECK_SCHEMA }",
+        "line": 145
+      },
+      "state": {
+        "kind": "file",
+        "resumable": false,
+        "quote": "      `Update .ai/state.md: task ${task.id} → DONE. Progress: ${taskIdx + 1}/${currentTasks.length} tasks complete.`,",
+        "line": 183
+      },
+      "bounds": [
+        {
+          "kind": "maxRounds",
+          "value": "const MAX_LOOPS_PER_TASK = 6;",
+          "line": 61
+        },
+        {
+          "kind": "maxRounds",
+          "value": "while (loops < MAX_LOOPS_PER_TASK && !taskPassed) {",
+          "line": 116
+        },
+        {
+          "kind": "noProgress",
+          "value": "log(`Task ${task.id} BLOCKED after ${loops} loops. Stopping.`);",
+          "line": 199
+        },
+        {
+          "kind": "other",
+          "value": "for (let taskIdx = 0; taskIdx < currentTasks.length; taskIdx++) {",
+          "line": 101
+        }
+      ],
+      "writeScope": {
+        "commits": false,
+        "pushes": false,
+        "opensPR": false,
+        "merges": false,
+        "gatedBy": "nothing",
+        "line": 66
+      },
+      "trustSurface": {
+        "readsUntrusted": true,
+        "sources": [
+          "repository source files read during analysis",
+          "verbatim typecheck/test output",
+          "HTTP response bodies from localhost:3000",
+          "browser page content and console errors",
+          "prior agent free-text output (analysis)"
+        ],
+        "sanitized": false,
+        "quote": "Analysis notes: ${analysis}",
+        "line": 127
+      },
+      "robustness": {
+        "argsNormalized": true,
+        "nullHandled": true,
+        "hardcodedPaths": [
+          ".worktrees/${worktreeSlug} (l.60)",
+          ".ai/state.md (l.67)",
+          "npm run typecheck / npm test (l.140-141)",
+          "npm run build (l.162)",
+          "http://localhost:3000/api/setup/status (l.163)",
+          "$ROUTERLY_SMOKE_EMAIL / $ROUTERLY_SMOKE_PASSWORD (l.164)"
+        ],
+        "notes": "args accepts string or object (l.59) but initialTasks is used unguarded at l.73/85/97 — a missing tasks key throws. Agent results are optional-chained (l.149, l.176, l.189). Code/comment divergence: the comment at l.187 says \"Task failed after max loops\" but the code reaches that branch whenever taskPassed is false, including when the soft check FAIL `continue` at l.150 consumed every iteration and lastSmoke is still null — the recorded blocker then becomes 'unknown after max iterations' (l.189) even though the real cause was a typecheck/test failure captured in checkResult, which is discarded. state.md is written by agents but never read back by the script, so control flow is purely in-memory. No commit, push, PR or merge anywhere in the file; the only VCS write is `git worktree add ... -b ${worktreeSlug}` (l.66), whose branch name comes straight from args and is interpolated into a shell instruction with no escaping."
+      },
+      "maintainability": {
+        "commentRatio": 0.02,
+        "promptsInline": true,
+        "tested": false,
+        "notes": "5 comment lines (l.63, 77, 96, 105, 187) over 221. All prompts are inline template literals. TASKS_SCHEMA (l.39-57) is defined and never referenced; `allDone` (l.98) is assigned once and never read — both dead. No tests, no test hooks, no dry-run path."
+      },
+      "primitives": [
+        "agent",
+        "phase",
+        "log",
+        "args",
+        "agentType",
+        "schema"
+      ],
+      "techniques": [
+        "Separate typed schemas per verdict stage — CHECK_SCHEMA for typecheck/tests, SMOKE_SCHEMA for build/HTTP/browser/CLI — so each gate returns a machine-readable status plus its evidence fields (l.13, l.26)",
+        "One expensive read-only analysis pass whose prose output is threaded into every later developer iteration, instead of re-deriving context per task (l.79, l.127)",
+        "Per-task retry envelope: an inner while bounded by MAX_LOOPS_PER_TASK inside an outer per-task for loop, so a flaky task costs 6 iterations, not the whole run (l.101, l.116)",
+        "Fail-fast across tasks — the first task that exhausts its retries records a criticalBlock and breaks the outer loop rather than continuing into work that depends on it (l.190, l.200)",
+        "Cheap gate before expensive gate: typecheck/tests must PASS before the smoker is allowed to build, curl and drive a browser (l.148, l.155)",
+        "Distinct agentType per role ('developer', 'checker', 'smoker') with unique labels carrying task id and iteration for traceable logs (l.132, l.145, l.169)",
+        "Argument normalization tolerating both a JSON string and an already-parsed object (l.59)",
+        "Prompt demands verbatim tool output and states the failure default explicitly — \"No output = FAIL.\" (l.144)",
+        "Structured return value carrying final status, the mutated task list and the blocking task, so a caller can resume or escalate (l.214-221)"
+      ],
+      "antipatterns": [
+        "Durable state is written to .ai/state.md by agents but never read back by the script, so the file is a log, not a checkpoint — a fresh process restarts every task at TODO (l.183)",
+        "Dead code shipped: TASKS_SCHEMA is fully defined and never used anywhere (l.39)",
+        "Dead variable `allDone` is declared and initialized but never read or assigned again (l.98)",
+        "The soft-check failure path `continue`s without persisting checkResult, so when all 6 iterations fail at typecheck the blocker is reported as 'unknown after max iterations' and the actual failures array is thrown away (l.150, l.189)",
+        "Comment says the branch is reached \"after max loops\" but the code reaches it on any non-passing task, including soft-check-only failures (l.187)",
+        "args-derived worktreeSlug is interpolated raw into a `git worktree add ... -b` shell instruction with no validation or escaping (l.66)",
+        "Whole prior-agent prose output is spliced into the developer prompt with no length bound or delimiting, so analysis size drives every iteration's context (l.127)",
+        "Environment specifics are frozen into prompt text — port 3000, a fixed /api/setup/status path, npm-only commands, named ROUTERLY_ env vars (l.162-166)",
+        "Retry loop re-runs the identical developer prompt each iteration; neither the checker's nor the smoker's failure text is fed back, so the agent retries blind (l.121-133)",
+        "Task status is mutated on currentTasks[taskIdx] while the loop body reads the stale `task` alias captured before the mutation (l.102, l.106)"
+      ]
+    },
+    {
+      "file": "ZulfaqarHafez/Apologue:fix-until-green.js",
+      "archetype": "B",
+      "lines": 97,
+      "purpose": "Loops a check-then-fix cycle: an agent runs a check command and reports a structured result, a second agent makes the smallest edit for the reported failure, repeating until the check reports exit code 0, the same failure repeats, or the iteration bound is hit.",
+      "verdictAuthority": {
+        "kind": "schema",
+        "quote": "  if (check.exitCode === 0) {",
+        "line": 66
+      },
+      "contextBoundary": {
+        "structured": true,
+        "quote": "    { label: `check:${i}`, phase: 'Check', schema: CHECK_SCHEMA }",
+        "line": 61
+      },
+      "state": {
+        "kind": "memory",
+        "resumable": false,
+        "quote": "const rounds = []",
+        "line": 51
+      },
+      "bounds": [
+        {
+          "kind": "maxRounds",
+          "value": "for (let i = 1; i <= maxIterations; i++) {",
+          "line": 55
+        },
+        {
+          "kind": "maxRounds",
+          "value": "? Math.min(args.maxIterations, 5)",
+          "line": 28
+        },
+        {
+          "kind": "maxRounds",
+          "value": ": 3",
+          "line": 29
+        },
+        {
+          "kind": "noProgress",
+          "value": "  if (previousFailure !== null && check.failureSummary === previousFailure) {",
+          "line": 71
+        },
+        {
+          "kind": "other",
+          "value": "  if (!check) break",
+          "line": 63
+        },
+        {
+          "kind": "other",
+          "value": "  if (i === maxIterations) break",
+          "line": 76
+        }
+      ],
+      "writeScope": {
+        "commits": false,
+        "pushes": false,
+        "opensPR": false,
+        "merges": false,
+        "gatedBy": "nothing — the fix agent edits files whenever the check reports a non-zero exitCode and the failure differs from the previous one",
+        "line": 78
+      },
+      "trustSurface": {
+        "readsUntrusted": true,
+        "sources": [
+          "check command output (failureSummary, outputTail) reported by the check agent",
+          "args.checkCommand supplied by the caller"
+        ],
+        "sanitized": false,
+        "quote": "    `The check \"${checkCommand}\" failed with:\\n${check.failureSummary}\\n` +",
+        "line": 79
+      },
+      "robustness": {
+        "argsNormalized": true,
+        "nullHandled": true,
+        "hardcodedPaths": [
+          "'bash .claude/scripts/validate.sh' (l.24)"
+        ],
+        "notes": "args is guarded for object-ness and per-field type before use (l.22, l.27), the iteration count is clamped to 5 and defaults to 3 (l.28-29), a null check result breaks the loop (l.63), and a missing outputTail falls back to '(none)' (l.80). Code/comment divergence: the header comment claims 'Never run destructive commands', 'Never install packages' and 'smallest reversible edits' as safety properties (l.5-7), but nothing in the code enforces them — they exist only as English inside the fix prompt (l.81-83) and as an instruction not to modify files inside the check prompt (l.59); the recorded behaviour is that an unconstrained agent may do anything. Likewise the check's exitCode is a schema field the agent self-reports, not an observed process status. checksRun counts rounds entries that carry a check key (l.92), which is correct only because fix entries are pushed as separate objects (l.86)."
+      },
+      "maintainability": {
+        "commentRatio": 0.1,
+        "promptsInline": true,
+        "tested": false,
+        "notes": "10 comment lines (l.1-10), all in the header banner; zero comments in the body. Both prompts are inline string concatenations at the agent call sites (l.57-60, l.79-83). Both output schemas are hoisted into named constants (l.31-49), which keeps the call sites readable. No tests, no assertions, no self-check. A meta export declares name, description and the two phases (l.12-19). The header itself warns the script may not parse on a future runtime version (l.9-10)."
+      },
+      "primitives": [
+        "agent",
+        "log",
+        "args",
+        "schema",
+        "phase"
+      ],
+      "techniques": [
+        "Separates the observing agent from the mutating agent: the check prompt explicitly forbids edits, the fix agent never runs the check itself (l.56, l.78)",
+        "Fixed-point loop with three distinct exits — green, repeated failure, iteration bound — each logged or recorded rather than silently falling through (l.66, l.71, l.76)",
+        "No-progress detector compares the current failure to the previous one and stops instead of burning the remaining budget (l.71-74)",
+        "Skips the fix on the final iteration so the run never ends on an edit whose effect was never checked (l.76)",
+        "Caller-supplied iteration count is clamped rather than trusted: Math.min(args.maxIterations, 5) (l.28)",
+        "Structured output schemas declared once as constants and reused as the agent contract, with the meaning of an empty field documented in the schema itself (l.36)",
+        "Per-agent label carrying the iteration number, so the trace distinguishes check:1 from check:2 (l.61, l.84)",
+        "Return value carries the full per-iteration evidence trail alongside the boolean verdict and a human summary (l.89-97)"
+      ],
+      "antipatterns": [
+        "The verdict is an integer the agent claims is the exit code, not an exit code the runtime observed — a hallucinated 0 ends the loop as green (l.66)",
+        "No-progress detection is exact string equality on a free-text failureSummary; any variation in the agent's phrasing of the same failure defeats it (l.71)",
+        "Untrusted check output is concatenated straight into the fix agent's prompt with no delimiting or escaping, so failure text can carry instructions (l.79-80)",
+        "The safety rules the header presents as guarantees are only English inside the prompt; nothing constrains the fix agent's tools (l.5-7, l.81-82)",
+        "Default check command hardcodes a repo-specific path that may not exist (l.24)",
+        "State lives in a plain in-memory array, so a run that dies mid-loop loses every round of evidence (l.51)",
+        "When the loop exits on `if (!check) break`, the run reports the same not-green shape as a genuine failure, with no distinction recorded (l.63)"
+      ]
+    },
+    {
+      "file": "forcedotcom/salesforcedx-vscode:review-plan.js",
+      "archetype": "C",
+      "lines": 267,
+      "purpose": "Reviews a plan markdown file in multiple passes — a style/anti-escape-hatch check with an optional revise, then a parallel fan-out of effect-advocate, e2e-advocate and plan-adversary agents whose blocking findings are folded into a single revise pass, then an optional commit of the plan file.",
+      "verdictAuthority": {
+        "kind": "schema",
+        "quote": "const effectMust = ((effectPlanReview && effectPlanReview.findings) || []).filter(",
+        "line": 226
+      },
+      "contextBoundary": {
+        "structured": true,
+        "quote": "const planReview = await agent(planReviewPrompt, {",
+        "line": 186
+      },
+      "state": {
+        "kind": "none",
+        "resumable": false,
+        "quote": "phase('Plan review')",
+        "line": 184
+      },
+      "bounds": [],
+      "writeScope": {
+        "commits": true,
+        "pushes": false,
+        "opensPR": false,
+        "merges": false,
+        "gatedBy": "nothing — the commit agent runs whenever commitMessage is truthy, regardless of planReview.approved or any advocate verdict; the only guard is a prompt-level instruction to skip when nothing is staged",
+        "line": 253
+      },
+      "trustSurface": {
+        "readsUntrusted": true,
+        "sources": [
+          "the plan file at planPath (read and rewritten by agents)",
+          "caller-supplied subject / details interpolated raw into three prompts",
+          "repo docs read by the adversary agent: CONTEXT-MAP.md, packages/*/CONTEXT.md, docs/adr/** and packages/*/docs/adr/**",
+          "the concise SKILL.md and grill-me ADR-FORMAT.md skill files",
+          "agent-authored findings (suggestion / claim / evidence / citation) re-injected verbatim into the revise prompt"
+        ],
+        "sanitized": false,
+        "quote": "WI Subject: ${subject}",
+        "line": 138
+      },
+      "robustness": {
+        "argsNormalized": true,
+        "nullHandled": true,
+        "hardcodedPaths": [
+          "${wt}/.claude/skills/concise/SKILL.md (l.115)",
+          "${wt}/CONTEXT-MAP.md (l.151)",
+          "packages/<pkg>/CONTEXT.md (l.152)",
+          "${wt}/docs/adr/ and ${wt}/packages/*/docs/adr/ (l.156)",
+          "${wt}/.claude/skills/grill-me/ADR-FORMAT.md (l.158, l.160)",
+          "wt defaults to '.' (l.15)"
+        ],
+        "notes": "args accept a bare string or an object (l.14-l.19) and every optional field has a default; agent results are defensively guarded with `(x && x.findings) || []` (l.226, l.229, l.230). Gaps recorded from the CODE, not from intent: the two revise agents' returns are discarded (l.194, l.245) so a failed revision is invisible and the plan is never re-reviewed after revision — the returned styleApproved (l.263) is the PRE-revision verdict and stays false even when the revise pass fixed everything. The e2e advocate is validated against EFFECT_ADVOCATE_SCHEMA (l.212), not an e2e-specific schema. PLAN_SCHEMA (l.30) permits verdict 'blocked' but no branch reads it, so a blocked revise is silently treated as success. commitPlanPrompt interpolates commitMessage straight into a prompt instructing a shell commit (l.178) with no escaping. The 'only if there is something to commit' guarantee (l.172) is prompt text executed by a haiku agent, not code."
+      },
+      "maintainability": {
+        "commentRatio": 0.05,
+        "promptsInline": true,
+        "tested": false,
+        "notes": "14 comment lines, all banner separators or short args/schema provenance notes (l.8-l.12, l.26-l.28, l.109-l.111, l.180-l.182); zero inline explanatory comments in the orchestration. All seven prompts are inline template literals at the top (l.113-l.178), separated from the orchestration block (l.184-l.267), which reads as a short linear script. Schemas are duplicated by hand from auto-build-wi.js with the reason stated at l.27 (\"workflow scripts can't import\"), so they can silently drift. One prompt hardcodes a past-incident id and its lesson (l.122, W-23257488) — durable rationale living in a prompt string. No tests, no assertions, no dry-run path."
+      },
+      "primitives": [
+        "agent",
+        "parallel",
+        "phase",
+        "log",
+        "args",
+        "schema",
+        "agentType",
+        "model",
+        "label"
+      ],
+      "techniques": [
+        "Dual-shaped args: same script accepts a bare path string from a human slash command or an object from a calling workflow, normalized once at the top (l.13-l.19)",
+        "Derives a stable run label from the plan filename so every agent call is traceable to the artifact under review (l.19)",
+        "Fails fast with a structured error object rather than throwing when the required arg is absent (l.21-l.24)",
+        "Three reviewers with different biases run concurrently over the same artifact via parallel(), each pinned to its own agentType and its own result schema (l.202-l.224)",
+        "Severity-based fold: each reviewer's own vocabulary ('must' vs 'critical'/'high') is filtered to a blocking subset, then flattened into one prefixed string list ([effect]/[e2e]/[adversary:sev]) so a single revise agent sees all three voices at once (l.226-l.241)",
+        "Model tiering by task cost: sonnet for the style check, opus for the multi-source synthesis revise, haiku for the mechanical commit (l.190, l.249, l.258)",
+        "Anti-escape-hatch review rule that rejects plans pre-authorizing a worse fallback, justified by a cited past failure (l.122)",
+        "Warm-start instruction that tells the adversary which context files to read and explicitly forbids re-discovering layout with find/git show (l.150-l.154)",
+        "ADR-as-binding-default check with an explicit rule for missing Status frontmatter (l.156-l.158)",
+        "Conditional check that is a no-op by construction — the doc-altitude rule states outright that it produces nothing when no phase targets a doc path (l.160)",
+        "Idempotent commit expressed as a staged-diff test before committing (l.177)",
+        "Returns a structured summary of what happened rather than prose (l.262-l.267)"
+      ],
+      "antipatterns": [
+        "Revise agents are awaited and their results thrown away, so a revision that returns verdict 'blocked' or fails outright is indistinguishable from success (l.194, l.245)",
+        "No re-review after either revise pass — the plan is rewritten and the loop ends, so nothing verifies the fix (l.200, l.251)",
+        "The returned styleApproved reports the pre-revision verdict, which misreports a plan that was reviewed, revised and fixed (l.263)",
+        "PLAN_SCHEMA declares a 'blocked' verdict and a questions array that no branch in the script ever reads (l.34-l.38)",
+        "The e2e advocate is validated with EFFECT_ADVOCATE_SCHEMA, reusing a schema whose 'citation'/'file'/'line' fields are shaped for a different reviewer (l.212)",
+        "Schemas are hand-copied from another workflow file with no mechanism to detect drift (l.27)",
+        "The commit fires purely on commitMessage being set, with no dependency on the review outcome — a plan whose adversary raised critical findings is committed on the same path as a clean one (l.253)",
+        "commitMessage is interpolated unescaped into a prompt that instructs a shell git commit (l.178)",
+        "The 'only if there is something to commit' safety and the HEREDOC/trailer requirement are prose in a prompt handed to haiku, not enforced by code (l.172-l.178)",
+        "Caller-supplied subject/details are pasted raw into three separate prompts with no delimiting or sanitization (l.138-l.139, l.146-l.148)",
+        "No bound of any kind — no retry cap, no round limit, no budget, no timeout on the fan-out (whole file)",
+        "A past incident id and its whole lesson are encoded in a prompt string, where they are unsearchable from the orchestration logic (l.122)"
+      ]
+    },
+    {
+      "file": "sceneview/sceneview:review-fanout.js",
+      "archetype": "C",
+      "lines": 202,
+      "purpose": "Fans a git diff out to four dedicated reviewer agents in parallel, adversarially re-verifies each ERROR finding with a refutation agent, then folds the confirmed errors into a graded merge_recommendation plus a non-gating external cross-vendor advisory.",
+      "verdictAuthority": {
+        "kind": "schema",
+        "quote": "const confirmedErrors = results.flatMap((res) => (res.verifiedErrors || []).filter((f) => f.verified?.real))",
+        "line": 135
+      },
+      "contextBoundary": {
+        "structured": true,
+        "quote": "  const opts = { label: `review:${r.key}`, phase: 'Review', schema: REVIEW_SCHEMA }",
+        "line": 86
+      },
+      "state": {
+        "kind": "none",
+        "resumable": false,
+        "quote": "const reviewed = await pipeline(",
+        "line": 108
+      },
+      "bounds": [
+        {
+          "kind": "other",
+          "value": "fixed list of exactly 4 reviewers; one fallback attempt each, then dropped",
+          "line": 68
+        },
+        {
+          "kind": "concurrency",
+          "value": "parallel() over every error finding of a reviewer — no cap on the number of opus/xhigh verifier agents spawned",
+          "line": 115
+        },
+        {
+          "kind": "other",
+          "value": "reviewersRan < reviewersExpected ? 'REVIEW_INCOMPLETE' — completeness check, not a retry bound",
+          "line": 147
+        }
+      ],
+      "writeScope": {
+        "commits": false,
+        "pushes": false,
+        "opensPR": false,
+        "merges": false,
+        "gatedBy": "nothing — the workflow performs no writes itself; it returns advice strings such as 'auto-merge (squash --auto), no maintainer gate' that an external orchestrator is expected to act on",
+        "line": 155
+      },
+      "trustSurface": {
+        "readsUntrusted": true,
+        "sources": [
+          "git diff content of the reviewed branch (`git diff ${diffRef}`)",
+          "reviewer agents' free-text findings (problem/fix/file/line) re-injected into verifier prompts",
+          "stdout of .claude/scripts/llm-external-review.sh (OpenAI Codex + Google Gemini output) returned verbatim",
+          "caller-supplied args (diffRef, pr, issue)"
+        ],
+        "sanitized": false,
+        "quote": "  problem: ${f.problem}",
+        "line": 121
+      },
+      "robustness": {
+        "argsNormalized": true,
+        "nullHandled": true,
+        "hardcodedPaths": [
+          ".claude/agents/${r.agentType}.md (l.94)",
+          ".claude/scripts/llm-external-review.sh (l.181)",
+          "'main...HEAD' default diffRef (l.26)",
+          ".claude/agents/<type>.md referenced in comment (l.65)"
+        ],
+        "notes": "args accepted as object or JSON string, with a loud throw on a non-JSON string (l.14-24); defaults applied at l.25-27. Null-safety is consistent: results.filter(Boolean) (l.132), (res.findings || []) (l.113/136/200), f.verified?.real (l.135). Code and comments agree everywhere checked: the comment at l.98-99 claiming a dropped reviewer forces REVIEW_INCOMPLETE matches l.147; the comment at l.88 that model/effort come from agent frontmatter matches l.89 which passes only agentType, while r.model/r.effort are used solely on the fallback path (l.95). Shell interpolation is guarded: prNum strips non-digits and safeDiffRef is regex-tested before building `scope`, throwing when neither is usable (l.176-179) — but the digit-strip is silent, so a malformed pr like '12x3' becomes 123, a different valid PR. breakingApi is keyed on the reviewer name only (f.reviewer === 'impact', l.142), so any confirmed impact finding is reported as a breaking public-API change regardless of its content. All three catch blocks bind an error (e, e2, e) and never surface it, so the real failure reason for a dropped reviewer or a failed advisory is lost (l.90, l.97, l.185). No filesystem or shell is used directly — the external script runs inside an agent (l.180-183)."
+      },
+      "maintainability": {
+        "commentRatio": 0.13,
+        "promptsInline": true,
+        "tested": false,
+        "notes": "27 comment lines / 202. Comments are dense rationale prose carrying incident history and dates (l.17-19 'PR #2574 first run', l.174-175 'flagged by an external Codex review, 2026-07-23', l.78 '#2431'), which documents intent but is the kind of narrative that belongs in a commit message. Prompts are inline template literals (reviewPrompt l.75-80, verifier l.118-124, advisory l.181); reviewer mandates are deliberately externalized to .claude/agents/*.md with a read-the-file fallback. No tests, no assertions, no dry-run path."
+      },
+      "primitives": [
+        "agent",
+        "parallel",
+        "pipeline",
+        "phase",
+        "log",
+        "args",
+        "schema",
+        "agentType",
+        "effort",
+        "model"
+      ],
+      "techniques": [
+        "Adversarial second pass: every ERROR finding is handed to a separate agent told to REFUTE it, defaulting to real=false unless independently confirmed (l.124)",
+        "Fail-loud arg parsing — a non-JSON string throws instead of silently defaulting, because the silent default once produced a PASS on an empty diff (l.20-22)",
+        "Incomplete review can never read as safe: a dropped reviewer yields null, is filtered out, and reviewersRan < reviewersExpected forces REVIEW_INCOMPLETE (l.98-100, l.147)",
+        "pipeline() streams verification: a reviewer's errors are verified the moment that reviewer returns, with no barrier between Review and Verify (l.106-110)",
+        "Two-tier agent resolution — dedicated agentType first, then a general agent instructed to read the agent's .md and adopt the role, so a reviewer is never silently missing (l.89-96)",
+        "Reviewer mandates externalized to .claude/agents/<type>.md as single source of truth rather than duplicated in the prompt (l.65-67)",
+        "Read-only worktree contract stated in the prompt with the concrete corruption it prevents and an escape hatch (clone to /tmp) (l.78)",
+        "Explicitly non-gating external opinion: cross-vendor advisory captured but structurally excluded from merge_recommendation, and its whole step wrapped in try/catch (l.166-187)",
+        "Shell-argument validation before interpolating caller data into a command an agent will run (l.176-179)",
+        "Two narrow JSON schemas — a rich finding schema for reviewers, a two-field {real, reason} schema for verifiers (l.29-63)"
+      ],
+      "antipatterns": [
+        "Unbounded verifier fan-out: parallel() maps over every error a reviewer returns, each spawning an opus/xhigh agent, with no cap or slicing (l.115-127)",
+        "breakingApi is inferred purely from which reviewer produced the finding, not from the finding's content, so any confirmed impact-reviewer error is labelled 'breaking public-API / cross-platform divergence' (l.142, l.158)",
+        "Every catch binds the error and discards it — 'external advisory step failed — advisory only, ignored' logs no reason, same for the two reviewer catches (l.90, l.97, l.186)",
+        "Silent coercion of pr: String(A.pr).replace(/[^0-9]/g, '') turns a malformed value into a different, valid PR number instead of rejecting it (l.176)",
+        "Incident narrative and dates embedded as code comments rather than in history (l.17-19, l.174-175)",
+        "The whole external-advisory block is opt-out-by-failure: any error, including a genuine misconfiguration, is swallowed and the run still returns a verdict (l.185-187)"
+      ]
+    },
+    {
+      "file": "SeedCompany/cord-api-v3:review-pr.js",
+      "archetype": "C",
+      "lines": 124,
+      "purpose": "Runs four fixed migration-review lenses in parallel over a PR diff, has each claimed finding adversarially re-checked by a second agent that defaults to refuting it, then synthesizes the surviving findings into a severity-grouped prose report.",
+      "verdictAuthority": {
+        "kind": "schema",
+        "quote": "const confirmed = all.filter((f) => f.verdict?.isReal);",
+        "line": 110
+      },
+      "contextBoundary": {
+        "structured": true,
+        "quote": "${JSON.stringify(confirmed, null, 2)}",
+        "line": 118
+      },
+      "state": {
+        "kind": "none",
+        "resumable": false,
+        "quote": "const results = await pipeline(",
+        "line": 89
+      },
+      "bounds": [
+        {
+          "kind": "concurrency",
+          "value": "review fan-out fixed at 4 hardcoded lenses (LENSES array, entries at l.17/21/25/29)",
+          "line": 15
+        },
+        {
+          "kind": "concurrency",
+          "value": "verify fan-out unbounded: one agent per finding returned by each lens, no cap",
+          "line": 99
+        },
+        {
+          "kind": "other",
+          "value": "no maxRounds, no budget, no timeout, no no-progress detector anywhere in the file",
+          "line": 89
+        }
+      ],
+      "writeScope": {
+        "commits": false,
+        "pushes": false,
+        "opensPR": false,
+        "merges": false,
+        "gatedBy": "nothing — the script itself performs no writes; every agent prompt asks only for read commands (`git diff`, `git show`) and the run ends by returning prose",
+        "line": 124
+      },
+      "trustSurface": {
+        "readsUntrusted": true,
+        "sources": [
+          "PR diff content via `git diff ${diffRef}` executed inside the review agents",
+          "changed repo files and their `${mono}` branch equivalents via `git show ${mono}:<path>`",
+          "lens-agent free-text findings (title/file/description) re-injected verbatim into the verify prompt at l.81-83",
+          "confirmed findings JSON re-injected into the synthesis prompt at l.118"
+        ],
+        "sanitized": false,
+        "quote": "Get the PR diff with: git diff ${diffRef}",
+        "line": 71
+      },
+      "robustness": {
+        "argsNormalized": true,
+        "nullHandled": true,
+        "hardcodedPaths": [
+          "'develop' as the default diff base (l.9)",
+          "'pg-e2e-harness' as the default source-of-truth branch (l.10)",
+          "lens focus text hardcodes repo-specific paths and symbols: schema/index.ts, stepToStatus(), asDrizzleCondition, <table>_<col>_idx (l.18, l.22, l.26)"
+        ],
+        "notes": "All four args are read with `args?.x ?? default` (l.9-12) so a bare invocation still runs. Null-safety is consistent: `review?.findings ?? []` (l.99), `results.flat().filter(Boolean)` (l.109), `f.verdict?.isReal` (l.110), and the optional line number is guarded with `f.line ? ':' + f.line : ''` (l.82). Two schemas set `additionalProperties: false` (l.36, l.60) so agent output shape is enforced, but `severity` enum values are never re-validated in code before being interpolated into the synthesis prompt. No code and comment contradict each other in this file: the header comment 'Review → per-finding adversarial verify (pipelined, no barrier)' (l.87) matches the actual `pipeline` call (l.89). The one soft claim is meta.description saying findings are 'deduped' (l.4) — dedup is only requested in the synthesis prompt (l.115), never performed in code. Failure of any single agent is unhandled: no try/catch anywhere, so one rejected verify promise inside `parallel` (l.98) aborts the whole run with no partial output."
+      },
+      "maintainability": {
+        "commentRatio": 0.03,
+        "promptsInline": true,
+        "tested": false,
+        "notes": "Only 4 lines are pure comments (section banners at l.8, l.14, l.87, l.112) plus three trailing comments on the arg defaults; the file is dense but readable because it is short and linear. All prompts are inline template literals (l.69-77, l.79-85, l.115-120) with no indirection, so behavior is auditable in one read. Configuration surface is honest: to widen or narrow cost you add/remove entries in LENSES, which the banner at l.14 states outright. No tests, no dry-run mode, no logging (`log` is never called), so a run is opaque until the final report returns."
+      },
+      "primitives": [
+        "agent",
+        "parallel",
+        "pipeline",
+        "phase",
+        "schema",
+        "args"
+      ],
+      "techniques": [
+        "Adversarial verification with an explicit refute-by-default stance, so a second agent must be convinced before a finding survives: \"Default to REFUTE unless evidence is clear.\" (l.80)",
+        "Pipelined fan-out with no barrier — each lens's findings start being verified as soon as that lens returns, instead of waiting for all lenses (l.89, l.87)",
+        "Two-stage nesting: `pipeline` maps lens→review, then the second stage opens a `parallel` over that lens's findings, giving per-finding concurrency inside per-lens concurrency (l.97-106)",
+        "Provenance stamped onto each finding as it leaves verification, so the synthesizer can attribute and dedupe across lenses: `.then((v) => ({ ...f, lens: lens.key, verdict: v }))` (l.104)",
+        "Strict JSON schemas with `additionalProperties: false` on both the finding list (l.36) and the verdict (l.60), making the inter-agent handoff machine-checkable rather than prose",
+        "Lenses declared as data, not code paths — each is a `{key, focus}` object whose focus doubles as the agent's exclusive mandate, so scaling cost is an array edit (l.15-32)",
+        "Hard scope fence in the review prompt to keep lenses non-overlapping and cheap: \"No style nits, nothing outside your lens. If clean, return an empty findings array.\" (l.77)",
+        "Signal counts carried into the synthesis prompt so the report can state its own filter rate: \"Raw findings before verification: ${all.length}; confirmed: ${confirmed.length}.\" (l.120)",
+        "Declared phases in `meta` (l.5) matched by `phase()` calls (l.88, l.113) and per-agent `phase:` tags (l.94, l.102, l.121), so concurrent agents still group correctly in the run view"
+      ],
+      "antipatterns": [
+        "Verify fan-out is completely uncapped — a lens that returns 200 findings spawns 200 verify agents with no budget, no cap and no timeout (l.98-106)",
+        "No error handling at all: a single rejected agent promise inside `parallel`/`pipeline` loses every other lens's work, since nothing is persisted en route (l.89, l.98)",
+        "Zero resumability — all intermediate findings live only in memory, so a crash after the expensive review+verify stages costs the entire run (l.107, l.109)",
+        "Untrusted diff text and agent-authored finding descriptions are interpolated raw into the next agent's prompt with no delimiting or escaping (l.81-83, l.118)",
+        "meta.description promises deduping as a pipeline step (l.4) but no code dedupes — it is merely requested of the synthesis agent in prose (l.115)",
+        "Repo-specific defaults are baked into the script body rather than required args: `args?.mono ?? 'pg-e2e-harness'` (l.10)",
+        "The final answer is unstructured prose with no schema, so the block/fix-then-merge/clean verdict cannot be consumed programmatically by a caller (l.115, l.121)",
+        "Severity values are trusted from model output and never re-checked in code before grouping, despite an enum existing in the schema (l.49, l.115)"
+      ]
+    },
+    {
+      "file": "code-dot-org/code-dot-org:port-cucumber-to-playwright.js",
+      "archetype": "D",
+      "lines": 746,
+      "purpose": "Six-phase workflow that ports one Cucumber .feature file to a Playwright TypeScript spec: static scout of feature+step defs, a throwaway live probe for wait-readiness intelligence, generation, review, a 5x/3-browser zero-flake heal loop, then a local conventional commit.",
+      "verdictAuthority": {
+        "kind": "schema",
+        "quote": "    passed: {type: 'boolean', description: 'true ONLY if every run passed (0 failed, 0 flaky)'},",
+        "line": 587
+      },
+      "contextBoundary": {
+        "structured": true,
+        "quote": "  ${JSON.stringify(readiness)}",
+        "line": 504
+      },
+      "state": {
+        "kind": "commit",
+        "resumable": false,
+        "quote": "3. Commit with this EXACT message (heredoc preserves newlines):",
+        "line": 730
+      },
+      "bounds": [
+        {
+          "kind": "maxRounds",
+          "value": "while (!result.passed && attempt < 3) — 3 heal attempts",
+          "line": 645
+        },
+        {
+          "kind": "concurrency",
+          "value": "const STRESS_WORKERS = 2",
+          "line": 35
+        },
+        {
+          "kind": "other",
+          "value": "--repeat-each=5 --retries=0 across chromium/firefox/webkit",
+          "line": 622
+        },
+        {
+          "kind": "other",
+          "value": "one extra free stress rerun when infraSuspected: const retry = await stress('gate-retry') // does not consume a heal attempt",
+          "line": 639
+        },
+        {
+          "kind": "other",
+          "value": "if (plan.specAlreadyExists && !force) { ... return {..., status: 'already-ported'} }",
+          "line": 255
+        }
+      ],
+      "writeScope": {
+        "commits": true,
+        "pushes": false,
+        "opensPR": false,
+        "merges": false,
+        "gatedBy": "nothing — the commit agent runs on both outcomes (green and fixme), the gate only changes the message and whether the Cucumber feature gets the @playwright tag",
+        "line": 706
+      },
+      "trustSurface": {
+        "readsUntrusted": true,
+        "sources": [
+          "Cucumber .feature file passed as args",
+          "Ruby step-definition and support files under dashboard/test/ui/features/",
+          "live DOM, screenshots and accessibility tree of https://test-studio.code.org",
+          "TypeScript read from the git reference branch origin/stephen/playwright"
+        ],
+        "sanitized": false,
+        "quote": "- NOTHING ELSE is authoritative. No doc, status file, README, prose, or prior decision —",
+        "line": 45
+      },
+      "robustness": {
+        "argsNormalized": true,
+        "nullHandled": true,
+        "hardcodedPaths": [
+          "origin/stephen/playwright (l.31)",
+          "https://test-studio.code.org (l.388)",
+          "/tmp/dryrun-<slug>/trace.zip (l.403)",
+          "frontend/packages/e2e-tests/ (l.680)",
+          "dashboard/test/ui/features/ (l.687)",
+          "frontend/seed.spec.ts, frontend/packages/e2e-tests/seed.spec.ts (l.712)"
+        ],
+        "notes": "args accepts a string or {featureFile, force} and trims (l.20-21), and every mandatory agent result is null-checked with a throw (l.517, 537, 574, 636, 640, 660). Code/comment divergence: the block comment calls prove-visual a 'gate' (l.545-547) but a false `passed` only logs and execution continues to the stress gate (l.575-580) — it is not a gate in code. The heal loop's exit is the agent-self-reported `passed` boolean, never an exit code the workflow observes. The commit phase's 'Do NOT push. Do NOT open a pull request.' (l.741) is prompt text to a general agent with no schema, so it is an instruction, not an enforced bound. specRel is derived by string replace of the prefix (l.612) and would silently produce a wrong path if Scout returned a targetSpec outside frontend/packages/e2e-tests/."
+      },
+      "maintainability": {
+        "commentRatio": 0.06,
+        "promptsInline": true,
+        "tested": false,
+        "notes": "746 lines, 48 comment lines, all prompts and JSON schemas inline as template literals; durable conventions are deliberately pushed out to agent definitions (playwright-test-generator, playwright-port-reviewer, playwright-test-healer) so the file carries only the per-port brief (l.464, 521). Three large hand-written JSON schemas (SCOUT_SCHEMA l.56, READINESS_SCHEMA l.272, STRESS_SCHEMA l.583) dominate the volume. Tunables are named constants at the top (POC_BRANCH l.31, STRESS_WORKERS l.35, AUTHORITY l.39) with a stated repoint instruction. No tests, no dry-run mode of its own."
+      },
+      "primitives": [
+        "agent",
+        "phase",
+        "log",
+        "args",
+        "schema",
+        "agentType",
+        "model"
+      ],
+      "techniques": [
+        "A single AUTHORITY constant is interpolated into several phase prompts so every scope-deciding agent shares one contract-precedence rule, and it explicitly demotes docs/READMEs/prior decisions below the source of truth (l.39)",
+        "Idempotency check before doing work: Scout reports specAlreadyExists and the workflow returns status 'already-ported' unless force is passed (l.255)",
+        "A deliberately throwaway probe phase whose artifacts are deleted and whose output is constrained to semantics — 'Do NOT emit locators, selectors, or code' — so observation cannot leak implementation into the generator (l.365)",
+        "Triangulating three evidence sources (DOM polls, trace network JSONL, screencast frames) with an explicit statement of which is PRIMARY for what, plus a named anti-technique (do not flat-search diff-encoded frame snapshots) (l.436)",
+        "Conditional prompt fragment built as a string and interpolated, so the Eyes-specific guidance simply vanishes when isEyes is false instead of branching the whole phase (l.467)",
+        "An infra-vs-logic discriminator in the stress schema (infraSuspected) that buys exactly one free rerun outside the heal budget (l.637)",
+        "Bounded repair loop with a defined terminal state: on budget exhaustion a healer agent marks test.fixme() with root cause rather than deleting or weakening tests (l.667)",
+        "Outcome propagates into the artifact: healStatus selects the commit subject/body and decides whether the source Cucumber feature gets the @playwright skip tag (l.691, 715)",
+        "Explicit runner-resolution rationale encoded in the command — yarn over npx to avoid the workspace hoisting a second playwright (l.617)",
+        "Stress command pins CI=1 plus explicit --reporter/--workers overrides so the gate measures test flake rather than self-inflicted load (l.620)",
+        "Prompts name the exact anti-patterns to avoid (never networkidle, never waitForTimeout, do not loosen assertions to force a pass) instead of only stating goals (l.510, 655)"
+      ],
+      "antipatterns": [
+        "The pass/fail verdict is an agent-reported boolean from a prose instruction ('passed=true ONLY if the runner reports 0 failed and 0 flaky'), never an exit code the workflow itself observes, so the whole zero-flake gate rests on the agent honestly reading runner output (l.628)",
+        "prove-visual is described in comments as a gate but a false result only logs and execution falls through to the next phase (l.575)",
+        "The commit phase runs unconditionally, including on the fixme path, and its 'Do NOT push. Do NOT open a pull request.' safety boundary is prose to a schema-less agent rather than anything the workflow can enforce (l.741)",
+        "The commit agent is told to `rm -f` specific paths and to git add, blending destructive filesystem cleanup into a prompt with no verification that only intended files were staged (l.712)",
+        "A reference branch is hardcoded to one person's branch name, origin/stephen/playwright, with only a comment telling the reader to repoint it if it moves (l.31)",
+        "specRel is produced by a bare prefix string replace on an agent-supplied path with no validation that the prefix was present (l.612)",
+        "A phase drives a live shared environment (test-studio.code.org) and performs sign-in from a throwaway probe, so a rerun mutates real remote state that the workflow cannot roll back (l.393)",
+        "Three inline JSON schemas totalling several hundred lines are embedded in the control flow, leaving little separation between orchestration and payload (l.56, l.272, l.583)"
+      ]
+    },
+    {
+      "file": "neondatabase/website:docs-fact-conflicts.js",
+      "archetype": "D",
+      "lines": 362,
+      "purpose": "Given one docs page path, it extracts cross-referenceable facts from that page, has a single batched agent grep (and optionally vector-search) the rest of content/docs for restatements, then per fact runs a scope-aware judge followed by an adversarial refutation pass, returning confirmed and refuted conflicts as a JSON object.",
+      "verdictAuthority": {
+        "kind": "schema",
+        "quote": "const VERDICT_SCHEMA = {",
+        "line": 200
+      },
+      "contextBoundary": {
+        "structured": true,
+        "quote": "{ label: 'search:all-facts', phase: 'Search', schema: BATCH_SEARCH_SCHEMA }",
+        "line": 273
+      },
+      "state": {
+        "kind": "none",
+        "resumable": false,
+        "quote": "const byId = new Map(((batch && batch.results) || []).map((r) => [r.fact_id, r.candidates || []]))",
+        "line": 276
+      },
+      "bounds": [
+        {
+          "kind": "other",
+          "value": "each fact capped at ~15 retrieved candidates (instruction to the search agent, not enforced in code)",
+          "line": 268
+        },
+        {
+          "kind": "other",
+          "value": "semantic KNN limited to 8 hits per query: --k 8",
+          "line": 252
+        },
+        {
+          "kind": "other",
+          "value": "empty-facts early return prevents downstream stages: if (!facts.length) return { target: TARGET, counts: { facts: 0 }, confirmed: [] }",
+          "line": 235
+        },
+        {
+          "kind": "other",
+          "value": "verify stage only runs for facts the judge flagged: if (!jr.judged || !jr.judged.conflict || !jr.judged.conflicting_locations.length) return jr",
+          "line": 311
+        }
+      ],
+      "writeScope": {
+        "commits": false,
+        "pushes": false,
+        "opensPR": false,
+        "merges": false,
+        "gatedBy": "nothing — the script performs no writes; it only returns a report object",
+        "line": 351
+      },
+      "trustSurface": {
+        "readsUntrusted": true,
+        "sources": [
+          "markdown files under content/docs read by the extract agent",
+          "grep/vector hit snippets from other docs pages, interpolated raw into the judge prompt",
+          "the target path supplied via args, interpolated into agent prompts and into a node shell command"
+        ],
+        "sanitized": false,
+        "quote": "${sc.candidates.map((c) => `- ${c.file}:${c.line}  ${c.snippet}`).join('\\n')}",
+        "line": 295
+      },
+      "robustness": {
+        "argsNormalized": true,
+        "nullHandled": true,
+        "hardcodedPaths": [
+          "content/docs (l.114)",
+          ".claude/workflows/lib (l.247)",
+          "node .claude/workflows/lib/build-index.mjs (l.250)",
+          "node .claude/workflows/lib/query-index.mjs (l.252)",
+          ".claude/workflows/docs-fact-conflicts.js (l.16, l.19)"
+        ],
+        "notes": "args accepts a string path, an object, or a JSON string of that object (l.88-100); a malformed JSON string is silently swallowed by an empty catch and reused as a literal path (l.94-96). Missing path throws with a usage message (l.103-107). Null-guards are consistent: extracted?.facts fallback (l.233), batch?.results fallback (l.276), byId.get default [] (l.277), results.filter(Boolean) (l.330), and verdict presence checks (l.333, l.346). Code/comment divergence: the header (l.21) documents args as path or { path, semantic } only, while the code also reads parsedArgs.docsRoot (l.114) — the code is authoritative and docsRoot is supported. The header (l.14) also claims a dynamic scriptPath workflow yet the file exports `meta` with name/description/whenToUse/phases (l.69-80) as a registered workflow would; the exported meta is what the code actually does. DOCS_ROOT/REPO_ROOT derivation depends on the target path literally containing '/content/docs' (l.113-115); otherwise it falls back to the cwd-relative 'content/docs' and REPO_ROOT '.'. REPO_ROOT and TARGET are interpolated unquoted-in-JS into a shell command string handed to the agent (l.250, l.252)."
+      },
+      "maintainability": {
+        "commentRatio": 0.25,
+        "promptsInline": true,
+        "tested": false,
+        "notes": "91 of 362 lines are comments, dominated by a 68-line header block (l.1-68) documenting behaviour, cost measurements, semantic-search setup, and two verified known limitations (intra-page contradictions invisible l.55-57; two-non-target-page conflicts unreachable l.58-61). All four prompts are inline template literals (l.212-229, l.259-272, l.290-304, l.313-323); four JSON schemas are declared as top-level consts (l.118, l.149, l.178, l.200). No test file, no assertions, no self-check. Stage comments explain the batching decision (l.237-241) and the pipeline structure (l.282)."
+      },
+      "primitives": [
+        "agent",
+        "pipeline",
+        "phase",
+        "log",
+        "args",
+        "schema"
+      ],
+      "techniques": [
+        "Judge stage is given an explicit closed list of non-conflicts (different tier, legacy page, different unit, same value reworded) plus a tie-break rule 'If unsure, set conflict=false' (l.298-304)",
+        "Extract stage forces every fact to carry a `qualifier` field naming the scope that must match, so the later judge has a machine-readable false-positive filter (l.130-134, l.226-228)",
+        "Separate adversarial verify agent whose stated job is to REFUTE the judge's finding, defaulting to still_conflict=FALSE (l.313-323)",
+        "Retrieval collapsed from N per-fact agents into one batched agent that returns one entry per fact_id, keeping per-fact LLM reasoning only where it adds value (l.237-241, l.258-274)",
+        "pipeline() runs judge->verify per fact without a barrier, so each fact advances as soon as it is ready (l.283-327)",
+        "Cheap short-circuit that fabricates a synthetic judged result instead of calling an agent when a fact has zero candidates (l.288)",
+        "Corpus root resolved from the target path via regex so an absolute target implies its own repo/worktree instead of the session cwd (l.113-115)",
+        "args normalization accepting string, object, or JSON-stringified object because callers stringify inconsistently (l.88-100)",
+        "Opt-in local embedding index (Xenova/all-MiniLM-L6-v2 + sqlite-vec) invoked as a shell command from inside the search agent, merged with grep hits and deduped by file:line (l.243-256)",
+        "Result object separates confirmed from refuted-after-flagging so the refutation rate is visible in the output (l.332-347, l.351-362)"
+      ],
+      "antipatterns": [
+        "Interpolates REPO_ROOT and TARGET into a shell command string embedded in a prompt, with no quoting or validation of the path (l.250, l.252)",
+        "Raw untrusted doc snippets are pasted straight into the judge prompt with no delimiting or escaping (l.295)",
+        "Empty catch block silently turns a malformed JSON args string into a file path, so a typo becomes a confusing 'file not found' instead of a parse error (l.93-96)",
+        "JSON.stringify of the entire facts array is inlined into one prompt with no size cap, so prompt length grows unbounded with page size (l.263)",
+        "The ~15-candidates-per-fact cap exists only as prose in the prompt; nothing in the code truncates candidates before they reach the judge (l.268-269)",
+        "68-line header comment carries measured cost numbers, cost-reduction advice, and dependency setup instructions that will silently drift from the code (l.1-68)",
+        "Header claims this is a dynamic scriptPath workflow while the file also exports a registered-workflow `meta` block (l.14 vs l.69-80)",
+        "Output is explicitly acknowledged as non-deterministic with a recommendation to re-run for coverage, and no seed or determinism control is offered (l.30-31)",
+        "No overall bound on the number of facts, hence no bound on the number of judge agents spawned (l.233-235)"
+      ]
+    },
+    {
+      "file": "sceneview/sceneview:fix-issue-batch.js",
+      "archetype": "D",
+      "lines": 315,
+      "purpose": "Picks up to N open GitHub issues by label priority (or takes caller-supplied numbers), then runs a two-stage pipeline where one autonomous agent per issue claims it, lean-clones the repo to /tmp, fixes, self-reviews, commits, pushes and opens a PR — auto-merging trivial scope itself and routing medium+ scope through a nested review-fanout workflow that merges, drafts or blocks.",
+      "verdictAuthority": {
+        "kind": "schema",
+        "quote": "    verdict: failed === 0 ? (blocked ? 'CLEAR_WITH_REVIEW_HOLDS' : 'CLEAR') : 'PARTIAL',",
+        "line": 310
+      },
+      "contextBoundary": {
+        "structured": true,
+        "quote": "    { label: 'preflight:select-issues', phase: 'Preflight', schema: PICK_SCHEMA, model: 'sonnet', effort: 'medium' })",
+        "line": 100
+      },
+      "state": {
+        "kind": "external",
+        "resumable": false,
+        "quote": "If it exits 0 → you hold the claim; continue. (claim.sh adds the GitHub \\`in-progress\\` label + a STATE.md row.)",
+        "line": 160
+      },
+      "bounds": [
+        {
+          "kind": "other",
+          "value": "const MAX = Number(a.max) > 0 ? Number(a.max) : 6",
+          "line": 23
+        },
+        {
+          "kind": "other",
+          "value": "  gh issue list --repo ${REPO} --state open --json number,title,labels --limit 40",
+          "line": 91
+        },
+        {
+          "kind": "disk",
+          "value": "  bash .claude/scripts/disk-gated-spawn-check.sh; echo \"EXIT=$?\"",
+          "line": 47
+        },
+        {
+          "kind": "concurrency",
+          "value": "// at ~2 agents regardless, but a hard disk floor must be respected before fan-out.",
+          "line": 33
+        }
+      ],
+      "writeScope": {
+        "commits": true,
+        "pushes": true,
+        "opensPR": true,
+        "merges": true,
+        "gatedBy": "nothing external — a trivial-scope worker merges its own PR with --auto after only its own self-review; medium+ PRs are the only ones gated (by review-fanout's merge_recommendation at l.265)",
+        "line": 222
+      },
+      "trustSurface": {
+        "readsUntrusted": true,
+        "sources": [
+          "GitHub issue titles",
+          "GitHub issue labels",
+          "GitHub issue bodies read by the fix agent",
+          "review-fanout workflow output"
+        ],
+        "sanitized": false,
+        "quote": "  return `You are a SOLO background fix agent for ONE SceneView issue: #${num} — \"${title}\" (priority bucket ${priority}).",
+        "line": 148
+      },
+      "robustness": {
+        "argsNormalized": true,
+        "nullHandled": false,
+        "hardcodedPaths": [
+          ".claude/scripts/disk-gated-spawn-check.sh (l.47)",
+          ".claude/scripts/claim.sh (l.157)",
+          ".claude/scripts/sync-versions.sh (l.198)",
+          "/tmp/sv-${num} (l.165)",
+          "changelog.d/${num}-<slug>.md (l.195)",
+          "const REPO = 'sceneview/sceneview' (l.26)",
+          "Git email = thomas.gorisse@gmail.com (l.150)"
+        ],
+        "notes": "args are defensively normalized (JSON-string guard l.17-21, `a = a || {}` l.22, numeric filter l.24) and most agent returns are null-guarded (`if (disk)` l.52, `pick && Array.isArray(pick.issues)` l.101, `if (!r)` l.288). One gap: `const rec = review && review.merge_recommendation` (l.264) tolerates a null review, but l.274 then dereferences `review.breakingApi` unconditionally — a null/undefined return from workflow('review-fanout') throws inside the stage instead of degrading. Code/comment divergence to record: the comment at l.31-33 calls the disk check a 'gate' and says 'a hard disk floor must be respected before fan-out', but the CODE only logs the verdict (l.52-56) and never branches on `disk.safe` — fan-out proceeds regardless. Second divergence: FIX_SCHEMA's outcome enum (l.129) does not contain 'blocked-by-review', yet the script sets that value at l.262 and l.280 and keys the aggregate on it at l.294 — legal only because it is assigned post-agent, not returned by one. Also `results[i]` is matched positionally to `chosen[i]` (l.285-286) with no id reconciliation."
+      },
+      "maintainability": {
+        "commentRatio": 0.1,
+        "promptsInline": true,
+        "tested": false,
+        "notes": "33 of 315 lines are JS comments, and they are load-bearing documentation (pipeline() arg order 'EMPIRICALLY VERIFIED' l.238-240, the isolation rationale l.144-146, the outcome vocabulary l.119-123). All four prompts are inline template literals; the fixBrief brief alone spans l.148-232 (~85 lines) and hardcodes repo policy, gradle targets, module names, issue numbers cited as precedent (#1243, #2300, #2354, #2361) and a personal git email, so any repo change requires editing prose inside the script. No tests, no dry-run mode, no assertions on agent output beyond the JSON schemas."
+      },
+      "primitives": [
+        "agent",
+        "pipeline",
+        "workflow",
+        "phase",
+        "log",
+        "args",
+        "schema",
+        "model",
+        "effort"
+      ],
+      "techniques": [
+        "Tolerates args arriving as a JSON string before use, failing loudly with a truncated echo rather than silently proceeding (l.17)",
+        "Caps and sanitizes caller-supplied issue numbers through a finite-positive filter (l.24)",
+        "Cheap tiered probes: haiku/low for the disk check and the merge/draft finalizers, sonnet/medium for selection, opus/high for the actual fix (l.50, l.100, l.251, l.268)",
+        "Closes the priority vocabulary with a schema enum so ranking is a bucket, not free prose (l.73)",
+        "Early structured NO_WORK return when nothing was selected, distinguishing 'caller gave nothing resolvable' from 'backlog drained' (l.106)",
+        "Reads the pipeline stage's originalItem (arg1) rather than prevResult so the stage stays correct if reordered (l.245)",
+        "Two-tier scope grading inside the worker brief — self-classified trivial vs medium-plus decides whether an orchestrator review runs (l.210)",
+        "Exit-code protocol for mutual exclusion: claim.sh exit 2 means collision, stop before cloning (l.159)",
+        "Lean --depth 1 + sparse-checkout clone into /tmp to bound disk per agent instead of a 2.3 GB full clone (l.165)",
+        "Instructs the worker to build a deterministic probe that can DISPROVE the issue's prescribed root cause before implementing (l.183)",
+        "Nested workflow() call composing another workflow as a review stage (l.260)",
+        "try/catch around the nested workflow that degrades to an explicit blocked outcome with the claim deliberately held (l.261)",
+        "Claim ownership is handed off across stages: trivial releases its own, medium+ leaves it for stage 2 (l.223)",
+        "Ternary verdict distinguishing a fully clean run from one with open review holds (l.310)"
+      ],
+      "antipatterns": [
+        "The disk 'gate' is only logged, never enforced — fan-out proceeds even when safe is false (l.52)",
+        "Trivial-scope PRs are squash-merged with --auto on the worker's own self-assessment of its own diff, with no independent gate (l.222)",
+        "A maintainer's personal git email is hardcoded in the prompt (l.150)",
+        "The commit body injects a Co-Authored-By AI trailer and the PR body a 'Generated with Claude Code' line (l.215, l.221)",
+        "'blocked-by-review' is assigned as an outcome although FIX_SCHEMA's enum does not allow it, so the aggregate keys on a value the schema forbids (l.129)",
+        "review.breakingApi is dereferenced without the null guard applied one line earlier to the same object (l.274)",
+        "Results are matched to issues by array index alone, with the agent-reported issue number used only as a fallback label (l.286)",
+        "Undocumented runtime behaviour is pinned by a comment claiming empirical verification rather than by a defensive read (l.238)",
+        "The worker is told to close and comment on GitHub issues autonomously, including closing as already-resolved (l.179)",
+        "An 85-line operational playbook (gradle targets, sparse paths, changelog format, hard rules) lives as prose inside a template literal (l.148)"
+      ]
+    },
+    {
+      "file": "LING71671/open-reverselab:ctf-24h-fleet.js",
+      "archetype": "D",
+      "lines": 205,
+      "purpose": "Orchestrates a multi-target web-CTF attack loop: normalizes/dedups target URLs, shards them into batches, runs the ctf-24h-round workflow per target in parallel, then asks an agent to synthesize a fleet-level CONTINUE/DONE/EXHAUSTED status.",
+      "verdictAuthority": {
+        "kind": "prose",
+        "quote": "STATUS: CONTINUE|DONE|EXHAUSTED",
+        "line": 183
+      },
+      "contextBoundary": {
+        "structured": false,
+        "quote": "${JSON.stringify(batchResults, null, 2)}",
+        "line": 161
+      },
+      "state": {
+        "kind": "memory",
+        "resumable": false,
+        "quote": "const batchResults = []",
+        "line": 122
+      },
+      "bounds": [
+        {
+          "kind": "concurrency",
+          "value": "batchSize caps targets run in parallel per batch; 0/unset means all targets in one batch (effectiveBatchSize)",
+          "line": 117
+        },
+        {
+          "kind": "other",
+          "value": "maxActions per target (0 = all) passed to sub-workflow",
+          "line": 59
+        },
+        {
+          "kind": "other",
+          "value": "maxWorkflows per target (0 = all) passed to sub-workflow",
+          "line": 60
+        },
+        {
+          "kind": "other",
+          "value": "innerIterations per attack worker (0 = until convergence) passed to sub-workflow",
+          "line": 61
+        }
+      ],
+      "writeScope": {
+        "commits": false,
+        "pushes": false,
+        "opensPR": false,
+        "merges": false,
+        "gatedBy": "nothing",
+        "line": 0
+      },
+      "trustSurface": {
+        "readsUntrusted": true,
+        "sources": [
+          "args.targets/target attack-target URLs",
+          "sub-workflow round outputs accumulated in batchResults"
+        ],
+        "sanitized": false,
+        "quote": "${targets.map((target, index) => `${index + 1}. ${target}`).join('\\n') || '(empty)'}",
+        "line": 90
+      },
+      "robustness": {
+        "argsNormalized": true,
+        "nullHandled": true,
+        "hardcodedPaths": [
+          "cases",
+          "reports/ctf-website"
+        ],
+        "notes": "args accepts string or object; normalizeTargets splits on whitespace/commas and a Set dedups (l.49); throws if no targets (l.51). Every optional arg guarded with typeof-object + optional chaining and a default. slugify caps names at 80 chars. No git/shell/fs in the script itself; report and manifest writes are only instructed inside agent prompts. Offensive-security tooling (CTF attack orchestrator). Five parameters read at l.63-67 (testOrigin, redirectProbeHost, ssrfProbeTargets, credentialPairs, forwardedIp) are undocumented in the args comment block l.11-26."
+      },
+      "maintainability": {
+        "commentRatio": 0.08,
+        "promptsInline": true,
+        "tested": false,
+        "notes": "Only comment block is the args-spec header (l.11-26); all three agent prompts and the phase titles are inline template literals written in Chinese. No tests."
+      },
+      "primitives": [
+        "agent",
+        "parallel",
+        "workflow",
+        "phase",
+        "args"
+      ],
+      "techniques": [
+        "Dedup normalized targets via [...new Set(...)] before planning (l.49)",
+        "slugify targets into stable filesystem-safe caseName identifiers (l.28)",
+        "Shard targets into fixed-size batches, run sequentially batch-by-batch (l.116)",
+        "Fan out one sub-workflow per target inside a batch via parallel(batch.map(item => () => workflow(...))) (l.125)",
+        "Thread all tuning caps and probe params straight through to the ctf-24h-round sub-workflow (l.127)"
+      ],
+      "antipatterns": [
+        "Phase-1 fleet-plan agent classifies targets (duplicate/anomalous/empty, enabled/reason) but its output is never parsed: enabledTargets is rebuilt from all raw targets, ignoring the agent's enabled flags (l.111)",
+        "Raw untrusted target strings and sub-workflow results are string-interpolated into agent prompts unsanitized (l.90, l.161)",
+        "Final fleet verdict is free-form prose (STATUS: ...) with no schema, parsed only by downstream convention (l.183)",
+        "Args comment header omits five accepted parameters actually read from args (l.63)"
+      ]
+    },
+    {
+      "file": "madeye/meow-rs:cleanup-issues-prs.js",
+      "archetype": "D",
+      "lines": 193,
+      "purpose": "Inventories a repo's open GitHub issues and PRs via gh, spawns one triage agent per item to recommend a schema-constrained action with a confidence level, and — only when args.apply is set — auto-executes the high-confidence issue closes/comments and PR comment pings.",
+      "verdictAuthority": {
+        "kind": "schema",
+        "quote": "      { label: `issue#${i.number}`, phase: 'Triage', schema: ISSUE_REC_SCHEMA }",
+        "line": 115
+      },
+      "contextBoundary": {
+        "structured": true,
+        "quote": "  { label: 'inventory', phase: 'Inventory', schema: INVENTORY_SCHEMA }",
+        "line": 94
+      },
+      "state": {
+        "kind": "none",
+        "resumable": false,
+        "quote": "const [issues, prs] = await parallel([() => issueRecs, () => prRecs])",
+        "line": 140
+      },
+      "bounds": [
+        {
+          "kind": "other",
+          "value": "gh issue list --state open --limit 200",
+          "line": 91
+        },
+        {
+          "kind": "other",
+          "value": "gh pr list --state open --limit 200",
+          "line": 92
+        },
+        {
+          "kind": "other",
+          "value": "gh pr diff ${p.number} --repo ${inv.repo} | head -300",
+          "line": 126
+        },
+        {
+          "kind": "concurrency",
+          "value": "applied = await parallel([ ... issueActions.map(...), ...prPings.map(...) ]) — unbounded fan-out, one agent per item, no concurrency cap",
+          "line": 157
+        }
+      ],
+      "writeScope": {
+        "commits": false,
+        "pushes": false,
+        "opensPR": false,
+        "merges": false,
+        "gatedBy": "args.apply truthy AND r.confidence === 'high' (plus action !== 'keep' for issues; action stale-ping/superseded with non-empty comment for PRs). The actual gh calls are authored by an apply agent from prompt text, so nothing deterministic enforces the ceiling.",
+        "line": 150
+      },
+      "trustSurface": {
+        "readsUntrusted": true,
+        "sources": [
+          "GitHub issue titles and full comment threads (gh issue view --comments)",
+          "GitHub PR titles, author logins, bodies, comments",
+          "PR diffs (gh pr diff)",
+          "git log / repo contents on main"
+        ],
+        "sanitized": false,
+        "quote": "      `You are triaging open issue #${i.number} in ${inv.repo}: \"${i.title}\" (last updated ${i.updatedAt}).",
+        "line": 103
+      },
+      "robustness": {
+        "argsNormalized": false,
+        "nullHandled": true,
+        "hardcodedPaths": [],
+        "notes": "args is only truthiness-tested (`args && args.apply`, l.146/l.189), never normalized or defaulted. Null handling is real: a failed inventory throws (l.96) and every agent fan-out result is filtered with .filter(Boolean) (l.141, l.142, l.184). CODE/COMMENT DISAGREEMENT: the comment at l.148-149 says the auto-executed subset is \"high-confidence issue closes/comments and PR stale-pings\", but the code at l.154 also auto-comments on PRs whose action is 'superseded'. Recorded per the code. The claim in the same comment that \"Merging, closing, or rebasing PRs is always left to a human\" matches the code — the PR branch only ever posts comments. However, that guarantee is carried by prompt text (l.174 \"Do NOT close or merge the PR\") given to an agent that runs gh itself; there is no mechanical restriction. The issue branch does close issues (l.163). r.comment is required to be non-empty only for PR pings (l.154); an issue action with an empty comment string is still passed through to the apply agent (l.166)."
+      },
+      "maintainability": {
+        "commentRatio": 0.01,
+        "promptsInline": true,
+        "tested": false,
+        "notes": "Two comment lines (l.148-149) out of 193. All prompts are inline template literals; the four JSON schemas are hoisted to named consts at the top (l.12-85), which is the file's main readability lever. No tests, no dry-run assertions, no way to exercise the Apply branch without live gh writes."
+      },
+      "primitives": [
+        "agent",
+        "parallel",
+        "pipeline",
+        "phase",
+        "log",
+        "args",
+        "schema"
+      ],
+      "techniques": [
+        "Dry-run is the default and all writes sit behind one explicit opt-in flag: `if (args && args.apply) {` (l.146)",
+        "The decision schema carries a `confidence` enum that the script later reads as a machine gate, so the model's own uncertainty controls whether a write happens: `confidence: { type: 'string', enum: ['high', 'medium', 'low'] },` (l.56)",
+        "Closed action vocabulary via enum forces exactly one of N decisions instead of free prose: `enum: ['close-fixed', 'close-stale', 'close-duplicate', 'comment', 'keep'],` (l.54)",
+        "The triage agent authors the exact comment text at decision time so the apply step is pure execution of a pre-approved string: `comment: { type: 'string', description: 'the exact comment to post when closing or commenting; empty for keep' },` (l.58)",
+        "Explicit conservatism instruction biases ties toward the no-op action: `Be conservative: when evidence is incomplete, prefer keep or comment with confidence low/medium.` (l.114)",
+        "The write ceiling is restated inside the triage prompt so no recommendation can even propose the forbidden act: `NEVER recommend merging or closing automatically — these recommendations go to a human.` (l.135)",
+        "Hard failure on the seed step rather than silently proceeding with empty lists: `if (!inv) throw new Error('inventory agent failed — is gh authenticated?')` (l.96)",
+        "Per-item agent labels give a traceable log line for each issue and PR: `{ label: `pr#${p.number}`, phase: 'Triage', schema: PR_REC_SCHEMA }` (l.136)",
+        "The returned object records which mode the run was in, so a consumer can tell a report from an execution: `dryRun: !(args && args.apply),` (l.189)"
+      ],
+      "antipatterns": [
+        "Untrusted GitHub text is interpolated raw into the triage prompt — an issue title is attacker-controlled and lands unescaped inside the instruction block: `You are triaging open issue #${i.number} in ${inv.repo}: \"${i.title}\" (last updated ${i.updatedAt}).` (l.103)",
+        "The triage agent is told to read the full external comment thread, so third-party prose enters the same context that decides whether to close: `1. gh issue view ${i.number} --repo ${inv.repo} --comments — read the full thread.` (l.105)",
+        "The safety comment does not match the code it labels — it names only stale-pings while the filter also admits 'superseded': `// stale-pings. Merging, closing, or rebasing PRs is always left to a human.` (l.149) vs `(r) => r.confidence === 'high' && (r.action === 'stale-ping' || r.action === 'superseded') && r.comment` (l.154)",
+        "The destructive write is described to an agent in prose rather than executed deterministically, so the actual command line is model-authored: `: `Post the comment and close: gh issue close ${r.number} --repo ${inv.repo} --comment <the comment below>. Use --reason completed for close-fixed, --reason \"not planned\" for close-stale/close-duplicate.`}` (l.163)",
+        "Model-generated text is spliced into the apply prompt between ad-hoc `---` fences that carry no escaping, so a comment containing its own fence or instructions is indistinguishable from the surrounding prompt: `${r.comment}` (l.166)",
+        "`parallel` is handed thunks that merely return two pipelines that were already constructed at l.99 and l.119, so the wrapper adds no scheduling control it did not already have: `const [issues, prs] = await parallel([() => issueRecs, () => prRecs])` (l.140)",
+        "Fan-out is bounded only by the gh page size, so up to 200 issues plus 200 PRs each spawn a full investigating agent with no budget or concurrency limit: `  - gh issue list --state open --limit 200 --json number,title,updatedAt,labels` (l.91)",
+        "Nothing verifies that an apply agent actually did what it reported; the schema accepts the agent's own self-assessment as the outcome of record: `executed: { type: 'boolean' },` (l.82)",
+        "No re-read or drift check between triage and apply — an issue can be closed or updated by a human in between and the apply agent will still act on the stale recommendation: `  applied = await parallel([` (l.157)"
+      ]
+    },
+    {
+      "file": "coinbase/cds:code-connect-refresh.js",
+      "archetype": "E",
+      "lines": 1126,
+      "purpose": "Fans out one sub-agent per entry of a hardcoded 80-component Figma registry, in batches of 4, to generate Figma Code Connect template files, checkpointing every batch to a JSON progress file so a rate-limited run can be re-run and resume, then posts a markdown summary to Linear issue CDS-2144.",
+      "verdictAuthority": {
+        "kind": "schema",
+        "quote": "    status: { type: 'string', enum: ['completed', 'skipped', 'rate_limited', 'failed'] },",
+        "line": 664
+      },
+      "contextBoundary": {
+        "structured": true,
+        "quote": "          schema: RESULT_SCHEMA,",
+        "line": 875
+      },
+      "state": {
+        "kind": "file",
+        "resumable": true,
+        "quote": "const PROGRESS_FILE = PROJECT_ROOT + '/.claude/code-connect-progress.json';",
+        "line": 17
+      },
+      "bounds": [
+        {
+          "kind": "concurrency",
+          "value": "const BATCH_SIZE = 4;",
+          "line": 845
+        },
+        {
+          "kind": "noProgress",
+          "value": "  if (rateLimitHit) break;",
+          "line": 859
+        },
+        {
+          "kind": "other",
+          "value": "const toProcess = COMPONENTS.filter((comp) => !alreadyDone.has(comp.name));",
+          "line": 784
+        }
+      ],
+      "writeScope": {
+        "commits": false,
+        "pushes": false,
+        "opensPR": false,
+        "merges": false,
+        "gatedBy": "nothing — the Linear comment is posted unconditionally as long as no rate limit was seen; the per-component template file writes are done by sub-agents with no gate at all",
+        "line": 1102
+      },
+      "trustSurface": {
+        "readsUntrusted": true,
+        "sources": [
+          "the .claude/code-connect-progress.json file written by a prior run, read back by an agent and JSON.parse'd",
+          "Figma MCP responses (get_code_connect_suggestions / get_context_for_code_connect) consumed inside sub-agents",
+          "React component source files the sub-agents search for in the repo"
+        ],
+        "sanitized": false,
+        "quote": "    JSON.stringify(initProgressData, null, 2),",
+        "line": 834
+      },
+      "robustness": {
+        "argsNormalized": false,
+        "nullHandled": true,
+        "hardcodedPaths": [
+          "/Users/erichkuerschner/workspace/cds-public (l.16)",
+          "PROJECT_ROOT + '/.claude/code-connect-progress.json' (l.17)",
+          "k5CtyJccNQUGMI5bI4lJ2g Figma file key (l.15)",
+          "80 hardcoded figma.com design URLs (l.22-657)",
+          "Linear issue CDS-2144 (l.11, l.1103)",
+          "mcp__linear-server__save_comment (l.1104)"
+        ],
+        "notes": "args is never read; the script has no inputs at all, so nothing is normalized. Null handling is real: try/catch around JSON.parse (l.766-769), batchResults.filter(Boolean) (l.881), and `|| null` / `|| 'No reason provided'` / `|| 'Unknown error'` fallbacks (l.909, l.1015, l.1033). Code-vs-comment discrepancy: the comment at l.857-858 says \"Stop dispatching new batches the moment a rate limit was seen\" but the code only breaks at the top of the NEXT iteration (l.859), so every agent in the batch where the limit first appears has already run to completion — recorded as CODE. The comment at l.867-868 asserts \"any rate-limited agent returns immediately with status:\\\"rate_limited\\\"\" — nothing in the script enforces that; it is an assumption about the sub-agent, not a guarantee. meta.description at l.4 claims 80 components and the COMPONENTS array does contain exactly 80 entries. The `pending` field at l.929 is computed as COMPONENTS.length - alreadyDoneCount - allResults.length, which is only correct because previously rate_limited/failed names are deliberately excluded from alreadyDone (l.777)."
+      },
+      "maintainability": {
+        "commentRatio": 0.03,
+        "promptsInline": true,
+        "tested": false,
+        "notes": "39 comment lines over 1126 total. 636 of those lines (l.22-657) are a literal component registry, so the executable logic is roughly 470 lines with a comment ratio closer to 0.08. Every prompt is inline string concatenation — buildComponentPrompt (l.693-740) hand-concatenates ~25 fragments, and the two progress-write prompts embed JSON.stringify output directly (l.834, l.938). No test file, no dry-run flag, no assertion anywhere. The four status counts are recomputed with the same four filter expressions in two separate places (l.897-900 and l.965-968), and the runNote string literal is duplicated verbatim (l.824-825, l.921-922). The comment at l.1007 (\"prevCompletedCount / prevSkippedCount declared in Phase 2 scope above\") exists only to explain a cross-phase variable reach, which is a smell the comment documents rather than fixes."
+      },
+      "primitives": [
+        "agent",
+        "parallel",
+        "phase",
+        "log",
+        "schema",
+        "agentType"
+      ],
+      "techniques": [
+        "Reads its own prior-run state file through a sub-agent with a two-field schema, because the workflow runtime has no filesystem of its own (l.749)",
+        "Terminal-state whitelist for resumption: only 'completed' and 'skipped' are carried forward, so 'rate_limited' and 'failed' are automatically retried on the next run (l.777)",
+        "Manual batch loop over parallel() to cap concurrency at an external API's documented rate limit rather than dispatching all 80 at once (l.856)",
+        "Checkpoint written after every batch, so an abrupt death loses at most one batch of work (l.934)",
+        "Early return that skips the whole Report phase on rate limit, explicitly to avoid posting a misleading 'complete' summary (l.964)",
+        "Platform-conditional prompt fragment computed once per component so one agent definition serves web-only, mobile-only and dual components (l.694)",
+        "Closed status enum in the result schema, which every downstream aggregation filters on (l.664)",
+        "Report sections are built as conditional string fragments that collapse to '' when empty, so the markdown has no empty headings (l.1011)",
+        "Sub-agent is told to load its MCP tool via ToolSearch before calling it, rather than assuming the tool is present (l.1104)"
+      ],
+      "antipatterns": [
+        "One developer's absolute home directory hardcoded as the project root, making the script unrunnable by anyone else (l.16)",
+        "A 636-line data registry pasted inline into the workflow script instead of an adjacent data file (l.22)",
+        "Unvalidated prior-run file content is parsed and then re-serialized straight back into an agent prompt, so anything written into the progress file is re-fed to a model (l.834)",
+        "Rate-limit detection is checked only at the top of the next iteration, so every agent in the offending batch still runs and burns calls (l.859)",
+        "The same four status-count filter expressions are written out three separate times instead of a single helper (l.897)",
+        "The report is fired at a hardcoded Linear issue id with no schema on the posting agent and no check that the comment actually landed (l.1102)",
+        "A 33-line string-concatenation chain builds the report body, mixing markdown table syntax with arithmetic inline (l.1067)",
+        "The identical runNote sentence is duplicated as two separate literals that must be kept in sync by hand (l.825)"
+      ]
+    },
+    {
+      "file": "SocketDev/socket-cli:refresh-repo-map.js",
+      "archetype": "E",
+      "lines": 108,
+      "purpose": "Two-phase workflow that has one agent rebuild the gitignored .repo-map/ skeleton cache by running a repo script, then a second agent read .repo-map/index.txt and report coverage, saved percentage and the five largest files.",
+      "verdictAuthority": {
+        "kind": "schema",
+        "quote": "if (!build || build.outcome !== 'built') {",
+        "line": 79
+      },
+      "contextBoundary": {
+        "structured": true,
+        "quote": "  { label: 'build', phase: 'Build', schema: BUILD_SCHEMA },",
+        "line": 76
+      },
+      "state": {
+        "kind": "none",
+        "resumable": false,
+        "quote": "return { build, report }",
+        "line": 108
+      },
+      "bounds": [],
+      "writeScope": {
+        "commits": false,
+        "pushes": false,
+        "opensPR": false,
+        "merges": false,
+        "gatedBy": "nothing",
+        "line": 74
+      },
+      "trustSurface": {
+        "readsUntrusted": true,
+        "sources": [
+          "repository source tree walked by scripts/fleet/gen/repo-map.mts",
+          ".repo-map/index.txt generated roll-up"
+        ],
+        "sanitized": false,
+        "quote": "    'Read .repo-map/index.txt (the repo-map cache roll-up just rebuilt).',",
+        "line": 92
+      },
+      "robustness": {
+        "argsNormalized": true,
+        "nullHandled": true,
+        "hardcodedPaths": [
+          "scripts/fleet/gen/repo-map.mts (l.65)",
+          ".repo-map/index.txt (l.92)",
+          "default root '.' (l.31)"
+        ],
+        "notes": "args accepts an object, a JSON string, or a bare path string, falling back to root '.' (l.20-31). Null is handled at both boundaries: the build guard tests `!build` (l.79) and the final log uses optional chaining plus build fallbacks, `report?.filesCovered ?? build.filesWritten` (l.106). Code/comment divergence: meta phase detail says 'run gen/repo-map --write .' (l.8) while the prompt actually orders `node scripts/fleet/gen/repo-map.mts --write ${root}` (l.65) — the code is the mts path under scripts/fleet and honours the root arg, the meta text is stale/abbreviated. The prompt instructs 'Do NOT commit anything' (l.74) but nothing in the script enforces it — the agent is free-tooled, so no write restriction is guaranteed by code; the only mechanical gate is the outcome check at l.79, which stops the Report phase but does not constrain writes. root is interpolated straight into the shell command with no validation (l.65). Report phase failure is not checked at all — a null report just falls through to the log."
+      },
+      "maintainability": {
+        "commentRatio": 0.07,
+        "promptsInline": true,
+        "tested": false,
+        "notes": "8 comment lines out of 108 (l.19, 33, 58-60, 87-89). Both agent prompts are inline arrays joined with '\\n' (l.61-77, l.90-103); the two JSON schemas are inline consts (l.34-55). The three-line socket-lint suppression comment is duplicated verbatim before each await (l.58-60, l.87-89). meta.description/whenToUse document the arg contract in prose (l.16). No tests, no assertions beyond the outcome check."
+      },
+      "primitives": [
+        "agent",
+        "phase",
+        "log",
+        "args",
+        "schema"
+      ],
+      "techniques": [
+        "args normalization accepting object / JSON string / bare positional string with a typed fallback default (l.20)",
+        "closed-enum outcome field in the agent's output schema so the pass/fail decision is a value comparison, not prose scraping (l.38)",
+        "minimal `required` in each schema so a partial agent answer still validates while the decisive field stays mandatory (l.42)",
+        "early `return` of the partial result on a failed first phase, so the caller receives the build object instead of an exception (l.83)",
+        "cross-phase fallback in the final log, using the build phase's numbers when the report phase returned nothing (l.106)",
+        "prompt explicitly narrows the agent's read scope to one file to cap context cost (l.100)"
+      ],
+      "antipatterns": [
+        "meta phase detail 'run gen/repo-map --write .' contradicts the command actually issued, `node scripts/fleet/gen/repo-map.mts --write ${root}` (l.8)",
+        "user-supplied `root` interpolated directly into a shell command line with no validation or quoting (l.65)",
+        "the same three-line socket-lint suppression comment is copy-pasted before each agent call (l.58)",
+        "the report agent's result is never validated — a null or failed Report phase silently degrades to the build numbers and still returns success (l.105)",
+        "'Do NOT commit anything' is a prompt instruction with no code enforcement behind it (l.74)"
+      ]
+    },
+    {
+      "file": "hathach/tinyusb:validate.js",
+      "archetype": "E",
+      "lines": 100,
+      "purpose": "Fans out unit tests, one build agent per requested board, a code-size comparison against a base branch and a PVS-Studio run as parallel schema-constrained agents, then joins their structured results into a single pass/fail verdict for pre-PR validation.",
+      "verdictAuthority": {
+        "kind": "schema",
+        "quote": "return { pass: failures.length === 0 && dead === 0, stages: results, failures }",
+        "line": 100
+      },
+      "contextBoundary": {
+        "structured": true,
+        "quote": "detail: r.pass ? `${r.builtCount} examples built` : clip(JSON.stringify(r.failures)),",
+        "line": 74
+      },
+      "state": {
+        "kind": "none",
+        "resumable": false,
+        "quote": "const thunks = []",
+        "line": 59
+      },
+      "bounds": [
+        {
+          "kind": "concurrency",
+          "value": "all stage thunks launched in one parallel() batch, no cap",
+          "line": 95
+        },
+        {
+          "kind": "other",
+          "value": "effort: 'low' on the PVS agent",
+          "line": 89
+        },
+        {
+          "kind": "other",
+          "value": "model: 'haiku' on the unit and size agents",
+          "line": 65
+        },
+        {
+          "kind": "other",
+          "value": "clip(s, n = 800) truncates failure detail to 800 chars",
+          "line": 16
+        },
+        {
+          "kind": "other",
+          "value": "skip list lets stages be dropped entirely: const skip = args.skip || []",
+          "line": 13
+        }
+      ],
+      "writeScope": {
+        "commits": false,
+        "pushes": false,
+        "opensPR": false,
+        "merges": false,
+        "gatedBy": "nothing — the script itself performs no VCS write; sub-agents only build, test and analyze",
+        "line": 100
+      },
+      "trustSurface": {
+        "readsUntrusted": true,
+        "sources": [
+          "ceedling unit test output",
+          "per-board compiler/build failure text",
+          "metrics_compare.md flash/RAM report",
+          "PVS-Studio findings (file/line/rule/message)"
+        ],
+        "sanitized": false,
+        "quote": "detail: r.pass ? r.detail : clip(`${r.detail} ${JSON.stringify(r.changedFindings)}`),",
+        "line": 92
+      },
+      "robustness": {
+        "argsNormalized": true,
+        "nullHandled": true,
+        "hardcodedPaths": [
+          "test/unit-test",
+          "tools/metrics_compare_base.py",
+          "cmake-metrics/<board>/metrics_compare.md",
+          "cmake-build-<board>",
+          "device/cdc_msc",
+          "master (default base)"
+        ],
+        "notes": "args accepted as JSON string or object (l.9) then shape-checked with a thrown Error (l.10-12); base defaults to 'master' (l.15) and skip to [] (l.13). Dead agents are handled twice: `.then(r => r && ...)` on every stage (l.66, 72, 83, 90), `.filter(Boolean)` (l.95), and an explicit dead count folded into the verdict (l.96-97, 100). Only args.boards[0] is used for the size and PVS stages (l.79, 87) even when several boards are requested, so those stages silently ignore the rest of the list. The size stage is defined to pass unless the tool itself errors (l.80), so a growing binary never fails the run. Code and comment do not disagree anywhere in this file."
+      },
+      "maintainability": {
+        "commentRatio": 0.01,
+        "promptsInline": true,
+        "tested": false,
+        "notes": "Single comment line, the args shape note at l.8 (plus one inline block comment inside the catch at l.9). All four agent prompts are inline template strings; the three JSON schemas STAGE/BUILD/PVS (l.19-57) occupy ~40% of the file and are the main maintenance surface. No tests, no self-check."
+      },
+      "primitives": [
+        "agent",
+        "parallel",
+        "log",
+        "args",
+        "schema",
+        "model",
+        "effort",
+        "agentType",
+        "phase"
+      ],
+      "techniques": [
+        "Thunk array built conditionally, then handed to one parallel() call, so skip flags and per-board fan-out compose into a single concurrency batch (l.59-95)",
+        "Each agent result is normalized to a common {stage, pass, detail} shape by its own .then, so heterogeneous schemas join into one uniform verdict list (l.66, 72-75, 83, 90-93)",
+        "Dead-agent accounting: `r && ...` + `.filter(Boolean)` + `thunks.length - results.length` folded into pass, so a crashed agent fails the run instead of vanishing (l.95-100)",
+        "clip() bounds how much raw tool output re-enters the parent context, keeping failures readable without dumping full logs (l.16-17, 74, 92)",
+        "Cheap model pinned on the two summarization stages and effort:'low' on the analyzer, reserving default effort for the build agents (l.65, 82, 89)",
+        "Cross-agent interference stated in the prompt itself: the PVS agent is told parallel builders exist and given a build-dir exclusion (l.88)",
+        "Exact command pinned in the prompt with an explicit no-extra-args instruction to stop the agent improvising CLI flags (l.79)",
+        "args accepted as either a JSON string or an object, with the parse failure deliberately deferred to the shape check (l.9-12)"
+      ],
+      "antipatterns": [
+        "Multi-board input silently collapses to args.boards[0] for the size stage and the PVS stage, so extra boards are accepted but never analyzed (l.79, l.87)",
+        "The size stage can never fail on a regression by construction — pass=false only if the tool errors — so it contributes a near-constant true to the verdict (l.80)",
+        "Hardcoded repo layout and tool invocations inside prompt strings (test/unit-test, tools/metrics_compare_base.py, device/cdc_msc, cmake-metrics/<board>/metrics_compare.md) with no way to override them from args (l.63, l.79-80)",
+        "Unbounded fan-out: one build agent per board with no concurrency cap, on stages that are heavy compiles competing for the same machine (l.68-71, l.95)",
+        "Raw untrusted tool output (build failures, PVS findings) is JSON-stringified straight into the returned detail with only length clipping, no vocabulary reduction (l.74, l.92)",
+        "No retry, no timeout and no budget on any stage — a hung build agent has nothing to stop it (l.95)"
+      ]
+    },
+    {
+      "file": "ceilf6/FrontAgent:oss-harness-engineering-workflow.js",
+      "archetype": "E",
+      "lines": 143,
+      "purpose": "Runs four parallel read-only research agents over FrontAgent's docs, code, and any provided Harness reference, then a synthesis agent that proposes an OSS Harness engineering workflow, then an adversarial critic, and returns all three as structured JSON.",
+      "verdictAuthority": {
+        "kind": "schema",
+        "quote": "    verdict: { type: 'string', enum: ['accept', 'revise'] },",
+        "line": 97
+      },
+      "contextBoundary": {
+        "structured": true,
+        "quote": "Research: ${JSON.stringify(research.filter(Boolean))}`,",
+        "line": 132
+      },
+      "state": {
+        "kind": "none",
+        "resumable": false,
+        "quote": "  return { research: research.filter(Boolean), synthesis, critique };",
+        "line": 142
+      },
+      "bounds": [],
+      "writeScope": {
+        "commits": false,
+        "pushes": false,
+        "opensPR": false,
+        "merges": false,
+        "gatedBy": "nothing",
+        "line": 142
+      },
+      "trustSurface": {
+        "readsUntrusted": true,
+        "sources": [
+          "repository documentation files (README.md, CONTRIBUTING.md, docs/*, AGENTS.md, CLAUDE.md, package scripts)",
+          "repository implementation code, scripts, tests",
+          "a task-provided public URL, branch, or local path for prior Harness research"
+        ],
+        "sanitized": false,
+        "quote": "'If the task provides a public URL, branch, or local path for prior Harness research, study only the reusable Harness engineering material.",
+        "line": 120
+      },
+      "robustness": {
+        "argsNormalized": false,
+        "nullHandled": true,
+        "hardcodedPaths": [
+          "README.md (l.110)",
+          "CONTRIBUTING.md (l.110)",
+          "docs/workflow.md (l.110)",
+          "docs/knowledge-contract.md (l.110)",
+          "docs/architecture.md (l.110)",
+          "docs/design.md (l.110)",
+          "AGENTS.md (l.110)",
+          "CLAUDE.md (l.110)"
+        ],
+        "notes": "args is never referenced; the external reference to study is left entirely to the prompt's conditional wording ('If the task provides a public URL...', l.120) with no input plumbing, so a fresh run has no way to receive one from the runtime. research.filter(Boolean) (l.132, l.138, l.142) drops null/failed parallel branches, so a failed agent silently shrinks the evidence set rather than halting. No try/catch anywhere; an agent() rejection propagates and aborts the run. The critic's verdict enum ['accept','revise'] (l.97) is returned but never branched on — a 'revise' verdict triggers no re-run and no failure. 'Do not edit files.' (l.110) and 'do not edit' (l.115, l.120, l.125) are prompt instructions to the sub-agents, not a runtime restriction: the workflow itself declares no tool isolation, so non-editing is a stated intention in the prompt text, not a code-enforced guarantee."
+      },
+      "maintainability": {
+        "commentRatio": 0,
+        "promptsInline": true,
+        "tested": false,
+        "notes": "Zero comment lines out of 143. All four research prompts plus the synthesis and critique prompts are inline string literals in the default export (l.110-139); the three JSON schemas are module-level consts (l.22, l.46, l.93) with additionalProperties:false and full required lists, which is the file's main structural discipline. meta.phases (l.4-19) duplicates the phase names used at l.106, l.130, l.136 as free strings — no shared constant, so they can drift. No test file, no assertions, no logging (log() is never called)."
+      },
+      "primitives": [
+        "agent",
+        "parallel",
+        "phase",
+        "schema"
+      ],
+      "techniques": [
+        "Three distinct closed JSON schemas — evidence, workflow proposal, critique — each with additionalProperties:false and an exhaustive required list, so every stage's handoff is a validated shape rather than prose (l.22, l.46, l.93)",
+        "Evidence items force claim + evidence[] + implication together, making an unsourced claim structurally impossible to return (l.37)",
+        "A dedicated fourth research agent whose whole job is defining what to EXCLUDE from the output, running in parallel with the three gathering agents (l.123-127)",
+        "The synthesis schema demands approachesCompared with a boolean recommendation flag, forcing the model to enumerate alternatives and commit to one (l.67-79)",
+        "Verdict constrained to a two-value enum rather than free text, so the critic's outcome is machine-readable (l.97)",
+        "research.filter(Boolean) applied at each consumption point so a null branch cannot poison the serialized context (l.132, l.138, l.142)",
+        "meta.phases declares the pipeline shape for the harness before any agent runs (l.4-19)"
+      ],
+      "antipatterns": [
+        "The critique's accept/revise verdict is produced and returned but never read by the code — no revision loop, no throw, no gate; the run 'succeeds' identically whether the critic says accept or revise (l.137-142)",
+        "The external research reference is described conditionally inside a prompt string instead of being passed through args, so the workflow has no actual input channel for it (l.120)",
+        "Both the full research array and the full synthesis object are JSON.stringify'd whole into later prompts with no truncation or size bound, so context growth is unbounded in the number and verbosity of findings (l.132, l.138)",
+        "Eight documentation paths are hardcoded inside a prompt literal, silently coupling the workflow to one repo's layout (l.110)",
+        "Phase names are repeated as free string literals in meta and in the phase() calls with no shared constant (l.6 vs l.106)",
+        "'Do not edit files.' is asserted only as prompt text while the workflow grants the sub-agents no declared tool restriction (l.110)",
+        "No budget, no round cap, no timeout, and no error handling anywhere in the run (l.105-143)"
+      ]
+    }
+  ],
+  "ours": {
+    "file": "fabiensalles/claude-marketplace:goal-auto.js",
+    "archetype": "A",
+    "lines": 919,
+    "purpose": "Orchestrates an unattended run of a locked goal plan: it surveys the unchecked iterations, spawns one implementer agent then one gate invocation per iteration, halts at the first non-zero gate exit, and — under a commit+pr policy — scans, pushes the branch, opens/updates a draft PR, replays the global Definition of Done, optionally runs advisory lenses, and writes an audit record.",
+    "verdictAuthority": {
+      "kind": "exitCode",
+      "quote": "    if (gate.exitCode !== 0) {",
+      "line": 805
+    },
+    "contextBoundary": {
+      "structured": true,
+      "quote": "    { agentType: 'goal:goal-runner', schema: RUN_RESULT, effort: 'low', label, phase },",
+      "line": 91
+    },
+    "state": {
+      "kind": "checkbox",
+      "resumable": true,
+      "quote": "const SURVEY = String.raw`awk '/^### Iteration [0-9]+/ { n = $3; seen = 0 } /^- \\[/ { if (n != \"\" && seen == 0) { seen = 1; if ($0 ~ /^- \\[ \\]/) print n } }'`",
+      "line": 472
+    },
+    "bounds": [
+      {
+        "kind": "budget",
+        "value": "ITERATION_FLOOR = 80_000; the loop pauses before an iteration when budget.remaining() falls under it — `if (budget.total && budget.remaining() < ITERATION_FLOOR) {`",
+        "line": 768
+      },
+      {
+        "kind": "maxRounds",
+        "value": "no retry construct at all: a single for-of over the pending iterations, one implementer + one gate each — `for (const [index, iteration] of pending.entries()) {`",
+        "line": 750
+      },
+      {
+        "kind": "noProgress",
+        "value": "a halt is final and terminal, the remaining iterations are returned as notAttempted — `if (stopped !== undefined) {`",
+        "line": 819
+      },
+      {
+        "kind": "concurrency",
+        "value": "uncapped fan-out: one thunk per declared track, all launched at once — `const reports = (await parallel(tracks.map((track) => () => runTrack(track)))).map(`",
+        "line": 580
+      },
+      {
+        "kind": "concurrency",
+        "value": "uncapped fan-out over lens verdicts as well — `const verdicts = await parallel(`",
+        "line": 356
+      }
+    ],
+    "writeScope": {
+      "commits": true,
+      "pushes": true,
+      "opensPR": true,
+      "merges": false,
+      "gatedBy": "for the commit: the gate's own checks (the script only invokes `${GATE} commit`). For the push: policy read from the plan header must equal 'commit+pr' (l.660), no fixup!/squash! commit in the range (l.175-183), and `${GATE} scan` must exit 0 (l.160-164). For `gh pr ready`: `${GATE} dod` exit 0 (l.873).",
+      "line": 166
+    },
+    "trustSurface": {
+      "readsUntrusted": true,
+      "sources": [
+        "GitHub issue labels (goal:*)",
+        "the body of the run's own control-panel comment on the GitHub issue",
+        "the plan file's Spec/Delivery mode/Policy/PR base/Source headers and iteration headings",
+        "plan-declared track `prepare` and `teardown` shell strings"
+      ],
+      "sanitized": true,
+      "quote": "    `gh api repos/:owner/:repo/issues/${issue}/labels --jq '.[].name' 2>/dev/null | sed -n 's/^goal://p' | grep -xE '${CONTROLS.join('|')}' || true`,",
+      "line": 435
+    },
+    "robustness": {
+      "argsNormalized": true,
+      "nullHandled": true,
+      "hardcodedPaths": [
+        "'node plugins/goal/scripts/goal-gate.ts' (l.49)",
+        "workflows/goal-auto.js derived from the gate path by regex (l.483)",
+        ".claude/goal-runs/${sha}.md (l.389, l.406)",
+        ".worktrees/${WORK_ID}-${track.suffix} (l.503)",
+        "feature/${WORK_ID}-${track.suffix} (l.504)",
+        "\"$(git rev-parse --git-dir)/goal-pr-body.md\" (l.223)",
+        "origin/HEAD with a literal `main` fallback (l.506)"
+      ],
+      "notes": "Args are normalized once (l.37-47) against a measured runtime quirk, and every agent call has a `?? fallback` for a null return (l.94, l.138, l.406, l.582), so the null path is genuinely covered. Where it is thin: plan-derived and arg-derived strings are interpolated into shell with no quoting or validation — PLAN at l.189/l.610/l.632, DIR at l.75, track.suffix into worktree and branch names at l.503-506 — and `track.prepare` / `track.teardown` are plan-authored shell strings executed verbatim (l.517, l.528), so anyone who can write the plan file gets arbitrary command execution. `quoted()` strips single quotes instead of escaping them (l.185) and the result is dropped inside a single-quoted `--title '...'` (l.230). `planFacts` reads lines positionally (l.198-200): a plan missing its `# Spec:` header silently shifts title/mode/headings by one with no error. `lensesFor` consumes tab-split fields (l.304-318) that a tab inside a Delivery string would shift. CODE-VS-COMMENT: the header states \"It never implements, never commits and never ticks\" (l.2) and the brief repeats \"You do not commit\" (l.114), yet l.798 invokes `${GATE} commit ...`, and the gate is what creates the commit and ticks the checkbox — so this script does cause commits, it merely does not author them itself; writeScope.commits is recorded true on that basis. Likewise l.144's comment says publishing may be forbidden — that one matches the code (l.660, l.717-721)."
+    },
+    "maintainability": {
+      "commentRatio": 0.11,
+      "promptsInline": true,
+      "tested": false,
+      "notes": "102 of 919 lines are `//` comments, and they are not annotations: they are multi-sentence design essays justifying decisions (l.70-74, l.119-121, l.170-174, l.409-412, l.694-696), several of which restate a rationale that belongs in a commit message and one of which (l.2) contradicts the code. Every agent prompt is an inline array-of-strings joined with newlines (brief l.97-117, post l.122-139, askLens l.320-337, audit l.386-404, readControls l.443-452), so prompt edits are code edits. The repo ships eight test files under plugins/goal/tests/, all named gate-*.test.ts, and grep finds no test referencing goal-auto — the orchestration layer, including the control-vocabulary filter and the halt/ship branching, is untested. The file is a single 919-line module with no exported units besides `meta`, executed top-to-bottom, which is also why nothing in it is unit-testable."
+    },
+    "primitives": [
+      "agent",
+      "parallel",
+      "workflow",
+      "phase",
+      "log",
+      "budget",
+      "args",
+      "agentType",
+      "schema",
+      "effort"
+    ],
+    "techniques": [
+      "Runtime args normalized once at the top with a JSON.parse fallback, so no downstream call has to know whether it got a string or an object (l.37)",
+      "Every shell command crosses the agent boundary as a fixed {exitCode, output} schema, keeping the orchestrator's context flat regardless of iteration count (l.57, l.81)",
+      "Untrusted remote steering is reduced to a closed vocabulary by grep inside the shell before any model sees it, then re-filtered against the same allowlist in JS (l.435, l.439, l.460)",
+      "The control vocabulary is chosen so every verb only subtracts — stop, no-ship, skip-lenses — making a forged control harmless by construction (l.413)",
+      "The run authors its own control-panel comment and reads back only that comment id, extracted from the URL gh printed, so no other comment is ever read (l.697-700)",
+      "The plan hash is published once by the survey and passed to every subsequent gate call, so a plan rewritten mid-run is refused rather than blessed (l.645, l.798)",
+      "Every unchecked iteration is checked for runnability before any implementation starts, so an unrunnable plan fails at minute one (l.631)",
+      "The token floor stops the loop at an iteration boundary, where the plan's checkboxes are the whole state, rather than mid-iteration (l.55, l.768)",
+      "Self re-entry: the script derives its own path from the gate path and re-invokes itself once per track, so tracks and the main run share one loop (l.483, l.541)",
+      "Each track runs in its own worktree and every command of that run is prefixed with the directory, making \"the gate reads the tree it stands in\" mechanical (l.75, l.502)",
+      "Teardown runs on every track exit path, and the worktree is removed only when the track finished clean (l.515-525)",
+      "Secret scan gates the push, and the push gates the PR (l.159-169, l.731)",
+      "The draft PR is opened at the first landed iteration and its body rewritten by each later one, so a run halting at 3/15 still leaves something reviewable (l.713, l.744)",
+      "Push failure and PR failure are tracked as separate fields so \"pushed, no PR\" stays a distinguishable state (l.707, l.746)",
+      "A per-iteration machine record (tokens spent, outcome, gate exit) is accumulated and handed to a read-only auditor that is explicitly forbidden from editing code (l.810, l.386)",
+      "Lenses run after the PR is already marked ready, making \"a lens never blocks\" structural rather than a promise (l.896, l.900)",
+      "The lens set is derived from what the plan itself declares, so the same plan yields the same lenses (l.292)"
+    ],
+    "antipatterns": [
+      "The file's opening claim \"It never implements, never commits and never ticks\" is false as stated — the loop invokes the gate's `commit` subcommand, which commits and ticks (l.2 vs l.798)",
+      "Plan-declared `prepare` and `teardown` strings are concatenated into a shell command and executed verbatim inside the worktree, so the plan file is an arbitrary-code-execution surface (l.517, l.528)",
+      "Plan paths, worktree dirs, branch names and track suffixes are interpolated into shell commands unquoted and unvalidated (l.75, l.189, l.503, l.632)",
+      "`quoted()` deletes single quotes instead of escaping them, then the result is embedded in a single-quoted gh argument — sanitization by mutilation (l.185, l.230)",
+      "`planFacts` parses by array position, so a plan missing its `# Spec:` header silently produces a wrong title, a wrong delivery mode and off-by-one headings with no error (l.198)",
+      "`parallel()` is called with one thunk per track and one per lens with no concurrency cap, so a wide plan fans out unboundedly (l.356, l.580)",
+      "Multi-paragraph design-rationale essays live in the runtime file as comments rather than in commit messages, and at least one of them has drifted out of sync with the code (l.70-74, l.170-174, l.409-412)",
+      "The ship/halt report object is assembled by hand in three places with overlapping but non-identical field sets (l.822-829, l.841-844, l.876-885)",
+      "`lensesFor` consumes tab-delimited fields produced by a nested printf/sed/grep pipeline; a tab anywhere in a Delivery string shifts every field with no detection (l.304, l.313)",
+      "919 lines in one top-to-bottom module with a single exported constant, so no part of the orchestration can be exercised without running the whole run (l.548-919)"
+    ]
+  },
+  "prosecutor": {
+    "points": [
+      {
+        "axis": "A4-bounds",
+        "claim": "A 97-line corpus script buys a bounded repair budget and a no-progress detector; our 919 lines buy neither — the first non-zero gate exit kills the whole unattended run, so a 15-iteration plan can die at iteration 2 on a failure one fix round would clear.",
+        "corpusEvidence": "ZulfaqarHafez/Apologue:fix-until-green.js:78 — \"  const fix = await agent(\" (preceded at :71 by the no-progress guard \"  if (previousFailure !== null && check.failureSummary === previousFailure) {\"); the whole check→fix→recheck loop plus its three exits fits in 97 lines total",
+        "ourEvidence": "goal-auto.js:805 — \"    if (gate.exitCode !== 0) {\" followed by \"      stopped = { status: 'halted', iteration, outcome: 'the gate refused it', from: index + 1, detail: gate.output };\" — there is no second attempt anywhere in the file; the only loop is goal-auto.js:750 \"for (const [index, iteration] of pending.entries()) {\"",
+        "severity": "high"
+      },
+      {
+        "axis": "A1-verdict",
+        "claim": "We conflate \"the agent harness produced nothing\" with \"the gate refused the code\": a null runner return is manufactured into exitCode -1 and then read as a gate refusal, so a transport hiccup at 3am halts the run, posts a halt report to the issue claiming the gate refused, and leaves the remaining iterations unattempted. Two corpus files classify that distinction explicitly.",
+        "corpusEvidence": "redoz/Synto:implement-plan.js:129 — \"  - TRANSIENT/ENVIRONMENT: not a defect in your diff and not fixable by editing code. Signatures: a NuGet\" (with \"const GATE_INFRA_MAX_RECHECKS = 3 // bounded backoff-retries before parking on a transient environment failure\" at :126); DingJWuyu/Picka:ticket-inner-loop.js:233 — \"log(`批次 ${batch.id} 实现 agent 未返回可用结果（终态错误或被跳过），按停工处理并终止后续批次`);\" keeps agent-returned-nothing as its own recorded cause",
+        "ourEvidence": "goal-auto.js:94 — \"  return result ?? { exitCode: -1, output: `The runner returned nothing for: ${command}` };\" flows straight into goal-auto.js:806 — \"      stopped = { status: 'halted', iteration, outcome: 'the gate refused it', from: index + 1, detail: gate.output };\" with no branch on exitCode === -1 anywhere in the file",
+        "severity": "high"
+      },
+      {
+        "axis": "A7-robustness",
+        "claim": "The file has no try/catch around any agent, workflow or parallel call, while holding an exclusive run lock and owning worktrees — a thrown agent leaks the lock (blocking every later run) and skips the teardown our own comment promises runs on every exit path. A corpus file does teardown-on-throw in six lines.",
+        "corpusEvidence": "Entelligentsia/grove:wfl-run-sprint.js:172 — \"      // Teardown worktree even on error (try/finally equivalent).\" inside \"  } catch (err) {\" (:169), which then returns \"{ taskId, status: 'escalated', terminal: false, note: `wfl:run-task threw: ${err?.message || err}` }\"",
+        "ourEvidence": "goal-auto.js:501 claims \"// holds the state the developer needs.\" after \"...and a teardown on every exit path — a preparation that brought\" (:499), yet goal-auto.js:540 — \"  return finish(\\n    await workflow(\" applies finish() only to a resolved value; the file's single catch is the args JSON.parse at goal-auto.js:44 (\"  } catch {\"), and the lock taken at goal-auto.js:555 is released only on explicit returns",
+        "severity": "high"
+      },
+      {
+        "axis": "A5-write",
+        "claim": "We already know how to validate a string before it reaches a shell — we do it for the PR base — and then do not do it for the five other plan-derived strings we interpolate, including two that are executed verbatim. A corpus file does the validate-or-throw in four lines and cites the review that demanded it.",
+        "corpusEvidence": "sceneview/sceneview:review-fanout.js:177 — \"  const safeDiffRef = /^[\\\\w./-]+(\\\\.{2,3}[\\\\w./-]+)?$/.test(diffRef) ? diffRef : ''\" then :179 \"  if (!scope) throw new Error(`unsafe/invalid review scope (pr=${A.pr}, diffRef=${diffRef})`)\"",
+        "ourEvidence": "goal-auto.js:667 shows we know the pattern — \"const prBase = /^[A-Za-z0-9._\\\\/-]+$/.test(declaredBase) ? declaredBase : undefined;\" — but goal-auto.js:528 runs plan-authored shell unvalidated: \"      const prepared = await runner(`cd ${dir} && ${track.prepare}`, `prepare:${track.suffix}`, 'Tracks');\", and goal-auto.js:185 sanitizes the PR title by mutilation: \"const quoted = (text) => text.replace(/'/g, '').trim();\" before dropping it inside single quotes at :230",
+        "severity": "high"
+      },
+      {
+        "axis": "A8-maintainability",
+        "claim": "A 1036-line corpus file funnels every one of its early returns through a single result-shape helper; our 919 lines assemble the run report by hand in six places with divergent field names, so a caller cannot read \"was it pushed\" without knowing which branch produced the object.",
+        "corpusEvidence": "redoz/Synto:implement-plan.js:680 — \"function planResult(plan, branch, worktreePath, fields) {\" (documented at :678 as \"// Uniform result shape for one plan.\")",
+        "ourEvidence": "goal-auto.js:911 returns \"  pushed: shipping.pushed,\" while goal-auto.js:841 returns \"      report.push = { pushed: shipping.pushed, detail: shipping.blocked ?? shipping.prError ?? '' };\" and goal-auto.js:844 \"      report.push = await pushBranch();\" — three shapes for one fact, alongside four more hand-built returns at :559, :595, :626 and :876",
+        "severity": "medium"
+      },
+      {
+        "axis": "A8-maintainability",
+        "claim": "A corpus file ships an in-band dry-run that exercises the real orchestration path with mock agent returns, including the stop branch; we ship 919 lines of branching (halt vs pause vs refused, ship vs no-ship, tracks vs single) with no way to run any of it without a live repo, a live gate and live agents.",
+        "corpusEvidence": "DingJWuyu/Picka:ticket-inner-loop.js:218 — \"  const implPromptText = dryRun ? dryRunPrompt(mockImpl(batch)) : implPrompt(spec, specPath, batch);\" with the seam kept identical at :222 \"      ...(dryRun ? {} : { agentType: batch.seat }),\" and a mock that can drive the halt path at :168 \"    stopReport: batch.dryRunStopReport || null,\"",
+        "ourEvidence": "absent — goal-auto.js has no dryRun, no injectable runner and no exported unit; goal-auto.js:81 hardcodes the only seam (\"const runner = async (command, label, phase) => {\" calling agent() directly), and the repo's eight tests are all gate-*.test.ts with no reference to goal-auto",
+        "severity": "medium"
+      },
+      {
+        "axis": "A4-bounds",
+        "claim": "We fan out twice with no concurrency cap — one thunk per track, then one per lens per iteration — while a corpus file caps its fan-out to an external limit in six lines of arithmetic.",
+        "corpusEvidence": "coinbase/cds:code-connect-refresh.js:845 — \"const BATCH_SIZE = 4;\" driving :856 \"for (let i = 0; i < toProcess.length; i += BATCH_SIZE) {\"",
+        "ourEvidence": "goal-auto.js:580 — \"    const reports = (await parallel(tracks.map((track) => () => runTrack(track)))).map(\" and goal-auto.js:356 — \"  const verdicts = await parallel(\" over \"[...pairs, ...closing]\", where pairs is up to five lenses per landed iteration: a 15-iteration run launches ~77 lens agents at once",
+        "severity": "medium"
+      },
+      {
+        "axis": "A3-state",
+        "claim": "Our two highest-consequence parses of the plan are positional — one reads array indices out of concatenated sed output, the other splits tab fields from a nested printf pipeline — so a plan missing a header silently mislabels the PR and misclassifies which lenses run. Corpus files key the same kind of fan-in by an explicit id.",
+        "corpusEvidence": "neondatabase/website:docs-fact-conflicts.js:276 — \"const byId = new Map(((batch && batch.results) || []).map((r) => [r.fact_id, r.candidates || []]))\", the id itself being a required schema field (:128 \"required: ['id', 'subject', 'qualifier', 'claim', 'search_terms', 'source_line'],\")",
+        "ourEvidence": "goal-auto.js:198 — \"    title: quoted(lines[0] ?? `Exécution de ${PLAN}`),\" with \"    mode: lines[1] ?? '',\" on the next line, fed by the three-command concatenation at :189; and goal-auto.js:313 — \"    .map(([, iteration, delivery, invariants, tests]) => ({\" consuming the tab-delimited printf built at :304",
+        "severity": "medium"
+      }
+    ],
+    "defensible": [
+      "Plan hash pinned once by the survey and passed to every gate call (goal-auto.js:645 \"const hash = (/^plan_hash=([0-9a-f]{64})$/m.exec(runnable.output) ?? [])[1];\", spent at :798 and :873). Fourteen lines, and no corpus file pins the artifact it is executing against — Synto re-reads the plan markdown from disk each generation. For a run that spans hours unattended, a plan edited at iteration 1 that silently keeps being blessed is a real, cheap-to-close hole.",
+      "The quarantined reader: the only agent that reads attacker-controllable GitHub text holds Bash and nothing else (agents/goal-reader.md \"tools: Bash\", \"model: haiku\"), the text is reduced to a closed vocabulary by grep in the shell before any model sees it (goal-auto.js:435), and every verb in that vocabulary only subtracts (goal-auto.js:413 \"const CONTROLS = ['stop', 'no-ship', 'skip-lenses'];\"). Corpus files with far more write authority pipe issue titles and PR bodies straight into agents that then run gh (madeye:cleanup-issues-prs.js:103, sceneview:fix-issue-batch.js:148). Cost is about thirty lines and it closes the one hole the rest of the design cannot: an unattended agent with push rights reading text a stranger wrote.",
+      "The token floor evaluated at the iteration boundary (goal-auto.js:55 \"const ITERATION_FLOOR = 80_000;\" and :768 \"if (budget.total && budget.remaining() < ITERATION_FLOOR) {\"). Twelve lines. Only Synto does anything comparable, and it spends 175k tokens of self-rotation machinery to get there. Running out mid-iteration leaves a tree no gate has judged, which is precisely the state this design refuses to produce.",
+      "The draft PR opened at the first landed iteration and rewritten by each later one (goal-auto.js:744 \"const published = await publish(shipping.pr ? 'edit' : 'create', facts, prBody(facts, issue), prBase);\"). Every corpus file that opens a PR opens it at the end or not at all; a run that halts at 3 of 15 otherwise leaves a local branch nobody can see on a machine that is now asleep. Worth its ~35 lines because halting is the expected outcome here, not the exception."
+    ],
+    "sizeVerdict": "Seven mechanisms have no equivalent anywhere in the corpus, and together they are roughly 470 of the 919 lines — more than double the corpus median for the whole script. Lenses (l.264-369, ~106 lines) pay an imagined risk by their own admission: the comment at l.261-263 concedes measured judge reliability is low, the stage is off by default (l.901), and it runs after `gh pr ready` so it can never change an outcome — a hundred lines that produce a comment nobody asked for. Tracks and self re-entry (l.477-546 plus l.562-604, ~113 lines) pay a real risk (independent workstreams serialized behind one lock) but currently pay it badly: the teardown promised at l.499 does not run when workflow() throws, so the expensive mechanism has the exact failure it was built to prevent. The remote control panel (l.409-462, l.694-700, ~60 lines) pays a real risk in its tier-1 form — a checkbox comment the run authored and reads back by id — but the tier-0 label path (l.435) is a second, redundant channel for the same three verbs and buys nothing tier 1 does not. The audit stage (l.371-407, ~37 lines) pays a real risk for its per-iteration cost record and an imagined one for \\\"which failures recur across runs\\\": that is speculative pattern-finding, delegated to a model, on a directory that will hold two files. PR mirroring (l.144-238 plus l.713-748, ~130 lines) pays a real risk — halting is the expected outcome, and an unpushed branch on a sleeping machine is the failure mode — though prBody/planFacts/quoted are the part doing the least work for the most fragility. Plan-hash pinning (~14 lines) and the token floor (~12 lines) pay real risks at negligible cost. Cut the lenses stage and the tier-0 label channel and the file loses ~130 lines while losing nothing that can change a run's outcome; spend a fraction of that on the retry budget, the transient/refusal distinction and the try/catch the corpus has and we do not."
+  }
+}

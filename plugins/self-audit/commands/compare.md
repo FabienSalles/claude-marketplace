@@ -116,3 +116,5 @@ top-3 P1 + path to the report.
 | buildermethods/agent-os | `audits/agent-os-gap-analysis.md` | 2026-07-21 | deep (26 agents) | ✅ quasi-skip (1 P3 optionnel) |
 | ruvnet/claude-flow | `audits/claude-flow-gap-analysis.md` | 2026-07-21 | deep (58 agents) | ✅ skip intégral (hors-catégorie) |
 | FlorianBruniaux/claude-code-plugins | `audits/bruniaux-claude-code-plugins-gap-analysis.md` | 2026-07-22 | deep (101 agents) | ✅ backlog à traiter (4 ports) |
+| 20 predefined workflows publics (corpus) | `audits/workflow-corpus-gap-analysis.md` | 2026-07-28 | deep (22 agents) | ↻ remplacé par la v2 |
+| idem, v2 après le refactor `goal-single-run` | `audits/workflow-corpus-gap-analysis.md` | 2026-07-28 | deep (3 agents, corpus réutilisé) | ✅ backlog à traiter (2 P1 nouveaux + 8 survivants) |
