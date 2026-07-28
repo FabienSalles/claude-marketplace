@@ -261,14 +261,7 @@ const haltReport = (report) =>
 const LENSES = {
   conformance:
     "Does what landed implement the iteration's stated Goal, or a comfortable reading of it that happens to make the checks pass?",
-  sensitivity:
-    "Would this iteration's tests fail if the business rule they claim to cover broke? Name the assertion that would not.",
-  reversibility: 'Is the behaviour that existed before this iteration still reachable?',
-  invariant:
-    'Construct a concrete sequence that violates one of the invariants this iteration touches, now that it has landed.',
   ripple: 'Does what landed leave the next unchecked iteration doable exactly as the plan writes it?',
-  accumulation:
-    'Read the whole branch rather than one slice: what broke between iterations rather than inside one?',
   completeness: "What does the plan's Business intent imply that no iteration of it covers?",
 };
 
@@ -284,35 +277,8 @@ const VERDICT = {
 };
 
 // One lens per verifier: diversity comes from asking different questions, not from asking the
-// same one twice. The set is derived from what the plan already declares, so the same plan always
-// yields the same lenses and nothing is composed at 3am.
-const lensesFor = (facts, last) => [
-  'conformance',
-  ...(facts.tests === '' ? [] : ['sensitivity']),
-  ...(facts.delivery === '' || /^additive/i.test(facts.delivery) ? [] : ['reversibility']),
-  ...(facts.invariants === '0' ? [] : ['invariant']),
-  ...(last ? [] : ['ripple']),
-];
-
-const FACTS = (numbers, plan) =>
-  numbers
-    .map(
-      (n) =>
-        `s=$(sed -n '/^### Iteration ${n} /,/^### Iteration /p' ${plan}); printf 'facts\\t${n}\\t%s\\t%s\\t%s\\n' "$(printf '%s' "$s" | sed -n 's/^- \\*\\*Delivery:\\*\\* *//p' | head -1)" "$(printf '%s' "$s" | grep -cE '(^| )I[0-9]' || true)" "$(printf '%s' "$s" | sed -n 's/^test_files=//p' | head -1)"`,
-    )
-    .join('; ');
-
-const parseFacts = (output) =>
-  output
-    .split('\n')
-    .filter((line) => line.startsWith('facts\t'))
-    .map((line) => line.split('\t'))
-    .map(([, iteration, delivery, invariants, tests]) => ({
-      iteration,
-      delivery: (delivery ?? '').trim(),
-      invariants: (invariants ?? '0').trim(),
-      tests: (tests ?? '').trim(),
-    }));
+// same one twice. Only the last iteration is spared the ripple question, since nothing follows it.
+const lensesFor = (last) => ['conformance', ...(last ? [] : ['ripple'])];
 
 const askLens = async (name, iteration) =>
   agent(
@@ -343,11 +309,10 @@ const findingsReport = (findings) =>
   ].join('\n');
 
 const runLenses = async (landed, issue) => {
-  const facts = parseFacts((await runner(FACTS(landed, PLAN), 'lens-facts', 'Lenses')).output);
-  const pairs = facts.flatMap((entry, index) =>
-    lensesFor(entry, index === facts.length - 1).map((name) => ({ name, iteration: entry.iteration })),
+  const pairs = landed.flatMap((iteration, index) =>
+    lensesFor(index === landed.length - 1).map((name) => ({ name, iteration })),
   );
-  const closing = ['accumulation', 'completeness'].map((name) => ({ name, iteration: 'the whole branch' }));
+  const closing = [{ name: 'completeness', iteration: 'the whole branch' }];
 
   const verdicts = await parallel(
     [...pairs, ...closing].map(({ name, iteration }) => () => askLens(name, iteration).then((verdict) => ({ ...verdict, lens: name, iteration }))),
@@ -383,7 +348,7 @@ const audit = async (report, record) => {
   const sha = (await runner('git rev-parse --short HEAD', 'sha', 'Audit')).output.trim() || 'unknown';
   const result = await agent(
     [
-      `Audit the run that just ended on plan ${PLAN} and write its report to .claude/goal-runs/${sha}.md.`,
+      `Audit the run that just ended on plan ${PLAN} and write its report to ${RUNS}/${sha}.md.`,
       '',
       'The machine record, one entry per iteration entered, tokens being this run\'s own output cost:',
       '',
@@ -391,7 +356,7 @@ const audit = async (report, record) => {
       '',
       report.status === 'halted' ? `The halt, verbatim:\n\n${String(report.detail).slice(-3000)}` : '',
       '',
-      'Read the reports already in .claude/goal-runs/ and say which failures recur across runs rather',
+      `Read the reports already in ${RUNS}/ and say which failures recur across runs rather`,
       'than describing this one twice. Name what cost the most and what produced nothing. Do not edit',
       'a single line of code, do not stage anything, and do not judge whether the work was correct —',
       'the gate already did that, and it is not what you are for.',
@@ -399,7 +364,7 @@ const audit = async (report, record) => {
     { agentType: 'goal:goal-auditor', schema: AUDIT, label: `audit:${sha}`, phase: 'Audit' },
   );
 
-  return result ?? { path: `.claude/goal-runs/${sha}.md`, summary: 'The auditor returned nothing.', recurring: [] };
+  return result ?? { path: `${RUNS}/${sha}.md`, summary: 'The auditor returned nothing.', recurring: [] };
 };
 
 // Remote steering, and the only reason it is safe: every verb here **subtracts**. A fully
@@ -482,6 +447,26 @@ if (lock.exitCode !== 0) {
   return { status: 'refused', plan: PLAN, landed: [], notAttempted: [], detail: lock.output };
 }
 
+// The reports belong to the repository, not to the worktree this run stands in. `.claude/` is
+// gitignored, so it does not exist in a freshly created worktree, and a relative path would make
+// every launched run read an empty directory and write where the worktree's deletion takes it.
+// `--git-common-dir` names the main `.git` from any worktree, so its parent is the one checkout
+// where `.claude/` really is.
+const root = await runner('cd "$(dirname "$(git rev-parse --git-common-dir)")" && pwd', 'runs-dir', 'Survey');
+
+if (root.exitCode !== 0 || root.output.trim() === '') {
+  await release();
+
+  return {
+    status: 'refused',
+    plan: PLAN,
+    landed: [],
+    notAttempted: [],
+    detail: `The repository root did not resolve, so the run has nowhere durable to write its report:\n${root.output}`,
+  };
+}
+
+const RUNS = `${root.output.trim()}/.claude/goal-runs`;
 
 const survey = await runner(`${SURVEY} ${PLAN}`, 'survey', 'Survey');
 
