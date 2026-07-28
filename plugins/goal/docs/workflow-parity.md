@@ -201,7 +201,7 @@ than a victory lap.
 
 1. **An uncaught throw leaves the run lock held.** The loop releases it on every exit path it
    controls, but a crashed process is not one of them — observed once, when a run died mid-survey
-   and left `<plan>.run.lock` behind. Recovery is documented (preflight check 7,
+   and left `<plan>.run.lock` behind. Recovery is documented (preflight check 8,
    `goal-gate.ts unlock`) and it worked, but it is prose, not machinery.
 2. **`node --check` is not a smoke test.** Nothing exercises the launch path itself, which is
    how three consecutive dead-on-arrival defects reached a green branch.

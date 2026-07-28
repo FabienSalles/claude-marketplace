@@ -283,6 +283,30 @@ back to `manual` when it cannot find it, so a policy that lives only in the past
 is lost to a fresh session or a compaction, and the run silently degrades to manual.
 `/goal:auto` has the same need, and reads it before it will start at all.
 
+### D — The remote it pushes to
+
+Ask this **here**, while the developer is in front of you, because an execution session runs
+without them: a command that stops at 3am to ask which remote to push to does not ask, it
+blocks — or worse, it guesses.
+
+Run `git remote -v` first and show what exists, then ask:
+
+> **Which remote should a run push to?** It is also the repository its pull request opens on.
+> - **origin** (usual) — the repository you cloned.
+> - **another name** — on a fork, this is what keeps the work on *your* fork. `gh pr create`
+>   targets a fork's **parent** by default, so without this a run would push to your fork and
+>   open its pull request on somebody else's repository. You then open the real pull request
+>   upstream yourself, once the work convinces you.
+
+WAIT for the answer, then **write it into the spec's `Remote:` header line**. There is no
+default and none is inferred: `/goal:auto` refuses a plan whose header does not carry it,
+which is the point — the cost of a wrong guess is borne by whoever owns the repository the
+guess lands on.
+
+One line, not two. Pushing to one repository and opening the pull request on another is a
+real thing to want, and deliberately not automated here: that second step is the manual
+validation gesture.
+
 ## Phase 3 — Decompose into functional iterations, then write the plan
 
 **Load `product:vertical-slice` and `product:delivery` before decomposing.** This is the
@@ -401,6 +425,7 @@ Work-id: <work-id>
 Policy: <manual | commit | commit+pr — filled in Phase 2c>
 Delivery mode: <no-bc-break | allow-bc-break — filled in Phase 2c>
 Cleanup: <later | now | none — none when allow-bc-break or no flag was introduced>
+Remote: <the git remote a run pushes to, and the repo its PR opens on — filled in Phase 2c D>
 PR base: <branch the pull request targets — omit entirely when it is the repository's default>
 Incidental: <generated tooling every slice may touch — a lockfile, a tsconfig, a CLI's own config. Omit when the project generates none>
 Bootstrap: <the iteration that creates the toolchain the acceptance commands need. Omit when the project already builds and tests today>

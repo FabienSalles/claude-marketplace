@@ -24,7 +24,7 @@ suite — the loop spawns agents, and the suite must stay a pure function of the
 
 The loop releases the lock on every exit path it controls. An uncaught throw is not one of them,
 and it happened once: a run died mid-survey and left `<plan>.run.lock` behind. Recovery is
-documented (`/goal:auto` preflight check 7, then `goal-gate.ts unlock`) and it worked, but a
+documented (`/goal:auto` preflight check 8, then `goal-gate.ts unlock`) and it worked, but a
 documented recovery is prose. The mechanical form is a top-level guard that releases before it
 rethrows.
 

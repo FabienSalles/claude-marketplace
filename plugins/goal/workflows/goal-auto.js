@@ -132,6 +132,16 @@ const POLICY_FROM_PLAN = String.raw`sed -n 's/^Policy:[[:space:]]*//p'`;
 // reports locally and says so: the GitHub mirror is opt-in, by design, from /goal:draft-issue on.
 const ISSUE_FROM_PLAN = String.raw`sed -n 's/^Source: gh issue #\([0-9][0-9]*\).*/\1/p'`;
 
+// The remote is declared in the plan and never inferred. A bare push falls back to the
+// default remote and `gh pr create` targets a fork's **parent**, so a run on a fork would push
+// to the fork and open its pull request upstream — silently, at 3am, on somebody else's
+// repository. Both now name what they act on, and a plan that declares nothing is refused.
+const REMOTE_FROM_PLAN = String.raw`sed -n 's/^Remote:[[:space:]]*//p'`;
+
+// `gh` needs owner/name, git gives a URL: SSH, HTTPS, with or without the `.git` suffix.
+const repoOf = (remote) =>
+  String.raw`git remote get-url ${remote} | sed -E 's#\.git$##; s#^.*[:/]([^/]+/[^/]+)$#\1#'`;
+
 // `gh pr create` targets the repository's default branch unless told otherwise. A plan that
 // stacks on an integration branch says which one in its header, or its pull request opens
 // against the wrong base and shows every commit the two branches do not share — unreviewable,
@@ -141,14 +151,14 @@ const PR_BASE_FROM_PLAN = String.raw`sed -n 's/^PR base:[[:space:]]*//p'`;
 // Scan, then push: a halted branch is pushed on purpose — unattended, the alternative is that
 // the only machine that knows what happened is the one that is now asleep — and nothing is
 // pushed that a scanner has not passed.
-const pushBranch = async () => {
+const pushBranch = async (remote) => {
   const scan = await runner(`${GATE} scan`, 'scan', 'Report');
 
   if (scan.exitCode !== 0) {
     return { pushed: false, scanned: false, detail: scan.output };
   }
 
-  const push = await runner('git push -u origin HEAD', 'push', 'Report');
+  const push = await runner(`git push -u ${remote} HEAD`, 'push', 'Report');
 
   return { pushed: push.exitCode === 0, scanned: true, detail: push.output };
 };
@@ -204,16 +214,18 @@ const prBody = (facts, issue) =>
 // A body carries backticks and newlines, so it travels as a file. Push failure and pull-request
 // failure are reported separately: "pushed, no PR" is a real state and reading it as one
 // ambiguous failure is how a run ends up with an invisible branch.
-const publish = async (verb, facts, body, base) => {
+const publish = async (verb, facts, body, base, remote) => {
   const create = verb === 'create';
   const command = [
     'body="$(git rev-parse --git-dir)/goal-pr-body.md"',
+    `repo="$(${repoOf(remote)})"`,
+    'branch="$(git branch --show-current)"',
     'cat > "$body" <<\'GOALPRBODY\'',
     body,
     'GOALPRBODY',
     create
-      ? `gh pr create --draft${base === undefined ? '' : ` --base '${base}'`} --title '${facts.title}' --body-file "$body"`
-      : 'gh pr edit --body-file "$body"',
+      ? `gh pr create --repo "$repo" --draft${base === undefined ? '' : ` --base '${base}'`} --title '${facts.title}' --body-file "$body"`
+      : 'gh pr edit "$branch" --repo "$repo" --body-file "$body"',
     'rc=$?',
     'rm -f "$body"',
     'exit $rc',
@@ -526,6 +538,25 @@ if (!publishes) {
   log(`Policy is ${policy || 'unreadable'}: this run commits, and publishes nothing.`);
 }
 
+const declaredRemote = (await runner(`${REMOTE_FROM_PLAN} ${PLAN} | head -1`, 'remote', 'Survey')).output.trim();
+
+// Refused rather than defaulted, and refused for every policy: a plan that says nothing about
+// where it pushes is a plan whose author never decided, and the cost of guessing is borne by
+// whoever owns the repository the guess lands on.
+if (!/^[A-Za-z0-9._-]+$/.test(declaredRemote)) {
+  await release();
+
+  return {
+    status: 'refused',
+    plan: PLAN,
+    landed: [],
+    notAttempted: pending,
+    detail: `The plan declares no usable remote, so nothing can be pushed on its behalf.\n\nFound: ${declaredRemote === '' ? '(nothing)' : declaredRemote}\n\nAdd a \`Remote:\` line to the plan header naming the git remote this run pushes to — the same name \`git remote\` lists. It is also the repository its pull request opens on, which on a fork is the fork and not the upstream.`,
+  };
+}
+
+const REMOTE = declaredRemote;
+
 const declaredBase = (await runner(`${PR_BASE_FROM_PLAN} ${PLAN} | head -1`, 'pr-base', 'Survey')).output.trim();
 const prBase = /^[A-Za-z0-9._\/-]+$/.test(declaredBase) ? declaredBase : undefined;
 
@@ -591,7 +622,7 @@ const mirror = async (issue) => {
     return;
   }
 
-  const push = await pushBranch();
+  const push = await pushBranch(REMOTE);
 
   if (!push.pushed) {
     shipping.blocked = push.scanned
@@ -604,7 +635,7 @@ const mirror = async (issue) => {
   shipping.pushed = true;
 
   const facts = await planFacts(landed);
-  const published = await publish(shipping.pr ? 'edit' : 'create', facts, prBody(facts, issue), prBase);
+  const published = await publish(shipping.pr ? 'edit' : 'create', facts, prBody(facts, issue), prBase, REMOTE);
 
   shipping.prError = published.exitCode === 0 ? undefined : published.output.slice(-1500);
   shipping.pr = shipping.pr || published.exitCode === 0;
@@ -704,7 +735,7 @@ for (const [index, iteration] of pending.entries()) {
       report.push = { pushed: shipping.pushed, detail: shipping.blocked ?? shipping.prError ?? '' };
       report.pr = shipping.pr;
     } else if (publishes) {
-      report.push = await pushBranch();
+      report.push = await pushBranch(REMOTE);
     }
 
     if (issue !== undefined) {
