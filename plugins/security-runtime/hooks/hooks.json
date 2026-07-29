@@ -13,6 +13,12 @@
         "hooks": [
           { "type": "command", "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/prompt-injection-detector.sh" }
         ]
+      },
+      {
+        "matcher": "Read|Grep|Bash",
+        "hooks": [
+          { "type": "command", "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/secret-file-guard.sh" }
+        ]
       }
     ]
   }
