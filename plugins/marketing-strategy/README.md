@@ -14,7 +14,7 @@ Strategic marketing playbooks — audience, positioning, campaign ideation, comp
 |---|---|---|
 | `icp-builder` | Define Ideal Customer Profile + buyer personas (B2B/B2C) | [SKILL.md](skills/icp-builder/SKILL.md) |
 | `product-marketing` | Positioning (April Dunford), messaging, GTM, battlecards | [SKILL.md](skills/product-marketing/SKILL.md) |
-| `product-marketing-context` | Maintain shared `.claude/product-marketing-context.md` consumed by other marketing skills | [SKILL.md](skills/product-marketing-context/SKILL.md) |
+| `product-marketing-context` | Maintain shared `.claude/product-marketing-context.md`, read by `product-marketing`, `marketing-psychology`, and `marketing-analytics:analytics-tracking` | [SKILL.md](skills/product-marketing-context/SKILL.md) |
 | `marketing-psychology` | Apply 70+ cognitive biases and mental models to marketing | [SKILL.md](skills/marketing-psychology/SKILL.md) |
 | `marketing-ideas` | 139 proven marketing ideas by category, with implementation guidance | [SKILL.md](skills/marketing-ideas/SKILL.md) |
 | `competitor-analysis` | Full competitor breakdown (SEO, ads, social, pricing, positioning) | [SKILL.md](skills/competitor-analysis/SKILL.md) |
@@ -33,7 +33,7 @@ Near-neighbor disambiguation:
 2. `competitor-analysis` → understand the landscape
 3. `product-marketing` → craft positioning + messaging
 4. `product-marketing-context` → save the answers into `.claude/product-marketing-context.md`
-5. Now `marketing-content` and `marketing-distribution` skills auto-read that context.
+5. Now `product-marketing`, `marketing-psychology`, and `marketing-analytics:analytics-tracking` auto-read that context.
 
 ## Pairs with
 

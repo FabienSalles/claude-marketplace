@@ -26,7 +26,7 @@ Distribution channels — social, threads, email, newsletter.
 ## Requires
 
 - `social-content` and `thread-writer` declare `allowed-tools: [Bash]` for API calls (Reddit, Unsplash).
-- Reddit posting requires OAuth env vars — see the reference file in `social-content/references/`.
+- Reddit posting requires OAuth env vars — see the "Posting to Reddit" section in `social-content/SKILL.md`.
 
 ## Pairs with
 

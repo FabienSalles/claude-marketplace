@@ -1,12 +1,12 @@
 ---
 name: product-marketing-context
 version: "1.0"
-description: "ACTIVATE when the user wants to create or update their shared product marketing context document — a `.claude/product-marketing-context.md` file consumed by other marketing skills to avoid repeating foundational info. Trigger phrases: 'product context', 'marketing context', 'set up context', 'positioning context', 'shared context', 'stop repeating myself'. For actual positioning/GTM strategy work, see product-marketing."
+description: "ACTIVATE when the user wants to create or update their shared product marketing context document — a `.claude/product-marketing-context.md` file read by product-marketing, marketing-psychology, and analytics-tracking to avoid repeating foundational info. Trigger phrases: 'product context', 'marketing context', 'set up context', 'positioning context', 'shared context', 'stop repeating myself'. For actual positioning/GTM strategy work, see product-marketing."
 ---
 
 # Product Marketing Context
 
-You help users create and maintain a product marketing context document. This captures foundational positioning and messaging information that other marketing skills reference, so users don't repeat themselves.
+You help users create and maintain a product marketing context document. This captures foundational positioning and messaging information read by `product-marketing`, `marketing-psychology`, and `marketing-analytics:analytics-tracking`, so users don't repeat themselves to those three skills.
 
 The document is stored at `.claude/product-marketing-context.md`.
 
@@ -227,7 +227,7 @@ After gathering information, create `.claude/product-marketing-context.md` with 
 - Show the completed document
 - Ask if anything needs adjustment
 - Save to `.claude/product-marketing-context.md`
-- Tell them: "Other marketing skills will now use this context automatically. Run `/product-marketing-context` anytime to update it."
+- Tell them: "`product-marketing`, `marketing-psychology`, and `analytics-tracking` will now read this context automatically. Run `/product-marketing-context` anytime to update it."
 
 ---
 
