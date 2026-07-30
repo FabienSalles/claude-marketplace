@@ -125,7 +125,9 @@ already answers.
 
 **Round 3 — verifiability + Definition of Done (always ask):**
 - For **each business rule** from Round 1: what command-line check proves it holds?
-  (a named test, a lint rule, a build output) — this is how the DoD gets teeth.
+  (a test command, a lint rule, a build output) — this is how the DoD gets teeth. Take
+  the command they can run, not the name of a test: a name is proof of nothing once it
+  is renamed, and only the command is replayed later.
 - What is the smallest command that proves the whole thing works end to end?
 - What must **not** change as a side-effect? (files / behaviors to protect)
 - What are the project's actual test and lint/QA commands? (dockerized where
@@ -490,6 +492,18 @@ evidence that must hold first) and its proof. It becomes its own PR later, when 
 developer runs the workflow on that plan. Nor does it become one of the sibling plans a
 split produced: those are launched alongside each other, and cleanup is strictly after.
 
+**Write only what stays true as long as the iteration has not changed.** A plan statement
+that an event outside the slice's scope can falsify is a lie waiting to happen, and the next
+cold session acts on it. Durable, so it belongs in the plan: the branch, a commit's
+**subject** (its conventional message), the business rules covered, which gates are green and
+which are red, the files touched, the decisions and trade-offs, the implementation traps.
+Volatile, so it never becomes a plan claim: the hash of a commit on the working branch (an
+upstream hash already pushed stays citable — it is not rewritten), test counts, assertion
+counts, coverage percentages, and test method names cited as proof that a rule is covered. A
+rebase rewrites a hash, and a commit from another feature adding a test to the same file moves
+the counts. Business rules map to **commands** in the `gate` and `dod` blocks, which are run;
+that is what replaces a number nobody re-measures.
+
 Persist at `.claude/plans/<work-id>-spec.md`:
 
 ````markdown
@@ -528,9 +542,9 @@ can reconstruct them.>
 ## Scope OUT
 - <what's explicitly NOT in this delivery>
 
-## Business rules (each must map to a test in the DoD)
-- <rule> → verified by <named test / command>
-- <rule> → verified by <named test / command>
+## Business rules (each must map to a command in the DoD)
+- <rule> → verified by <the command that proves it>
+- <rule> → verified by <the command that proves it>
 
 ## States, invariants & transitions (only if the adversarial grill ran)
 - **States:** <S1…Sk>

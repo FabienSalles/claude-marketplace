@@ -57,10 +57,22 @@ and **edit the plan in place** so every statement is true:
   finished iteration's declared *Files to touch*? Renamed / added / removed files
   mean the plan's list is stale or scope leaked. Update the list to reality, or flag
   a genuine scope leak and ask.
-- **Claims:** scan the finished iteration's *Goal*, decisions, **test method names**,
-  and acceptance for anything the code no longer backs (renamed file, changed
-  approach, dropped attribute/field, a helper that moved). Grep the repo for each
-  name the plan still uses to confirm it exists. Correct every stale claim.
+- **Claims:** scan the finished iteration's *Goal*, decisions and acceptance for
+  anything the code no longer backs (renamed file, changed approach, dropped
+  attribute/field, a helper that moved). Grep the repo for each name the plan still
+  uses to confirm it exists. Correct every stale claim.
+- **Durable vs volatile:** a plan statement must stay true as long as the **iteration**
+  has not changed. If an event outside the iteration's scope can falsify it, it has no
+  place in the plan — delete it rather than update it.
+  - **Durable, record it:** the branch, the commit's **subject** (its conventional
+    message), which business rules are covered, which gates are green and which are red,
+    which files were touched, the decisions and trade-offs, the implementation traps.
+  - **Volatile, never record it as a plan claim:** the hash of a commit on the working
+    branch (upstream hashes already pushed stay citable — they are not rewritten), test
+    counts, assertion counts, coverage percentages, and test method names cited as proof
+    that a rule is covered. One rebase rewrites the hash; a commit from another feature
+    adding a test to the same file moves the counts; both have happened, and each left the
+    plan asserting something false about work nobody had touched.
 - **Ripple:** an adjustment in the finished iteration often invalidates *later*
   iterations (a rename, a moved data source, a new island/format). Propagate it into
   iterations 2..N and the global DoD so they stay executable.
