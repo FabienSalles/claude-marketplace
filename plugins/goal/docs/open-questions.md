@@ -73,3 +73,23 @@ either remaining verb is still refused.
 **Not fixed** because the safe direction is not obvious: tightening the pattern to leading
 position would miss real invocations inside `&&` chains and subshells, which is a worse failure
 than an occasional false block. Wants a deliberate pass, not a quick regex edit.
+
+## 4. Preflight 11 asks the developer what the session already knows
+
+**Observed.** A run launched by `goal-launch.sh` — which now always passes
+`--permission-mode auto` — still stops at preflight 11 to ask the developer which permission
+mode the session is in. It reads mistrust: the first reaction to the question was "why is it
+asking permission again, do I need to merge something?", when nothing was wrong at all.
+
+**Why it asks.** The check inspects `permissions.defaultMode` in the settings files, which
+reflects neither a CLI `--permission-mode` flag nor a `Shift+Tab` override. So it cannot see the
+mode it is actually running under, and falls back to asking.
+
+**What changed.** The launcher now sets the mode itself, so for launcher-started runs the answer
+is known at launch time. An environment variable exported alongside the flag would let the
+preflight read what the launcher did, and ask only when the variable is absent — which is
+exactly the hand-started case the question is for.
+
+**Care needed:** the variable records the launcher's intent, not the live mode, so a `Shift+Tab`
+during the run would make it lie. Whether that matters depends on whether the check exists to
+know the mode or to make the developer accept it — worth settling before writing anything.
