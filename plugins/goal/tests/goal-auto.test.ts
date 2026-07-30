@@ -206,7 +206,10 @@ const HEX = `plan_hash=${'b'.repeat(64)}`;
 
 // Two iterations, publishing, and a push that fails on the second: the pull request exists from
 // the first, and `shipping.blocked` is sticky from the second.
-const publishingRun = (onPush: () => { exitCode: number; output: string }) => {
+const publishingRun = (
+  onPush: () => { exitCode: number; output: string },
+  facts = 'title\tdemo\nmode\tallow-bc-break\n### Iteration 1 — one',
+) => {
   const table = {
     'git-common-dir': ok(PROBE),
     unlock: ok(),
@@ -220,7 +223,7 @@ const publishingRun = (onPush: () => { exitCode: number; output: string }) => {
     awk: ok('1\n2'),
     scan: ok(),
     'fixup|squash': ok('0'),
-    '# Spec: ': ok('# Spec: demo\nallow-bc-break\n### Iteration 1 — one'),
+    '# Spec: ': ok(facts),
     'gh pr': ok(),
     lock: ok(),
   };
@@ -260,6 +263,46 @@ test('a run whose publication was blocked does not mark its stale pull request r
     !commands.some((command) => command.includes('gh pr ready')),
     `a stale pull request was marked ready:\n${commands.join('\n')}`,
   );
+});
+
+// R11 — the ITERATION_FLOOR guard is armed only when budget.total is set, and that used to be
+// silent: a run with no declared target never said the floor could not stop it.
+test('a run with no declared token target announces that its floor is inert', async () => {
+  const { logs } = await runWorkflow({ plan: PLAN, gate: GATE }, answering(wholeRun));
+
+  assert.ok(
+    logs.some((line) => /floor is inert/.test(line)),
+    `nothing announced the inert floor:\n${logs.join('\n')}`,
+  );
+});
+
+test('a run with a declared token target says nothing about an inert floor', async () => {
+  const { logs } = await runWorkflow(
+    { plan: PLAN, gate: GATE },
+    answering(wholeRun),
+    { total: 1_000_000, spent: () => 0, remaining: () => 1_000_000 },
+  );
+
+  assert.ok(
+    !logs.some((line) => /floor is inert/.test(line)),
+    `an armed run claimed its floor was inert:\n${logs.join('\n')}`,
+  );
+});
+
+// R12 — quoted() used to mutilate a title by stripping every apostrophe rather than refusing it,
+// unlike the remote and the pull request base, which are already shape-tested and refused.
+test('a plan title that cannot be safely quoted blocks publication instead of being mutilated', async () => {
+  const { result } = await runWorkflow(
+    { plan: PLAN, gate: GATE },
+    publishingRun(() => ok(), "title\tl'automatisation\nmode\tallow-bc-break\n### Iteration 1 — one"),
+  );
+
+  const done = result as { status: string; pushed: boolean; pr: boolean; detail: string };
+
+  assert.equal(done.status, 'done');
+  assert.equal(done.pushed, true, 'the branch itself should still be pushed');
+  assert.equal(done.pr, false, 'a pull request must not open with a mutilated title');
+  assert.match(done.detail, /cannot be safely quoted/);
 });
 
 // R10 — the run lock is the only inter-run exclusion left since the tracks were removed, and

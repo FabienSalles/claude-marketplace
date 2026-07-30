@@ -1,6 +1,7 @@
-// The orchestration layer of an autonomous run: order, halt, pause. It never implements,
-// never commits and never ticks — every write to the tree is an implementer's, every verdict
-// and every commit is the gate's. A workflow script has no disk and no shell, which is what
+// The orchestration layer of an autonomous run: order, halt, pause, and publish. It never
+// implements — every write to the tree is an implementer's — and it pushes the branch and
+// drives `gh pr create` / `gh pr edit` / `gh pr ready` itself, but a `git commit` and a ticked
+// checkbox are the gate's alone. A workflow script has no disk and no shell, which is what
 // makes that separation structural rather than a promise.
 //
 // Invoked by scriptPath, with args:
@@ -105,9 +106,11 @@ const brief = (iteration) =>
     'independently and its exit code is the only verdict.',
   ].join('\n');
 
-// The run is write-only towards GitHub: it posts, and it never reads a title, a body or a
-// comment. An agent that reads attacker-controlled text and also holds write credentials is one
-// injection away from using them, so the text posted here is always built from the plan.
+// The run is write-only towards GitHub, with one exception: its own control panel comment,
+// read back by readControls() as a bit vector filtered by grep, never as free text. Outside that
+// it never reads a title, a body or anyone else's comment — an agent that reads
+// attacker-controlled text and also holds write credentials is one injection away from using
+// them, so the text posted here is always built from the plan.
 const post = async (target, subject, text) => {
   const result = await agent(
     [
@@ -181,22 +184,27 @@ const reshape = async (count) => {
   return shape.output.trim() === '0';
 };
 
-const quoted = (text) => text.replace(/'/g, '').trim();
+// A single quote would close early the single-quoted `--title '...'` argument publish() builds.
+// Refused, not stripped — the same shape-test-or-refuse the remote and the base already get.
+const SAFE_TITLE = /^[^'\\]*$/;
 
 const planFacts = async (numbers) => {
   const facts = await runner(
-    `{ sed -n 's/^# Spec: //p' ${PLAN} | head -1; sed -n 's/^Delivery mode: //p' ${PLAN} | head -1; grep -E '^### Iteration (${numbers.join('|')}) ' ${PLAN}; }`,
-
+    String.raw`{ printf 'title\t%s\n' "$(sed -n 's/^# Spec: //p' ${PLAN} | head -1)"; printf 'mode\t%s\n' "$(sed -n 's/^Delivery mode: //p' ${PLAN} | head -1)"; grep -E '^### Iteration (${numbers.join('|')}) ' ${PLAN}; }`,
     'plan-facts',
     'Report',
   );
 
-  const lines = facts.output.split('\n').map((line) => line.trimEnd()).filter((line) => line !== '');
+  const fields = fieldsOf(facts.output);
 
   return {
-    title: quoted(lines[0] ?? `Exécution de ${PLAN}`),
-    mode: lines[1] ?? '',
-    headings: lines.slice(2).map((line) => line.replace(/^### /, '')),
+    title: fields.title || `Exécution de ${PLAN}`,
+    mode: fields.mode ?? '',
+    headings: facts.output
+      .split('\n')
+      .map((line) => line.trimEnd())
+      .filter((line) => line.startsWith('### '))
+      .map((line) => line.replace(/^### /, '')),
   };
 };
 
@@ -631,6 +639,12 @@ try {
 
   phase('Iterate');
 
+  // `budget.total` is `null` unless a directive armed it, and the floor below guards on it —
+  // silently, unless a run with no target is told so.
+  if (budget.total === null) {
+    log(`No token budget was declared for this run, so the ${ITERATION_FLOOR / 1000}k floor is inert: nothing here stops the run early on tokens spent.`);
+  }
+
   const landed = [];
   const record = [];
   const remote = new Set();
@@ -683,6 +697,13 @@ try {
     shipping.pushed = true;
 
     const facts = await planFacts(landed);
+
+    if (!SAFE_TITLE.test(facts.title)) {
+      shipping.blocked = `The plan's title cannot be safely quoted for a pull request — it contains a quote or a backslash: \`${facts.title}\`. Rename its "# Spec:" line, then relaunch; the branch is already pushed.`;
+
+      return;
+    }
+
     const published = await publish(shipping.pr ? 'edit' : 'create', facts, prBody(facts, issue), prBase, REMOTE);
 
     shipping.prError = published.exitCode === 0 ? undefined : published.output.slice(-1500);
