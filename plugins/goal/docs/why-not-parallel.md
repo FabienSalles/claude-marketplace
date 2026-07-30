@@ -80,6 +80,16 @@ The result was non-deterministic: **two tracks of four wrote into the main check
 their gates judged an untouched worktree and correctly refused. The gate was right; the work
 was in the wrong tree.
 
+**This survived the removal of tracks, and it took a real launch to show it.** The
+`goal-auto-remediation` plan added the tree's path and branch to the brief, which was necessary
+and not sufficient: the brief still opened on the plan's absolute path, and the plan lives
+outside the run's tree because its directory is gitignored. On 2026-07-29 the first end-to-end
+run read the plan there, took its parent as the repository root, and wrote its whole iteration
+into the main checkout — with a correct `cwd` throughout. Naming the right tree does not beat
+handing over a path to the wrong one. The section now travels as text and its path does not
+travel at all, and a run whose tree is unchanged says so instead of letting the gate report a
+refusal it never earned.
+
 ### Symptom 2 — the regression wall assumes one continuous branch
 
 The wall replays the gate commands of every **ticked** iteration, so that a slice which breaks

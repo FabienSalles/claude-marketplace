@@ -80,20 +80,40 @@ const runner = async (command, label, phase) => {
   return result ?? { exitCode: -1, output: `The runner returned nothing for: ${command}` };
 };
 
-const brief = (iteration) =>
+// The plan lives in a gitignored directory, so it is absent from the run's tree and can only be
+// named absolutely — which pointed the only agent that writes at another checkout. Measured on the
+// first end-to-end run: it read the plan there, took its parent as the repository root, and wrote
+// the whole iteration into the wrong tree. So the section travels as text and its path never does.
+const SECTION = (iteration) => String.raw`sed -n '/^### Iteration ${iteration} /,/^### Iteration /p' ${PLAN}`;
+
+const declaredPaths = (section, key) => {
+  const found = new RegExp(String.raw`^${key}=(.*)$`, 'm').exec(section);
+
+  return (found?.[1] ?? '').trim().split(/\s+/).filter((path) => path !== '');
+};
+
+const brief = (iteration, section) =>
   [
-    `Implement iteration ${iteration} of the locked plan ${PLAN}.`,
+    `Implement iteration ${iteration} of a plan somebody else locked.`,
     '',
-    `You are working in ${DIR}, on branch ${BRANCH}. Every path you write is inside that tree, and`,
-    'nowhere else. The plan is given as an absolute path and lives outside it on purpose, because',
-    'its directory is gitignored and therefore absent here: read it there, write nothing near it.',
+    `You are working in ${DIR}, on branch ${BRANCH}. Every path you read or write lives inside that`,
+    'tree. No path outside it appears anywhere below, and none belongs in anything you do: a path',
+    'that leaves this tree writes into a checkout the gate will not look at, and the work is lost.',
     '',
-    `Read the whole of its "### Iteration ${iteration}" section: the goal, the files to touch, the`,
-    'business rules it covers, every decision bullet, and its gate block. Those bullets were written',
-    'at a checkpoint by someone who was there — they are binding, do not re-decide them.',
+    'The iteration, verbatim from the plan. Its goal, the files to touch, the business rules it',
+    'covers, every decision bullet and its gate block. Those bullets were written at a checkpoint',
+    'by someone who had the evidence in front of them — they are binding, do not re-decide them.',
     '',
-    'The gate block is your scope. Write only the paths listed in its test_files and impl_files:',
-    'any other changed path halts this iteration, whatever the porcelain code says.',
+    '--- iteration ---',
+    section,
+    '--- end ---',
+    '',
+    'The files it declares, as absolute paths in your tree. This is your scope, and nothing else:',
+    ...['test_files', 'impl_files'].flatMap((key) =>
+      declaredPaths(section, key).map((path) => `  ${DIR}/${path}`),
+    ),
+    '',
+    'Any other changed path halts this iteration, whatever the porcelain code says.',
     '',
     'Work test-first, and show the RED: the gate sets your implementation aside and requires gate1',
     'to fail without it, so a test that passes either way halts the slice.',
@@ -738,8 +758,10 @@ try {
       };
     }
 
+    const section = (await runner(SECTION(iteration), `section:${iteration}`, 'Iterate')).output;
+
     if (stopped === undefined) {
-      const implemented = await agent(brief(iteration), {
+      const implemented = await agent(brief(iteration, section), {
         agentType: 'goal:goal-implementer',
         label: `implement:${iteration}`,
         phase: 'Iterate',
@@ -752,6 +774,23 @@ try {
           outcome: 'the implementer returned nothing',
           from: index + 1,
           detail: `The implementer of iteration ${iteration} returned nothing — skipped, or dead after retries. The tree holds whatever it wrote and no gate has judged it: review it before relaunching.`,
+        };
+      }
+    }
+
+    // The gate can only refuse what it finds, so an implementer that wrote nowhere it looks gets
+    // reported as a refusal — which reads as "your work was judged and rejected" instead of "your
+    // work is not here". Ask the tree before asking the gate.
+    if (stopped === undefined && declaredPaths(section, 'impl_files').length > 0) {
+      const touched = await runner('git status --porcelain', `touched:${iteration}`, 'Iterate');
+
+      if (touched.exitCode === 0 && touched.output.trim() === '') {
+        stopped = {
+          status: 'halted',
+          iteration,
+          outcome: 'the implementer wrote nothing in the run tree',
+          from: index + 1,
+          detail: `Iteration ${iteration} declares files to change and ${DIR} is unchanged, so the implementer wrote nothing the gate would look at. Nothing was committed and no verdict was asked for. The usual cause is a path that left this tree: check whether the work landed in another checkout of this repository.`,
         };
       }
     }

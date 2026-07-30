@@ -147,8 +147,18 @@ test('a branch named after the plan with a suffix is accepted', async () => {
 const HASH = `plan_hash=${'a'.repeat(64)}`;
 
 // Answered in this order: `unlock` before `lock` because one contains the other.
+const SECTION = [
+  '### Iteration 1 — demo',
+  '- [ ] Not done yet',
+  '- **Goal:** make the demo demonstrable',
+  'test_files=plugins/goal/tests/demo.test.ts',
+  'impl_files=plugins/goal/workflows/demo.js',
+].join('\n');
+
 const wholeRun = {
   'git-common-dir': ok(PROBE),
+  "sed -n '/^### Iteration": ok(SECTION),
+  'git status --porcelain': ok(' M plugins/goal/workflows/demo.js\n'),
   unlock: ok(),
   check: ok(HASH),
   commit: ok(),
@@ -212,6 +222,8 @@ const publishingRun = (
 ) => {
   const table = {
     'git-common-dir': ok(PROBE),
+    "sed -n '/^### Iteration": ok(SECTION),
+    'git status --porcelain': ok(' M plugins/goal/workflows/demo.js\n'),
     unlock: ok(),
     check: ok(HEX),
     commit: ok(),
@@ -341,5 +353,40 @@ test('a release that fails too does not bury the error that killed the run', asy
   assert.ok(
     logs.some((line) => line.includes('unlock')),
     `nothing said the lock is still held:\n${logs.join('\n')}`,
+  );
+});
+
+// R1, R2, R3 — the brief used to open on the plan's absolute path, which lives outside the run's
+// tree because `.claude/` is gitignored. The implementer read the plan there, took its parent as
+// the repository root, and wrote its whole iteration into the wrong checkout. Measured on the
+// first end-to-end run, 2026-07-29.
+test('the brief carries the iteration itself, not a path to it', async () => {
+  const { agents } = await runWorkflow({ plan: PLAN, gate: GATE }, answering(wholeRun));
+
+  const implementer = agents.find((call) => call.opts.agentType === 'goal:goal-implementer');
+
+  assert.ok(implementer, 'no implementer was ever briefed');
+  assert.ok(implementer.prompt.includes('make the demo demonstrable'), 'the section is not in the brief');
+  assert.ok(!implementer.prompt.includes(PLAN), `the brief still points out of the tree:\n${implementer.prompt}`);
+  assert.ok(implementer.prompt.includes(`${WHERE.dir}/plugins/goal/tests/demo.test.ts`), 'test_files not rooted in the tree');
+  assert.ok(implementer.prompt.includes(`${WHERE.dir}/plugins/goal/workflows/demo.js`), 'impl_files not rooted in the tree');
+});
+
+// R4 — an implementer that writes nowhere the gate will look used to reach the gate, be refused,
+// and have that refusal reported as if the work had been judged and found wanting.
+test('an implementer that leaves the tree untouched halts saying so, naming the tree', async () => {
+  const { result, commands } = await runWorkflow({ plan: PLAN, gate: GATE }, (call) =>
+    commandOf(call) === 'git status --porcelain' ? ok('') : answering(wholeRun)(call),
+  );
+
+  const halted = result as { status: string; iteration: string; detail: string };
+
+  assert.equal(halted.status, 'halted');
+  assert.equal(halted.iteration, '1');
+  assert.match(halted.detail, /wrote nothing/);
+  assert.match(halted.detail, new RegExp(WHERE.dir.replace('/', '\\/')));
+  assert.ok(
+    !commands.some((command) => command.includes(`${GATE} commit`)),
+    `the gate was asked for a verdict on nothing:\n${commands.join('\n')}`,
   );
 });
