@@ -20,15 +20,15 @@ Set credentials in `.env`, `.env.local`, or `~/.claude/.env.global`.
 ### Getting an Access Token
 
 ```bash
-# Step 1: Authorization URL (user visits in browser)
-echo "https://accounts.google.com/o/oauth2/v2/auth?client_id=${GOOGLE_CLIENT_ID}&redirect_uri=urn:ietf:wg:oauth:2.0:oob&scope=https://www.googleapis.com/auth/webmasters.readonly&response_type=code&access_type=offline"
+# Step 1: Authorization URL (user visits in browser); Google redirects to the loopback address with the code
+echo "https://accounts.google.com/o/oauth2/v2/auth?client_id=${GOOGLE_CLIENT_ID}&redirect_uri=http://localhost:8085/&scope=https://www.googleapis.com/auth/webmasters.readonly&response_type=code&access_type=offline"
 
-# Step 2: Exchange code for tokens
+# Step 2: Copy the code= value from the browser's address bar after the redirect, then exchange it for tokens
 curl -s -X POST "https://oauth2.googleapis.com/token" \
   -d "code={AUTH_CODE}" \
   -d "client_id=${GOOGLE_CLIENT_ID}" \
   -d "client_secret=${GOOGLE_CLIENT_SECRET}" \
-  -d "redirect_uri=urn:ietf:wg:oauth:2.0:oob" \
+  -d "redirect_uri=http://localhost:8085/" \
   -d "grant_type=authorization_code"
 
 # Step 3: Refresh expired token
