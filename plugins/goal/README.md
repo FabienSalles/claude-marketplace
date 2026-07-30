@@ -65,9 +65,18 @@ become one, and the two that matter are not conveniences: your checkout stays fr
 run works, and the run stops living in your interactive session, where navigating out of its
 progress view interrupts it. Looking at a run should not be what kills it.
 
-It refuses rather than guesses: no plan named, an unreadable plan, or a worktree already
-holding that work-id. The plan is always an argument — a bare `/goal:auto` resolves the most
-recently modified `*-spec.md`, which is ambiguous the moment a split produced several.
+The session opens in `--permission-mode auto`, because a run nobody watches must never sit on a
+prompt: that is not a stalled run, it is one that looks alive and advances no iteration.
+
+It reclaims what a previous launch left. A run that refuses at preflight writes nothing and
+leaves a worktree and a branch behind, so the same command has to work twice — otherwise every
+preflight refusal costs a manual `worktree remove` + `branch -D` before you can retype it.
+Reclaiming stops at what cannot be recovered: uncommitted work in the tree, or commits that
+exist on no other branch. There it refuses and prints the command to run yourself.
+
+It refuses rather than guesses: no plan named, or an unreadable plan. The plan is always an
+argument — a bare `/goal:auto` resolves the most recently modified `*-spec.md`, which is
+ambiguous the moment a split produced several.
 
 **Learn more:** which workflow fits your task → [decision guide](../../docs/workflows-decision-guide.md) · the *unknown-unknowns* engine → [`grill-adversarial`](skills/grill-adversarial/SKILL.md) · why a run is not parallel, with the two runs that measured it → [`docs/why-not-parallel.md`](docs/why-not-parallel.md) · how it's audited against competing frameworks → [`self-audit`](../self-audit/README.md).
 
@@ -277,7 +286,7 @@ commands fall back to inlined behavior when they're absent.
 | `/goal:auto` halted mid-run | a gate refused: an acceptance command failed, a scope leak, a hollow test, a blown diff budget, a regression in an earlier slice, a plan rewrite | the halt is printed verbatim: reason, command, exit code, real output, then the iterations that were not attempted. Reproduce it from the repository root: `node ~/.claude/plugins/…/goal/scripts/goal-gate.ts verify .claude/plans/<work-id>-spec.md <n>` (the gate reads the tree it stands in) |
 | `/goal:auto` stopped mid-run without halting | the turn ended (rate limit, closed session, interruption), or the run paused on its token floor | relaunch `/goal:auto`: the plan's checkboxes are the whole state, so it resumes at the first unchecked iteration. A dirty tree is refused by preflight first — deal with it yourself |
 | `/goal:auto` refuses on `<plan>.run.lock` | another session holds the plan, or one died without releasing it | wait, or release it with `node <gate> unlock <plan>` once you know the holder is gone. Never remove the directory by hand |
-| The run seems to stop the moment you background the session (`←` or `/bg`) | backgrounding kills nothing — the supervisor keeps the workflow, its subagents and their shells running. What stopped is a **permission prompt** nobody answered: the session sits in `Needs input` and no iteration advances | `claude agents`, attach with `←`, answer it. To stop it happening, launch the run in a mode that never prompts (preflight check 11): `claude --permission-mode auto`, or `Shift+Tab` to `auto` / `bypass permissions` before `/goal:auto` |
+| The run seems to stop the moment you background the session (`←` or `/bg`) | backgrounding kills nothing — the supervisor keeps the workflow, its subagents and their shells running. What stopped is a **permission prompt** nobody answered: the session sits in `Needs input` and no iteration advances | `claude agents`, attach with `←`, answer it. `goal-launch.sh` already opens its session in `--permission-mode auto`, so this only reaches a run started by hand: pass the same flag, or `Shift+Tab` to `auto` / `bypass permissions` before `/goal:auto` |
 | The gate halts on files you did consider in scope | the iteration's *Files to touch* list does not match reality | the declared list is the contract. Fix the list in the spec, or keep the change out of this iteration |
 
 ---

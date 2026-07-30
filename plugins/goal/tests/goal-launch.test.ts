@@ -88,3 +88,61 @@ for (const [claim, args] of [
     assert.ok(!existsSync(join(dir, '.worktrees')), 'a worktree was created on a refusal');
   });
 }
+
+// A run that refuses at preflight — an absent `Remote:` line, a policy the mode forbids — leaves
+// the worktree and the branch behind having written nothing. The developer's next gesture is the
+// same command, so it has to be the same command: refusing on leftovers of its own making turns
+// every preflight refusal into a manual `worktree remove` + `branch -D`.
+test('it reclaims a worktree and branch left by a run that wrote nothing', () => {
+  const { dir } = repo();
+
+  assert.equal(launch(dir, '.claude/plans/demo-spec.md').code, 0);
+  const { code, output } = launch(dir, '.claude/plans/demo-spec.md');
+
+  assert.equal(code, 0, output);
+  assert.ok(existsSync(join(dir, '.worktrees', 'demo')), `no worktree:\n${output}`);
+  assert.match(git(dir, 'branch', '--list', 'feature/demo').stdout, /feature\/demo/);
+});
+
+// Reclaiming is safe only while there is nothing to lose. Uncommitted work in the worktree is
+// the developer's, and no launcher gets to decide it was disposable.
+test('it refuses to reclaim a worktree holding uncommitted work', () => {
+  const { dir } = repo();
+
+  assert.equal(launch(dir, '.claude/plans/demo-spec.md').code, 0);
+  writeFileSync(join(dir, '.worktrees', 'demo', 'scratch.txt'), 'unsaved\n');
+
+  const { code, output } = launch(dir, '.claude/plans/demo-spec.md');
+
+  assert.notEqual(code, 0, `it removed a dirty worktree:\n${output}`);
+  assert.ok(existsSync(join(dir, '.worktrees', 'demo', 'scratch.txt')), 'the work was destroyed');
+});
+
+// A halted run pushes its branch before it stops, so its commits survive the branch being
+// deleted. One that could not push has commits reachable from nowhere else, and `branch -D`
+// is the only way left to lose them.
+test('it refuses to reclaim a branch carrying commits no remote has', () => {
+  const { dir } = repo();
+
+  assert.equal(launch(dir, '.claude/plans/demo-spec.md').code, 0);
+  const tree = join(dir, '.worktrees', 'demo');
+  writeFileSync(join(tree, 'landed.txt'), 'iteration 1\n');
+  git(tree, 'add', '-A');
+  git(tree, 'commit', '-qm', 'feat: iteration 1');
+
+  const { code, output } = launch(dir, '.claude/plans/demo-spec.md');
+
+  assert.notEqual(code, 0, `it deleted unpushed commits:\n${output}`);
+  assert.match(git(dir, 'branch', '--list', 'feature/demo').stdout, /feature\/demo/);
+});
+
+// A run nobody watches must never sit on a permission prompt: that is not a stalled run, it is a
+// run that looks alive and advances no iteration. The mode is the launcher's job because the
+// developer who types `Shift+Tab` before every launch eventually forgets one.
+test('it opens the session in a mode that never prompts', () => {
+  const { dir, tmuxLog } = repo();
+
+  assert.equal(launch(dir, '.claude/plans/demo-spec.md').code, 0);
+
+  assert.match(readFileSync(tmuxLog, 'utf8'), /--permission-mode auto/);
+});
