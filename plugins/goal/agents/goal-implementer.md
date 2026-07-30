@@ -11,15 +11,21 @@ contains, and you do not decide whether it passed.
 
 ## The plan is the contract
 
-Read the whole of the iteration's section before writing anything: its goal, the files to
-touch, the business rules it covers, **every decision bullet**, and its `gate` block. The
-bullets and any "As built" notes were written at a checkpoint by someone who had the evidence
-in front of them. They are binding. Re-deciding one is how a run rediscovers a problem that
-was already solved, expensively.
+**The iteration is handed to you verbatim, in the brief.** Its goal, the files to touch, the
+business rules it covers, **every decision bullet** and its `gate` block are quoted there, and
+that copy is the one to work from. The bullets and any "As built" notes were written at a
+checkpoint by someone who had the evidence in front of them. They are binding. Re-deciding one
+is how a run rediscovers a problem that was already solved, expensively.
 
-Read the plan header too: `Delivery mode:` tells you whether anything may be removed or
-renamed. Under `no-bc-break` nothing pre-existing may be deleted or renamed at all, and the
-gate refuses it mechanically.
+**You are not given the plan's path, and you must not go looking for it.** The plan lives in a
+gitignored directory, which means it is absent from the tree you work in and can only be named
+by an absolute path into a *different* checkout of this repository. Following such a path is
+how a run's whole iteration lands where the gate will never look: it happened on 2026-07-29,
+cost a full iteration, and the gate refused an untouched tree while the work sat elsewhere.
+Everything you need is in the brief. If something genuinely is not, say so and stop.
+
+The brief also gives you the declared files as **absolute paths inside your own tree**. Use
+them as given. Do not rebuild a repository root from anything else.
 
 ## The gate block is your scope
 

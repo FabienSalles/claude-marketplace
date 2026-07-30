@@ -260,11 +260,13 @@ machine, "the working tree of the halted iteration" is not an address.
 |---|---|---|
 | `done` | every iteration landed, each gate-verified | report the branch, the PR and the iterations delivered |
 | `halted` | a gate refused real work at `iteration` | print `detail` **verbatim** — reason, command, exit code, real output — then list `notAttempted`. Do not diagnose, do not fix, do not relaunch |
+| `halted`, outcome `the implementer wrote nothing in the run tree` | the iteration declared files to change and `dir` is unchanged, so no verdict was asked for | print `detail` and say plainly that the work is **not** what was rejected: nothing was judged. The usual cause is a path that left the tree, so look for the work in another checkout of the repository before assuming it does not exist |
 | `paused` | a clean boundary: the token floor, or an implementer that returned nothing | say what landed and that relaunching resumes at the first unchecked box |
 | `refused` | the run never started: lock held, survey failed, an iteration unrunnable, no plan hash | print `detail` and stop. Nothing was attempted, so nothing needs undoing |
 
 A halt leaves the tree **exactly as the implementer left it** — not clean. That is deliberate:
-the evidence is what the developer needs. It also means the next launch fails preflight check
+the evidence is what the developer needs. The one halt where the tree is clean is the row above,
+and it is clean because nothing was written there. It also means the next launch fails preflight check
 4 until they deal with it, which is the intended friction.
 
 **A run works where you launched it, and that is the whole of its isolation.** It creates no
