@@ -61,9 +61,13 @@ Or hand the whole plan to an unattended run, in a session of its own:
 It creates the worktree, names the branch `feature/<work-id>` after the plan, and opens a
 tmux session inside it running `/goal:auto` on the plan — passed as an absolute path, since
 `.claude/` is gitignored and therefore absent from the worktree it just made. Three gestures
-become one, and the two that matter are not conveniences: your checkout stays free while the
-run works, and the run stops living in your interactive session, where navigating out of its
-progress view interrupts it. Looking at a run should not be what kills it.
+become one.
+
+The session is dedicated so it outlives the terminal that opened it, with a stable name to
+reattach to — not because backgrounding kills a run. It does not: see the troubleshooting
+table below, where that case was diagnosed as a permission prompt nobody answered, now handled
+by the mode the launcher passes. Your checkout staying free comes from the worktree, and would
+with or without tmux.
 
 The session opens in `--permission-mode auto`, because a run nobody watches must never sit on a
 prompt: that is not a stalled run, it is one that looks alive and advances no iteration.

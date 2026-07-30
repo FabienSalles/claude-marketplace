@@ -5,9 +5,15 @@
 # Creates the worktree, then opens a tmux session inside it running /goal:auto on
 # the plan you named, in a permission mode that never prompts. Three gestures become one.
 #
-# The session is dedicated on purpose. A run living in your interactive session dies
-# from a keystroke — navigating out of its progress view interrupts it — which makes
-# looking at the run the gesture that kills it. It also leaves your checkout free.
+# The session is dedicated so it outlives the terminal that opened it: closing the window
+# or dropping an SSH connection does not reach it, and it has a stable name to reattach to.
+#
+# It is NOT because backgrounding kills a run. It does not — see the troubleshooting table in
+# README.md, which diagnosed the case: the supervisor keeps the workflow, its subagents and
+# their shells running, and what looked like a dead run was a permission prompt nobody
+# answered. That is now handled by the mode below, not by tmux.
+#
+# Your checkout staying free comes from the worktree, not from tmux. The two are independent.
 #
 # Relaunching is the same command. A worktree and branch left by a previous launch are
 # reclaimed, up to the point where something would be lost.
@@ -44,6 +50,12 @@ plan_abs="$plan_dir/$(basename "$plan")"
 work_id=$(basename "$plan" -spec.md)
 branch="feature/$work_id"
 tree="$root/.worktrees/$work_id"
+
+# Fetch here and nowhere else, because here is the only place staleness changes an outcome: the
+# base is the commit the whole run is built on, and branching from a lagging one means every
+# iteration works against a tree that moved. Later commands do not need it — pushing a new branch
+# decides nothing on remote state, and `gh` reads the API rather than local refs.
+git -C "$root" fetch --prune --quiet 2>/dev/null || true
 
 # The default branch when there is one, the current commit otherwise — a fresh clone with no
 # origin still gets a worktree rather than a refusal.
