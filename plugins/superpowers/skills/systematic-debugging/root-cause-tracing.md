@@ -104,7 +104,8 @@ Use the bisection script `find-polluter.sh` in this directory:
 ./find-polluter.sh '.git' 'src/**/*.test.ts'
 ```
 
-Runs tests one-by-one, stops at first polluter. See script for usage.
+Runs tests one-by-one, stops at first polluter. Defaults to `npm test`; override with
+`TEST_RUNNER=./my-runner.sh` if the project uses something else. See script for usage.
 
 ## Real Example: Empty projectDir
 
