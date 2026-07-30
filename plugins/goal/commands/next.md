@@ -170,7 +170,10 @@ project lint/QA command, `<policy>` = the plan's policy verbatim, `<delivery-mod
 the plan's `Delivery mode:` line verbatim. Fold the policy and delivery-mode blocks to
 the single active branch of each. Respect its **≤ 4000-character hard limit**: write
 the filled block to a file, run `wc -m < <file>`, compress and re-count while it
-exceeds 4000, and print the count with the block.
+exceeds 4000, and print the count with the block. **That file is only a counter** —
+`cat`-ing it in a tool call does not count as having shown the block, since tool output
+goes to the model and not reliably to the developer. The filled block goes **in full into
+your final message**, as one copy-paste block.
 
 Prepend the context-hygiene reminder (you cannot run these — the developer does),
 then the filled template as **one copy-paste block**:
@@ -181,6 +184,9 @@ then the filled template as **one copy-paste block**:
 
 <filled templates/goal-handoff.template>
 ```
+
+Expand the placeholder: what you print is the filled text itself, never a reference to it
+nor a path to the file you measured.
 
 **When no unchecked iteration remains**, there is no handoff to emit and the plan is done.
 Emit the checklist from `templates/post-merge.template` instead, filled per that file's

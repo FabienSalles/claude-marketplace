@@ -705,7 +705,10 @@ the chosen policy verbatim, `<delivery-mode>` = the spec's `Delivery mode:` line
 Fold the policy and delivery-mode blocks to the single active branch of each — an executor
 reads its own mode, never the one it is not in. Respect the **≤ 4000-character hard limit**:
 write the filled block to a file, run `wc -m < <file>`, compress and re-count while it exceeds
-4000, and print the count with the block. The
+4000, and print the count with the block. **That file is only a counter** — `cat`-ing it in a
+tool call does not count as having shown the block, since tool output goes to the model and not
+reliably to the developer. The filled block goes **in full into your final message**, as one
+copy-paste block. The
 developer pastes it once per iteration — it always picks the **next unchecked**
 iteration, so the same text works every round.
 

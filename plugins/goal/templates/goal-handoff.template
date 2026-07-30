@@ -33,6 +33,12 @@ the two delivery-mode branches to the single active `<delivery-mode>`, shorten t
 Done/synthesis wording. Never truncate mid-sentence. Print the count alongside the
 block so the developer sees the margin.
 
+**The file exists only to be counted.** Writing the block to a file and `cat`-ing it in a
+tool call is not showing it: tool output reaches the model, not reliably the human. The
+filled block MUST be reproduced **in full, in the final assistant message, as one
+copy-paste block** — a reply that prints only the context-hygiene header, a summary, or a
+path to the file leaves the developer with nothing to paste.
+
 Fold both branch blocks by default, not only when you overflow: the emitted text is
 an instruction to one executor in one mode, and the branch it is not in is noise it
 has to read past.
