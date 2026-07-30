@@ -98,6 +98,10 @@ After each GREEN, look for duplication in **both** production code and tests.
 
 Do NOT parameterize when assertions differ or setup is specific.
 
+**Merge only the same rule — never different rules that happen to share a shape.** Two tests with the same Arrange/Act where only the data differs are the same rule at two data points (a date before vs after a threshold, a percentage above vs below a cutoff) — merge them. Two tests that hit the same code path but assert **different business rules** (field A is required vs field B is required) are not duplicates just because their structure looks similar — merging them behind a shared "state" object trades one assertion-per-concern for an omnibus test that fails without saying which rule broke.
+
+**Criterion:** "is this the same rule tested on different inputs, or two rules that happen to produce a similarly-shaped test?" Only the first merges. When in doubt, keep them separate — an unmerged duplicate costs a few lines; a wrongly-merged test hides which rule regressed.
+
 ## Bug-Fix Workflow
 
 When something is broken, follow this order **before any code change**:
