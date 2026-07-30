@@ -23,6 +23,19 @@ The upstream marketplace ships 14 skills. Two are pulled here; the others are de
 - Author: Jesse Vincent (`jesse@fsck.com`)
 - License: MIT (preserved as `LICENSE`)
 
+## Local divergences
+
+`systematic-debugging` is fixed locally rather than waiting on an upstream PR:
+
+- `find-polluter.sh` — repaired the `find -path` glob (upstream never anchors it to `.`, so it
+  matches nothing), fails loudly instead of exiting 0 on zero matching test files, and takes
+  the test runner from `TEST_RUNNER` (default `npm test`) instead of hardcoding it.
+- `CREATION-LOG.md`, `test-academic.md`, `test-pressure-{1,2,3}.md` — dropped. Unreferenced
+  eval artefacts from upstream's skill-authoring process, not part of the skill itself.
+
+A refresh from upstream must re-apply these before copying the directory over, or it silently
+reverts them.
+
 ## How to refresh from upstream
 
 ```bash
@@ -39,4 +52,4 @@ Then bump the local revision suffix in `.claude-plugin/plugin.json` (e.g. `5.1.1
 
 ## Notes on skill internals
 
-- `systematic-debugging` ships supporting files (`condition-based-waiting-example.ts`, `find-polluter.sh`, etc.) — all copied as-is.
+- `systematic-debugging` ships supporting files (`condition-based-waiting-example.ts`, `find-polluter.sh`, etc.). `find-polluter.sh` diverges from upstream — see [Local divergences](#local-divergences).
