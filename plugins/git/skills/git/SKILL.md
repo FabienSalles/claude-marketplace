@@ -18,6 +18,13 @@ reasoning on stale remote state.
   are **stale** until a fetch.
 - **Never rely on memory or session context** for git state: a branch may have
   moved, a PR may have merged since. Re-verify at time T.
+- **Chain with `&&`, never with `;`.** When a git command only makes sense if the
+  one before it succeeded — fetch then branch, add then commit, commit then push —
+  `&&` is what carries that condition; `;` runs the second command over the first
+  one's failure. Either chain with `&&` or issue separate calls. `git fetch --prune
+  && git switch -c <x> origin/main` is one safe command; the same line with `;`
+  cuts the branch from a lagging base whenever the fetch fails, and a pipe
+  (`git fetch | tail`) hides the exit code of the fetch itself.
 - **Squash merges**: a local commit is not an ancestor of `main` even when its
   work is there. Verify by **content** (file / feature present on `origin/main`)
   and by the **merged PR title**, not just `git branch --contains <sha>`.
@@ -155,6 +162,11 @@ stage and review themselves.
 
 - ❌ Create a branch from a lagging local.
   ✅ `git switch -c <x> origin/main` after a fetch.
+
+- ❌ `git fetch --prune ; git checkout -b <x>` — the `;` runs the branch creation
+  even when the fetch failed, which is exactly the case the fetch was there to
+  prevent. The `fetch-first` hook blocks this form for that reason.
+  ✅ `git fetch --prune && git checkout -b <x>`, or two separate commands.
 
 - ❌ Partial cross-repo reference in a PR body (`#55`, "the contract PR").
   ✅ Always the full form **`owner/repo#N`** — a bare `#N` is ambiguous outside

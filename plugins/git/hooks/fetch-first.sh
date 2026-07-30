@@ -3,7 +3,10 @@
 # git:fetch-first — PreToolUse guard.
 # Block branch creation (git switch -c, git checkout -b) when FETCH_HEAD is
 # stale (> 10 min) or absent, so a branch is never cut from a lagging base.
-# Escape hatches: no remote configured, or a fetch newer than the threshold.
+# Escape hatches: no remote configured, a fetch newer than the threshold, or a
+# `git fetch` chained with `&&` before the branch creation in the same command —
+# `&&` guarantees the fetch ran and succeeded first, which is exactly the property
+# the guard asks for.
 # Bash 3.2 compatible; BSD/GNU stat handled.
 #
 # `gh pr create` and `git push` were guarded here too, and should not have been:
@@ -30,6 +33,20 @@ COMMAND=$(echo "$INPUT" | python3 -c "import sys, json; print(json.load(sys.stdi
 GUARDED='git([[:space:]]+-[^[:space:]]+)*[[:space:]]+switch[[:space:]]+-c|git([[:space:]]+-[^[:space:]]+)*[[:space:]]+checkout[[:space:]]+-b'
 echo "$COMMAND" | grep -qE "$GUARDED" || exit 0
 
+echo "$COMMAND" | python3 -c '
+import re, sys
+
+cmd = sys.stdin.read()
+branch = re.search(r"git(\s+-\S+)*\s+(switch\s+-c|checkout\s+-b)", cmd)
+if not branch:
+    sys.exit(1)
+before = cmd[:branch.start()]
+fetches = list(re.finditer(r"git(\s+-\S+)*\s+fetch\b", before))
+if not fetches or not re.search(r"&&\s*$", before):
+    sys.exit(1)
+sys.exit(1 if re.search(r"[;|]", before[fetches[-1].end():]) else 0)
+' && exit 0
+
 git rev-parse --is-inside-work-tree >/dev/null 2>&1 || exit 0
 [ -n "$(git remote 2>/dev/null)" ] || exit 0
 
@@ -49,7 +66,7 @@ fi
 cat << 'EOF'
 {
   "decision": "block",
-  "reason": "Refs de suivi périmées (pas de `git fetch` récent). Avant de raisonner sur l'état distant ou de pousser : `git fetch --prune`, puis relance la commande. Échappatoires : aucun remote configuré, ou un fetch de moins de 10 min."
+  "reason": "Refs de suivi périmées (pas de `git fetch` récent). Avant de raisonner sur l'état distant ou de pousser : `git fetch --prune`, puis relance la commande. Échappatoires : aucun remote configuré, un fetch de moins de 10 min, ou un `git fetch` enchaîné avec `&&` avant la création de branche dans la même commande (`git fetch --prune && git checkout -b ma-branche`). Un `;` ne suffit pas : il laisse passer un fetch en échec."
 }
 EOF
 exit 2
