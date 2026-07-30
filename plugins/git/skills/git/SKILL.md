@@ -1,6 +1,6 @@
 ---
 name: git
-description: ACTIVATE for any git or PR operation — create/choose a branch, open or update a PR, "est-ce mergé ?", choose a base, rebase/merge, commit, push, force-push, worktree, cherry-pick, fork. ACTIVATE on 'branche', 'PR', 'merge', 'rebase', 'squash', 'fixup', 'historique', 'base main', 'fork', 'gh pr', 'commit', 'push', 'mets à jour', 'est-ce mergé'. Covers Fabien's transverse git conventions — fetch before reasoning on remote state, never ask what a command answers, branch/commit discipline, English conventional commits without AI trailer, history shape (reshape before the first push, fixup over fix-on-fix, ask before pushing a branch that repairs itself, reshape unasked under a non-manual policy), PR (title and body in the repository's language — its CLAUDE.md, else what it already does, else French; ultra-succinct body, draft for WIP, fork targets parent), force-push and worktree guardrails, manual index mode. DO NOT use for Eres-specific fork conventions (see Eres marketplace).
+description: ACTIVATE for any git or PR operation — create/choose a branch, open or update a PR, "est-ce mergé ?", choose a base, rebase/merge, commit, push, force-push, worktree, cherry-pick, fork. ACTIVATE on 'branche', 'PR', 'merge', 'rebase', 'squash', 'fixup', 'historique', 'base main', 'fork', 'gh pr', 'commit', 'push', 'mets à jour', 'est-ce mergé'. Covers Fabien's transverse git conventions — fetch before reasoning on remote state, never ask what a command answers, branch/commit discipline, English conventional commits without AI trailer, history shape (reshape before the first push, fixup over fix-on-fix, ask before pushing a branch that repairs itself, reshape unasked under a non-manual policy), PR (English title and body unless the repository's CLAUDE.md asks otherwise; ultra-succinct body, draft for WIP, fork targets parent), force-push and worktree guardrails, manual index mode. DO NOT use for Eres-specific fork conventions (see Eres marketplace).
 version: 1.0.0
 ---
 
@@ -91,26 +91,22 @@ loses as much as leaving eleven repairs strewn across the log.
   git rebase upstream/main        # rebase, not merge
   ```
 
-- **Title and body in the repository's language**, conventional prefix kept, concise,
-  no ticket ref unless requested. Resolve the language in this order and stop at the
-  first answer:
+- **Title and body in English**, conventional prefix kept, concise, no ticket ref unless
+  requested. Another language only when the repository's own `CLAUDE.md` (or
+  `.claude/CLAUDE.md`) asks for one — that file is the single override point, and its
+  absence means English.
 
-  1. the repository's own `CLAUDE.md` (or `.claude/CLAUDE.md`), if it states one;
-  2. what the repository already does — its `README`, and the last few **merged** PR
-     titles (`gh pr list --state merged --limit 5 --json title`);
-  3. French, the personal default, when neither says anything.
-
-  An open-source repository whose README, issues and code comments are in English gets
-  English pull requests, whoever wrote the request. Asking in French does not make the
-  artifact French: the audience of a PR is whoever reads the repository.
+  Asking in French does not make the artifact French. The audience of a pull request is
+  whoever reads the repository, and English is the default because it is the language
+  the largest number of them share.
 
   ```
-  feat(payment-information): découpe des modes de paiement par typologie d'offre
   fix(goal): stop handing the implementer a path out of its own tree
+  feat(payment-information): découpe des modes de paiement par typologie d'offre
   ```
 
-  Commit messages are English regardless (§D) — only the PR title and body follow the
-  repository.
+  The second form needs a `CLAUDE.md` declaring French. Commit messages are English
+  regardless (§D) — the override reaches the PR title and body, nothing else.
 
 - **Ultra-succinct description**: only the **non-guessable** (decisions,
   per-case behavior, deliberate out-of-scope). A few bullets max. No spec dump,
@@ -123,7 +119,7 @@ loses as much as leaving eleven repairs strewn across the log.
   ```bash
   gh repo view <owner>/<repo> --json parent
   gh pr create --repo <parent> --base main --head <fork-owner>:<branch> \
-    --draft --title "<title, in the repository's language>" --body-file <file>
+    --draft --title "<title, English unless the repo overrides it>" --body-file <file>
   ```
 
   If the repo has no parent, it **is** the upstream.

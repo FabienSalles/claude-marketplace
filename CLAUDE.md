@@ -5,8 +5,10 @@ still applies.
 
 ## English is the language of everything this repository publishes
 
-This is a public open-source repository. **Every artifact that leaves it is in English**,
-whatever language the request was written in:
+English is already the default for pull request titles and bodies, so this section does not
+override anything — it states the same rule for everything a pull request does not cover.
+**Every artifact that leaves this repository is in English**, whatever language the request was
+written in:
 
 - pull request titles and bodies
 - commit messages (already the global rule, restated so nothing reopens it)
