@@ -1,5 +1,5 @@
 {
-  "description": "Fetch-first guard: block gh pr create / git push / git switch -c / git checkout -b when tracking refs are stale (FETCH_HEAD older than 10 min or absent) and a remote exists, so git decisions never run on perimed refs.",
+  "description": "Fetch-first guard: block branch creation (git switch -c / git checkout -b) when tracking refs are stale (FETCH_HEAD older than 10 min or absent) and a remote exists, so a branch is never cut from a lagging base. Pushing and gh pr create are deliberately not guarded — neither reads local refs, so no staleness can change what they do.",
   "hooks": {
     "PreToolUse": [
       {

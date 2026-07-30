@@ -62,8 +62,13 @@ layer changes what needs a channel at all.
 ## 3. The fetch-first guard matches command text, not command effect
 
 **Observed.** `plugins/git/hooks/fetch-first.sh` greps the command string, so a read-only command
-that merely *mentions* a guarded verb is blocked — `grep -n "gh pr create" file.js` is refused
-exactly like the real thing. Hit twice while investigating the guard itself.
+that merely *mentions* a guarded verb is blocked exactly like the real thing. Hit three times
+while investigating the guard itself, the last time by the very command written to test it.
+
+**Largely defused, not fixed.** The guard was narrowed to `git switch -c` / `git checkout -b`
+(see the file's own header for why `gh pr create` and `git push` left), so the surface is now
+small enough that a false block is rare. The flaw itself is untouched: a command mentioning
+either remaining verb is still refused.
 
 **Not fixed** because the safe direction is not obvious: tightening the pattern to leading
 position would miss real invocations inside `&&` chains and subshells, which is a worse failure

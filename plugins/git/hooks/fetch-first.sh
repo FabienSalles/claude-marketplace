@@ -1,11 +1,24 @@
 #!/bin/bash
 
 # git:fetch-first — PreToolUse guard.
-# Block remote-reasoning / mutating commands (gh pr create, git push,
-# git switch -c, git checkout -b) when FETCH_HEAD is stale (> 10 min) or
-# absent, so decisions never run on perimed tracking refs.
+# Block branch creation (git switch -c, git checkout -b) when FETCH_HEAD is
+# stale (> 10 min) or absent, so a branch is never cut from a lagging base.
 # Escape hatches: no remote configured, or a fetch newer than the threshold.
 # Bash 3.2 compatible; BSD/GNU stat handled.
+#
+# `gh pr create` and `git push` were guarded here too, and should not have been:
+# neither reads local tracking refs, so no staleness can change what they do. `gh`
+# queries the API, and on a push it is the remote that arbitrates — a stale local ref
+# alters neither what is sent nor what is rejected. Guarding them cost real failures:
+# an unattended /goal:auto run landed and pushed its branch, then had its pull request
+# refused here and stopped without one. FETCH_HEAD is per-worktree, so the tree a run
+# stands in has never fetched however fresh the main checkout is — the block was
+# certain, not occasional.
+#
+# What remains is the case where staleness genuinely changes an outcome: the base of a
+# new branch is what everything after it is built on, and cutting from a lagging one is
+# silent. The broader rule — fetch before reasoning on remote state — stays in the `git`
+# skill, where it belongs as advice rather than as a wall.
 
 STALE_SECONDS=600
 
@@ -14,7 +27,7 @@ COMMAND=$(echo "$INPUT" | python3 -c "import sys, json; print(json.load(sys.stdi
 
 [ -z "$COMMAND" ] && exit 0
 
-GUARDED='gh +pr +create|git([[:space:]]+-[^[:space:]]+)*[[:space:]]+push([[:space:]]|$)|git([[:space:]]+-[^[:space:]]+)*[[:space:]]+switch[[:space:]]+-c|git([[:space:]]+-[^[:space:]]+)*[[:space:]]+checkout[[:space:]]+-b'
+GUARDED='git([[:space:]]+-[^[:space:]]+)*[[:space:]]+switch[[:space:]]+-c|git([[:space:]]+-[^[:space:]]+)*[[:space:]]+checkout[[:space:]]+-b'
 echo "$COMMAND" | grep -qE "$GUARDED" || exit 0
 
 git rev-parse --is-inside-work-tree >/dev/null 2>&1 || exit 0
