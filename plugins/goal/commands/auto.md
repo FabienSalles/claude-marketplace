@@ -194,8 +194,13 @@ one that never starts. Run the commands and show what failed.
     ```
 
     `<base>` is the plan's `PR base:` line when it has one, the repository's default branch
-    otherwise. Behind it → **STOP** and say which commits are missing. Never rebase or merge
-    yourself: history is the developer's, and an unattended run is the worst moment to move it.
+    otherwise. Behind it → **STOP** and say which commits are missing, and wait for the
+    developer's word on how to proceed. Do not rebase or merge without it: an unattended run
+    is the worst moment to move history nobody asked to move. Once the developer explicitly
+    authorizes it in this preflight, and only local commits — never pushed, never shared —
+    would be replayed, catching the branch up (rebase, or a fast-forward merge when there is
+    nothing local to replay) is safe: it rewrites nothing distant and moves nothing without
+    consent. That authorization is per-run, not standing — ask again next time.
 
     A stale branch poisons both of the checks before it. Check 11 sweeps a base that is not the
     one the work will merge into, so it certifies green against the past; and the run implements
