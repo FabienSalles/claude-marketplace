@@ -31,7 +31,7 @@ macOS ships with **BSD userland**, NOT GNU. Many command flags differ.
 | GNU-only (NOT on macOS) | BSD-safe alternative |
 |---|---|
 | `grep -P "regex"` (Perl regex) | `grep -E "regex"` or `perl -ne 'print if /regex/'` |
-| `realpath path` | `python3 -c "import os; print(os.path.realpath('path'))"` or install `coreutils` (`grealpath`) |
+| `realpath -m/--relative-to/--canonicalize-missing path` | see §3 pitfall below |
 | `sed -i 's/a/b/' file` | `sed -i '' 's/a/b/' file` (BSD requires explicit suffix arg) |
 | `readlink -f path` | `perl -MCwd -e 'print Cwd::abs_path shift' path` |
 | `xargs -r` (no-run-if-empty) | `[ -n "$(...)" ] && echo "..." \| xargs ...` |
@@ -53,6 +53,7 @@ fi
 
 ## 3. Common macOS Pitfalls
 
+- **`realpath`** : macOS's `/usr/bin/realpath` resolves an existing path but rejects GNU-only flags — `-m`/`--canonicalize-missing` (don't require the path to exist) and `--relative-to` (print relative to a base) exit non-zero with "illegal option". `-s` (no-symlink-resolution) is also GNU-only. Install `coreutils` (`grealpath`) or use `python3 -c "import os; print(os.path.realpath('path'))"` when those flags are needed.
 - **`mktemp`** : BSD requires `XXXXXX` template explicitly — `mktemp /tmp/foo.XXXXXX` (not `mktemp /tmp/foo`)
 - **`cp -r` vs `cp -R`** : on macOS, `cp -r` preserves resource forks. Prefer `cp -R` for portability.
 - **`awk`** : default is BSD awk, much less featured than GNU awk (`gawk`). For complex scripts, install `gawk` via Homebrew or use `perl`.
