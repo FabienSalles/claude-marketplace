@@ -1,6 +1,6 @@
 ---
 name: astro-tailwind
-description: "ACTIVATE when styling Astro components with Tailwind CSS, configuring tailwind.config, or implementing responsive layouts. ACTIVATE for 'Tailwind', 'utility classes', '@tailwindcss/typography', 'prose', 'dark mode'. Covers: project-specific Tailwind config (colors, fonts), common UI patterns (cards, nav, forms, grids, buttons), typography plugin for markdown content, responsive patterns, dark mode, CSS variables with Tailwind. DO NOT use for: general CSS questions, Astro scoped styles without Tailwind."
+description: "ACTIVATE when styling Astro components with Tailwind CSS, configuring the `@theme` block, or implementing responsive layouts. ACTIVATE for 'Tailwind', 'utility classes', '@tailwindcss/typography', 'prose', 'dark mode'. Covers: Tailwind 4 CSS-first config (colors, fonts via `@theme`), common UI patterns (cards, nav, forms, grids, buttons), typography plugin for markdown content, responsive patterns, dark mode, CSS variables with Tailwind. DO NOT use for: general CSS questions, Astro scoped styles without Tailwind."
 version: "1.1"
 ---
 
@@ -11,31 +11,44 @@ Patterns for utility-first CSS in Astro projects.
 ## Setup
 
 ```bash
-npx astro add tailwind
+npm install tailwindcss @tailwindcss/vite
+```
+
+**astro.config.mjs**:
+```javascript
+import { defineConfig } from 'astro/config';
+import tailwindcss from '@tailwindcss/vite';
+
+export default defineConfig({
+  vite: {
+    plugins: [tailwindcss()],
+  },
+});
 ```
 
 ### Config
 
-**tailwind.config.mjs**:
-```javascript
-export default {
-  content: ['./src/**/*.{astro,html,js,jsx,md,mdx,svelte,ts,tsx,vue}'],
-  theme: {
-    extend: {
-      colors: {
-        primary: '#FFD700',
-        secondary: '#FFC000',
-        dark: '#1A1A1A',
-      },
-      fontFamily: {
-        sans: ['Inter Variable', 'system-ui', 'sans-serif'],
-      },
-    },
-  },
-  plugins: [
-    require('@tailwindcss/typography'),
-  ],
-};
+Tailwind 4 is CSS-first: tokens are declared in the stylesheet with `@theme`, there is no separate JavaScript config file.
+
+**src/styles/global.css**:
+```css
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+@theme {
+  --color-primary: #FFD700;
+  --color-secondary: #FFC000;
+  --color-dark: #1A1A1A;
+  --font-sans: 'Inter Variable', system-ui, sans-serif;
+}
+```
+
+Import that stylesheet once, from a layout:
+
+```astro
+---
+import '../styles/global.css';
+---
 ```
 
 ## Common Patterns

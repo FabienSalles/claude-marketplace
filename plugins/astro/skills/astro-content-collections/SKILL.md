@@ -1,6 +1,6 @@
 ---
 name: astro-content-collections
-description: "ACTIVATE when working with Astro content collections, markdown/MDX files, YAML frontmatter, Zod schemas for content, or content-driven pages. ACTIVATE for 'getCollection', 'getEntry', 'defineCollection', 'content collection', 'config.ts'. Covers: collection schema definition with Zod, querying/filtering collections, dynamic routes with getStaticPaths, YAML meta files, MDX with components, collection references. DO NOT use for: routing logic (see astro-routing), general Astro components (see astro-basics)."
+description: "ACTIVATE when working with Astro content collections, markdown/MDX files, YAML frontmatter, Zod schemas for content, or content-driven pages. ACTIVATE for 'getCollection', 'getEntry', 'defineCollection', 'content collection', 'content.config.ts'. Covers: collection schema definition with Zod, loader-based collections, querying/filtering collections, dynamic routes with getStaticPaths, YAML meta files, MDX with components, collection references. DO NOT use for: routing logic (see astro-routing), general Astro components (see astro-basics)."
 version: "1.1"
 ---
 
@@ -11,23 +11,24 @@ Patterns for managing structured content in Astro projects.
 ## Collection Structure
 
 ```
-src/content/
-├── config.ts           # Schema definitions (optional but recommended)
-├── blog/               # Collection: blog posts
-│   └── my-post.md
-├── projects/           # Collection: project showcases
-│   └── project-1.md
-└── formations/         # Collection: training content
-    └── ddd/
-        └── jour-1/
-            └── _meta.yaml
+src/
+├── content.config.ts   # Schema and loader definitions
+└── content/
+    ├── blog/               # Collection: blog posts
+    │   └── my-post.md
+    ├── projects/           # Collection: project showcases
+    │   └── project-1.md
+    └── formations/         # Collection: training content
+        └── ddd/
+            └── jour-1/
+                └── _meta.yaml
 ```
 
 ## Querying Collections
 
 ```astro
 ---
-import { getCollection, getEntry } from 'astro:content';
+import { getCollection, getEntry, render } from 'astro:content';
 
 // Get all, filter drafts in production
 const posts = await getCollection('blog', ({ data }) => {
@@ -41,6 +42,9 @@ const sortedPosts = posts.sort(
 
 // Get single entry
 const post = await getEntry('blog', 'my-post');
+
+// Render the entry's Content component
+const { Content } = await render(post);
 ---
 ```
 
@@ -56,10 +60,9 @@ const post = await getEntry('blog', 'my-post');
 |----------|-------|
 | `getCollection('name')` | Get all entries |
 | `getCollection('name', filter)` | Get filtered entries |
-| `getEntry('name', 'slug')` | Get single entry |
-| `post.render()` | Get Content component |
-| `post.slug` | URL-safe identifier |
-| `post.id` | File path relative to collection |
+| `getEntry('name', 'id')` | Get single entry |
+| `render(entry)` | Get Content component |
+| `post.id` | URL-safe identifier (from the loader) |
 | `post.data` | Typed frontmatter data |
 | `post.body` | Raw markdown content |
 | `reference('collection')` | Cross-collection reference |

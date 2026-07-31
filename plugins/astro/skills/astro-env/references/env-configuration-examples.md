@@ -13,13 +13,13 @@
 
 ```bash
 # .env.development
-TRAINING_ENABLED=true
+NEWSLETTER_ENABLED=true
 CONTACT_ENABLED=true
 CV_ENABLED=true
 ABOUT_ENABLED=true
 
 # .env.production
-TRAINING_ENABLED=true
+NEWSLETTER_ENABLED=true
 CONTACT_ENABLED=false
 CV_ENABLED=true
 ABOUT_ENABLED=true
@@ -29,14 +29,14 @@ ABOUT_ENABLED=true
 
 ```astro
 ---
-const trainingEnabled = import.meta.env.TRAINING_ENABLED === 'true';
+const newsletterEnabled = import.meta.env.NEWSLETTER_ENABLED === 'true';
 const contactEnabled = import.meta.env.CONTACT_ENABLED === 'true';
 const cvEnabled = import.meta.env.CV_ENABLED === 'true';
 ---
 
 <nav>
   <a href="/blog">Blog</a>
-  {trainingEnabled && <a href="/formations">Formations</a>}
+  {newsletterEnabled && <a href="/newsletter">Newsletter</a>}
   {cvEnabled && <a href="/cv">CV</a>}
   {contactEnabled && <a href="/contact">Contact</a>}
 </nav>
@@ -48,7 +48,7 @@ const cvEnabled = import.meta.env.CV_ENABLED === 'true';
 // src/config.ts
 export const config = {
   features: {
-    training: import.meta.env.TRAINING_ENABLED === 'true',
+    newsletter: import.meta.env.NEWSLETTER_ENABLED === 'true',
     contact: import.meta.env.CONTACT_ENABLED === 'true',
     cv: import.meta.env.CV_ENABLED === 'true',
     about: import.meta.env.ABOUT_ENABLED === 'true',
@@ -68,7 +68,7 @@ export const config = {
 import { config } from '../config';
 ---
 
-{config.features.training && <TrainingSection />}
+{config.features.newsletter && <NewsletterSection />}
 ```
 
 ## TypeScript Support
@@ -83,7 +83,7 @@ interface ImportMetaEnv {
   readonly DATABASE_URL: string;
   readonly API_SECRET: string;
   readonly PUBLIC_API_URL: string;
-  readonly TRAINING_ENABLED: string;
+  readonly NEWSLETTER_ENABLED: string;
   readonly CONTACT_ENABLED: string;
   readonly GOOGLE_ANALYTICS_ID: string;
 }
@@ -120,10 +120,10 @@ Set in platform dashboard or `netlify.toml`:
   NODE_VERSION = "18"
 
 [context.production.environment]
-  TRAINING_ENABLED = "true"
+  NEWSLETTER_ENABLED = "true"
 
 [context.deploy-preview.environment]
-  TRAINING_ENABLED = "false"
+  NEWSLETTER_ENABLED = "false"
 ```
 
 ## Runtime vs Build-time
@@ -182,5 +182,5 @@ export default defineConfig({
    DATABASE_URL=postgresql://user:pass@localhost/db
    API_SECRET=your-secret-here
    PUBLIC_API_URL=https://api.example.com
-   TRAINING_ENABLED=true
+   NEWSLETTER_ENABLED=true
    ```

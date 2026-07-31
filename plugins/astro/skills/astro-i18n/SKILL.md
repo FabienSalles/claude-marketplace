@@ -47,6 +47,8 @@ export function getLocalizedPath(path: string, lang: 'fr' | 'en'): string {
 
 > **When building a language switcher component** or multilingual navigation, read `references/i18n-implementation-patterns.md` for complete LanguageSwitcher.astro and nav patterns.
 
+> **When wiring hreflang tags into `<head>`**, read the "SEO for Multilingual Sites" section of `references/i18n-implementation-patterns.md` for the full alternate-language markup.
+
 ## Quick Reference
 
 ### URL Patterns

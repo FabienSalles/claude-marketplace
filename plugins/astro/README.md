@@ -18,8 +18,8 @@ Or `./setup.sh --pack astro` (dev mode).
 |---|---|
 | [`astro-basics`](skills/astro-basics/SKILL.md) | Component anatomy (frontmatter/template/style/script), layout + slot pattern, scoped vs global styles, path aliases |
 | [`astro-react`](skills/astro-react/SKILL.md) | `client:load`/`idle`/`visible`/`media`/`only` selection, props passing, MDX integration, nanostores for cross-island state |
-| [`astro-tailwind`](skills/astro-tailwind/SKILL.md) | Project-specific Tailwind config, common UI patterns (cards/nav/forms/grids), typography plugin, responsive, dark mode |
-| [`astro-view-transitions`](skills/astro-view-transitions/SKILL.md) | `ViewTransitions` setup, `transition:name`/`animate`/`persist`, `data-astro-reload`, lifecycle events, loading indicator |
+| [`astro-tailwind`](skills/astro-tailwind/SKILL.md) | Tailwind 4 CSS-first config (`@theme`), common UI patterns (cards/nav/forms/grids), typography plugin, responsive, dark mode |
+| [`astro-view-transitions`](skills/astro-view-transitions/SKILL.md) | `ClientRouter` setup, `transition:name`/`animate`/`persist`, `data-astro-reload`, lifecycle events, loading indicator |
 
 ### Routing & content
 

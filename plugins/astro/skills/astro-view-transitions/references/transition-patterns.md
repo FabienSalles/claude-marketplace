@@ -183,10 +183,11 @@ const isEnglish = Astro.url.pathname.startsWith('/en');
 ```astro
 ---
 // Layout.astro
+import { ClientRouter } from 'astro:transitions';
 ---
 <html>
   <head>
-    <ViewTransitions />
+    <ClientRouter />
   </head>
   <body>
     <header transition:animate="none" transition:name="header">
@@ -211,9 +212,9 @@ const isEnglish = Astro.url.pathname.startsWith('/en');
 <article>
   <img
     src={post.image}
-    transition:name={`image-${post.slug}`}
+    transition:name={`image-${post.id}`}
   />
-  <h2 transition:name={`title-${post.slug}`}>
+  <h2 transition:name={`title-${post.id}`}>
     {post.title}
   </h2>
 </article>
@@ -222,9 +223,9 @@ const isEnglish = Astro.url.pathname.startsWith('/en');
 <article>
   <img
     src={post.image}
-    transition:name={`image-${post.slug}`}
+    transition:name={`image-${post.id}`}
   />
-  <h1 transition:name={`title-${post.slug}`}>
+  <h1 transition:name={`title-${post.id}`}>
     {post.title}
   </h1>
 </article>
@@ -275,5 +276,5 @@ const isEnglish = Astro.url.pathname.startsWith('/en');
 ### Detect Browser Support
 
 ```javascript
-const supportsViewTransitions = 'startViewTransition' in document;
+const supportsNativeTransitions = 'startViewTransition' in document;
 ```
