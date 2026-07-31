@@ -444,6 +444,17 @@ are supporting lints. `max_diff` is the line ceiling you set while awake, enforc
 are not. And a slice with nothing to test declares `test_files=` empty, which skips the bite
 rather than faking it.
 
+**A slice proving the absence of more than one obsolete form writes one `gate1`, not several.**
+The bite check only ever sets aside the implementation and re-runs `gate1`; `gate2..N` are never
+replayed against the pre-implementation tree, by the bite check or by `/goal:auto`'s own
+preflight, which excludes `gate1` alone from its base-must-already-be-green sweep. A second
+absence assertion placed in `gate2` is invisible to both: nothing proves it ever failed before
+the fix, and a preflight run right after the plan is written halts on a base the sweep reads as
+red, for a check nobody meant to gate the base. Chain every "must no longer appear" assertion
+into `gate1` with `&&` instead — `gate1=! grep -rq <first> <dirs> && ! grep -rn <second> <dirs>
+| grep -vqi legacy` — so the one command that gets bitten, replayed three times, and exempted
+from the base sweep is the one actually carrying every removal this slice makes.
+
 Write only commands that can fail. `git diff --stat` and `git status` do not belong in it:
 the gate script checks scope leak and parasitic artifacts structurally, so such a line is a
 gate that always exits 0. A criterion no command can express does not go in the block either
