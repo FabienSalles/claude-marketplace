@@ -81,7 +81,7 @@ sitemap({
     // Fresh blog posts get higher priority
     if (item.url.includes('/blog/')) {
       const posts = await getCollection('blog');
-      const post = posts.find(p => item.url.includes(p.slug));
+      const post = posts.find(p => item.url.includes(p.id));
 
       if (post) {
         const daysSincePublished = Math.floor(

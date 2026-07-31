@@ -111,7 +111,7 @@ import { getCollection, getEntry } from 'astro:content';
 export async function getStaticPaths() {
   const posts = await getCollection('blog');
   return posts.map(post => ({
-    params: { slug: post.slug },
+    params: { slug: post.id },
     props: { post },
   }));
 }
@@ -238,6 +238,7 @@ const breadcrumbs = {
 
 ```astro
 ---
+const siteUrl = Astro.site?.toString().replace(/\/$/, '') || '';
 const currentPath = Astro.url.pathname;
 const isEnglish = currentPath.startsWith('/en');
 const alternateLang = isEnglish ? 'fr' : 'en';
@@ -246,30 +247,21 @@ const alternatePath = isEnglish
   : `/en${currentPath}`;
 ---
 
-<head>
-  <html lang={isEnglish ? 'en' : 'fr'}>
-
-  <!-- Alternate language versions -->
-  <link rel="alternate" hreflang="fr" href={`${Astro.site}${currentPath.replace('/en', '')}`} />
-  <link rel="alternate" hreflang="en" href={`${Astro.site}/en${currentPath}`} />
-  <link rel="alternate" hreflang="x-default" href={`${Astro.site}${currentPath.replace('/en', '')}`} />
-</head>
+<html lang={isEnglish ? 'en' : 'fr'}>
+  <head>
+    <!-- Alternate language versions -->
+    <link rel="alternate" hreflang="fr" href={`${siteUrl}${currentPath.replace('/en', '')}`} />
+    <link rel="alternate" hreflang="en" href={`${siteUrl}/en${currentPath}`} />
+    <link rel="alternate" hreflang="x-default" href={`${siteUrl}${currentPath.replace('/en', '')}`} />
+  </head>
+  <body>
+    <!-- ... -->
+  </body>
+</html>
 ```
+
+For the full prefix-based routing implementation behind `alternateLang`/`alternatePath`, see `astro-i18n`'s `references/i18n-implementation-patterns.md`.
 
 ## Sitemap Integration
 
-```javascript
-// astro.config.mjs
-import sitemap from '@astrojs/sitemap';
-
-export default defineConfig({
-  site: 'https://example.com',
-  integrations: [
-    sitemap({
-      filter: (page) => !page.includes('/draft/'),
-      changefreq: 'weekly',
-      priority: 0.7,
-    }),
-  ],
-});
-```
+For `@astrojs/sitemap` setup, page filtering, and multi-language sitemap configuration, see `astro-sitemap`'s `references/sitemap-configuration-examples.md`.

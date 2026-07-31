@@ -145,40 +145,35 @@ const classes = `${baseClasses} ${variants[variant]}`;
 
 ### Typography Config
 
-```javascript
-// tailwind.config.mjs
-plugins: [
-  require('@tailwindcss/typography'),
-],
-theme: {
-  extend: {
-    typography: {
-      DEFAULT: {
-        css: {
-          maxWidth: '100ch',
-          a: {
-            color: '#3b82f6',
-            '&:hover': {
-              color: '#1d4ed8',
-            },
-          },
-        },
-      },
-    },
-  },
-},
+```css
+/* src/styles/global.css */
+@plugin "@tailwindcss/typography";
+
+@theme {
+  --prose-max-width: 100ch;
+}
+
+@layer base {
+  .prose a {
+    color: #3b82f6;
+  }
+  .prose a:hover {
+    color: #1d4ed8;
+  }
+}
 ```
 
 ## Dark Mode
 
 ### Config
 
-```javascript
-// tailwind.config.mjs
-export default {
-  darkMode: 'class', // or 'media'
-  // ...
-};
+Tailwind 4 defaults to `prefers-color-scheme`. To switch a `.dark` class on `<html>` instead, declare the variant in CSS:
+
+```css
+/* src/styles/global.css */
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
 ```
 
 ### Usage
@@ -191,11 +186,13 @@ export default {
 
 ### CSS Variables with Tailwind
 
+Tailwind 4 tokens declared in `@theme` are real CSS custom properties, so reference them directly with `var()`:
+
 ```astro
 <style is:global>
   :root {
     --swiper-theme-color: #FFD700;
-    --accent-color: theme('colors.primary');
+    --accent-color: var(--color-primary);
   }
 </style>
 ```

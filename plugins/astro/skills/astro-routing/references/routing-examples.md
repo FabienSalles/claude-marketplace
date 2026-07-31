@@ -113,7 +113,7 @@ const { page } = Astro.props;
 
 <ul>
   {page.data.map((post) => (
-    <li><a href={`/blog/${post.slug}`}>{post.data.title}</a></li>
+    <li><a href={`/blog/${post.id}`}>{post.data.title}</a></li>
   ))}
 </ul>
 
@@ -156,7 +156,7 @@ export const GET: APIRoute = async () => {
   const posts = await getCollection('blog');
 
   return new Response(JSON.stringify(posts.map(p => ({
-    slug: p.slug,
+    slug: p.id,
     title: p.data.title,
     date: p.data.pubDate,
   }))), {
@@ -183,7 +183,7 @@ export async function GET(context) {
       title: post.data.title,
       pubDate: post.data.pubDate,
       description: post.data.description,
-      link: `/blog/${post.slug}/`,
+      link: `/blog/${post.id}/`,
     })),
   });
 }
@@ -205,7 +205,7 @@ export function generateUrl(...segments: string[]): string {
 }
 
 // Usage
-generateUrl('blog', post.slug);  // -> /blog/my-post
+generateUrl('blog', post.id);  // -> /blog/my-post
 generateUrl('', 'about');        // -> /about
 ```
 

@@ -11,11 +11,13 @@
 ## Schema Definition Examples
 
 ```typescript
+// src/content.config.ts
 import { defineCollection, z } from 'astro:content';
+import { glob, file } from 'astro/loaders';
 
 // Blog posts collection
 const blog = defineCollection({
-  type: 'content',  // Markdown/MDX
+  loader: glob({ pattern: '**/[^_]*.md', base: './src/content/blog' }),
   schema: z.object({
     title: z.string(),
     description: z.string(),
@@ -30,7 +32,7 @@ const blog = defineCollection({
 
 // Projects collection
 const projects = defineCollection({
-  type: 'content',
+  loader: glob({ pattern: '**/[^_]*.md', base: './src/content/projects' }),
   schema: z.object({
     title: z.string(),
     description: z.string(),
@@ -46,7 +48,7 @@ const projects = defineCollection({
 
 // Data-only collection (YAML/JSON)
 const authors = defineCollection({
-  type: 'data',
+  loader: file('./src/content/authors.json'),
   schema: z.object({
     name: z.string(),
     email: z.string().email(),
@@ -64,18 +66,18 @@ export const collections = { blog, projects, authors };
 ```astro
 ---
 // src/pages/blog/[...slug].astro
-import { getCollection } from 'astro:content';
+import { getCollection, render } from 'astro:content';
 
 export async function getStaticPaths() {
   const posts = await getCollection('blog');
   return posts.map((post) => ({
-    params: { slug: post.slug },
+    params: { slug: post.id },
     props: { post },
   }));
 }
 
 const { post } = Astro.props;
-const { Content } = await post.render();
+const { Content } = await render(post);
 ---
 
 <article>
@@ -180,7 +182,9 @@ const meta = yaml.load(fs.readFileSync(metaPath, 'utf-8'));
 
 ```astro
 ---
-const { Content } = await post.render();
+import { render } from 'astro:content';
+
+const { Content } = await render(post);
 ---
 
 <article class="prose">
@@ -192,7 +196,9 @@ const { Content } = await post.render();
 
 ```astro
 ---
-const { Content, headings, remarkPluginFrontmatter } = await post.render();
+import { render } from 'astro:content';
+
+const { Content, headings, remarkPluginFrontmatter } = await render(post);
 ---
 
 <!-- Table of contents from headings -->
@@ -210,8 +216,9 @@ const { Content, headings, remarkPluginFrontmatter } = await post.render();
 Link between collections:
 
 ```typescript
-// config.ts
+// src/content.config.ts
 const blog = defineCollection({
+  loader: glob({ pattern: '**/[^_]*.md', base: './src/content/blog' }),
   schema: z.object({
     title: z.string(),
     author: reference('authors'),  // Reference to authors collection

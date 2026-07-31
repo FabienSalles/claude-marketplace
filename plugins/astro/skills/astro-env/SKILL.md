@@ -1,6 +1,6 @@
 ---
 name: astro-env
-description: "ACTIVATE when working with environment variables, feature flags, or runtime configuration in Astro. ACTIVATE for 'import.meta.env', '.env', 'PUBLIC_', 'feature flag', 'TRAINING_ENABLED'. Covers: server vs client variables (PUBLIC_ prefix), feature flags pattern with centralized config, TypeScript env declarations, build-time vs runtime variables, Netlify/Vercel deployment vars. DO NOT use for: general Astro setup, content configuration."
+description: "ACTIVATE when working with environment variables, feature flags, or runtime configuration in Astro. ACTIVATE for 'import.meta.env', '.env', 'PUBLIC_', 'feature flag'. Covers: server vs client variables (PUBLIC_ prefix), feature flags pattern with centralized config, TypeScript env declarations, build-time vs runtime variables, Netlify/Vercel deployment vars. DO NOT use for: general Astro setup, content configuration."
 version: "1.1"
 ---
 

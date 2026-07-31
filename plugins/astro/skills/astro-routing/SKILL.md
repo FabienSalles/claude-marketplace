@@ -34,7 +34,7 @@ import { getCollection } from 'astro:content';
 export async function getStaticPaths() {
   const posts = await getCollection('blog');
   return posts.map((post) => ({
-    params: { slug: post.slug },
+    params: { slug: post.id },
     props: { post },
   }));
 }
@@ -55,7 +55,7 @@ export async function getStaticPaths() {
 
   return languages.flatMap((lang) =>
     posts.map((post) => ({
-      params: { lang, slug: post.slug },
+      params: { lang, slug: post.id },
       props: { post, lang },
     }))
   );

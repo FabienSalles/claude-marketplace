@@ -1,6 +1,6 @@
 ---
 name: astro-view-transitions
-description: "ACTIVATE when implementing page transitions, SPA-like navigation, transition:persist, or data-astro-reload in Astro. ACTIVATE for 'ViewTransitions', 'transition:name', 'transition:animate', 'data-astro-reload', 'page transition'. Covers: ViewTransitions setup, transition directives (name/animate/persist), custom animations, data-astro-reload for language switching, lifecycle events (astro:page-load), loading indicator pattern. DO NOT use for: general Astro routing, React component hydration."
+description: "ACTIVATE when implementing page transitions, SPA-like navigation, transition:persist, or data-astro-reload in Astro. ACTIVATE for 'ClientRouter', 'transition:name', 'transition:animate', 'data-astro-reload', 'page transition'. Covers: ClientRouter setup, transition directives (name/animate/persist), custom animations, data-astro-reload for language switching, lifecycle events (astro:page-load), loading indicator pattern. DO NOT use for: general Astro routing, React component hydration."
 version: "1.1"
 ---
 
@@ -10,19 +10,21 @@ Patterns for smooth page transitions and SPA-like navigation in Astro.
 
 ## Setup
 
-Add the `<ViewTransitions />` component to your layout:
+Add the `<ClientRouter />` component to your layout:
 
 ```astro
 ---
-import { ViewTransitions } from 'astro:transitions';
+import { ClientRouter } from 'astro:transitions';
 ---
 <html>
   <head>
-    <ViewTransitions />
+    <ClientRouter />
   </head>
   <body><slot /></body>
 </html>
 ```
+
+> **Legacy (Astro 4):** `ViewTransitions` is the pre-5.0 name for this same component; if you inherit a project still importing it, this skill's directives and lifecycle events apply unchanged.
 
 ## How It Works
 
@@ -38,7 +40,7 @@ With View Transitions enabled:
 
 ```astro
 <header transition:name="header">...</header>
-<h1 transition:name={`title-${post.slug}`}>{post.data.title}</h1>
+<h1 transition:name={`title-${post.id}`}>{post.data.title}</h1>
 ```
 
 ### `transition:animate` - Animation Type
