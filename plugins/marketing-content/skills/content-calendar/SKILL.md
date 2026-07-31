@@ -118,6 +118,8 @@ Assign recurring themes to days of the week for consistency and reduced planning
 | Newsletter | 1/week | 1-2/week | 3/week | More than 2/week risks unsubscribes unless the content is exceptional. |
 | YouTube | 1/week | 1-2/week | 3/week | Consistency matters more than frequency. |
 
+*Last reviewed 2026-07 — verify before quoting.*
+
 ### Platform-Specific Optimal Posting Times
 
 **Twitter/X:**
@@ -128,7 +130,7 @@ Assign recurring themes to days of the week for consistency and reduced planning
 **LinkedIn:**
 - Weekdays: 7-8am, 12pm, 5-6pm
 - Best days: Tuesday, Wednesday, Thursday
-- Avoid weekends (60% lower engagement)
+- Avoid weekends (engagement drops noticeably)
 
 **Instagram:**
 - Weekdays: 11am-1pm, 7-9pm
@@ -246,6 +248,8 @@ reposted monthly. Reference this bank during ideation sessions to avoid starting
 
 For each platform, track: impressions/reach, engagement rate (target 2-6%), and follower growth.
 Benchmark engagement rates: Twitter/X 2-5%, LinkedIn 3-6%, Instagram 3-6%.
+
+*Last reviewed 2026-07 — verify before quoting.*
 
 ### Monthly Review Checklist
 

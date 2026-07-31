@@ -38,6 +38,8 @@ Posts are ranked by:
 | Articles/newsletters | Low-Medium | Deep dives, SEO |
 | Posts with links | Lowest | Drive traffic (put link in comments) |
 
+*Last reviewed 2026-07 — verify before quoting.*
+
 ## Hook Formulas
 
 The first 2-3 lines determine if people click "see more." For the universal hook formula catalogue (bold claim, counter-intuitive, specific result, question, listicle, confession...), see the **`marketing-distribution:social-content`** skill.

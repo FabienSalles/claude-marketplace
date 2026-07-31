@@ -39,6 +39,8 @@ Before creating social content, collect these inputs:
 | Hashtags | 1-2 maximum. More reduces engagement. |
 | Link preview | Yes, but links reduce reach. Put links in replies. |
 
+*Last reviewed 2026-07 — verify before quoting.*
+
 **Twitter/X Content Rules:**
 - First line is everything. 90% of engagement is determined by the hook.
 - Short sentences. Line breaks between thoughts.
@@ -60,14 +62,16 @@ Before creating social content, collect these inputs:
 | Hashtags | 3-5 relevant hashtags at the end |
 | Carousel | PDF upload (up to 300 pages), 1080x1080 or 1080x1350 per slide |
 
+*Last reviewed 2026-07 — verify before quoting.*
+
 **LinkedIn Content Rules:**
 - First 2-3 lines must hook before the "See more" fold. This is critical.
 - Use line breaks aggressively. One sentence per line for readability.
-- Personal stories outperform corporate announcements 10:1.
+- Personal stories tend to outperform corporate announcements.
 - Hot takes and contrarian opinions drive the most engagement.
 - Engagement in the first 60-90 minutes determines total reach.
 - Reply to every comment within the first 2 hours.
-- Avoid external links in the post body (reduces reach by 40-50%). Put links in comments.
+- External links in the post body reduce reach. Put links in comments.
 - Tag relevant people (max 3-5) only when genuinely relevant.
 - Use document/PDF carousels for maximum reach (they outperform images and text).
 
@@ -83,11 +87,13 @@ Before creating social content, collect these inputs:
 | Hashtags | 5-15 relevant hashtags (hide in first comment or after line breaks) |
 | Best posting times | 11am-1pm, 7-9pm Mon-Fri |
 
+*Last reviewed 2026-07 — verify before quoting.*
+
 **Instagram Content Rules:**
 - Visuals come first. The image/video stops the scroll; the caption sells the click.
 - First line of the caption is the hook. Make it bold and curiosity-driven.
-- Carousel posts get 3x more engagement than single images.
-- Reels get 2x more reach than static posts.
+- Carousel posts tend to outperform single images.
+- Reels tend to get more reach than static posts.
 - Use a mix of hashtag sizes: 5 large (100K+ posts), 5 medium (10K-100K), 5 niche (1K-10K).
 - Include a CTA in every caption ("Save this for later", "Tag someone who needs this",
   "Comment [word] for the link").
@@ -104,6 +110,8 @@ Before creating social content, collect these inputs:
 | Hashtags | 3-5 relevant + 1-2 trending |
 | Best posting times | 7-9am, 12-3pm, 7-11pm |
 | Audio | Original or trending audio |
+
+*Last reviewed 2026-07 — verify before quoting.*
 
 **TikTok Content Rules:**
 - Hook in the first 1-3 seconds or viewers scroll away.
@@ -154,7 +162,7 @@ Add one of these to drive comments and shares:
 For the slide-by-slide carousel structure (cover hook, context, value slides, summary, CTA) and design rules, see the **`marketing-content:linkedin-content`** skill. Platform specs:
 
 - **LinkedIn:** PDF document upload, 1080x1080 or 1080x1350 per slide.
-- **Instagram:** up to 20 image slides, 1080x1080 or 1080x1350. Carousels get 3x more engagement than single images.
+- **Instagram:** up to 20 image slides, 1080x1080 or 1080x1350. Carousels tend to outperform single images.
 
 ### Video Script Hooks (TikTok + Reels)
 
@@ -437,16 +445,6 @@ The `thing_id` is the fullname of the post or comment to reply to (e.g., `t3_abc
 - Post during peak hours (9-11 AM EST for US subreddits)
 - Use the subreddit's preferred flair if required
 - Space out posts — no more than a few per day across all subreddits
-
-### Multi-Platform Posting via EngageMate
-
-If `ENGAGEMATE_API_KEY` is set, you can use EngageMate to post across Reddit, X/Twitter, Instagram, Facebook, and TikTok from a single API.
-
-```bash
-echo "ENGAGEMATE_API_KEY is ${ENGAGEMATE_API_KEY:+set}"
-```
-
-EngageMate is an AI-powered social engagement platform. Refer to their documentation at https://engagemate.app for current API endpoints. The product ID is stored as `ENGAGEMATE_PRODUCT_ID`.
 
 ### Publishing Workflow
 

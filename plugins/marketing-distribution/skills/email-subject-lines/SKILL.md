@@ -1,7 +1,7 @@
 ---
 name: email-subject-lines
 version: "1.0"
-description: "ACTIVATE when the user asks to generate, evaluate, or A/B test email subject lines. Includes formulas for curiosity, urgency, personalization, benefit-driven, and social proof. Trigger phrases: 'email subject line', 'subject line ideas', 'write subject lines', 'A/B test subject lines', 'improve open rates', 'email open rate', 'subject line formulas'. For full newsletter body content and cadence, see newsletter."
+description: "ACTIVATE when the user asks to generate, evaluate, or A/B test email subject lines. Includes formulas for curiosity, urgency, personalization, benefit-driven, and social proof. Can send A/B test emails directly via the Resend API (requires user confirmation before sending). Trigger phrases: 'email subject line', 'subject line ideas', 'write subject lines', 'A/B test subject lines', 'improve open rates', 'email open rate', 'subject line formulas', 'send test email'. For full newsletter body content and cadence, see newsletter."
 allowed-tools:
   - Bash
 ---
@@ -266,7 +266,16 @@ fi
 ### Sending an A/B Test (Different Subject Lines, Same Content)
 
 Use the Resend batch endpoint to send the same email body with different subject lines to
-different segments of your list. Split your recipient list into equal groups:
+different segments of your list. Split your recipient list into equal groups.
+
+**Preview and confirm before sending:**
+
+1. **Preview** — show the user exactly what will be sent: each subject line variant, the shared
+   email body, the recipient segments (or counts), and the `from` address.
+2. **Confirm** — ask the user to explicitly approve before executing the `curl` call. Never send
+   without this confirmation.
+3. **Send** — execute the API call only after the user confirms.
+4. **Report** — show the returned `id` values so the user can track opens/clicks in Resend.
 
 ```bash
 source ~/.claude/.env.global 2>/dev/null

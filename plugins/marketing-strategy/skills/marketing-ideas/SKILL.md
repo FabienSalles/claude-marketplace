@@ -110,7 +110,7 @@ A comprehensive collection of marketing tactics organized by category. Use this 
 
 42. **Google Ads on high-intent keywords** -- Target "best [category]", "[competitor] alternative", "how to [problem you solve]".
 
-43. **Retargeting ads** -- Show ads to people who visited your site but did not convert. 3-5x higher conversion than cold traffic.
+43. **Retargeting ads** -- Show ads to people who visited your site but did not convert. Converts markedly better than cold traffic.
 
 44. **LinkedIn Ads for B2B** -- Precise targeting by job title, company size, industry. Expensive but high quality leads.
 
@@ -138,7 +138,7 @@ A comprehensive collection of marketing tactics organized by category. Use this 
 
 54. **Post consistently on LinkedIn** -- 3-5 posts/week with personal insights. LinkedIn organic reach is still strong for B2B.
 
-55. **Write Twitter/X threads** -- Weekly threads breaking down industry topics. Threads get 10x more reach than single tweets.
+55. **Write Twitter/X threads** -- Weekly threads breaking down industry topics. Threads tend to get far more reach than single tweets.
 
 56. **Create a subreddit or participate in existing ones** -- Answer questions, share value, build reputation over time. Never spam.
 
@@ -174,7 +174,7 @@ A comprehensive collection of marketing tactics organized by category. Use this 
 
 70. **Weekly newsletter with curated content** -- Become a trusted source of industry news and insights.
 
-71. **Behavioral email triggers** -- Abandoned cart, inactive user, feature unused. Triggered emails have 3-5x higher open rates.
+71. **Behavioral email triggers** -- Abandoned cart, inactive user, feature unused. Triggered emails have notably higher open rates.
 
 72. **Segment your email list** -- Different messages for different segments (industry, company size, behavior, funnel stage).
 
