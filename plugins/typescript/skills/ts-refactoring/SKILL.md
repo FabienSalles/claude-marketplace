@@ -70,4 +70,4 @@ import { TenantRepository } from '../domain/ports/tenant-repository';
 
 ## TypeScript-specific note
 
-> See `ts-oop` rule #5 (Self-Descriptive Value Objects) for the branded-type pattern that complements rule 2 above.
+> See `ts-oop`'s "TS-specific: Branded Types for Primitive Identifiers" heading for the branded-type pattern that complements rule 2 above.

@@ -81,9 +81,3 @@ const service = module.get(ReceiptService);
 | Same logic, different data | `it.each()` (object or template literal) |
 | Verify method called | `expect(spy).toHaveBeenCalledWith(...)` after act |
 | Compare objects | `toEqual` + `expect.objectContaining` |
-
-| Test Type | File pattern | Base setup |
-|-----------|-------------|-----------|
-| Unit | `*.spec.ts` | None |
-| Integration | `*.integration-spec.ts` | `Test.createTestingModule()` |
-| E2E | `*.e2e-spec.ts` | `supertest` + app |

@@ -77,14 +77,14 @@ $httpClient->request('GET', '/api/v1/resource', Argument::any())->shouldHaveBeen
 
 ### Service Config (spi.yaml)
 
-In production, use `eres_authentication.guzzle.handler_stack` from the authentication bundle (adds Keycloak auth header). No `MockHandler` in `when@test`:
+In production, use `app_authentication.guzzle.handler_stack` from the authentication bundle (adds Keycloak auth header). No `MockHandler` in `when@test`:
 
 ```yaml
 spi.my_http_client:
     class: GuzzleHttp\Client
     arguments:
         -   base_uri: '%env(CLIENT_SCHEME)%%env(HOSTNAME_MY_SERVICE)%'
-            handler: '@eres_authentication.guzzle.handler_stack'
+            handler: '@app_authentication.guzzle.handler_stack'
             headers:
                 Accept: 'application/json'
 

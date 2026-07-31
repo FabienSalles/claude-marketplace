@@ -9,7 +9,7 @@ version: "1.1"
 ## Structure
 
 ```
-quittanceme/
+app/
 ├── pnpm-workspace.yaml
 ├── package.json              # Root scripts, devDependencies
 ├── packages/
@@ -40,7 +40,7 @@ packages:
 // apps/api/package.json
 {
   "dependencies": {
-    "@quittanceme/shared": "workspace:*"
+    "@app/shared": "workspace:*"
   }
 }
 ```
@@ -55,7 +55,7 @@ This resolves to the local package, never fetches from npm.
 // package.json (root)
 {
   "scripts": {
-    "build": "pnpm -r --filter=@quittanceme/shared build && pnpm -r --filter=./apps/* build",
+    "build": "pnpm -r --filter=@app/shared build && pnpm -r --filter=./apps/* build",
     "dev": "pnpm -r --parallel dev",
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck"
@@ -67,7 +67,7 @@ This resolves to the local package, never fetches from npm.
 
 ```bash
 # Run in a specific package
-pnpm --filter @quittanceme/shared build
+pnpm --filter @app/shared build
 pnpm --filter api test
 
 # Run in all apps
@@ -98,7 +98,7 @@ Package-specific dependencies go in each package's `package.json`.
 
 ```typescript
 // In apps/api or apps/web
-import { CreateReceiptSchema, type CreateReceiptDto } from '@quittanceme/shared';
+import { CreateReceiptSchema, type CreateReceiptDto } from '@app/shared';
 ```
 
 > **See also**: `zod-conventions` for how schemas are structured in `packages/shared`.
