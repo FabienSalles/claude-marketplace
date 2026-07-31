@@ -46,7 +46,7 @@ WHERE o.id = :order_id
 
 **IMPORTANT**: Follow [PER Coding Style - Section 10](https://www.php-fig.org/per/coding-style/#10-heredoc-and-nowdoc) for nowdoc/heredoc formatting.
 
-See **[code-conventions skill](../php-code-conventions/SKILL.md#heredoc-and-nowdoc-per-coding-style-section-10)** for complete PER rules.
+See **[code-conventions skill](../php-code-conventions/SKILL.md#php-specific-heredoc--nowdoc-per-section-10)** for complete PER rules.
 
 ### SQL-Specific Rules
 
@@ -117,7 +117,7 @@ LEFT JOIN buyer b ON b.id = si.buyer_id
 |------|-------------|
 | Query direction | Start from known entity, JOIN to needed data |
 | Nowdoc syntax | Use `<<<'SQL'` (nowdoc), never `<<<SQL` (heredoc) |
-| Nowdoc format | See [code-conventions](../php-code-conventions/SKILL.md#heredoc-and-nowdoc-per-coding-style-section-10) for PER rules |
+| Nowdoc format | See [code-conventions](../php-code-conventions/SKILL.md#php-specific-heredoc--nowdoc-per-section-10) for PER rules |
 | Column listing | One per line for multi-column SELECT |
 | Table aliases | Short, meaningful, always prefixed |
 | JOIN order | Follow logical relationship path |

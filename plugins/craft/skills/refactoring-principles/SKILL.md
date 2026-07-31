@@ -36,6 +36,14 @@ When creating or modifying a value object, list all its consumers to define the 
 
 **Criterion:** a value object is complete when no consumer needs an external mapping to interpret it.
 
+**Before considering the value object "done", re-check it against every creation point too:**
+
+1. List all creation points (where is it constructed?).
+2. List all consumers (where is it used?).
+3. For each consumer, what data does it extract?
+4. Include ALL extracted data as properties.
+5. If a consumer needs an external mapping → missing property.
+
 ## 3. Imports as a Coupling Signal
 
 A file's imports reveal its real dependencies. After a refactoring, verify that remaining imports are consistent with the class's responsibility.
@@ -48,17 +56,7 @@ A file's imports reveal its real dependencies. After a refactoring, verify that 
 
 **Criterion:** if a file imports a type that does not match its layer/responsibility, code needs to be moved.
 
-## 4. Value Object Completeness Checklist
-
-Before considering an extracted value object "done":
-
-1. List all creation points (where is it constructed?).
-2. List all consumers (where is it used?).
-3. For each consumer, what data does it extract?
-4. Include ALL extracted data as properties.
-5. If a consumer needs an external mapping → missing property.
-
-## 5. The Deletion Test (Is an Abstraction Earning Its Keep?)
+## 4. The Deletion Test (Is an Abstraction Earning Its Keep?)
 
 Before keeping a wrapper, layer, or indirection, imagine deleting it and inlining it into its callers.
 

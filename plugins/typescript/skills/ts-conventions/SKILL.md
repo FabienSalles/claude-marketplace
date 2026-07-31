@@ -8,13 +8,18 @@ version: "1.1"
 
 ## Strict Mode
 
-**`strict: true` is mandatory** in `tsconfig.json`. No exceptions.
+**`strict: true` is mandatory** in `tsconfig.json`: without it, the whole convention set below is unenforceable — `no any`, discriminated unions, branded types all rely on the compiler actually checking null, implicit any, and type narrowing. No exceptions.
 
 ```jsonc
 {
   "compilerOptions": {
     "strict": true,
+    // Array/object index access returns `T | undefined` instead of `T`,
+    // so a missing key fails to compile instead of crashing at runtime.
     "noUncheckedIndexedAccess": true,
+    // An optional property (`foo?: string`) can no longer be set to
+    // `undefined` explicitly — it must be omitted, catching typos like
+    // `{ foo: undefined }` where `foo` was meant to be left out.
     "exactOptionalPropertyTypes": true
   }
 }
@@ -163,7 +168,7 @@ const tenantId = toTenantId('abc');
 getReceipts(tenantId); // Type error!
 ```
 
-> **See also**: `ts-oop` rule #5 for branded types in value objects.
+> **See also**: `ts-oop`'s "TS-specific: Branded Types for Primitive Identifiers" heading for branded types in value objects.
 
 ## Utility Types
 

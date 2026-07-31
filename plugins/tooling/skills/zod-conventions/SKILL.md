@@ -41,7 +41,7 @@ packages/shared/src/
 
 ```typescript
 // Usage in apps/api or apps/web
-import { CreateReceiptSchema, type CreateReceiptDto } from '@quittanceme/shared';
+import { CreateReceiptSchema, type CreateReceiptDto } from '@app/shared';
 ```
 
 ## Schema Composition

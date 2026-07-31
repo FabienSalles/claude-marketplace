@@ -131,18 +131,19 @@ const generateReceiptHandler =
       return receipt;
     }
 
-    // Atomic transaction: persist + outbox
-    await receiptRepository.save(receipt.value);
-    await outboxRepository.insert({
-      eventType: 'receipt.generated',
-      recipient: 'notification-service',
-      data: {
-        receiptId: receipt.value.id,
-        tenantId: receipt.value.tenantId,
-        period: receipt.value.period,
-        amount: receipt.value.amount,
-        generatedAt: receipt.value.generatedAt,
-      },
+    await transaction(async (tx) => {
+      await receiptRepository.save(receipt.value, tx);
+      await outboxRepository.insert({
+        eventType: 'receipt.generated',
+        recipient: 'notification-service',
+        data: {
+          receiptId: receipt.value.id,
+          tenantId: receipt.value.tenantId,
+          period: receipt.value.period,
+          amount: receipt.value.amount,
+          generatedAt: receipt.value.generatedAt,
+        },
+      }, tx);
     });
 
     return receipt;

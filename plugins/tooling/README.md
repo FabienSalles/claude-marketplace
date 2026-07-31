@@ -25,4 +25,4 @@ Or `./setup.sh --pack tooling` (dev mode).
 
 | Hook | Purpose |
 |---|---|
-| [`fix-drizzle-journal-timestamp.sh`](hooks/fix-drizzle-journal-timestamp.sh) | PostToolUse hook keeping the Drizzle migration journal timestamp in sync after schema changes |
+| [`fix-drizzle-journal-timestamp.sh`](hooks/fix-drizzle-journal-timestamp.sh) | Keeps the Drizzle migration journal timestamp in sync after schema changes |

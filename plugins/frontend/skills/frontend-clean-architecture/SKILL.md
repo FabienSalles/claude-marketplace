@@ -35,19 +35,21 @@ src/
 
 ## Rules
 
-### Dependency Direction (CRITICAL)
+### Dependency Direction
 
-- `domain/` NEVER imports from `infrastructure/`, React, Astro, or any external library
-- `infrastructure/` CAN import from `domain/`
-- `shared/domain/` NEVER imports from `infrastructure/`
-- This rule is non-negotiable and must be verified on every change
+The domain layer stays testable without mocks and portable across frameworks only if it never depends on how data is fetched or rendered. So the dependency arrow points one way:
+
+- `domain/` never imports from `infrastructure/`, React, Astro, or any external library — importing any of them would make domain logic depend on a rendering or fetching concern it doesn't need to know about
+- `infrastructure/` can import from `domain/` — it implements the interfaces and consumes the pure logic the domain defines
+- `shared/domain/` never imports from `infrastructure/`, for the same reason as `domain/`
+- Verify this direction on every change: a violation here is what turns the architecture back into a tangle
 
 ### Domain Layer (`domain/`)
 
 - **Models** (`<feature>.model.ts`): TypeScript types and interfaces describing domain concepts. No classes, no decorators, no framework types.
 - **Repository interfaces** (`<feature>.repository.ts`): SPI (Service Provider Interface) — the domain defines WHAT data access it needs, not HOW. Uses `Promise` (standard JS, not a framework dependency).
 - **Services** (`<feature>.service.ts`): Pure functions only. No `fetch`, no `useState`, no side-effects. Input → output. Testable without mocks.
-- **Referentials** (`referentials/*.referentials.ts`): Constants and generator functions for option lists. NEVER hardcode values that will become obsolete (e.g., years). Use generator functions like `getYearOptions()` instead.
+- **Referentials** (`referentials/*.referentials.ts`): Constants and generator functions for option lists. A hardcoded list like `YEARS = [2026, 2025, 2024]` goes stale the day it ships; a generator function like `getYearOptions()` derives it from the current date instead.
 
 ### Infrastructure Layer (`infrastructure/`)
 

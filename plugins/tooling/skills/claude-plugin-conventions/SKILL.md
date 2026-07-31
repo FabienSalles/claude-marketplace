@@ -185,16 +185,19 @@ The official format uses nested `matcher` + `hooks[]` with `type`:
 
 ### Hook events
 
+Full reference: https://docs.claude.com/en/docs/claude-code/hooks
+
 | Event | Matcher | Can block? |
 |-------|---------|------------|
 | `SessionStart` | startup, resume, clear, compact | No |
+| `SessionEnd` | No | No |
 | `UserPromptSubmit` | No | Yes (exit 2) |
 | `PreToolUse` | Tool name regex | Yes (exit 2) |
 | `PostToolUse` | Tool name regex | No |
 | `Stop` | No | Yes (exit 2) |
-| `SubagentStart` / `SubagentStop` | Agent type | No / Yes |
+| `SubagentStop` | Agent type | Yes |
 | `Notification` | Types | No |
-| `PreCompact` / `PostCompact` | manual, auto | No |
+| `PreCompact` | manual, auto | No |
 
 ## Portability — ${CLAUDE_PLUGIN_ROOT}
 
