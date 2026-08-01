@@ -50,7 +50,7 @@ test('goal-run.sh refuses to start when the deny rule is absent', () => {
   const { code, output } = run(fixture, [fixture.plan, '1']);
 
   assert.notEqual(code, 0);
-  assert.match(output, /deny/i, output);
+  assert.match(output, /STOP the implementer is not denied git commit push add\. Run: .*goal-deny-setup\.sh/, output);
   assert.ok(!existsSync(fixture.claudeLog), 'an implementer was spawned though the deny rule is absent');
 });
 
@@ -60,7 +60,7 @@ test('goal-run.sh refuses when the deny rule covers only some of commit, push an
   const { code, output } = run(fixture, [fixture.plan, '1']);
 
   assert.notEqual(code, 0);
-  assert.match(output, /deny/i, output);
+  assert.match(output, /STOP the implementer is not denied git push add\. Run: .*goal-deny-setup\.sh/, output);
   assert.ok(!existsSync(fixture.claudeLog), 'an implementer was spawned with an incomplete deny rule');
 });
 

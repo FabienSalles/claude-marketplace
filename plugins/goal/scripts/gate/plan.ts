@@ -6,6 +6,16 @@ import { readFileSync } from 'node:fs';
 
 import { halt, misuse } from './halt.ts';
 
+// A single-line declaration, read the way `sed -n 's/^Prefix *//p' | head -1` reads one: the
+// first line starting with `prefix`, trimmed. Used for every `Key:` and `# Heading:` line the
+// plan carries, so a preflight or a publish step names its prefix instead of writing its own sed.
+export const header = (source: string, prefix: string): string | undefined => {
+  const escaped = prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const match = new RegExp(`^${escaped} *(.*)$`, 'm').exec(source);
+
+  return match?.[1];
+};
+
 export const readPlan = (path: string): string => {
   try {
     return readFileSync(path, 'utf8');
@@ -52,6 +62,13 @@ export const sectionBounds = (lines: string[], iteration: string): [number, numb
 
   return [start + 1, next === -1 ? lines.length : start + 1 + next];
 };
+
+// The one place `^### Iteration N — name` is read as a heading: the authorized reader, kept
+// outside the grep that stops every other file re-implementing this literal. `iterationSection`
+// deliberately excludes the heading itself (`sectionBounds` starts at `start + 1`), so a caller
+// wanting the heading line — a pull request body, say — reads it here instead of writing its own.
+export const iterationHeading = (source: string, iteration: string): string | undefined =>
+  new RegExp(`^### Iteration ${iteration}\\b.*$`, 'm').exec(source)?.[0];
 
 export const iterationSection = (source: string, iteration: string): string[] => {
   const lines = source.split('\n');
