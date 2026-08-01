@@ -83,6 +83,12 @@ printf '%s\\n' "$@" >> ${claudeLog}
 [ -n "$FAKE_CLAUDE_WRITES" ] && printf 'written %s\\n' "$$-$RANDOM" >> "$FAKE_CLAUDE_WRITES"
 [ -n "$FAKE_CLAUDE_COMMITS" ] && git add -A >/dev/null 2>&1 && git commit -qm "implementer commit"
 [ -n "$FAKE_CLAUDE_SLEEPS" ] && sleep "$FAKE_CLAUDE_SLEEPS"
+# The closing sequence hands the same binary a lens call and an audit call, each identified by
+# the agent it is pinned to — an exit code of its own is what proves neither can block the run.
+case "$*" in
+  *goal-run-lens*)    exit \${FAKE_CLAUDE_LENS_EXIT:-0} ;;
+  *goal-run-auditor*) exit \${FAKE_CLAUDE_AUDIT_EXIT:-0} ;;
+esac
 exit \${FAKE_CLAUDE_EXIT:-0}
 `,
   );
@@ -96,6 +102,7 @@ case "$1" in
   lock)   mkdir "$2.run.lock" 2>/dev/null; exit 0 ;;
   unlock) rm -rf "$2.run.lock"; exit 0 ;;
   scan)   exit \${FAKE_GATE_SCAN_EXIT:-0} ;;
+  dod)    exit \${FAKE_GATE_DOD_EXIT:-0} ;;
   commit)
     # Opt-in: existing callers of this fixture never set FAKE_GATE_COMMITS, and their tests
     # never look at HEAD, so leaving the tree uncommitted stays their behaviour untouched.
@@ -121,6 +128,7 @@ case "$1 $2" in
     ;;
   "pr create") exit \${FAKE_GH_CREATE_EXIT:-0} ;;
   "pr edit")   exit \${FAKE_GH_EDIT_EXIT:-0} ;;
+  "pr ready")  exit \${FAKE_GH_READY_EXIT:-0} ;;
 esac
 exit 0
 `,

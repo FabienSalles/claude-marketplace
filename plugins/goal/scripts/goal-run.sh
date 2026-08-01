@@ -229,6 +229,7 @@ landed=""
 shipped=""
 pr_open=""
 pr_blocked=""
+elapsed=""
 
 # The pull request is opened as a draft at the **first** landed commit, and its body rewritten
 # after every one after it, so a run that halts at 3 of 15 still leaves something a human can
@@ -386,6 +387,7 @@ done
 run_iteration() {
   iteration="$1"
   hash="$2"
+  iter_start=$(date +%s)
 
   say "RUN iteration $iteration of $(basename "$plan"), in $(pwd)"
 
@@ -471,6 +473,8 @@ The gate does all of that, after it has verified."
     release
     say "RUN iteration $iteration landed, gate-verified"
     landed="$landed $iteration"
+    elapsed="$elapsed$iteration: $(( $(date +%s) - iter_start ))s
+"
     mirror
     return "$LANDED"
   fi
@@ -491,6 +495,67 @@ for n in $iterations; do
   hash=$(printf '%s' "$hashes" | sed -n "s/^$n:\(.*\)\$/\1/p")
   run_iteration "$n" "$hash"
 done
+
+# Every requested iteration landed, gate-verified — against its own commands alone. The global
+# Definition of Done is the barrier that replays against the whole plan, and "shipped" means the
+# pull request is marked ready on the far side of it, mechanically, never by this script's own
+# say-so. `hash` still holds the last iteration's plan_hash: unaffected by ticking a box, it is
+# the same hash for every iteration of this plan.
+dod_out=$($GATE dod "$plan" "$hash" 2>&1)
+dod_exit=$?
+[ -n "$dod_out" ] && printf '%s\n' "$dod_out" >> "$log"
+
+if [ "$dod_exit" -eq 0 ]; then
+  say "RUN the global Definition of Done passed"
+
+  if [ "$publishes" -eq 1 ] && [ "$pr_open" = "yes" ] && [ -z "$pr_blocked" ]; then
+    ready_out=$(gh pr ready --repo "$(repo_of "$remote")" "$(git branch --show-current)" 2>&1)
+    ready_exit=$?
+    [ -n "$ready_out" ] && printf '%s\n' "$ready_out" >> "$log"
+    if [ "$ready_exit" -eq 0 ]; then
+      say "RUN the pull request was marked ready"
+    else
+      say "RUN marking the pull request ready failed: $ready_out"
+    fi
+  fi
+
+  # A lens is a model, not an exit code: it is asked, its finding is logged beside the run, and
+  # nothing about its answer changes what this script does next — it cannot, the work is already
+  # landed and pushed.
+  lens_brief="Refute the iteration(s)$landed of $(basename "$plan") that this run just landed.
+
+Does what landed implement each iteration's stated Goal and business rules, or a comfortable
+reading of them that happened to make the checks pass? Read the plan's own declarations for
+each iteration and the commits on this branch; change nothing.
+
+Answer with a verdict of one sentence per finding and a path:line anchor. Nothing you say blocks
+this run: it is advisory only."
+
+  lens_out=$(claude -p --agent goal:goal-run-lens --permission-mode auto "$lens_brief" 2>&1)
+  [ -n "$lens_out" ] && printf '%s\n' "$lens_out" >> "$log"
+  say "RUN lens findings recorded, advisory only"
+fi
+
+sha=$(git rev-parse --short HEAD 2>/dev/null || printf 'unknown')
+
+audit_brief="Audit the run that just ended on plan $(basename "$plan") and write its report to
+.claude/goal-runs/$sha.md.
+
+Elapsed seconds per iteration entered:
+$elapsed
+Read the reports already in .claude/goal-runs/ and say which failures recur across runs rather
+than describing this one twice. Do not edit a single line of code, do not stage anything, and do
+not judge whether the work was correct — the gate already did that."
+
+audit_out=$(claude -p --agent goal:goal-run-auditor --permission-mode auto "$audit_brief" 2>&1)
+[ -n "$audit_out" ] && printf '%s\n' "$audit_out" >> "$log"
+say "RUN audit recorded"
+
+if [ "$dod_exit" -ne 0 ]; then
+  say "STOP the global Definition of Done refused this run:"
+  say "$dod_out"
+  exit "$HALTED"
+fi
 
 say "STOP $(printf '%s' "$iterations" | wc -w | tr -d ' ') iteration(s) landed, gate-verified"
 exit "$LANDED"
