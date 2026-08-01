@@ -8,6 +8,7 @@ import { basename } from 'node:path';
 
 import { header, iterationHeading } from '../gate/plan.ts';
 import type { Reporter } from './report.ts';
+import type { PublishState } from './close.ts';
 
 const git = (...args: string[]) => spawnSync('git', args, { encoding: 'utf8' });
 
@@ -20,6 +21,7 @@ const repoOf = (remote: string): string =>
 
 export type Publisher = {
   publish: (iteration: string) => void;
+  state: PublishState;
 };
 
 export const createPublisher = (
@@ -39,8 +41,8 @@ export const createPublisher = (
 
   let blocked = '';
   let shipped = false;
-  let prOpen = false;
   const landed: string[] = [];
+  const state: PublishState = { publishes, prOpen: false, blocked: false };
 
   const prBody = (): string => {
     const headings = landed
@@ -78,6 +80,7 @@ export const createPublisher = (
 
       if (fixups > 0) {
         blocked = 'The run carries a fixup or squash commit, so the history is not the sequence a reviewer should read. Nothing was pushed: fold them yourself, then push.';
+        state.blocked = true;
         reporter.say(`RUN ${blocked}`);
 
         return;
@@ -88,6 +91,7 @@ export const createPublisher = (
 
     if ((scan.status ?? 1) !== 0) {
       blocked = `The secret scanner refused this tree, so nothing was pushed:\n${scan.stdout}${scan.stderr}`;
+      state.blocked = true;
       reporter.say(`RUN ${blocked}`);
 
       return;
@@ -97,6 +101,7 @@ export const createPublisher = (
 
     if (push.status !== 0) {
       blocked = `The push failed:\n${push.stdout}${push.stderr}`;
+      state.blocked = true;
       reporter.say(`RUN ${blocked}`);
 
       return;
@@ -107,6 +112,7 @@ export const createPublisher = (
 
     if (/['\\]/.test(planTitle)) {
       blocked = `The plan's title cannot be safely quoted for a pull request — it contains a quote or a backslash: ${planTitle}. Rename its "# Spec:" line, then relaunch; the branch is already pushed.`;
+      state.blocked = true;
       reporter.say(`RUN ${blocked}`);
 
       return;
@@ -119,25 +125,25 @@ export const createPublisher = (
     // Asked, not assumed, unless already confirmed this run: a run resumed by hand on a single
     // iteration has no memory of what an earlier invocation already opened, so whether a pull
     // request exists is read from `gh` itself the first time this process needs to know.
-    if (!prOpen) {
+    if (!state.prOpen) {
       const view = spawnSync('gh', ['pr', 'view', branch, '--repo', repo, '--json', 'number'], { encoding: 'utf8' });
 
       if ((view.status ?? 1) === 0 && /"number":\d+/.test(view.stdout)) {
-        prOpen = true;
+        state.prOpen = true;
       }
     }
 
-    const gh = prOpen
+    const gh = state.prOpen
       ? spawnSync('gh', ['pr', 'edit', branch, '--repo', repo, '--body', body], { encoding: 'utf8' })
       : prBase !== undefined
         ? spawnSync('gh', ['pr', 'create', '--repo', repo, '--draft', '--base', prBase, '--title', planTitle, '--body', body], { encoding: 'utf8' })
         : spawnSync('gh', ['pr', 'create', '--repo', repo, '--draft', '--title', planTitle, '--body', body], { encoding: 'utf8' });
 
     if ((gh.status ?? 1) === 0) {
-      if (prOpen) {
+      if (state.prOpen) {
         reporter.say('RUN rewrote the pull request body');
       } else {
-        prOpen = true;
+        state.prOpen = true;
         reporter.say(prBase !== undefined ? `RUN opened a draft pull request against ${prBase}` : 'RUN opened a draft pull request');
       }
 
@@ -145,8 +151,9 @@ export const createPublisher = (
     }
 
     blocked = `${gh.stdout}${gh.stderr}`;
+    state.blocked = true;
     reporter.say(`RUN ${blocked}`);
   };
 
-  return { publish };
+  return { publish, state };
 };

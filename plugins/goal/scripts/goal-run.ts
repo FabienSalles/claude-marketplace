@@ -25,7 +25,7 @@ import { preflight, REFUSED } from './run/preflight.ts';
 import { createLock } from './run/lock.ts';
 import { runIteration } from './run/iteration.ts';
 import { createPublisher } from './run/publish.ts';
-import { close, LANDED, type PublishState } from './run/close.ts';
+import { close, LANDED } from './run/close.ts';
 import { iterationNumbers } from './gate/plan.ts';
 
 const quote = (value: string): string => `'${value.replace(/'/g, `'\\''`)}'`;
@@ -84,23 +84,7 @@ const main = (): void => {
 
   const lock = createLock(gate, plan);
 
-  // Read by close() instead of asking `gh` for the pull request's own state: publish() never
-  // exposes it directly, so it is picked up off the reporter it already tells, on the narrow
-  // vocabulary of messages that is all publish() ever says.
-  const publishState: PublishState = { publishes: policy === 'commit+pr', prOpen: false, blocked: false };
-  const publishReporter: Reporter = {
-    ...reporter,
-    say: (message: string): void => {
-      if (/^RUN (opened a draft pull request|rewrote the pull request body)/.test(message)) {
-        publishState.prOpen = true;
-      } else if (message.startsWith('RUN ') && !message.startsWith('RUN pushed to ')) {
-        publishState.blocked = true;
-      }
-
-      reporter.say(message);
-    },
-  };
-  const publisher = createPublisher(plan, source, policy, remote, publishReporter, gate);
+  const publisher = createPublisher(plan, source, policy, remote, reporter, gate);
 
   const landed: string[] = [];
   let elapsed = '';
@@ -113,7 +97,7 @@ const main = (): void => {
     elapsed += `${n}: ${Math.round((Date.now() - start) / 1000)}s\n`;
   }
 
-  const exitCode = close(plan, gate, hashes.get(iterations[iterations.length - 1]!)!, remote, publishState, landed, elapsed, reporter);
+  const exitCode = close(plan, gate, hashes.get(iterations[iterations.length - 1]!)!, remote, publisher.state, landed, elapsed, reporter);
 
   if (exitCode === LANDED) {
     reporter.say(`STOP ${iterations.length} iteration(s) landed, gate-verified`);

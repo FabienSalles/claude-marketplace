@@ -1,9 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { PLAN, repo, run } from './support/goal-run-harness.ts';
+import { HASH, PLAN, repo, run } from './support/goal-run-harness.ts';
+import { close, LANDED } from '../scripts/run/close.ts';
+import type { Reporter } from '../scripts/run/report.ts';
 
 const PLAN_PR = PLAN.replace('Policy: commit\n', 'Policy: commit+pr\n');
 
@@ -76,6 +78,49 @@ test('the auditor is invoked with elapsed seconds recorded for every landed iter
   assert.match(args, /^goal:goal-run-auditor$/m, `the auditor was never invoked:\n${args}`);
   assert.match(args, /1: \d+s/, `no elapsed time was recorded for iteration 1:\n${args}`);
   assert.match(args, /2: \d+s/, `no elapsed time was recorded for iteration 2:\n${args}`);
+});
+
+// R1 — close() reads whether publication blocked straight off the state object the publisher
+// handed it, never by re-deriving it from the wording of a message: a run where a pull request
+// was already found open still skips marking it ready once that state says blocked, regardless
+// of what publish() said along the way.
+test('close skips marking the pull request ready when the publisher\'s own state says blocked', () => {
+  const fixture = repo({ planText: PLAN_PR, remote: true });
+  const originalCwd = process.cwd();
+  const originalPath = process.env.PATH;
+
+  process.chdir(fixture.dir);
+  process.env.PATH = `${fixture.bin}:${originalPath ?? ''}`;
+
+  try {
+    const messages: string[] = [];
+    const reporter: Reporter = {
+      say: (message) => {
+        messages.push(message);
+      },
+      stop: () => {
+        throw new Error('unexpected stop');
+      },
+      setLog: () => {},
+    };
+
+    const code = close(
+      fixture.plan,
+      join(fixture.bin, 'fake-gate'),
+      HASH,
+      'origin',
+      { publishes: true, prOpen: true, blocked: true },
+      ['1'],
+      '1: 1s\n',
+      reporter,
+    );
+
+    assert.equal(code, LANDED);
+    assert.ok(!existsSync(fixture.ghLog), `close asked gh to mark the pull request ready though publication had blocked:\n${messages.join('\n')}`);
+  } finally {
+    process.chdir(originalCwd);
+    process.env.PATH = originalPath;
+  }
 });
 
 // R18 — the audit is nobody's optional step: it still runs when the Definition of Done itself
