@@ -131,3 +131,51 @@ If it is replaced by `goal-run.sh`, fix 3 belongs in that script's iteration 4 i
 first commit and its body is rewritten after each landing") it describes a PR the run itself
 opened and says nothing about one that was already there. That gap is what this incident
 exposed, and it would reproduce in the replacement.
+
+## 6. The orchestrator is bash, and that was never a decision
+
+**Observed.** `goal-run.sh` shipped across seven iterations without bash ever being weighed
+against Node. The reasoning went "a `Workflow` script has no shell, therefore a shell script" —
+but the missing shell belonged to the *Workflow runtime*, not to JavaScript. `node` has
+`spawnSync`, and `goal-gate.ts` is already TypeScript executed natively, no build step and no
+dependency.
+
+**What it costs, and the second column is the argument:**
+
+| | Lines | Files |
+|---|---|---|
+| `goal-run.sh` | 594 | **1**, eight functions |
+| `goal-gate.ts` + `gate/` | 903 | **10**, largest 158 |
+
+The gate does more work than the script and is split one module per group of business rules,
+each with its matching test file — a convention `goal-gate.ts` states in its own header.
+`goal-run.sh` is the one place in this plugin that cannot follow it: argument parsing, twelve
+preflight checks, the loop, publication, the quota wait and the closing stage all live in one
+file. That is the maintainability cost, and it is what decided this — not a taste in languages.
+
+**A second defect, and this one is language-independent.** The script re-implements in
+`sed`/`awk` what `scripts/gate/plan.ts` already exports: `iterationSection()` (`plan.ts:56`) is
+`sed -n "/^### Iteration $n /,/^### Iteration /p"` (`goal-run.sh:418`), `iterationNumbers()`
+(`:138`) is the survey's `awk`, and five header reads have their equivalent too. `goal-auto.js`
+carried the same duplication and admitted it in a comment. **The orchestrator should not read
+the plan at all**: the gate hashes it, reads its blocks and refuses when it moved, so it is the
+authority — a second reader is a drift waiting to happen. Giving the gate `section <plan> <n>`
+and `survey <plan>` verbs, as `check` already publishes `plan_hash`, removes it in either
+language and costs tens of lines rather than a rewrite.
+
+**The port is guarded, not blind.** `goal-run-harness.ts:237` spawns the script by path —
+`spawnSync('bash', [RUN, ...args])` — so switching to `node` is two lines and the forty-odd
+tests now on `main` become a parity harness. They already encode the eighteen business rules.
+
+1. Port `goal-run.sh` to Node, same tests, two lines of harness. Green means parity proven.
+2. Split into modules on the gate's convention. Tests stay green.
+3. Convert what no longer needs a subprocess to imports; most of the 253-line harness goes, and
+   the plan-parsing duplication with it.
+
+**Honest reservation.** The suite covers the eighteen rules, not every behaviour: exact log
+wording, argument ordering and the edge cases of the twelve preflight checks are not all
+asserted. A port held by this suite is far safer than a bare rewrite, not free of new bugs.
+
+**What is not settled: when.** The port is its own plan. Running it is the first genuine use of
+`goal-run.sh`, which also makes it the first time an advisory lens ever runs — `goal-auto.js`
+never enabled them.
