@@ -12,11 +12,6 @@ export const DENY_SETUP = resolve(import.meta.dirname, '..', '..', 'scripts', 'g
 // it does so by re-invoking `node --test` with the variable set, never mid-process.
 const IMPL = process.env.GOAL_RUN_IMPL === 'node' ? 'node' : 'bash';
 
-// The Node port is still a seam: most of the suite exercises behaviour goal-run.ts does not
-// implement yet, and would fail for that reason alone rather than for anything this iteration
-// is proving. Those tests opt out under the node runner until their own iteration lands them.
-export const pendingInNode = IMPL === 'node';
-
 export const git = (cwd: string, ...args: string[]) => spawnSync('git', args, { cwd, encoding: 'utf8' });
 
 export const HASH = 'a'.repeat(64);
