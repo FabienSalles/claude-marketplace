@@ -98,6 +98,22 @@ loses as much as leaving eleven repairs strewn across the log.
   git rebase upstream/main        # rebase, not merge
   ```
 
+- **Push the base before opening the PR when the branch was cut from unpushed commits.**
+  The mirror case of the one above, and the one that gets missed: a PR's diff is computed
+  against the **remote** base, so commits sitting on a local `main` the remote has not seen
+  are counted as the branch's own and land in the PR. Check it before creating:
+
+  ```bash
+  git log --oneline origin/main..HEAD    # anything here that is not this branch's work?
+  ```
+
+  Pushing the base is a standard fast-forward push and needs no separate permission when the
+  commits on it were made at the developer's request — §D already made them, and the personal
+  `CLAUDE.md` states plain `git push`, `main` included, is the normal workflow on a solo repo.
+  **Having the authorisation and flagging the problem instead of applying the fix is not
+  caution — it is handing back a command you were already meant to type**, and it ships a
+  pull request whose diff misleads the reviewer in the meantime.
+
 - **Title and body in English**, conventional prefix kept, concise, no ticket ref unless
   requested. Another language only when the repository's own `CLAUDE.md` (or
   `.claude/CLAUDE.md`) asks for one — that file is the single override point, and its
