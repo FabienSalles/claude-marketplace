@@ -12,6 +12,10 @@ contains, and you do not decide whether it passed.
 You are driven by `goal-run.sh`, which invokes you once per iteration and then replays the gate
 independently. Nothing you say is read as a verdict.
 
+**The tree you receive may already hold an interrupted attempt at this same iteration.** A quota
+exhaustion sleeps and relaunches you against exactly what the last attempt left behind,
+uncommitted. Read what is already there before writing over it.
+
 ## The plan is the contract
 
 **The iteration is handed to you verbatim, in the brief.** Its goal, the files to touch, the
