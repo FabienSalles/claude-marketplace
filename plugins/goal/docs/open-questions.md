@@ -93,3 +93,41 @@ exactly the hand-started case the question is for.
 **Care needed:** the variable records the launcher's intent, not the live mode, so a `Shift+Tab`
 during the run would make it lie. Whether that matters depends on whether the check exists to
 know the mode or to make the developer accept it — worth settling before writing anything.
+
+## 5. `/goal:next` offers a command whose preflight always refuses
+
+**Observed.** On 2026-08-01, `/goal:next` closed iteration 1 of `goal-run-script-spec.md` and
+offered `/goal:auto` for the remaining six. `/goal:auto` refused on preflight check 9: a pull
+request was already open on the branch. The developer read the refusal as their own omission —
+"you told me I could run auto, not that I had to merge the PR first" — and nothing was omitted.
+
+**Why it is systematic, not a one-off.** `/goal:next` Phase 5 offers `/goal:auto` whenever
+`Policy:` is `commit` / `commit+pr` and every remaining iteration carries a `gate1`. It never
+looks at whether a pull request exists. Under `commit+pr` one **always** does from iteration 1
+onward, because that policy opens the draft PR at the first commit. So after any first
+iteration, the two commands contradict each other by construction.
+
+**The check is not merely conservative.** `goal-auto.js:671` initialises `shipping.pr` to
+`false`, so the first `mirror()` runs `gh pr create` on a branch that already has one. It fails,
+`shipping.pr` stays false, every later iteration retries `create` and fails again, the body is
+never rewritten, and `gh pr ready` (`:908`) never fires. Removing check 9 would trade a clean
+refusal for a run that lands its work and silently fails to publish any of it.
+
+**Three fixes, and they are not equivalent:**
+
+1. **`/goal:next` learns the check** — run `gh pr list --head <branch>` before offering, and when
+   one is open, emit only the manual handoff. Cheapest, and it makes the two commands agree. But
+   it concedes that a `commit+pr` plan is never autonomous past iteration 1, which is backwards:
+   that policy exists precisely to be left alone.
+2. **`/goal:auto` narrows check 9** — refuse only on a pull request that is not this run's own.
+   The branch is named after the plan, so any open PR on `feature/<work-id>` is arguably this
+   plan's. Needs the rule written down, or it becomes a hole someone widens later.
+3. **The orchestrator adopts an existing PR** — seed `shipping.pr` from `gh pr view --json
+   number` before the first `mirror()`. Fixes the cause rather than the symptom.
+
+**What to settle first:** whether `goal-auto.js` survives at all (`unattended-run-spec.md` §9).
+If it is replaced by `goal-run.sh`, fix 3 belongs in that script's iteration 4 instead — and
+**R14 has to say so explicitly**, because as written ("a draft pull request exists from the
+first commit and its body is rewritten after each landing") it describes a PR the run itself
+opened and says nothing about one that was already there. That gap is what this incident
+exposed, and it would reproduce in the replacement.
