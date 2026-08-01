@@ -24,6 +24,7 @@ import { createReporter, type Reporter } from './run/report.ts';
 import { preflight, REFUSED } from './run/preflight.ts';
 import { createLock } from './run/lock.ts';
 import { LANDED, runIteration } from './run/iteration.ts';
+import { createPublisher } from './run/publish.ts';
 import { iterationNumbers } from './gate/plan.ts';
 
 const quote = (value: string): string => `'${value.replace(/'/g, `'\\''`)}'`;
@@ -49,7 +50,7 @@ const main = (): void => {
   const gate = process.env.GOAL_GATE ?? `node ${resolve(import.meta.dirname, 'goal-gate.ts')}`;
   const source = readFileSync(plan, 'utf8');
 
-  preflight(plan, source, reporter, gate);
+  const { policy, remote } = preflight(plan, source, reporter, gate);
 
   const iterations = iteration !== undefined ? [iteration] : iterationNumbers(source, false);
 
@@ -81,9 +82,11 @@ const main = (): void => {
   }
 
   const lock = createLock(gate, plan);
+  const publisher = createPublisher(plan, source, policy, remote, reporter, gate);
 
   for (const n of iterations) {
     runIteration(plan, source, n, hashes.get(n)!, gate, reporter, lock);
+    publisher.publish(n);
   }
 
   reporter.say(`STOP ${iterations.length} iteration(s) landed, gate-verified`);

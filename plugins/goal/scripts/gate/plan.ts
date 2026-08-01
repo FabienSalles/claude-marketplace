@@ -63,6 +63,13 @@ export const sectionBounds = (lines: string[], iteration: string): [number, numb
   return [start + 1, next === -1 ? lines.length : start + 1 + next];
 };
 
+// The one place `^### Iteration N — name` is read as a heading: the authorized reader, kept
+// outside the grep that stops every other file re-implementing this literal. `iterationSection`
+// deliberately excludes the heading itself (`sectionBounds` starts at `start + 1`), so a caller
+// wanting the heading line — a pull request body, say — reads it here instead of writing its own.
+export const iterationHeading = (source: string, iteration: string): string | undefined =>
+  new RegExp(`^### Iteration ${iteration}\\b.*$`, 'm').exec(source)?.[0];
+
 export const iterationSection = (source: string, iteration: string): string[] => {
   const lines = source.split('\n');
   const [start, end] = sectionBounds(lines, iteration);

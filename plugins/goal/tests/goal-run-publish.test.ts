@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { FAKE_REPO, PLAN, git, pendingInNode, repo, run } from './support/goal-run-harness.ts';
+import { FAKE_REPO, PLAN, git, repo, run } from './support/goal-run-harness.ts';
 
 const PLAN_PR = PLAN.replace('Policy: commit\n', 'Policy: commit+pr\n');
 
@@ -12,7 +12,7 @@ const publish = (fixture: ReturnType<typeof repo>, args: string[], env: Record<s
 
 // R10 — under commit+pr, a landed iteration is scanned for secrets before it is pushed. A
 // scanner refusal blocks the push rather than publishing whatever the branch carries.
-test('a secret scanner refusal blocks the push, and no pull request is attempted', { skip: pendingInNode }, () => {
+test('a secret scanner refusal blocks the push, and no pull request is attempted', () => {
   const fixture = repo({ planText: PLAN_PR, remote: true });
 
   const { code, output } = publish(fixture, [fixture.plan, '1'], {
@@ -28,7 +28,7 @@ test('a secret scanner refusal blocks the push, and no pull request is attempted
 
 // R11 — the push targets exactly the plan's declared remote, never a bare default, and the
 // remote named is never guessed from `gh`'s own resolution.
-test('a landed iteration under commit+pr is pushed to the plan\'s declared remote', { skip: pendingInNode }, () => {
+test('a landed iteration under commit+pr is pushed to the plan\'s declared remote', () => {
   const fixture = repo({ planText: PLAN_PR, remote: true });
 
   const { code, output } = publish(fixture, [fixture.plan, '1'], {
@@ -42,7 +42,7 @@ test('a landed iteration under commit+pr is pushed to the plan\'s declared remot
 
 // R12 — a fixup or squash commit ahead of the first push refuses the push outright: the history
 // pushed unattended has to be the sequence a reviewer would read.
-test('a fixup commit ahead of the first push blocks it, and nothing is pushed', { skip: pendingInNode }, () => {
+test('a fixup commit ahead of the first push blocks it, and nothing is pushed', () => {
   const fixture = repo({ planText: PLAN_PR, remote: true });
 
   const { code, output } = publish(fixture, [fixture.plan, '1'], {
@@ -57,7 +57,7 @@ test('a fixup commit ahead of the first push blocks it, and nothing is pushed', 
 
 // R13 — the pull request opens as a draft at the first landed commit, targeting the plan's
 // declared `PR base:` line when it carries one.
-test('the first landed iteration opens a draft pull request against the declared PR base', { skip: pendingInNode }, () => {
+test('the first landed iteration opens a draft pull request against the declared PR base', () => {
   const planText = PLAN_PR.replace('Remote: origin\n', 'Remote: origin\nPR base: develop\n');
   const fixture = repo({ planText, remote: true });
 
@@ -75,7 +75,7 @@ test('the first landed iteration opens a draft pull request against the declared
 
 // R14 — a title containing a quote is refused rather than stripped, so the pull request never
 // opens under a mangled title nobody wrote.
-test('a plan title carrying a quote is refused, not stripped, and the branch stays pushed', { skip: pendingInNode }, () => {
+test('a plan title carrying a quote is refused, not stripped, and the branch stays pushed', () => {
   const planText = PLAN_PR.replace('# Spec: demo\n', "# Spec: demo's run\n");
   const fixture = repo({ planText, remote: true });
 
@@ -91,7 +91,7 @@ test('a plan title carrying a quote is refused, not stripped, and the branch sta
 
 // R15 — every landing after the first rewrites the same pull request's body instead of
 // creating another one.
-test('a second landing rewrites the pull request body instead of creating a second one', { skip: pendingInNode }, () => {
+test('a second landing rewrites the pull request body instead of creating a second one', () => {
   const fixture = repo({ planText: PLAN_PR, remote: true });
 
   const { code, output } = run(fixture, [fixture.plan], {
@@ -111,7 +111,7 @@ test('a second landing rewrites the pull request body instead of creating a seco
 // R15 — resuming a single iteration after a pull request already exists edits it rather than
 // attempting to create a duplicate: `gh pr view` is asked, not assumed, so a run resumed by hand
 // after a first invocation stays idempotent.
-test('resuming a single iteration when the pull request already exists edits it, and never recreates it', { skip: pendingInNode }, () => {
+test('resuming a single iteration when the pull request already exists edits it, and never recreates it', () => {
   const fixture = repo({ planText: PLAN_PR, remote: true });
 
   const { code, output } = publish(fixture, [fixture.plan, '2'], {
@@ -127,7 +127,7 @@ test('resuming a single iteration when the pull request already exists edits it,
 
 // Under Policy: commit (no `+pr`), nothing is pushed and no pull request is opened — the plan
 // asked the developer to keep the commits on the branch.
-test('a plan under Policy: commit is never pushed and opens no pull request', { skip: pendingInNode }, () => {
+test('a plan under Policy: commit is never pushed and opens no pull request', () => {
   const fixture = repo({ remote: true });
 
   const { code, output } = publish(fixture, [fixture.plan, '1'], {
