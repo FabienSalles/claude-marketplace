@@ -4,7 +4,18 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
 export const RUN = resolve(import.meta.dirname, '..', '..', 'scripts', 'goal-run.sh');
+export const RUN_NODE = resolve(import.meta.dirname, '..', '..', 'scripts', 'goal-run.ts');
 export const DENY_SETUP = resolve(import.meta.dirname, '..', '..', 'scripts', 'goal-deny-setup.sh');
+
+// GOAL_RUN_IMPL selects which runner `run()` below spawns: 'bash' (the default) drives
+// goal-run.sh, 'node' drives goal-run.ts. Read once, at import time, since the suite that flips
+// it does so by re-invoking `node --test` with the variable set, never mid-process.
+const IMPL = process.env.GOAL_RUN_IMPL === 'node' ? 'node' : 'bash';
+
+// The Node port is still a seam: most of the suite exercises behaviour goal-run.ts does not
+// implement yet, and would fail for that reason alone rather than for anything this iteration
+// is proving. Those tests opt out under the node runner until their own iteration lands them.
+export const pendingInNode = IMPL === 'node';
 
 export const git = (cwd: string, ...args: string[]) => spawnSync('git', args, { cwd, encoding: 'utf8' });
 
@@ -234,7 +245,8 @@ exit 0
 };
 
 export const run = (fixture: Fixture, args: string[], env: Record<string, string> = {}) => {
-  const result = spawnSync('bash', [RUN, ...args], {
+  const [command, script] = IMPL === 'node' ? ['node', RUN_NODE] : ['bash', RUN];
+  const result = spawnSync(command, [script, ...args], {
     cwd: fixture.dir,
     encoding: 'utf8',
     env: {

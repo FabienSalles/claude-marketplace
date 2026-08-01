@@ -4,13 +4,13 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { DENY_SETUP, denyOf, repo, run } from './support/goal-run-harness.ts';
+import { DENY_SETUP, denyOf, pendingInNode, repo, run } from './support/goal-run-harness.ts';
 
 // R9 — `git commit`, `git push` and `git add` are denied to the implementer by a settings rule,
 // installed by goal-deny-setup.sh, and goal-run.sh's preflight refuses to start when that rule
 // is absent.
 
-test('goal-deny-setup.sh installs a deny rule covering commit, push and add', () => {
+test('goal-deny-setup.sh installs a deny rule covering commit, push and add', { skip: pendingInNode }, () => {
   const fixture = repo({ deny: false });
 
   const result = spawnSync('bash', [DENY_SETUP, fixture.dir], { encoding: 'utf8' });
@@ -22,7 +22,7 @@ test('goal-deny-setup.sh installs a deny rule covering commit, push and add', ()
   }
 });
 
-test('goal-deny-setup.sh is idempotent: a second run changes nothing', () => {
+test('goal-deny-setup.sh is idempotent: a second run changes nothing', { skip: pendingInNode }, () => {
   const fixture = repo({ deny: false });
 
   spawnSync('bash', [DENY_SETUP, fixture.dir], { encoding: 'utf8' });
@@ -33,7 +33,7 @@ test('goal-deny-setup.sh is idempotent: a second run changes nothing', () => {
   assert.equal(second, first, 'a second run changed the settings file');
 });
 
-test('goal-deny-setup.sh preserves whatever permissions.deny already held', () => {
+test('goal-deny-setup.sh preserves whatever permissions.deny already held', { skip: pendingInNode }, () => {
   const fixture = repo({ deny: false });
   mkdirSync(join(fixture.dir, '.claude'), { recursive: true });
   writeFileSync(denyOf(fixture), JSON.stringify({ permissions: { deny: ['Read(**/.env)'] } }));
@@ -44,7 +44,7 @@ test('goal-deny-setup.sh preserves whatever permissions.deny already held', () =
   assert.ok(rules.includes('Read(**/.env)'), `an existing rule was dropped: ${rules}`);
 });
 
-test('goal-run.sh refuses to start when the deny rule is absent', () => {
+test('goal-run.sh refuses to start when the deny rule is absent', { skip: pendingInNode }, () => {
   const fixture = repo({ deny: false });
 
   const { code, output } = run(fixture, [fixture.plan, '1']);
@@ -54,7 +54,7 @@ test('goal-run.sh refuses to start when the deny rule is absent', () => {
   assert.ok(!existsSync(fixture.claudeLog), 'an implementer was spawned though the deny rule is absent');
 });
 
-test('goal-run.sh refuses when the deny rule covers only some of commit, push and add', () => {
+test('goal-run.sh refuses when the deny rule covers only some of commit, push and add', { skip: pendingInNode }, () => {
   const fixture = repo({ deny: 'partial' });
 
   const { code, output } = run(fixture, [fixture.plan, '1']);
@@ -64,7 +64,7 @@ test('goal-run.sh refuses when the deny rule covers only some of commit, push an
   assert.ok(!existsSync(fixture.claudeLog), 'an implementer was spawned with an incomplete deny rule');
 });
 
-test('goal-run.sh proceeds once goal-deny-setup.sh has installed the rule', () => {
+test('goal-run.sh proceeds once goal-deny-setup.sh has installed the rule', { skip: pendingInNode }, () => {
   const fixture = repo({ deny: false });
   spawnSync('bash', [DENY_SETUP, fixture.dir], { encoding: 'utf8' });
 

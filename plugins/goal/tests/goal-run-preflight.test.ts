@@ -3,13 +3,13 @@ import assert from 'node:assert/strict';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { PLAN, lockOf, repo, run } from './support/goal-run-harness.ts';
+import { PLAN, lockOf, pendingInNode, repo, run } from './support/goal-run-harness.ts';
 
 // R8 — the twelve preflight conditions run before the lock is taken, as refusals rather than
 // warnings. A run that would have burned a night on a red base, a stale branch or an absent
 // remote refuses in seconds instead.
 
-test('it refuses when the plan declares no Policy line', () => {
+test('it refuses when the plan declares no Policy line', { skip: pendingInNode }, () => {
   const fixture = repo({ planText: PLAN.replace('Policy: commit\n', '') });
 
   const { code, output } = run(fixture, [fixture.plan, '1']);
@@ -19,7 +19,7 @@ test('it refuses when the plan declares no Policy line', () => {
   assert.ok(!existsSync(fixture.claudeLog), 'an implementer was spawned on a refusal');
 });
 
-test('it refuses when the plan is Policy: manual', () => {
+test('it refuses when the plan is Policy: manual', { skip: pendingInNode }, () => {
   const fixture = repo({ planText: PLAN.replace('Policy: commit', 'Policy: manual') });
 
   const { code, output } = run(fixture, [fixture.plan, '1']);
@@ -29,7 +29,7 @@ test('it refuses when the plan is Policy: manual', () => {
   assert.ok(!existsSync(fixture.claudeLog), 'an implementer was spawned on a refusal');
 });
 
-test('it refuses when the plan declares no Remote line', () => {
+test('it refuses when the plan declares no Remote line', { skip: pendingInNode }, () => {
   const fixture = repo({ planText: PLAN.replace('Remote: origin\n', '') });
 
   const { code, output } = run(fixture, [fixture.plan, '1']);
@@ -39,7 +39,7 @@ test('it refuses when the plan declares no Remote line', () => {
   assert.ok(!existsSync(fixture.claudeLog), 'an implementer was spawned on a refusal');
 });
 
-test('it refuses when the checkout stands on the wrong branch', () => {
+test('it refuses when the checkout stands on the wrong branch', { skip: pendingInNode }, () => {
   const fixture = repo({ branch: null });
 
   const { code, output } = run(fixture, [fixture.plan, '1']);
@@ -49,7 +49,7 @@ test('it refuses when the checkout stands on the wrong branch', () => {
   assert.ok(!existsSync(fixture.claudeLog), 'an implementer was spawned on a refusal');
 });
 
-test('it refuses when the tree carries uncommitted work', () => {
+test('it refuses when the tree carries uncommitted work', { skip: pendingInNode }, () => {
   const fixture = repo();
   writeFileSync(join(fixture.dir, 'stray.txt'), 'oops\n');
 
@@ -60,7 +60,7 @@ test('it refuses when the tree carries uncommitted work', () => {
   assert.ok(!existsSync(fixture.claudeLog), 'an implementer was spawned on a refusal');
 });
 
-test("it refuses when the plan's own directory is visible to git", () => {
+test("it refuses when the plan's own directory is visible to git", { skip: pendingInNode }, () => {
   const fixture = repo({ trackPlan: true });
 
   const { code, output } = run(fixture, [fixture.plan, '1']);
@@ -70,7 +70,7 @@ test("it refuses when the plan's own directory is visible to git", () => {
   assert.ok(!existsSync(fixture.claudeLog), 'an implementer was spawned on a refusal');
 });
 
-test('it refuses a cleanup iteration (a Trigger line) sitting inside a feature plan', () => {
+test('it refuses a cleanup iteration (a Trigger line) sitting inside a feature plan', { skip: pendingInNode }, () => {
   const planText = PLAN.replace(
     '### Iteration 2 — the second one\n- [ ] Not done yet',
     '### Iteration 2 — the second one\n- [ ] Not done yet\n- **Trigger:** flag at 100% for 7 days',
@@ -84,7 +84,7 @@ test('it refuses a cleanup iteration (a Trigger line) sitting inside a feature p
   assert.ok(!existsSync(fixture.claudeLog), 'an implementer was spawned on a refusal');
 });
 
-test('a Trigger line is left alone in a *-cleanup-spec.md plan', () => {
+test('a Trigger line is left alone in a *-cleanup-spec.md plan', { skip: pendingInNode }, () => {
   const planText = PLAN.replace(
     '### Iteration 2 — the second one\n- [ ] Not done yet',
     '### Iteration 2 — the second one\n- [ ] Not done yet\n- **Trigger:** flag at 100% for 7 days',
@@ -99,7 +99,7 @@ test('a Trigger line is left alone in a *-cleanup-spec.md plan', () => {
   assert.ok(existsSync(fixture.claudeLog), 'the cleanup plan never reached an implementer');
 });
 
-test('it refuses when another run already holds the plan', () => {
+test('it refuses when another run already holds the plan', { skip: pendingInNode }, () => {
   const fixture = repo();
   mkdirSync(lockOf(fixture));
 
@@ -110,7 +110,7 @@ test('it refuses when another run already holds the plan', () => {
   assert.ok(!existsSync(fixture.claudeLog), 'an implementer was spawned on a refusal');
 });
 
-test('it refuses when the base is already red', () => {
+test('it refuses when the base is already red', { skip: pendingInNode }, () => {
   const planText = PLAN.replace(
     '### Iteration 1',
     '## Definition of Done\n\n```gate\ndod1=false\n```\n\n### Iteration 1',
@@ -125,7 +125,7 @@ test('it refuses when the base is already red', () => {
   assert.ok(!existsSync(fixture.claudeLog), 'an implementer was spawned on a refusal');
 });
 
-test('it refuses when a later gate in the sweep (gate2..N) fails on the untouched tree', () => {
+test('it refuses when a later gate in the sweep (gate2..N) fails on the untouched tree', { skip: pendingInNode }, () => {
   const planText = PLAN.replace('gate1=true\n', 'gate1=true\ngate2=false\n');
   const fixture = repo({ planText });
 
@@ -136,7 +136,7 @@ test('it refuses when a later gate in the sweep (gate2..N) fails on the untouche
   assert.ok(!existsSync(fixture.claudeLog), 'an implementer was spawned on a refusal');
 });
 
-test('the base sweep is skipped while the Bootstrap iteration is still unchecked', () => {
+test('the base sweep is skipped while the Bootstrap iteration is still unchecked', { skip: pendingInNode }, () => {
   const planText = PLAN.replace(
     'Policy: commit\n',
     'Policy: commit\nBootstrap: 1\n',
@@ -151,7 +151,7 @@ test('the base sweep is skipped while the Bootstrap iteration is still unchecked
   assert.ok(existsSync(fixture.claudeLog), 'the run never reached the implementer under an exempted sweep');
 });
 
-test('it refuses when the branch is behind the base it forked from', () => {
+test('it refuses when the branch is behind the base it forked from', { skip: pendingInNode }, () => {
   const fixture = repo({ staleOrigin: true });
 
   const { code, output } = run(fixture, [fixture.plan, '1']);

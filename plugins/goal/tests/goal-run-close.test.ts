@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { PLAN, repo, run } from './support/goal-run-harness.ts';
+import { PLAN, pendingInNode, repo, run } from './support/goal-run-harness.ts';
 
 const PLAN_PR = PLAN.replace('Policy: commit\n', 'Policy: commit+pr\n');
 
@@ -17,7 +17,7 @@ const land = (fixture: ReturnType<typeof repo>, env: Record<string, string> = {}
 // R18 — every declared iteration landed only proves each slice against its own commands; the
 // global Definition of Done is the barrier that replays against the whole plan, once, after all
 // of them.
-test('it replays the global Definition of Done once every requested iteration has landed', () => {
+test('it replays the global Definition of Done once every requested iteration has landed', { skip: pendingInNode }, () => {
   const fixture = repo();
 
   const { code, output } = land(fixture);
@@ -29,7 +29,7 @@ test('it replays the global Definition of Done once every requested iteration ha
 
 // R18 — a passing Definition of Done is what "shipped" means: the already-open pull request is
 // marked ready, mechanically, on the far side of the barrier.
-test('a passing Definition of Done marks the open pull request ready', () => {
+test('a passing Definition of Done marks the open pull request ready', { skip: pendingInNode }, () => {
   const fixture = repo({ planText: PLAN_PR, remote: true });
 
   const { code, output } = land(fixture, { FAKE_GH_PR_EXISTS: '1' });
@@ -41,7 +41,7 @@ test('a passing Definition of Done marks the open pull request ready', () => {
 
 // R18 — a refusing Definition of Done halts the run after every slice landed, and nothing is
 // marked ready on top of a plan that is not, as a whole, done.
-test('a failing Definition of Done halts the run and skips marking the pull request ready', () => {
+test('a failing Definition of Done halts the run and skips marking the pull request ready', { skip: pendingInNode }, () => {
   const fixture = repo({ planText: PLAN_PR, remote: true });
 
   const { code, output } = land(fixture, { FAKE_GH_PR_EXISTS: '1', FAKE_GATE_DOD_EXIT: '1' });
@@ -54,7 +54,7 @@ test('a failing Definition of Done halts the run and skips marking the pull requ
 
 // R18 — the advisory lens runs for the first time since it was written, and its own exit code
 // never reaches the run's: a false alarm cannot undo work the gate already verified and shipped.
-test('the advisory lens runs after a landed run and never blocks it', () => {
+test('the advisory lens runs after a landed run and never blocks it', { skip: pendingInNode }, () => {
   const fixture = repo();
 
   const { code, output } = land(fixture, { FAKE_CLAUDE_LENS_EXIT: '1' });
@@ -66,7 +66,7 @@ test('the advisory lens runs after a landed run and never blocks it', () => {
 
 // R18 — the audit records elapsed seconds per iteration, the one figure a shell script can
 // measure honestly about its own run.
-test('the auditor is invoked with elapsed seconds recorded for every landed iteration', () => {
+test('the auditor is invoked with elapsed seconds recorded for every landed iteration', { skip: pendingInNode }, () => {
   const fixture = repo();
 
   const { code, output } = land(fixture);
@@ -80,7 +80,7 @@ test('the auditor is invoked with elapsed seconds recorded for every landed iter
 
 // R18 — the audit is nobody's optional step: it still runs when the Definition of Done itself
 // is what halted the run, so a run that fails to ship is measured too.
-test('the auditor still runs when the Definition of Done refuses the run', () => {
+test('the auditor still runs when the Definition of Done refuses the run', { skip: pendingInNode }, () => {
   const fixture = repo({ planText: PLAN_PR, remote: true });
 
   const { code, output } = land(fixture, { FAKE_GATE_DOD_EXIT: '1' });
