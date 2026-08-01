@@ -202,6 +202,120 @@ Fetch and rebase before relaunching." "$REFUSED"
 
 preflight
 
+publishes=0
+[ "$policy" = "commit+pr" ] && publishes=1
+
+pr_base=$(sed -n 's/^PR base: *//p' "$plan" | head -1)
+case "$pr_base" in
+  *[!A-Za-z0-9._/-]*) pr_base="" ;;
+esac
+
+plan_title=$(sed -n 's/^# Spec: //p' "$plan" | head -1)
+[ -n "$plan_title" ] || plan_title="Exécution de $(basename "$plan")"
+
+# `gh` needs owner/name, git gives a URL: SSH, HTTPS, with or without the `.git` suffix.
+repo_of() {
+  git remote get-url "$1" 2>/dev/null | sed -E 's#\.git$##; s#^.*[:/]([^/]+/[^/]+)$#\1#'
+}
+
+pr_body() {
+  numbers=$(printf '%s' "$landed" | tr ' ' '|')
+  printf '## Landed\n\n'
+  grep -E "^### Iteration ($numbers) " "$plan" | sed -E 's/^### /- /'
+  printf '\nEach iteration was judged by the gate before its commit: declared scope, diff budget, removals, acceptance commands, and the bite check that requires the test to fail without the implementation. No commit exists that a gate did not verify.\n'
+}
+
+landed=""
+shipped=""
+pr_open=""
+pr_blocked=""
+
+# The pull request is opened as a draft at the **first** landed commit, and its body rewritten
+# after every one after it, so a run that halts at 3 of 15 still leaves something a human can
+# read instead of a local branch nobody can see. `pr_blocked` is sticky: once publication fails
+# for any reason it stays failed for the rest of this run rather than retried every iteration.
+mirror() {
+  [ -n "$pr_blocked" ] && return 0
+
+  if [ "$publishes" -ne 1 ]; then
+    pr_blocked="Policy is ${policy:-unreadable}, not commit+pr, so nothing is pushed and no pull request is opened. The commits are on the branch, where the developer asked them to stay."
+    return 0
+  fi
+
+  # Reshaping happens once, before anything is pushed, and never again: after the first push
+  # folding a commit would need a force.
+  if [ "$shipped" != "yes" ]; then
+    count=$(printf '%s\n' "$landed" | wc -w | tr -d ' ')
+    fixups=$(git log --format=%s -"$count" 2>/dev/null | grep -cE '^(fixup|squash)!' || true)
+
+    if [ "$fixups" != "0" ]; then
+      pr_blocked="The run carries a fixup or squash commit, so the history is not the sequence a reviewer should read. Nothing was pushed: fold them yourself, then push."
+      say "RUN $pr_blocked"
+      return 0
+    fi
+  fi
+
+  scan_out=$($GATE scan 2>&1)
+
+  if [ $? -ne 0 ]; then
+    pr_blocked="The secret scanner refused this tree, so nothing was pushed:
+$scan_out"
+    say "RUN $pr_blocked"
+    return 0
+  fi
+
+  push_out=$(git push -u "$remote" HEAD 2>&1)
+
+  if [ $? -ne 0 ]; then
+    pr_blocked="The push failed:
+$push_out"
+    say "RUN $pr_blocked"
+    return 0
+  fi
+
+  shipped="yes"
+  say "RUN pushed to $remote"
+
+  case "$plan_title" in
+    *"'"* | *'\'*)
+      pr_blocked="The plan's title cannot be safely quoted for a pull request — it contains a quote or a backslash: $plan_title. Rename its \"# Spec:\" line, then relaunch; the branch is already pushed."
+      say "RUN $pr_blocked"
+      return 0
+      ;;
+  esac
+
+  repo=$(repo_of "$remote")
+  branch=$(git branch --show-current)
+  body=$(pr_body)
+
+  # Asked, not assumed, unless already confirmed this run: a run resumed by hand on a single
+  # iteration has no memory of what an earlier invocation already opened, so whether a pull
+  # request exists is read from `gh` itself the first time this process needs to know.
+  if [ "$pr_open" != "yes" ]; then
+    number=$(gh pr view "$branch" --repo "$repo" --json number 2>/dev/null | sed -n 's/.*"number":\([0-9]*\).*/\1/p')
+    [ -n "$number" ] && pr_open="yes"
+  fi
+
+  if [ "$pr_open" = "yes" ]; then
+    gh_out=$(gh pr edit "$branch" --repo "$repo" --body "$body" 2>&1)
+    gh_exit=$?
+    [ "$gh_exit" -eq 0 ] && say "RUN rewrote the pull request body"
+  elif [ -n "$pr_base" ]; then
+    gh_out=$(gh pr create --repo "$repo" --draft --base "$pr_base" --title "$plan_title" --body "$body" 2>&1)
+    gh_exit=$?
+    [ "$gh_exit" -eq 0 ] && { pr_open="yes"; say "RUN opened a draft pull request against $pr_base"; }
+  else
+    gh_out=$(gh pr create --repo "$repo" --draft --title "$plan_title" --body "$body" 2>&1)
+    gh_exit=$?
+    [ "$gh_exit" -eq 0 ] && { pr_open="yes"; say "RUN opened a draft pull request"; }
+  fi
+
+  if [ "$gh_exit" -ne 0 ]; then
+    pr_blocked="$gh_out"
+    say "RUN $pr_blocked"
+  fi
+}
+
 if [ -n "$iteration" ]; then
   iterations="$iteration"
 else
@@ -356,6 +470,8 @@ The gate does all of that, after it has verified."
   if [ "$gate_exit" -eq 0 ]; then
     release
     say "RUN iteration $iteration landed, gate-verified"
+    landed="$landed $iteration"
+    mirror
     return "$LANDED"
   fi
 
