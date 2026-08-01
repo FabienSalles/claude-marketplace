@@ -1,9 +1,15 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { PLAN, lockOf, repo, run } from './support/goal-run-harness.ts';
+
+// The sweep dedup and the pass narration below are Node-only: goal-run.sh is not among this
+// iteration's files to touch, so `run()` under its default (bash) selection would replay every
+// declaration and stay silent, same as before. Skipped rather than failed when the suite falls
+// back to bash, exactly as gate1 forces node to prove it in isolation.
+const NODE_ONLY = process.env.GOAL_RUN_IMPL !== 'node' ? 'this behaviour ported to goal-run.ts only, not goal-run.sh yet' : false;
 
 // R8 — the twelve preflight conditions run before the lock is taken, as refusals rather than
 // warnings, and word for word the same message goal-run.sh would give. A run that would have
@@ -171,4 +177,81 @@ test('it refuses when the branch is behind the base it forked from', () => {
   assert.notEqual(code, 0);
   assert.match(output, /STOP the branch is behind origin\/main:\n.*ahead commit\n\nFetch and rebase before relaunching\./s, output);
   assert.ok(!existsSync(fixture.claudeLog), 'an implementer was spawned on a refusal');
+});
+
+// R2 — the base sweep runs each distinct declared command once, however many times the plan
+// repeats it across iterations, instead of replaying every occurrence.
+
+test('a command declared identically by two iterations runs once, not once per declaration', { skip: NODE_ONLY }, () => {
+  const planText = PLAN.replace('gate1=true\n', 'gate1=true\ngate2=printf x >> sweep-count.txt\n').replace(
+    '- **Goal:** write b.txt\n',
+    [
+      '- **Goal:** write b.txt\n',
+      '',
+      '```gate',
+      'test_files=t2.txt',
+      'impl_files=b.txt',
+      'max_diff=50',
+      'commit_msg=feat: b',
+      'gate1=true',
+      'gate2=printf x >> sweep-count.txt',
+      '```\n',
+    ].join('\n'),
+  );
+  const fixture = repo({ planText });
+
+  const { code, output } = run(fixture, [fixture.plan, '1'], { FAKE_CLAUDE_WRITES: join(fixture.dir, 'a.txt') });
+
+  assert.equal(code, 0, output);
+  assert.equal(
+    readFileSync(join(fixture.dir, 'sweep-count.txt'), 'utf8'),
+    'x',
+    'the command declared by both iterations ran more than once',
+  );
+});
+
+// R3 — the sweep announces how many distinct commands it ran against how many the plan declared,
+// and every one of the ten preflight checks narrates on stdout once it passes, so the run reads
+// as a sequence rather than silence.
+
+test('the sweep announces the reduction from declared commands to the distinct ones it ran', { skip: NODE_ONLY }, () => {
+  const planText = PLAN.replace('gate1=true\n', 'gate1=true\ngate2=printf x >> sweep-count.txt\n').replace(
+    '- **Goal:** write b.txt\n',
+    [
+      '- **Goal:** write b.txt\n',
+      '',
+      '```gate',
+      'test_files=t2.txt',
+      'impl_files=b.txt',
+      'max_diff=50',
+      'commit_msg=feat: b',
+      'gate1=true',
+      'gate2=printf x >> sweep-count.txt',
+      '```\n',
+    ].join('\n'),
+  );
+  const fixture = repo({ planText });
+
+  const { code, output } = run(fixture, [fixture.plan, '1'], { FAKE_CLAUDE_WRITES: join(fixture.dir, 'a.txt') });
+
+  assert.equal(code, 0, output);
+  assert.match(output, /RUN base sweep: 1 distinct command run, 2 declared/, output);
+});
+
+test('every preflight check narrates on stdout once it passes', { skip: NODE_ONLY }, () => {
+  const fixture = repo();
+
+  const { code, output } = run(fixture, [fixture.plan, '1'], { FAKE_CLAUDE_WRITES: join(fixture.dir, 'a.txt') });
+
+  assert.equal(code, 0, output);
+  assert.match(output, /RUN preflight: Policy is commit/, output);
+  assert.match(output, /RUN preflight: Remote is origin/, output);
+  assert.match(output, /RUN preflight: branch is feature\/demo/, output);
+  assert.match(output, /RUN preflight: the tree is clean/, output);
+  assert.match(output, /RUN preflight: plan directory .*\.claude\/plans is git-ignored/, output);
+  assert.match(output, /RUN preflight: no cleanup iteration inside this feature plan/, output);
+  assert.match(output, /RUN preflight: no other run holds the lock/, output);
+  assert.match(output, /RUN base sweep: \d+ distinct commands? run, \d+ declared/, output);
+  assert.match(output, /RUN preflight: branch is caught up with/, output);
+  assert.match(output, /RUN preflight: the implementer is denied git commit, push and add/, output);
 });

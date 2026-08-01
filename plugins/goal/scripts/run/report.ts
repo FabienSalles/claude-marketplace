@@ -5,8 +5,10 @@ import { appendFileSync } from 'node:fs';
 
 export type Reporter = {
   say: (message: string) => void;
+  record: (text: string) => void;
   stop: (message: string, code: number) => never;
   setLog: (path: string) => void;
+  session?: (id: string) => void;
 };
 
 export const createReporter = (): Reporter => {
@@ -20,6 +22,15 @@ export const createReporter = (): Reporter => {
     }
   };
 
+  // An advisory agent's own words, kept out of stdout so the account there stays one state per
+  // line, and out of nowhere at all — goal-run.sh appended them (`:568`) and the port dropped it,
+  // so a lens finding existed only for as long as the process that asked for it.
+  const record = (text: string): void => {
+    if (log && text.trim() !== '') {
+      appendFileSync(log, `${text}\n`);
+    }
+  };
+
   const stop = (message: string, code: number): never => {
     say(`STOP ${message}`);
     process.exit(code);
@@ -29,5 +40,14 @@ export const createReporter = (): Reporter => {
     log = path;
   };
 
-  return { say, stop, setLog };
+  // Recorded beside the run's own log (`<plan>.run.log` -> `<plan>.run.session`), so a
+  // transcript already written to `~/.claude/projects/<encoded-path>/<session-id>.jsonl` can be
+  // found later without correlating timestamps.
+  const session = (id: string): void => {
+    if (log) {
+      appendFileSync(log.replace(/\.log$/, '.session'), `${id}\n`);
+    }
+  };
+
+  return { say, record, stop, setLog, session };
 };

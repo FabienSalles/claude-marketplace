@@ -10,46 +10,11 @@ import { basename, dirname, resolve } from 'node:path';
 
 import { header, iterationNumbers } from '../gate/plan.ts';
 import type { Reporter } from './report.ts';
+import { REFUSED, sweep } from './sweep.ts';
 
-export const REFUSED = 2;
+export { REFUSED } from './sweep.ts';
 
 const git = (...args: string[]) => spawnSync('git', args, { encoding: 'utf8' });
-
-const sweepCommands = (source: string): string[] => {
-  const commands: string[] = [];
-  let inFence = false;
-
-  for (const line of source.split('\n')) {
-    if (line.trim() === '```gate') {
-      inFence = true;
-      continue;
-    }
-
-    if (line.trim() === '```') {
-      inFence = false;
-      continue;
-    }
-
-    if (!inFence) {
-      continue;
-    }
-
-    const dod = /^dod[0-9]+=(.*)$/.exec(line);
-
-    if (dod) {
-      commands.push(dod[1]!);
-      continue;
-    }
-
-    const gate = /^gate([0-9]+)=(.*)$/.exec(line);
-
-    if (gate && Number(gate[1]) >= 2) {
-      commands.push(gate[2]!);
-    }
-  }
-
-  return commands;
-};
 
 export type PreflightResult = {
   policy: string;
@@ -119,7 +84,10 @@ export const preflight = (plan: string, source: string, reporter: Reporter, gate
   }
 
   // 5. What the run writes must be out of git's sight, or the spec, the ticked box and this
-  // run's own log become an undeclared modification the gate reads as a scope leak.
+  // run's own log become an undeclared modification the gate reads as a scope leak. Nothing
+  // narrates before this point: the log this reporter writes to lives inside the plan's
+  // directory, and a line written to it ahead of this check would itself dirty the tree check 4
+  // just ran, on the very tree this check exists to catch as untracked.
   const planDir = dirname(plan);
 
   if (git('check-ignore', '-q', planDir).status !== 0) {
@@ -128,6 +96,12 @@ export const preflight = (plan: string, source: string, reporter: Reporter, gate
       REFUSED,
     );
   }
+
+  reporter.say(`RUN preflight: Policy is ${policy}`);
+  reporter.say(`RUN preflight: Remote is ${remote}`);
+  reporter.say(`RUN preflight: branch is ${branch}`);
+  reporter.say('RUN preflight: the tree is clean');
+  reporter.say(`RUN preflight: plan directory ${planDir} is git-ignored`);
 
   // 6. No cleanup iteration hiding inside a feature plan: its Trigger asserts something about
   // production this run cannot observe, and running it here deletes the fallback in the same PR
@@ -139,6 +113,10 @@ export const preflight = (plan: string, source: string, reporter: Reporter, gate
     );
   }
 
+  reporter.say(
+    cleanup ? 'RUN preflight: cleanup plan, its Trigger line is left alone' : 'RUN preflight: no cleanup iteration inside this feature plan',
+  );
+
   // 7. No run already holds the plan.
   if (existsSync(`${plan}.run.lock`)) {
     reporter.stop(
@@ -147,25 +125,19 @@ export const preflight = (plan: string, source: string, reporter: Reporter, gate
     );
   }
 
+  reporter.say('RUN preflight: no other run holds the lock');
+
   // 8. The base is already green — the highest-return check in the whole preflight. Every
-  // command the plan will hold every iteration to, run once now, against the untouched tree.
-  // gate1 is excluded: it is the bitten criterion, supposed to fail without the implementation.
+  // distinct command the plan will hold every iteration to, run once now, against the untouched
+  // tree. gate1 is excluded: it is the bitten criterion, supposed to fail without the
+  // implementation.
   const bootstrap = header(source, 'Bootstrap:');
   const skipSweep = bootstrap !== undefined && bootstrap !== '' && !iterationNumbers(source, true).includes(bootstrap);
 
   if (skipSweep) {
     reporter.say(`RUN base sweep skipped: Bootstrap iteration ${bootstrap} is not built yet`);
   } else {
-    for (const cmd of sweepCommands(source)) {
-      const result = spawnSync(cmd, { shell: true, encoding: 'utf8' });
-
-      if (result.status !== 0) {
-        reporter.stop(
-          `the base is not green: \`${cmd}\` exited ${result.status} before this run wrote a line:\n${result.stdout}${result.stderr}`,
-          REFUSED,
-        );
-      }
-    }
+    sweep(source, reporter);
   }
 
   // 9. The branch must be caught up with what it forked from — implementing against a base the
@@ -179,6 +151,8 @@ export const preflight = (plan: string, source: string, reporter: Reporter, gate
     const missing = git('log', '--oneline', `HEAD..${originBase}`).stdout.replace(/\n$/, '');
     reporter.stop(`the branch is behind ${originBase}:\n${missing}\n\nFetch and rebase before relaunching.`, REFUSED);
   }
+
+  reporter.say(`RUN preflight: branch is caught up with ${originBase}`);
 
   // 10. Deny — the implementer runs as an ordinary Claude Code session; without a settings rule
   // denying it `git commit`, `git push` and `git add`, "only the gate commits" is a sentence in
@@ -195,6 +169,8 @@ export const preflight = (plan: string, source: string, reporter: Reporter, gate
       REFUSED,
     );
   }
+
+  reporter.say('RUN preflight: the implementer is denied git commit, push and add');
 
   return { policy, remote, workId, cleanup };
 };

@@ -4,8 +4,34 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { FAKE_REPO, PLAN, git, repo, run } from './support/goal-run-harness.ts';
+import { createPublisher } from '../scripts/run/publish.ts';
+import type { Reporter } from '../scripts/run/report.ts';
 
 const PLAN_PR = PLAN.replace('Policy: commit\n', 'Policy: commit+pr\n');
+
+const silentReporter: Reporter = {
+  say: () => {},
+  stop: () => {
+    throw new Error('unexpected stop');
+  },
+  record: () => {},
+  setLog: () => {},
+};
+
+// R1 — createPublisher exposes the state it already keeps, read directly off the object it
+// returns rather than sniffed by the entrypoint from the messages it happens to emit: a new
+// informational line added to publish() cannot silently change what the caller reads as blocked.
+test('createPublisher exposes its own publish state directly on the object it returns', () => {
+  const publisher = createPublisher(PLAN, PLAN, 'commit', 'origin', silentReporter, 'true');
+
+  assert.equal(publisher.state.publishes, false);
+  assert.equal(publisher.state.prOpen, false);
+  assert.equal(publisher.state.blocked, false);
+
+  publisher.publish('1');
+
+  assert.equal(publisher.state.blocked, false, 'Policy: commit blocks nothing to publish, it never counts as a blocked publication');
+});
 
 const publish = (fixture: ReturnType<typeof repo>, args: string[], env: Record<string, string> = {}) =>
   run(fixture, args, { FAKE_GATE_COMMITS: '1', ...env });

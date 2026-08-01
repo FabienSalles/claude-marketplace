@@ -110,6 +110,17 @@ fi
 [ -n "$FAKE_CLAUDE_WRITES" ] && printf 'written %s\\n' "$$-$RANDOM" >> "$FAKE_CLAUDE_WRITES"
 [ -n "$FAKE_CLAUDE_COMMITS" ] && git add -A >/dev/null 2>&1 && git commit -qm "implementer commit"
 [ -n "$FAKE_CLAUDE_SLEEPS" ] && sleep "$FAKE_CLAUDE_SLEEPS"
+# Only when the caller passed --output-format stream-json does the fixture answer in stream-json:
+# the bash runner never asks for it and keeps grepping this same fixture's plain prose for a
+# quota window, so emitting JSON unconditionally would break the frozen reference's own tests.
+case "$*" in
+  *"stream-json"*)
+    sid="\${FAKE_CLAUDE_SESSION_ID:-fake-session-id}"
+    [ -n "$FAKE_CLAUDE_TOOL_NAME" ] &&
+      printf '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"%s","input":{"file_path":"%s"}}]}}\\n' "$FAKE_CLAUDE_TOOL_NAME" "$FAKE_CLAUDE_TOOL_ARG"
+    printf '{"type":"result","session_id":"%s"}\\n' "$sid"
+    ;;
+esac
 # The closing sequence hands the same binary a lens call and an audit call, each identified by
 # the agent it is pinned to — an exit code of its own is what proves neither can block the run.
 case "$*" in
@@ -256,5 +267,7 @@ export const run = (fixture: Fixture, args: string[], env: Record<string, string
 };
 
 export const lockOf = (fixture: Fixture) => `${fixture.plan}.run.lock`;
+
+export const sessionOf = (fixture: Fixture) => `${fixture.plan}.run.session`;
 
 export const denyOf = (fixture: Fixture) => join(fixture.dir, '.claude', 'settings.local.json');
