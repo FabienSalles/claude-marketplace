@@ -39,6 +39,8 @@ Before generating subject lines, collect these inputs:
 - Android: ~33-43 characters
 - Gmail app: ~40 characters
 
+*Last reviewed 2026-07 — verify before quoting.*
+
 ## Subject Line Formulas
 
 ### 1. Curiosity Gap
@@ -91,7 +93,7 @@ Use subscriber data to make the subject feel individually crafted.
 | "[Name], you left items in your cart" | Name + behavior |
 
 **Rules:**
-- Personalization boosts open rates by 10-20% on average.
+- Personalization boosts open rates by 10-20% on average (*last reviewed 2026-07 — verify before quoting*).
 - Do not overuse first names. If every email starts with "[Name]," it loses effect.
 - Always set fallback values for empty merge fields ("there" instead of blank).
 - Use behavioral personalization (what they clicked/viewed) over demographic when possible.
@@ -255,7 +257,6 @@ preview text, and A/B test recommendations regardless of whether Resend is confi
 ### Check for Resend API Key
 
 ```bash
-source ~/.claude/.env.global 2>/dev/null
 if [ -z "$RESEND_API_KEY" ]; then
   echo "RESEND_API_KEY is not set. A/B test emails will not be sent."
 else
@@ -278,7 +279,6 @@ different segments of your list. Split your recipient list into equal groups.
 4. **Report** — show the returned `id` values so the user can track opens/clicks in Resend.
 
 ```bash
-source ~/.claude/.env.global 2>/dev/null
 curl -X POST https://api.resend.com/emails/batch \
   -H "Authorization: Bearer ${RESEND_API_KEY}" \
   -H "Content-Type: application/json" \

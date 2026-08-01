@@ -21,8 +21,11 @@ Or `./setup.sh --pack tooling` (dev mode).
 | [`claude-plugin-conventions`](skills/claude-plugin-conventions/SKILL.md) | Plugin directory structure, `plugin.json`/`marketplace.json` schemas, `hooks.json` format, `${CLAUDE_PLUGIN_ROOT}` portability, validation commands |
 | [`npx-skills-conventions`](skills/npx-skills-conventions/SKILL.md) | `SKILL.md` frontmatter schema, progressive disclosure (metadata/body/references), discovery via `npx skills add`/`skills.sh`/Claude Code, validation checklist |
 
-## Hooks
+## Scripts
 
-| Hook | Purpose |
+This plugin registers no hook: it ships no `hooks.json`, and installing it wires nothing. The
+script below is provided to be wired by hand, in your own settings, if you want it.
+
+| Script | Purpose |
 |---|---|
-| [`fix-drizzle-journal-timestamp.sh`](hooks/fix-drizzle-journal-timestamp.sh) | Keeps the Drizzle migration journal timestamp in sync after schema changes |
+| [`fix-drizzle-journal-timestamp.sh`](hooks/fix-drizzle-journal-timestamp.sh) | `PostToolUse` on `Bash`: after `drizzle-kit generate`, rewrites the last journal entry's `when` so it stays strictly greater than every previous one |

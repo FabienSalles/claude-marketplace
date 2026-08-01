@@ -142,6 +142,8 @@ Assign recurring themes to days of the week for consistency and reduced planning
 - Best days: Tuesday, Thursday, Friday
 - Post when your Analytics tab shows your audience is most active
 
+*Last reviewed 2026-07 — verify before quoting.*
+
 ## Monthly Planning Template
 
 ### Month Overview

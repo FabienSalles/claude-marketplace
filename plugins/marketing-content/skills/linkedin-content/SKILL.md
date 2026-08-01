@@ -25,6 +25,8 @@ Posts are ranked by:
 - Engagement bait ("Like if you agree")
 - Tagging people who don't engage back
 
+*Last reviewed 2026-07 — verify before quoting.*
+
 ## Post Formats Ranked by Engagement
 
 | Format | Avg. Engagement | Best For |
