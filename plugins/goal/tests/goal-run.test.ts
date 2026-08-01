@@ -4,12 +4,12 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { HASH, RUN, lockOf, pendingInNode, repo, run } from './support/goal-run-harness.ts';
+import { HASH, RUN, lockOf, repo, run } from './support/goal-run-harness.ts';
 
 // R4 — the plan lives in a gitignored directory outside the run's tree, and handing its path to
 // the implementer is what made a real run write its whole iteration into another checkout. The
 // section travels as text; the path does not travel at all.
-test('it hands the implementer the iteration section, and never the plan path', { skip: pendingInNode }, () => {
+test('it hands the implementer the iteration section, and never the plan path', () => {
   const fixture = repo();
 
   const { code, output } = run(fixture, [fixture.plan, '1'], {
@@ -24,7 +24,7 @@ test('it hands the implementer the iteration section, and never the plan path', 
 
 // R4 — the implementer is pinned to its own agent, in a mode that never stops to ask: nobody is
 // watching, and a permission prompt nobody answers is a run that looks alive and advances nothing.
-test('it pins the implementer to its own agent, in a mode that never prompts', { skip: pendingInNode }, () => {
+test('it pins the implementer to its own agent, in a mode that never prompts', () => {
   const fixture = repo();
 
   run(fixture, [fixture.plan, '1'], { FAKE_CLAUDE_WRITES: join(fixture.dir, 'a.txt') });
@@ -38,7 +38,7 @@ test('it pins the implementer to its own agent, in a mode that never prompts', {
 
 // R2 — the hash is published by `check` and carried to `commit`. Recomputing it there would bless
 // a plan that moved between the two calls, which is the one thing the hash exists to catch.
-test('it carries the hash check published into the commit call', { skip: pendingInNode }, () => {
+test('it carries the hash check published into the commit call', () => {
   const fixture = repo();
 
   const { code, output } = run(fixture, [fixture.plan, '1'], {
@@ -51,7 +51,7 @@ test('it carries the hash check published into the commit call', { skip: pending
 
 // R6 — an implementer that wrote nothing is not the same event as work the gate rejected, and
 // reporting it as a refusal tells someone asleep their work was judged when it never existed.
-test('an implementer that wrote nothing is reported as such, and no verdict is asked for', { skip: pendingInNode }, () => {
+test('an implementer that wrote nothing is reported as such, and no verdict is asked for', () => {
   const fixture = repo();
 
   const { code, output } = run(fixture, [fixture.plan, '1']);
@@ -64,7 +64,7 @@ test('an implementer that wrote nothing is reported as such, and no verdict is a
 // R6 / hole H2 — an implementer that commits also leaves a clean tree, so a check reading only
 // `git status` calls it "wrote nothing" about work that is right there in HEAD. Comparing HEAD
 // before and after is what tells the two apart.
-test('an implementer that committed is not mistaken for one that wrote nothing', { skip: pendingInNode }, () => {
+test('an implementer that committed is not mistaken for one that wrote nothing', () => {
   const fixture = repo();
 
   const { code, output } = run(fixture, [fixture.plan, '1'], {
@@ -79,7 +79,7 @@ test('an implementer that committed is not mistaken for one that wrote nothing',
 
 // R7 — the gate exits 0 for a pass and 1 for a halt. Anything else means it never really ran, and
 // calling that a refusal reports a verdict that was never reached.
-test('a gate that could not run is not reported as a refusal', { skip: pendingInNode }, () => {
+test('a gate that could not run is not reported as a refusal', () => {
   const fixture = repo();
 
   const { code, output } = run(fixture, [fixture.plan, '1'], {
@@ -92,7 +92,7 @@ test('a gate that could not run is not reported as a refusal', { skip: pendingIn
   assert.ok(!/refus/i.test(output), `a non-verdict was reported as a refusal:\n${output}`);
 });
 
-test('a gate that refuses the work halts the run and says so', { skip: pendingInNode }, () => {
+test('a gate that refuses the work halts the run and says so', () => {
   const fixture = repo();
 
   const { code, output } = run(fixture, [fixture.plan, '1'], {
@@ -106,7 +106,7 @@ test('a gate that refuses the work halts the run and says so', { skip: pendingIn
 
 // R1 — the lock is the gate's, and a run that keeps it after dying blocks every later launch on
 // a plan nobody is working on. Documented recovery is prose; a trap is a mechanism.
-test('it releases the lock on the way out, whatever the outcome', { skip: pendingInNode }, () => {
+test('it releases the lock on the way out, whatever the outcome', () => {
   for (const [claim, env] of [
     ['the iteration lands', { FAKE_CLAUDE_WRITES: 'a.txt' }],
     ['the gate refuses', { FAKE_CLAUDE_WRITES: 'a.txt', FAKE_GATE_COMMIT_EXIT: '1' }],
@@ -122,7 +122,7 @@ test('it releases the lock on the way out, whatever the outcome', { skip: pendin
 
 // A crash is not an exit path anyone writes, which is exactly why it is the one that leaked the
 // lock on a real run. SIGTERM is what Orca sends when the developer stops a run.
-test('it releases the lock when the run is killed mid-implementation', { skip: pendingInNode }, () => {
+test('it releases the lock when the run is killed mid-implementation', () => {
   const fixture = repo();
 
   spawnSync(
@@ -145,7 +145,7 @@ test('it releases the lock when the run is killed mid-implementation', { skip: p
 
 // R17 — a run that says nothing is indistinguishable from one that jammed, which is the whole
 // reason the developer ends up watching it. Every line declares which of the three it is.
-test('every log line says whether the run is advancing or stopped', { skip: pendingInNode }, () => {
+test('every log line says whether the run is advancing or stopped', () => {
   const fixture = repo();
 
   const { output } = run(fixture, [fixture.plan, '1'], {
@@ -163,7 +163,7 @@ test('every log line says whether the run is advancing or stopped', { skip: pend
   assert.match(output, /^STOP /m, 'the run never said it was over');
 });
 
-test('it writes the same account to a log file beside the plan', { skip: pendingInNode }, () => {
+test('it writes the same account to a log file beside the plan', () => {
   const fixture = repo();
 
   run(fixture, [fixture.plan, '1'], { FAKE_CLAUDE_WRITES: join(fixture.dir, 'a.txt') });
@@ -177,7 +177,7 @@ for (const [claim, args] of [
   ['no plan is named', [] as string[]],
   ['the iteration is not a number', ['.claude/plans/demo-spec.md', 'one']],
 ] as const) {
-  test(`it refuses when ${claim}`, { skip: pendingInNode }, () => {
+  test(`it refuses when ${claim}`, () => {
     const fixture = repo();
 
     const { code } = run(fixture, [...args]);
@@ -190,7 +190,7 @@ for (const [claim, args] of [
 // R3 — with no iteration named, the plan's unchecked boxes are surveyed and run in order: the
 // same reading the gate uses, an `### Iteration N` heading then the first checkbox in its
 // section.
-test('it surveys the unchecked iterations and runs them in order when no iteration is named', { skip: pendingInNode }, () => {
+test('it surveys the unchecked iterations and runs them in order when no iteration is named', () => {
   const fixture = repo();
 
   const { code, output } = run(fixture, [fixture.plan], {
@@ -209,7 +209,7 @@ test('it surveys the unchecked iterations and runs them in order when no iterati
 
 // R5 — every unchecked iteration is proven runnable before any of them is implemented, so a
 // plan that would fail on its second iteration never spends the first.
-test('it proves every unchecked iteration runnable before implementing any', { skip: pendingInNode }, () => {
+test('it proves every unchecked iteration runnable before implementing any', () => {
   const fixture = repo();
 
   const { code, output } = run(fixture, [fixture.plan], {
@@ -224,7 +224,7 @@ test('it proves every unchecked iteration runnable before implementing any', { s
 });
 
 // R3 — the survey stops dead at the first gate refusal, and never attempts what follows it.
-test('it stops at the first iteration the gate refuses, and never attempts the next', { skip: pendingInNode }, () => {
+test('it stops at the first iteration the gate refuses, and never attempts the next', () => {
   const fixture = repo();
 
   const { code, output } = run(fixture, [fixture.plan], {
@@ -241,7 +241,7 @@ test('it stops at the first iteration the gate refuses, and never attempts the n
 
 // R3 — the single-iteration form still runs exactly the one named, which is what makes a
 // halted plan resumable by hand.
-test('with an iteration named, only that one runs', { skip: pendingInNode }, () => {
+test('with an iteration named, only that one runs', () => {
   const fixture = repo();
 
   const { code, output } = run(fixture, [fixture.plan, '2'], {
@@ -256,7 +256,7 @@ test('with an iteration named, only that one runs', { skip: pendingInNode }, () 
 
 // The plan is read before the lock is taken, so a run that cannot be started leaves nothing to
 // clean up — and the refusal names the tree rather than a lock the developer now has to free.
-test('a plan the gate refuses to check never reaches an implementer', { skip: pendingInNode }, () => {
+test('a plan the gate refuses to check never reaches an implementer', () => {
   const fixture = repo();
 
   const { code, output } = run(fixture, [fixture.plan, '1'], { FAKE_GATE_CHECK_EXIT: '1' });
