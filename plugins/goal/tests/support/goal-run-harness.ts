@@ -10,6 +10,10 @@ export const git = (cwd: string, ...args: string[]) => spawnSync('git', args, { 
 
 export const HASH = 'a'.repeat(64);
 
+// goal-run.sh's own exit codes (see its header comment): a paused run is a clean boundary a
+// relaunch resumes, distinct from a gate halt.
+export const PAUSED = 3;
+
 // Owner/repo the fake remote resolves to: its bare repo lives two path segments deep
 // (`<root>/acme/demo.git`), which is exactly what `repoOf` in goal-run.sh strips a remote URL
 // down to. Fixed here so a test can assert against it without re-deriving the sed.
@@ -84,6 +88,17 @@ export const repo = (options: FixtureOptions = {}): Fixture => {
     join(bin, 'claude'),
     `#!/bin/sh
 printf '%s\\n' "$@" >> ${claudeLog}
+# Fails quota-shaped for the first FAKE_CLAUDE_QUOTA_UNTIL calls, tracked in a counter file
+# because each call is a fresh process. Lets a test prove a bounded number of relaunches
+# without waiting on a real 5-hour window.
+if [ -n "$FAKE_CLAUDE_QUOTA_UNTIL" ]; then
+  n=$(cat "$FAKE_CLAUDE_QUOTA_COUNTER" 2>/dev/null || echo 0)
+  if [ "$n" -lt "$FAKE_CLAUDE_QUOTA_UNTIL" ]; then
+    echo $((n + 1)) > "$FAKE_CLAUDE_QUOTA_COUNTER"
+    printf '%s\\n' "\${FAKE_CLAUDE_QUOTA_MESSAGE:-Claude AI usage limit reached|1735689600}"
+    exit 1
+  fi
+fi
 # Appended, not overwritten: a second call against the same target has to leave a real diff
 # behind it, or a resumed iteration reads as "the implementer wrote nothing".
 [ -n "$FAKE_CLAUDE_WRITES" ] && printf 'written %s\\n' "$$-$RANDOM" >> "$FAKE_CLAUDE_WRITES"

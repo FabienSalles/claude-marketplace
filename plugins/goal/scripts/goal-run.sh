@@ -443,18 +443,38 @@ The gate does all of that, after it has verified."
 
   head_before=$(git rev-parse HEAD 2>/dev/null || printf 'none')
 
-  say "RUN handing iteration $iteration to the implementer"
+  # A quota window is not a failure, so it is not diagnosed like one: it is detected from the
+  # shape of a failed call, slept through, and retried against the same iteration — bounded, so a
+  # window that never reopens still ends in a pause rather than a run spinning until the machine
+  # is switched off.
+  quota_sleep="${GOAL_RUN_QUOTA_SLEEP:-1800}"
+  quota_max="${GOAL_RUN_QUOTA_MAX_RETRIES:-3}"
+  attempt=1
 
-  implemented=$(claude -p --agent goal:goal-run-implementer --permission-mode auto "$brief" 2>&1)
-  implementer_exit=$?
+  while :; do
+    say "RUN handing iteration $iteration to the implementer"
 
-  if [ -n "$implemented" ]; then
-    printf '%s\n' "$implemented" >> "$log"
-  fi
+    implemented=$(claude -p --agent goal:goal-run-implementer --permission-mode auto "$brief" 2>&1)
+    implementer_exit=$?
 
-  if [ "$implementer_exit" -ne 0 ]; then
-    stop "the implementer exited $implementer_exit. The tree holds whatever it wrote and no gate has judged it: review it before relaunching." "$PAUSED"
-  fi
+    if [ -n "$implemented" ]; then
+      printf '%s\n' "$implemented" >> "$log"
+    fi
+
+    [ "$implementer_exit" -eq 0 ] && break
+
+    if ! printf '%s' "$implemented" | grep -qiE 'usage limit|rate.limit|rate_limit_error'; then
+      stop "the implementer exited $implementer_exit. The tree holds whatever it wrote and no gate has judged it: review it before relaunching." "$PAUSED"
+    fi
+
+    if [ "$attempt" -ge "$quota_max" ]; then
+      stop "the quota still looks exhausted after $attempt attempt(s) on iteration $iteration. Pausing rather than spinning through a window that is not reopening: relaunch resumes here." "$PAUSED"
+    fi
+
+    attempt=$((attempt + 1))
+    say "RUN the implementer looks quota-exhausted, sleeping ${quota_sleep}s before relaunching iteration $iteration (attempt $attempt of $quota_max)"
+    sleep "$quota_sleep"
+  done
 
   head_after=$(git rev-parse HEAD 2>/dev/null || printf 'none')
   touched=$(git status --porcelain)
