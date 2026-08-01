@@ -179,3 +179,160 @@ asserted. A port held by this suite is far safer than a bare rewrite, not free o
 **What is not settled: when.** The port is its own plan. Running it is the first genuine use of
 `goal-run.sh`, which also makes it the first time an advisory lens ever runs — `goal-auto.js`
 never enabled them.
+
+## 7. A run is invisible for minutes at a time, by construction
+
+**Observed.** On the first real run of `goal-run.sh` (2026-08-01, `goal-run-node-port-spec.md`),
+the developer asked twice whether anything was happening. Twice it was. Two distinct silences:
+
+- **The preflight.** Measured at 2 min 50 s on this plan, during which nothing is printed and no
+  log file exists. `say()` writes to `$plan.run.log`, but the ten checks call it only to *refuse*
+  — a passing preflight says nothing at all. A healthy run and a jammed one are indistinguishable
+  for the longest stretch before the first iteration.
+- **The implementer.** `goal-run.sh:457` is `implemented=$(claude -p … 2>&1)`. Command
+  substitution captures, so nothing can stream by construction, and the text reaches the log at
+  `:460` only once the call has returned. That is minutes per iteration.
+
+**Not a missing flag.** `claude --help` publishes `--output-format stream-json`, `--verbose` and
+`--include-partial-messages`. The capture is the cause, not the CLI.
+
+**Two fixes, and they differ in kind.** `… 2>&1 | tee -a "$log"` with `PIPESTATUS` for the exit
+code shows the raw stream — cheap, but it hands the developer the sub-agent's full prose, which
+under a `learning` output style is mostly noise about work they are not steering. Parsing
+`--output-format stream-json` and printing one line per tool use (`RUN implementer: Edit
+run/publish.ts`) shows what the agent *does* rather than what it says, and makes the output style
+irrelevant because its prose is never consumed.
+
+**Where it can land.** `goal-run.sh` is frozen for the duration of the A/B (see §6), so this is a
+deliberate divergence in the Node runner or nothing. Note that the run loop landed in that plan's
+iteration 3, so it fits no remaining slice: it is a follow-up plan, not an amendment.
+
+**To measure before deciding:** whether the stream-json event shape is stable enough to render
+from without re-parsing at every Claude Code release, and whether a per-tool-use line is the right
+granularity or already too much for a fifteen-iteration run.
+
+## 8. Could a supervisor diagnose a halt and relaunch by itself?
+
+**Observed.** The same run halted at iteration 5. The developer pasted the output into a session,
+which diagnosed it in one pass: the plan was at fault, iteration 3's `gate1` asserted
+`! grep -rq '### Iteration' …` while publication legitimately needs that literal, and `plan.ts`
+published no accessor for an iteration heading. The repair — add `iterationHeading` to `plan.ts`,
+declare it in iteration 5's `impl_files` — was mechanical once stated. Everything after it was
+too: restore the tree, relaunch. None of it needed a human except to authorize destroying the
+implementer's partial work.
+
+**So the loop is obvious**: run, and on a non-zero exit hand the exit code and the log tail to a
+`goal-run-doctor`, which classifies, repairs, cleans and relaunches.
+
+**And the loop is dangerous, for a reason this incident demonstrates exactly.** There were two
+repairs available:
+
+1. delete `! grep -rq '### Iteration'` from iteration 3's `gate1` — the run resumes immediately;
+2. add the accessor — more work, and the correct one.
+
+An agent whose objective is *make the run continue* takes the first every time. The port would
+have finished green carrying precisely the duplication the plan existed to remove, and nothing
+would have said so. A supervisor optimizing for green is a supervisor that deletes the rules.
+
+**The guardrail, and it is mechanically checkable.** The doctor may never touch a `gateN=` or
+`dodN=` line. It may add a path to `impl_files`, raise a `max_diff`, correct a mistyped path,
+rewrite prose. Hash the plan's command lines before and after its pass: different hash, refuse and
+wake the human. Everything it cannot classify halts too.
+
+**And the guardrail is necessary, not sufficient.** The same plan halted again at iteration 6, and
+that halt needed the opposite response: `close.ts` guarded PR-readiness on the policy alone and
+asked `gh` where `goal-run.sh:544` reads the run's own state. Nothing in the plan was wrong. The
+repair was to discard the implementation and have it redone. From the outside the two halts are
+indistinguishable — same exit code, same regression-wall message, same shape of failing command —
+so the doctor's **first** act cannot be to repair, it has to be to classify: plan at fault, or
+implementation at fault. A doctor that only knows how to amend a plan will go looking for
+something to amend, and will widen an `impl_files` or raise a `max_diff` for a defect that is
+neither.
+
+**To measure before deciding:** what share of real halts fall inside the closed repair set, and
+whether the classification is reliable at all — two cases are an anecdote, not a measurement. If
+the repair set turns out small, the supervisor buys little and adds a component that can itself be
+wrong. Also unresolved: whether it may discard an implementer's partial work without asking, which
+is the one destructive step in the loop.
+
+## 9. Nothing harvests what a session learns
+
+**Observed.** The session that planned and drove the run above produced findings no artifact
+records:
+
+- `goal-run.sh:235` builds `landed` as `landed="$landed $iteration"` from an empty string, so it
+  always carries a leading space; `tr ' ' '|'` makes the `pr_body` regex `^### Iteration (|1) `,
+  an empty alternative BSD grep refuses outright. PR #24's `## Landed` section was empty for every
+  landed iteration. A real bug in a script that had shipped across seven iterations, found the
+  first time anyone ran it.
+- The plan's own R4 assertion was too broad, in a way only executing it revealed.
+- The preflight replays fifteen commands without de-duplicating identical ones.
+
+Each surfaced because a human was reading. The run's own auditor (`goal-run-auditor`) measures
+elapsed time and recurring failures; it is explicitly told not to judge the work. Nothing looks at
+the *session* — the instructions given, what the assistant did with them, where it guessed wrong.
+
+**What it would be.** An agent reading a finished session's transcript and proposing improvements
+in three buckets, because they have three different owners: the **codebase** (a bug like
+`pr_body`), the **workflow** (a command that asks what the session already knows — see §4), and
+the **marketplace** (a skill that failed to trigger, a convention that should have been stated).
+
+**Open, and it is the hard part:** a transcript is long and mostly uneventful, so an agent reading
+it will find *something* every time — which is how continuous improvement becomes a backlog nobody
+reads. It needs a bar for what counts as a finding, and that bar is what has to be designed, not
+the agent. A candidate: only findings that can name a file and line, or a specific exchange where
+a decision went wrong.
+
+Also undecided: whether a verbose output style helps or hurts here. Its prose states reasoning the
+transcript would otherwise only imply, which is exactly what such an auditor reads — but it is
+also the noise the developer wanted removed in §7. The two may want opposite settings.
+
+## 10. Nothing reviews what the gate accepted
+
+**Observed.** PR #24 carries six commits, every one gate-verified. What the gate verifies is
+declared scope, diff budget, removals, acceptance commands, the bite check, and secrets. What it
+does not verify is whether the code is *good*: naming, design, error handling, security posture,
+whether an abstraction leaks. The gate was built to refuse the failures an unattended agent
+produces mechanically, not to hold an opinion.
+
+So a plan can land complete and green with nobody having read a line, which is the intended
+economy — and it leaves the review debt exactly where the developer's attention is scarcest.
+
+**What it would be.** A reviewer agent invoked at the closing stage, alongside the advisory lens
+and the auditor, posting its findings as review comments on the pull request rather than into a
+local log — best practices, security, and the project's own convention skills as the yardstick.
+The lens already occupies the neighbouring slot but asks a narrower question (does what landed
+implement the iteration's stated goal, or a comfortable reading of it) and writes only to the log.
+
+**Open:** whether it comments inline or posts one summary. Inline comments are actionable and
+also the fastest way to make a pull request unreadable when an agent finds twenty of them. And
+whether it may block: it should not — the work is already landed and pushed by the time it runs,
+so like the lens it can only advise. If blocking is wanted, the check belongs in the gate, which
+is a different and much stricter design conversation.
+
+## 11. The advisory lens only ever sees the last run's landings
+
+**Observed.** `goal-run-node-port-spec.md` was delivered across three runs: run 1 landed
+iterations 1–4 and halted at 5, run 2 landed 5 and halted at 6, run 3 landed 6. The lens fired
+once, at the end of run 3, and its own verdict names its scope: *"I reviewed iteration 6's Goal,
+its business rules (R8, R9, R10)"*. Five of the six iterations were never looked at.
+
+**Why, mechanically.** The closing stage runs only when every requested iteration landed, and its
+brief is built from `$landed` (`goal-run.sh:558`), which accumulates within one process. A halt
+skips the closing stage entirely, and the relaunch that follows starts `landed` empty. So the
+coverage of the only review step in the harness is inversely proportional to how much the plan
+resisted — the plans that most deserve a second pair of eyes get the least.
+
+**Not a bug in the lens.** It reviewed exactly what it was handed. The defect is that `landed` is
+a per-process variable being used as if it were a per-plan one.
+
+**Candidates:** brief the lens from the plan's ticked iterations rather than from `$landed`, which
+makes the last run of a plan review the whole plan; or fire it per landing rather than at the
+close, which spreads the cost but multiplies the calls; or move the review to the pull request
+(§10), where the diff is the whole branch and the question of which run landed what disappears.
+The third also survives a plan delivered across three runs without any bookkeeping, which is the
+case that produced this.
+
+**To measure before deciding:** whether a lens handed six iterations at once still anchors its
+findings, or dilutes into a summary. The one real datapoint is a lens given a single iteration,
+and it did anchor.
