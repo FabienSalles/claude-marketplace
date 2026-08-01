@@ -77,8 +77,14 @@ and this project's own conventions — the reading a gate is not built to give.
 Post the review with \`gh\`. Never request changes: nothing you post can block a pull request that
 already shipped, so leave a comment only.`;
 
-        spawnSync('claude', ['-p', '--agent', 'goal:goal-run-reviewer', '--permission-mode', 'auto', reviewBrief], { encoding: 'utf8' });
-        reporter.say('RUN pull request review posted');
+        const review = spawnSync('claude', ['-p', '--agent', 'goal:goal-run-reviewer', '--permission-mode', 'auto', reviewBrief], { encoding: 'utf8' });
+        reporter.record(`${review.stdout}${review.stderr}`);
+
+        if ((review.status ?? 1) === 0) {
+          reporter.say('RUN the reviewer finished, its answer is in the run log');
+        } else {
+          reporter.say(`RUN the reviewer exited ${review.status ?? 1}, so the pull request may carry no review`);
+        }
       } else {
         reporter.say(`RUN marking the pull request ready failed: ${readyOut}`);
       }
@@ -98,7 +104,8 @@ each iteration and the commits on this branch; change nothing.
 Answer with a verdict of one sentence per finding and a path:line anchor. Nothing you say blocks
 this run: it is advisory only.`;
 
-    spawnSync('claude', ['-p', '--agent', 'goal:goal-run-lens', '--permission-mode', 'auto', lensBrief], { encoding: 'utf8' });
+    const lens = spawnSync('claude', ['-p', '--agent', 'goal:goal-run-lens', '--permission-mode', 'auto', lensBrief], { encoding: 'utf8' });
+    reporter.record(`${lens.stdout}${lens.stderr}`);
     reporter.say('RUN lens findings recorded, advisory only');
   }
 
@@ -113,7 +120,8 @@ Read the reports already in .claude/goal-runs/ and say which failures recur acro
 than describing this one twice. Do not edit a single line of code, do not stage anything, and do
 not judge whether the work was correct — the gate already did that.`;
 
-  spawnSync('claude', ['-p', '--agent', 'goal:goal-run-auditor', '--permission-mode', 'auto', auditBrief], { encoding: 'utf8' });
+  const audit = spawnSync('claude', ['-p', '--agent', 'goal:goal-run-auditor', '--permission-mode', 'auto', auditBrief], { encoding: 'utf8' });
+  reporter.record(`${audit.stdout}${audit.stderr}`);
   reporter.say('RUN audit recorded');
 
   if (dodExit !== 0) {

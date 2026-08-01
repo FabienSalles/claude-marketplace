@@ -101,6 +101,7 @@ test('close skips marking the pull request ready when the publisher\'s own state
       stop: () => {
         throw new Error('unexpected stop');
       },
+      record: () => {},
       setLog: () => {},
     };
 
@@ -157,6 +158,7 @@ test('the lens is briefed from the plan\'s own ticked iterations, not from the r
       stop: () => {
         throw new Error('unexpected stop');
       },
+      record: () => {},
       setLog: () => {},
     };
 
@@ -196,6 +198,7 @@ test('the reviewer runs once the pull request is marked ready', () => {
       stop: () => {
         throw new Error('unexpected stop');
       },
+      record: () => {},
       setLog: () => {},
     };
 
@@ -236,6 +239,7 @@ test('the reviewer never runs when marking the pull request ready fails', () => 
       stop: () => {
         throw new Error('unexpected stop');
       },
+      record: () => {},
       setLog: () => {},
     };
 
@@ -276,6 +280,7 @@ test('the reviewer never runs when the publisher\'s own state says blocked', () 
       stop: () => {
         throw new Error('unexpected stop');
       },
+      record: () => {},
       setLog: () => {},
     };
 

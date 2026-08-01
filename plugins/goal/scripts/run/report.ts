@@ -5,6 +5,7 @@ import { appendFileSync } from 'node:fs';
 
 export type Reporter = {
   say: (message: string) => void;
+  record: (text: string) => void;
   stop: (message: string, code: number) => never;
   setLog: (path: string) => void;
   session?: (id: string) => void;
@@ -18,6 +19,15 @@ export const createReporter = (): Reporter => {
 
     if (log) {
       appendFileSync(log, `${message}\n`);
+    }
+  };
+
+  // An advisory agent's own words, kept out of stdout so the account there stays one state per
+  // line, and out of nowhere at all — goal-run.sh appended them (`:568`) and the port dropped it,
+  // so a lens finding existed only for as long as the process that asked for it.
+  const record = (text: string): void => {
+    if (log && text.trim() !== '') {
+      appendFileSync(log, `${text}\n`);
     }
   };
 
@@ -39,5 +49,5 @@ export const createReporter = (): Reporter => {
     }
   };
 
-  return { say, stop, setLog, session };
+  return { say, record, stop, setLog, session };
 };

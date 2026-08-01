@@ -14,6 +14,7 @@ const silentReporter: Reporter = {
   stop: () => {
     throw new Error('unexpected stop');
   },
+  record: () => {},
   setLog: () => {},
 };
 
