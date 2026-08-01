@@ -64,26 +64,53 @@ export const runIteration = (
   const branch = git('rev-parse', '--abbrev-ref', 'HEAD').stdout.trim();
   const headBefore = git('rev-parse', 'HEAD').stdout.trim();
 
-  reporter.say(`RUN handing iteration ${iteration} to the implementer`);
+  // A quota window is not a failure, so it is not diagnosed like one: it is detected from the
+  // shape of a failed call, slept through, and retried against the same iteration — bounded, so
+  // a window that never reopens still ends in a pause rather than a run spinning until the
+  // machine is switched off.
+  const quotaSleep = process.env.GOAL_RUN_QUOTA_SLEEP ?? '1800';
+  const quotaMax = Number(process.env.GOAL_RUN_QUOTA_MAX_RETRIES ?? '3');
+  let attempt = 1;
 
-  const implemented = spawnSync(
-    'claude',
-    [
-      '-p',
-      '--agent',
-      'goal:goal-run-implementer',
-      '--permission-mode',
-      'auto',
-      brief(iteration, process.cwd(), branch, section),
-    ],
-    { encoding: 'utf8' },
-  );
+  for (;;) {
+    reporter.say(`RUN handing iteration ${iteration} to the implementer`);
 
-  if ((implemented.status ?? 1) !== 0) {
-    reporter.stop(
-      `the implementer exited ${implemented.status}. The tree holds whatever it wrote and no gate has judged it: review it before relaunching.`,
-      PAUSED,
+    const implemented = spawnSync(
+      'claude',
+      [
+        '-p',
+        '--agent',
+        'goal:goal-run-implementer',
+        '--permission-mode',
+        'auto',
+        brief(iteration, process.cwd(), branch, section),
+      ],
+      { encoding: 'utf8' },
     );
+
+    if ((implemented.status ?? 1) === 0) {
+      break;
+    }
+
+    const output = `${implemented.stdout}${implemented.stderr}`;
+
+    if (!/usage limit|rate.limit|rate_limit_error/i.test(output)) {
+      reporter.stop(
+        `the implementer exited ${implemented.status}. The tree holds whatever it wrote and no gate has judged it: review it before relaunching.`,
+        PAUSED,
+      );
+    }
+
+    if (attempt >= quotaMax) {
+      reporter.stop(
+        `the quota still looks exhausted after ${attempt} attempt(s) on iteration ${iteration}. Pausing rather than spinning through a window that is not reopening: relaunch resumes here.`,
+        PAUSED,
+      );
+    }
+
+    attempt += 1;
+    reporter.say(`RUN the implementer looks quota-exhausted, sleeping ${quotaSleep}s before relaunching iteration ${iteration} (attempt ${attempt} of ${quotaMax})`);
+    spawnSync('sleep', [quotaSleep]);
   }
 
   const headAfter = git('rev-parse', 'HEAD').stdout.trim();
