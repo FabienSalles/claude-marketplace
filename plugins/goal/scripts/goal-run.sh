@@ -198,6 +198,19 @@ $missing
 
 Fetch and rebase before relaunching." "$REFUSED"
   fi
+
+  # 10. Deny — the implementer runs as an ordinary Claude Code session; without a settings rule
+  # denying it `git commit`, `git push` and `git add`, "only the gate commits" is a sentence in
+  # the plan and not a fact this run can stand behind. goal-deny-setup.sh installs the rule once;
+  # this only reads for it.
+  deny_file=".claude/settings.local.json"
+  deny_missing=""
+  for verb in commit push add; do
+    grep -q "git $verb" "$deny_file" 2>/dev/null || deny_missing="$deny_missing $verb"
+  done
+
+  [ -z "$deny_missing" ] ||
+    stop "the implementer is not denied git$deny_missing. Run: $here/goal-deny-setup.sh" "$REFUSED"
 }
 
 preflight
