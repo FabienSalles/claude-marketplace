@@ -7,6 +7,7 @@ export type Reporter = {
   say: (message: string) => void;
   stop: (message: string, code: number) => never;
   setLog: (path: string) => void;
+  session?: (id: string) => void;
 };
 
 export const createReporter = (): Reporter => {
@@ -29,5 +30,14 @@ export const createReporter = (): Reporter => {
     log = path;
   };
 
-  return { say, stop, setLog };
+  // Recorded beside the run's own log (`<plan>.run.log` -> `<plan>.run.session`), so a
+  // transcript already written to `~/.claude/projects/<encoded-path>/<session-id>.jsonl` can be
+  // found later without correlating timestamps.
+  const session = (id: string): void => {
+    if (log) {
+      appendFileSync(log.replace(/\.log$/, '.session'), `${id}\n`);
+    }
+  };
+
+  return { say, stop, setLog, session };
 };
