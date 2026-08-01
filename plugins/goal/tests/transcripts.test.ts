@@ -8,17 +8,16 @@ import { projectDir, runTranscripts } from '../scripts/transcripts.ts';
 
 const projectRoot = (): string => mkdtempSync(join(tmpdir(), 'transcripts-'));
 
-// R9 — a session id is never recorded structurally; every session Claude Code persists opens
-// with a prompt naming the plan, so that name is the only anchor a transcript needs.
+// R9 — the project directory Claude Code writes into is derived from the cwd alone, so both
+// anchors below look in the same place.
 test('projectDir encodes the cwd the same way Claude Code names its own project directory', () => {
   const root = projectRoot();
 
   assert.equal(projectDir('/Users/dev/my-repo', root), join(root, '-Users-dev-my-repo'));
 });
 
-// R9 — the resolver reads only transcripts whose own content names the plan, so it finds the
-// implementer's, the lens's, the reviewer's and the supervising session's own transcripts alike,
-// with nothing new recorded to tie them to this run.
+// R9 — the content scan is what finds a session the runner never spawned, and therefore never
+// recorded an id for: the supervising command's own.
 test('runTranscripts returns every transcript under the project dir that names the plan', () => {
   const root = projectRoot();
   const dir = join(root, '-Users-dev-my-repo');
@@ -38,6 +37,24 @@ test('runTranscripts returns nothing when the project dir does not exist', () =>
   const root = projectRoot();
 
   assert.deepEqual(runTranscripts('/Users/dev/never-ran', 'my-plan-spec.md', root), []);
+});
+
+// R9 — the ids `report.ts` records for the sessions the runner spawned resolve exactly, without
+// reading a transcript's content, and a transcript found both ways is returned once.
+test('runTranscripts unions the recorded session ids with the content scan, without duplicates', () => {
+  const root = projectRoot();
+  const dir = join(root, '-Users-dev-my-repo');
+  const plans = mkdtempSync(join(tmpdir(), 'transcripts-plan-'));
+  const plan = join(plans, 'my-plan-spec.md');
+  mkdirSync(dir, { recursive: true });
+
+  writeFileSync(join(dir, 'implementer.jsonl'), 'Implement iteration 3 of my-plan-spec.md\n');
+  writeFileSync(join(dir, 'silent.jsonl'), 'a session that never names the plan\n');
+  writeFileSync(`${plan}.run.session`, 'implementer\nsilent\nvanished\n');
+
+  const found = runTranscripts('/Users/dev/my-repo', plan, root);
+
+  assert.deepEqual(found.sort(), [join(dir, 'implementer.jsonl'), join(dir, 'silent.jsonl')].sort());
 });
 
 // R11 — only `.jsonl` entries are candidates; a stray file dropped beside the transcripts (a
