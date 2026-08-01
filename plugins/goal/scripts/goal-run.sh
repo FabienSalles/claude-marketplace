@@ -81,6 +81,127 @@ GATE="${GOAL_GATE:-node $here/goal-gate.ts}"
 
 log="$plan.run.log"
 
+# The conditions below are the ones `/goal:auto`'s own preflight names in commands/auto.md that
+# a shell script can prove without a model's judgment and without a pull request already open —
+# that half of the list (`gh` reachable on the declared remote, and everything after) lands with
+# the iteration that opens one. Every check is a refusal, never a warning, and every one runs
+# before the lock is taken: a run that starts wrong is worse than one that never starts.
+preflight() {
+  plan_base=$(basename "$plan")
+
+  case "$plan_base" in
+    *-cleanup-spec.md) work_id=${plan_base%-cleanup-spec.md}; cleanup=1 ;;
+    *-spec.md)         work_id=${plan_base%-spec.md}; cleanup=0 ;;
+    *)                 work_id=${plan_base%.md}; cleanup=0 ;;
+  esac
+
+  # 1. Policy — unattended execution needs somewhere to put the work; manual means nothing may
+  # be committed, so there is nothing here to chain.
+  policy=$(sed -n 's/^Policy: *//p' "$plan" | head -1)
+  case "$policy" in
+    '') stop "the plan declares no Policy line" "$REFUSED" ;;
+    manual)
+      stop "Policy is manual, so nothing may be committed and there is nothing to run unattended. Change the Policy line in the spec, or run the manual loop with /goal and /goal:next." "$REFUSED"
+      ;;
+  esac
+
+  # 2. Remote — never defaulted to origin. A bare push on a fork lands on the fork; guessing here
+  # means a run pushes and opens its pull request on somebody else's repository, unattended.
+  remote=$(sed -n 's/^Remote: *//p' "$plan" | head -1)
+  [ -n "$remote" ] || stop "the plan declares no Remote line" "$REFUSED"
+
+  # 3. Branch — the checkout must stand on the branch this run is meant to advance, or it
+  # publishes the wrong one.
+  branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null) || stop "not a git repository" "$REFUSED"
+  case "$branch" in
+    "feature/$work_id" | "feature/$work_id"-*) : ;;
+    *)
+      stop "the checkout stands on $branch, not feature/$work_id (or feature/$work_id-...)" "$REFUSED"
+      ;;
+  esac
+
+  # 4. Clean tree — uncommitted work would end up in the first iteration's commit, unreviewed.
+  dirty=$(git status --short 2>&1)
+  [ -z "$dirty" ] || stop "the tree is not clean:
+$dirty" "$REFUSED"
+
+  # 5. What the run writes must be out of git's sight, or the spec, the ticked box and this
+  # run's own log become an undeclared modification the gate reads as a scope leak.
+  plan_dir=$(dirname "$plan")
+  git check-ignore -q "$plan_dir" ||
+    stop "the plan's directory is visible to git: $plan_dir. Ignore it, untracking any spec already committed." "$REFUSED"
+
+  # 6. No cleanup iteration hiding inside a feature plan: its Trigger asserts something about
+  # production this run cannot observe, and running it here deletes the fallback in the same PR
+  # that introduces what falls back to it.
+  if [ "$cleanup" -eq 0 ] && grep -q '\*\*Trigger:\*\*' "$plan"; then
+    stop "the plan carries a cleanup iteration (a Trigger: line) inside a feature plan. Move it out with /goal:run-issue, or run the *-cleanup-spec.md plan directly." "$REFUSED"
+  fi
+
+  # 7. No run already holds the plan.
+  [ -e "$plan.run.lock" ] &&
+    stop "another run holds this plan: $plan.run.lock. Wait for it, or free it with: $GATE unlock $plan" "$REFUSED"
+
+  # 8. The base is already green — the highest-return check in the whole preflight. Every
+  # command the plan will hold every iteration to, run once now, against the untouched tree.
+  # gate1 is excluded: it is the bitten criterion, supposed to fail without the implementation.
+  bootstrap=$(sed -n 's/^Bootstrap: *//p' "$plan" | head -1)
+  skip_sweep=0
+
+  if [ -n "$bootstrap" ]; then
+    bootstrap_checked=$(awk -v want="$bootstrap" '
+      /^#{2,3} / { cur = ""; seen = 0 }
+      /^### Iteration [0-9]+/ { n = $0; sub(/^### Iteration /, "", n); sub(/[^0-9].*/, "", n); cur = n }
+      cur == want && seen == 0 && /^- \[/ { seen = 1; print ($0 ~ /^- \[x\]/) ? "yes" : "no" }
+    ' "$plan")
+    [ "$bootstrap_checked" = "yes" ] || skip_sweep=1
+  fi
+
+  if [ "$skip_sweep" -eq 1 ]; then
+    say "RUN base sweep skipped: Bootstrap iteration $bootstrap is not built yet"
+  else
+    sweep_cmds=$(awk '
+      /^```gate/ { infence = 1; next }
+      /^```/     { infence = 0 }
+      infence && /^dod[0-9]+=/ { sub(/^dod[0-9]+=/, ""); print; next }
+      infence && /^gate[0-9]+=/ {
+        n = $0
+        sub(/^gate/, "", n)
+        sub(/=.*/, "", n)
+        if (n + 0 >= 2) { line = $0; sub(/^gate[0-9]+=/, "", line); print line }
+      }
+    ' "$plan")
+
+    while IFS= read -r cmd; do
+      [ -n "$cmd" ] || continue
+      out=$(eval "$cmd" 2>&1)
+      rc=$?
+      if [ "$rc" -ne 0 ]; then
+        stop "the base is not green: \`$cmd\` exited $rc before this run wrote a line:
+$out" "$REFUSED"
+      fi
+    done <<PREFLIGHT_SWEEP
+$sweep_cmds
+PREFLIGHT_SWEEP
+  fi
+
+  # 9. The branch must be caught up with what it forked from — implementing against a base the
+  # branch has since moved past ships a diff that conflicts, and certifies check 8 green against
+  # a base nobody will merge into.
+  git fetch --prune --quiet 2>/dev/null || true
+  origin_base=$(git rev-parse --abbrev-ref origin/HEAD 2>/dev/null) || origin_base=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+
+  if ! git merge-base --is-ancestor "$origin_base" HEAD 2>/dev/null; then
+    missing=$(git log --oneline "HEAD..$origin_base" 2>&1)
+    stop "the branch is behind $origin_base:
+$missing
+
+Fetch and rebase before relaunching." "$REFUSED"
+  fi
+}
+
+preflight
+
 if [ -n "$iteration" ]; then
   iterations="$iteration"
 else
