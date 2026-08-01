@@ -9,10 +9,12 @@
 // Exit codes:
 //   2 — refused: the run never started, and nothing needs undoing
 
-import { existsSync, statSync } from 'node:fs';
-import { createReporter, type Reporter } from './run/report.ts';
+import { spawnSync } from 'node:child_process';
+import { existsSync, readFileSync, statSync } from 'node:fs';
+import { resolve } from 'node:path';
 
-const REFUSED = 2;
+import { createReporter, type Reporter } from './run/report.ts';
+import { preflight, REFUSED } from './run/preflight.ts';
 
 const main = (): void => {
   const [plan, iteration] = process.argv.slice(2);
@@ -28,6 +30,22 @@ const main = (): void => {
 
   if (iteration !== undefined && !/^[0-9]+$/.test(iteration)) {
     reporter.stop(`the iteration must be a number, got: ${iteration}`, REFUSED);
+  }
+
+  reporter.setLog(`${plan}.run.log`);
+
+  const gate = process.env.GOAL_GATE ?? `node ${resolve(import.meta.dirname, 'goal-gate.ts')}`;
+  const source = readFileSync(plan, 'utf8');
+
+  preflight(plan, source, reporter, gate);
+
+  if (iteration !== undefined) {
+    reporter.say(`RUN handing iteration ${iteration} to the implementer`);
+    spawnSync(
+      'claude',
+      ['-p', '--agent', 'goal:goal-run-implementer', '--permission-mode', 'auto', `Implement iteration ${iteration} of ${plan}.`],
+      { encoding: 'utf8' },
+    );
   }
 };
 

@@ -6,6 +6,16 @@ import { readFileSync } from 'node:fs';
 
 import { halt, misuse } from './halt.ts';
 
+// A single-line declaration, read the way `sed -n 's/^Prefix *//p' | head -1` reads one: the
+// first line starting with `prefix`, trimmed. Used for every `Key:` and `# Heading:` line the
+// plan carries, so a preflight or a publish step names its prefix instead of writing its own sed.
+export const header = (source: string, prefix: string): string | undefined => {
+  const escaped = prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const match = new RegExp(`^${escaped} *(.*)$`, 'm').exec(source);
+
+  return match?.[1];
+};
+
 export const readPlan = (path: string): string => {
   try {
     return readFileSync(path, 'utf8');
