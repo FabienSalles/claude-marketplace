@@ -64,7 +64,7 @@ exit \${FAKE_CLAUDE_EXIT:-0}
     `#!/bin/sh
 printf '%s\\n' "$@" >> ${gateLog}
 case "$1" in
-  check)  printf 'OK\\nplan_hash=${HASH}\\n'; exit \${FAKE_GATE_CHECK_EXIT:-0} ;;
+  check)  printf 'OK\\nplan_hash=${HASH}\\n'; [ -n "$FAKE_GATE_CHECK_FAIL_N" ] && [ "$3" = "$FAKE_GATE_CHECK_FAIL_N" ] && exit 1; exit \${FAKE_GATE_CHECK_EXIT:-0} ;;
   lock)   mkdir "$2.run.lock" 2>/dev/null; exit 0 ;;
   unlock) rm -rf "$2.run.lock"; exit 0 ;;
   commit) exit \${FAKE_GATE_COMMIT_EXIT:-0} ;;
@@ -285,7 +285,6 @@ test('it writes the same account to a log file beside the plan', () => {
 
 for (const [claim, args] of [
   ['no plan is named', [] as string[]],
-  ['no iteration is named', ['.claude/plans/demo-spec.md']],
   ['the iteration is not a number', ['.claude/plans/demo-spec.md', 'one']],
 ] as const) {
   test(`it refuses when ${claim}`, () => {
@@ -297,6 +296,73 @@ for (const [claim, args] of [
     assert.ok(!existsSync(fixture.claudeLog), 'an implementer was spawned on a refusal');
   });
 }
+
+// R3 — with no iteration named, the plan's unchecked boxes are surveyed and run in order: the
+// same reading the gate uses, an `### Iteration N` heading then the first checkbox in its
+// section.
+test('it surveys the unchecked iterations and runs them in order when no iteration is named', () => {
+  const fixture = repo();
+
+  const { code, output } = run(fixture, [fixture.plan], {
+    FAKE_CLAUDE_WRITES: join(fixture.dir, 'a.txt'),
+  });
+
+  assert.equal(code, 0, output);
+  const args = readFileSync(fixture.claudeLog, 'utf8');
+  assert.match(args, /write a\.txt/, `iteration 1's section was not handed over:\n${args}`);
+  assert.match(args, /write b\.txt/, `iteration 2's section was not handed over:\n${args}`);
+  assert.ok(
+    args.indexOf('write a.txt') < args.indexOf('write b.txt'),
+    `the iterations did not run in order:\n${args}`,
+  );
+});
+
+// R5 — every unchecked iteration is proven runnable before any of them is implemented, so a
+// plan that would fail on its second iteration never spends the first.
+test('it proves every unchecked iteration runnable before implementing any', () => {
+  const fixture = repo();
+
+  const { code, output } = run(fixture, [fixture.plan], {
+    FAKE_GATE_CHECK_FAIL_N: '2',
+  });
+
+  assert.notEqual(code, 0);
+  assert.ok(
+    !existsSync(fixture.claudeLog),
+    `iteration 1 was implemented before iteration 2 was proven runnable:\n${output}`,
+  );
+});
+
+// R3 — the survey stops dead at the first gate refusal, and never attempts what follows it.
+test('it stops at the first iteration the gate refuses, and never attempts the next', () => {
+  const fixture = repo();
+
+  const { code, output } = run(fixture, [fixture.plan], {
+    FAKE_CLAUDE_WRITES: join(fixture.dir, 'a.txt'),
+    FAKE_GATE_COMMIT_EXIT: '1',
+  });
+
+  assert.notEqual(code, 0);
+  assert.match(output, /refused/i, output);
+  const args = readFileSync(fixture.claudeLog, 'utf8');
+  assert.match(args, /write a\.txt/);
+  assert.ok(!args.includes('write b.txt'), `iteration 2 was attempted after iteration 1 was refused:\n${args}`);
+});
+
+// R3 — the single-iteration form still runs exactly the one named, which is what makes a
+// halted plan resumable by hand.
+test('with an iteration named, only that one runs', () => {
+  const fixture = repo();
+
+  const { code, output } = run(fixture, [fixture.plan, '2'], {
+    FAKE_CLAUDE_WRITES: join(fixture.dir, 'b.txt'),
+  });
+
+  assert.equal(code, 0, output);
+  const args = readFileSync(fixture.claudeLog, 'utf8');
+  assert.match(args, /write b\.txt/);
+  assert.ok(!args.includes('write a.txt'), `iteration 1 was attempted though only 2 was named:\n${args}`);
+});
 
 // The plan is read before the lock is taken, so a run that cannot be started leaves nothing to
 // clean up — and the refusal names the tree rather than a lock the developer now has to free.
