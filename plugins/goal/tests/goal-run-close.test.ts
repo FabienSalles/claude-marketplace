@@ -134,3 +134,166 @@ test('the auditor still runs when the Definition of Done refuses the run', () =>
   const args = readFileSync(fixture.claudeLog, 'utf8');
   assert.match(args, /^goal:goal-run-auditor$/m, `the auditor was never invoked on a halted run:\n${args}`);
 });
+
+// R6 / R11 — the lens is briefed from every iteration the plan itself carries ticked, not from
+// this run's own `landed`: a plan delivered across several runs is judged whole, in one pass,
+// rather than in the fragment the last run happened to land.
+test('the lens is briefed from the plan\'s own ticked iterations, not from the run\'s landed list', () => {
+  const fixture = repo({
+    planText: PLAN.replace('### Iteration 1 — the first one\n- [ ]', '### Iteration 1 — the first one\n- [x]').replace(
+      '### Iteration 2 — the second one\n- [ ]',
+      '### Iteration 2 — the second one\n- [x]',
+    ),
+  });
+  const originalCwd = process.cwd();
+  const originalPath = process.env.PATH;
+
+  process.chdir(fixture.dir);
+  process.env.PATH = `${fixture.bin}:${originalPath ?? ''}`;
+
+  try {
+    const reporter: Reporter = {
+      say: () => {},
+      stop: () => {
+        throw new Error('unexpected stop');
+      },
+      setLog: () => {},
+    };
+
+    const code = close(
+      fixture.plan,
+      join(fixture.bin, 'fake-gate'),
+      HASH,
+      'origin',
+      { publishes: false, prOpen: false, blocked: false },
+      ['2'],
+      '2: 1s\n',
+      reporter,
+    );
+
+    assert.equal(code, LANDED);
+    const args = readFileSync(fixture.claudeLog, 'utf8');
+    assert.match(args, /Refute the iteration\(s\) 1 2 of/, `the lens was not briefed with the plan's own ticked iterations:\n${args}`);
+  } finally {
+    process.chdir(originalCwd);
+    process.env.PATH = originalPath;
+  }
+});
+
+// R7 — marking the pull request ready is the one moment a review can no longer block anything,
+// so that is when the reviewer runs, once, and posts against `gh`.
+test('the reviewer runs once the pull request is marked ready', () => {
+  const fixture = repo({ planText: PLAN_PR, remote: true });
+  const originalCwd = process.cwd();
+  const originalPath = process.env.PATH;
+
+  process.chdir(fixture.dir);
+  process.env.PATH = `${fixture.bin}:${originalPath ?? ''}`;
+
+  try {
+    const reporter: Reporter = {
+      say: () => {},
+      stop: () => {
+        throw new Error('unexpected stop');
+      },
+      setLog: () => {},
+    };
+
+    const code = close(
+      fixture.plan,
+      join(fixture.bin, 'fake-gate'),
+      HASH,
+      'origin',
+      { publishes: true, prOpen: true, blocked: false },
+      ['1'],
+      '1: 1s\n',
+      reporter,
+    );
+
+    assert.equal(code, LANDED);
+    const args = readFileSync(fixture.claudeLog, 'utf8');
+    assert.match(args, /^goal:goal-run-reviewer$/m, `the reviewer was never invoked:\n${args}`);
+  } finally {
+    process.chdir(originalCwd);
+    process.env.PATH = originalPath;
+  }
+});
+
+// R7 / R11 — a `gh pr ready` that fails leaves publication no further along than before, and the
+// reviewer has nothing ready to comment on: it never runs.
+test('the reviewer never runs when marking the pull request ready fails', () => {
+  const fixture = repo({ planText: PLAN_PR, remote: true });
+  const originalCwd = process.cwd();
+  const originalPath = process.env.PATH;
+
+  process.chdir(fixture.dir);
+  process.env.PATH = `${fixture.bin}:${originalPath ?? ''}`;
+  process.env.FAKE_GH_READY_EXIT = '1';
+
+  try {
+    const reporter: Reporter = {
+      say: () => {},
+      stop: () => {
+        throw new Error('unexpected stop');
+      },
+      setLog: () => {},
+    };
+
+    const code = close(
+      fixture.plan,
+      join(fixture.bin, 'fake-gate'),
+      HASH,
+      'origin',
+      { publishes: true, prOpen: true, blocked: false },
+      ['1'],
+      '1: 1s\n',
+      reporter,
+    );
+
+    assert.equal(code, LANDED);
+    const args = readFileSync(fixture.claudeLog, 'utf8');
+    assert.ok(!/^goal:goal-run-reviewer$/m.test(args), `the reviewer ran though marking the pull request ready failed:\n${args}`);
+  } finally {
+    process.chdir(originalCwd);
+    process.env.PATH = originalPath;
+    delete process.env.FAKE_GH_READY_EXIT;
+  }
+});
+
+// R6 — close() reads whether publication blocked straight off the publisher's own state, so the
+// reviewer never runs against a pull request that publication never actually reached.
+test('the reviewer never runs when the publisher\'s own state says blocked', () => {
+  const fixture = repo({ planText: PLAN_PR, remote: true });
+  const originalCwd = process.cwd();
+  const originalPath = process.env.PATH;
+
+  process.chdir(fixture.dir);
+  process.env.PATH = `${fixture.bin}:${originalPath ?? ''}`;
+
+  try {
+    const reporter: Reporter = {
+      say: () => {},
+      stop: () => {
+        throw new Error('unexpected stop');
+      },
+      setLog: () => {},
+    };
+
+    const code = close(
+      fixture.plan,
+      join(fixture.bin, 'fake-gate'),
+      HASH,
+      'origin',
+      { publishes: true, prOpen: true, blocked: true },
+      ['1'],
+      '1: 1s\n',
+      reporter,
+    );
+
+    assert.equal(code, LANDED);
+    assert.ok(!existsSync(fixture.ghLog), `close asked gh to mark the pull request ready though publication had blocked:\n`);
+  } finally {
+    process.chdir(originalCwd);
+    process.env.PATH = originalPath;
+  }
+});
