@@ -1,8 +1,9 @@
 # Adversarial verification — design note
 
-Three lenses are implemented in `workflows/goal-auto.js`, off unless `args.lenses` is true.
-The rest of this note is the reasoning behind them, kept so it is not re-derived from scratch —
-and, below, the record of which lenses were retired and to what.
+One lens is implemented, asked once at the close of a run (`run/close.ts:107`). The rest of
+this note is the reasoning behind it, kept so it is not re-derived from scratch — and, below,
+the record of which questions stopped being asked, which of them a mechanism took over, and
+which the port to a node runner simply dropped.
 
 ## The hole this addresses
 
@@ -19,8 +20,8 @@ No exit code will ever close this. It needs a different kind of check.
 
 ## The mechanism
 
-**Adversarial verification**: after an iteration's gate has passed, one or more verifiers
-are asked to *refute* what was delivered, each through a distinct **lens**.
+**Adversarial verification**: after the gate has passed, one or more verifiers are asked to
+*refute* what was delivered, each through a distinct **lens**.
 
 Five properties make it work, and dropping any one of them turns it into theatre:
 
@@ -44,6 +45,14 @@ Majority voting is deliberately **not** used here. Its purpose is to suppress fa
 positives before an expensive decision, and no decision downstream of these verifiers is
 expensive — see the next section. One verifier per lens.
 
+All five are still the design. Only the last one lost its enforcement. The Workflow constrained
+the answer with a JSON schema — `refuted`, `verdict` and `anchor`, all three required
+(`workflows/goal-auto.js:300-309`) — so a verdict without an anchor could not be returned at
+all. `run/close.ts:107` spawns a plain `claude -p` and records whatever text comes back, and
+the anchor rule now lives only in the lens's own brief (`agents/goal-run-lens.md`). Nothing
+rejects an unanchored finding any more. That is a prompt where there used to be a schema, and
+it should be read as a regression rather than as a simplification.
+
 ## Calibration: how much to trust this layer
 
 Not much, and by design. Measured against human ground truth, LLM code judgement reaches
@@ -52,9 +61,9 @@ implementations were judged correct.[^judge] Requirement-conformance judgement s
 suffers **systematic overcorrection** — the judge flags conformant code as non-conformant.
 
 That is not a reason to skip the layer. It is the reason the layer is advisory, and the
-reason the **specification conformance** lens below is the one to read most sceptically:
-it is precisely the task the literature measures as over-flagging. Expect false positives
-from it and read them as prompts to look, never as defects.
+reason the **specification conformance** lens is the one to read most sceptically: it is
+precisely the task the literature measures as over-flagging. Expect false positives from it and
+read them as prompts to look, never as defects.
 
 ## Hard rule: a finding never halts the run
 
@@ -62,12 +71,23 @@ The gate halts, because an exit code cannot be wrong. A verifier is a model: it 
 false positives. A false positive that kills a provably-green run at 3am costs more than
 the finding is worth.
 
-Findings are **advisory**. They go into the PR body and the issue comment, and the
-developer adjudicates them at their desk with the code in front of them.
+Findings are **advisory**, and the code is built so they cannot be anything else: by the time
+the lens is asked, every slice is committed and — under `commit+pr` — already pushed and
+carried by an open pull request. Nothing about its answer changes what the run does next.
 
-This makes the whole layer dependent on a place to deposit a non-blocking signal. Without
-the remote channel (push on halt, `gh issue comment`, notification), an advisory signal
-produced at 3am is a signal nobody reads.
+Which makes the whole layer dependent on a place to deposit a non-blocking signal, and that is
+the weakest part of it. The findings go to `<plan>.run.log`, through `reporter.record()`
+(`run/report.ts`), in a directory the preflight *requires* to be gitignored
+(`run/preflight.ts:93`). Not the pull request body — that is built from iteration headings
+alone (`run/publish.ts:47-55`). Not an issue comment — nothing in the runner writes one. A
+signal produced at 3am and deposited in an ignored file beside the plan is a signal whose only
+reader is whoever thinks to open it.
+
+Worth recording how that came about, because it is the failure mode of a port rather than a
+design decision: `goal-run.sh` appended an advisory agent's own words to the log, the port to
+node dropped the append outright, and a lens finding existed only for as long as the process
+that asked for it. `record()` exists because that was noticed and put back — its own comment
+says so. The layer was silently worthless for the length of one generation.
 
 ## Promotion principle
 
@@ -80,62 +100,125 @@ refinement of the prompt.[^complexity]
 The sensitivity lens is the worked example, and it has since been carried out. As a question
 it was "would this test fail if the rule broke?" As a command it is: set the implementation
 aside, run the slice's test, require RED, restore. That is an exit code, not an opinion, and
-`goal-gate.ts` runs it on every iteration from the `test_files` / `impl_files` split. The finer
-industrial form is mutation testing (Infection, Stryker) scoped to the touched files — listed as
-an opt-in criterion in `templates/done-criteria.template`, not wired in.
+`goal-gate.ts` runs it on every iteration that declares a `test_files` / `impl_files` split.
+The finer industrial form is mutation testing (Infection, Stryker) scoped to the touched
+files — listed as an opt-in criterion in `templates/done-criteria.template`, not wired in.
 
 A lens promoted to a command moves out of this document and into the iteration's `gate`
 block, where it halts like everything else.
 
-## The lenses
+The principle has a blind spot it did not have when it was written, and it is about *where* a
+promoted command ends up running. `run/sweep.ts` replays every `gate2..N` and `dodN` command a
+plan declares against the untouched tree, before the first iteration starts. Promoting a lens
+to a command therefore also promotes it to something that runs at preflight, on a tree it was
+never written to judge. `gate1` is carved out of the sweep because on an untouched tree it is
+*supposed* to be red; a promoted lens landing anywhere else gets no such carve-out, and a
+question that only makes sense about a delivered slice will be asked about an empty one.
 
-Three, and the set is fixed rather than derived: what survives is what no mechanism already
-asks.
+## The lens
+
+One, asked once, at the close of a run.
 
 | Lens | The question | What it catches | When |
 |---|---|---|---|
-| **Specification conformance** | Does the delivery match the iteration's *Goal*, or a comfortable reading of it? | scope quietly narrowed to what was easy to make green | every landed iteration |
-| **Ripple** | Does this iteration leave iteration N+1 doable exactly as written? | plan drift, discovered at iteration N+3 instead of N | every landed iteration but the last |
-| **Completeness** | What did the plan not cover that its Business intent implies? | the gap nobody wrote down | once, over the whole branch |
+| **Specification conformance** | Does the delivery match each iteration's *Goal*, or a comfortable reading of it? | scope quietly narrowed to what was easy to make green | once, after the global Definition of Done passes |
 
-Both surviving per-iteration lenses compare code to **intent**, which is the one comparison
-no exit code performs. That is the whole selection rule.
+It compares code to **intent**, which is the one comparison no exit code performs. That is the
+whole selection rule, and it is why this is the one still being asked.
 
-## What was retired, and to what
+Two things about its scope are deliberate and worth stating, because neither is what the
+earlier design assumed.
+
+**It is briefed from the plan's ticked boxes, not from what this run landed.** `run/close.ts:53`
+re-reads the plan from disk and takes every box that carries an `[x]`, this run's own or an
+earlier run's. The reason is that a plan delivered across several runs would otherwise be
+judged in whatever fragment the last run happened to land — three iterations refuted against
+each other's absence. The cost is that a resumed run re-judges work an earlier lens already
+looked at.
+
+**It never runs on the runs that would need it most.** The call sits inside the branch taken
+when the global DoD passes (`run/close.ts:55-110`), and a gate refusal exits inside the
+iteration loop without reaching `close()` at all (`run/iteration.ts:191-193`). So a halted run
+gets no lens, no reviewer and no audit report, and a halt is the outcome whose reading is worth
+the most.
+
+## The reviewer asks a different question
+
+`agents/goal-run-reviewer.md` is a second advisory model in the same closing slot
+(`run/close.ts:80`), and the boundary between the two is the point of having both.
+
+The lens asks one closed question about **intent**: does what landed implement what the plan
+declared. It is explicitly told not to mention style, naming, coverage or architecture, and it
+returns one anchored sentence per iteration.
+
+The reviewer asks about the **code**: design, error handling, security posture, and whether it
+matches this project's own conventions — its brief names that as "the reading a gate is not
+built to give". It posts one GitHub review with inline comments and may never request changes,
+since the branch it is reading has already shipped.
+
+They are the two halves of what an exit code cannot see, and keeping them apart is the same
+rule as "one lens per verifier": a single agent asked both questions answers the easy one.
+Neither blocks. The reviewer is also what fills the *Quality — advisory* row of
+`target-harness.md`, which had no named mechanism until it was wired.
+
+It has never fired. `run/close.ts` only reaches it when the pull request was successfully
+marked ready, and no run has taken that path since it was added.
+
+## What is no longer asked, and what answers it instead
 
 A lens whose question a mechanism already answers is not a second opinion, it is a second
-bill. Four were removed for that reason, and one had never existed outside this document.
+bill. Four were removed for that reason. One had never existed outside this document. And two
+that survived that cut were lost to the port instead, which is a different and worse reason.
 
-| Retired lens | Answered instead by |
+| Lens | Answered instead by |
 |---|---|
-| **Sensitivity** | the gate's bite check — `impl_files` set aside, `gate1` required to fail — on every iteration, not just the ones a lens was dispatched for |
+| **Sensitivity** | the gate's bite check — `impl_files` set aside, `gate1` required to fail — on every iteration that declares `test_files`, not just the ones a lens was dispatched for |
 | **Invariant** | the sequence test `grill-adversarial` assigns to an owning iteration, which lands in that iteration's `gate1` |
 | **Accumulation** | the regression wall, which replays the gate commands of every ticked iteration |
-| **Reversibility** | the existing suite staying green, already `dod1`, and the lens was already skipped whenever `Delivery:` was additive |
-| **Blast radius** | nothing: it was specified here and never implemented. The blast radius is established at planning time by `/goal:run-issue`, with a human reading the consumer list. |
+| **Reversibility** | the existing suite staying green, as `dod1` — but see below |
+| **Blast radius** | nothing: it was specified here and never implemented. The blast radius is established at planning time by `/goal:run-issue`, with a human reading the consumer list |
+| **Ripple** | nothing, and by accident. It asked whether iteration N left N+1 doable exactly as written, and the runner has no per-iteration advisory stage left to carry it |
+| **Completeness** | nothing, and by accident. It asked what the plan's Business intent implied that no iteration covered — a question the surviving conformance lens explicitly does not ask, since it judges against declarations rather than past them |
 
-Removing them also removed the per-iteration fact extraction that only they consumed — the
-`Delivery:`, invariant-count and `test_files` probe, and the tab-positional parsing that read
-it back.
+Two of those rows have shrunk since they were written, and both shrank the same way — the
+answering mechanism turned out to run less often than the lens would have.
+
+The bite check **skips** an iteration that declares no `test_files` (`gate/bite.ts:52-57`), and
+`plan-guard.ts:18` hashes only `gateN=` and `dodN=` lines, so emptying `test_files` is an edit
+a supervised repair may legally make and the guard will certify. The promotion from opinion to
+exit code has an unguarded exit.
+
+The Definition of Done runs **once, at close** (`run/close.ts:47`), after every iteration has
+already been committed and, under `commit+pr`, pushed (`goal-run.ts:92-98`). So "the existing
+suite is still green" is answered after publication rather than per slice, which is a weaker
+answer than the retired lens gave.
+
+Removing the retired lenses also removed the per-iteration fact extraction that only they
+consumed — the `Delivery:`, invariant-count and `test_files` probe, and the tab-positional
+parsing that read it back.
 
 ## When a lens runs at all
 
-The set no longer depends on the plan, so there is nothing to derive and nothing to compose
-at 3am. `conformance` runs on every landed iteration, `ripple` on all but the last,
-`completeness` once at the end. The whole stage is off unless `args.lenses` is true, and the
-`skip-lenses` control drops it remotely.
+There is nothing left to decide at 3am, and nothing left to switch off either. The `args.lenses`
+flag and the remote `skip-lenses` control belonged to `workflows/goal-auto.js`; the current
+runner exposes no flag, no environment variable and no remote channel. The lens is asked
+whenever the global DoD passes, and not otherwise.
 
-Judgement about *whether* a lens is worth running moved where judgement belongs: a mechanical
-slice, a documentation-only slice, or one whose goal is fully expressed by its gates simply is
-not worth `args.lenses`, and that is the developer's call before the run, not the loop's during
-it.
+That trades a decision for a default. The judgement that used to be the developer's before a
+run — a mechanical slice, a documentation-only slice, or one whose goal is fully expressed by
+its gates is not worth a verifier — no longer has anywhere to be expressed. It is a defensible
+default only because the stage now costs one call instead of `2N`.
 
 ## Cost
 
-One verifier per lens. A run of N landed iterations costs `2N` verifiers, minus one for the
-last iteration, plus one closing verifier. Under a token budget, leave `args.lenses` off: the
-stage is all-or-nothing on purpose, because a partial advisory pass invites reading its silence
-as a verdict.
+At most one call for the lens and one for the reviewer, both at close, both conditional, plus
+the auditor, which is not part of this layer. A run of N landed iterations costs the same as a
+run of one.
+
+That is the whole change from the design this note first described, where the cost was `2N`
+verifiers plus a closing one. It is also why the all-or-nothing argument that used to justify
+the flag no longer applies: there is no partial pass to mistake for a verdict, because there is
+only one pass.
 
 ## Honest limit
 

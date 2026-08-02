@@ -1,10 +1,16 @@
 # Making an unattended run reach the end — working spec
 
-**Status: nothing here is decided.** This is a working document, not a locked plan and not a
-description of what ships. `roadmap.md` holds what is still moving in the current design; this
-file holds a proposed change of design, written from one session of reading the code against
-three brakes the developer named. Every claim carries its `file:line` so a later pass can
-re-check it instead of re-deriving it.
+**Written 2026-08-01, 12:30, against `workflows/goal-auto.js`. Read it as a dated record, not
+as a description of what ships.** Its §9 asked whether the orchestration had to be a `Workflow`
+at all and declared the question undecided; the question was settled that same afternoon and
+evening, in the direction §9 leaned. `scripts/goal-run.sh` landed at 17:13 (#23) and
+`scripts/goal-run.ts` plus `scripts/run/` replaced it at 19:25 (#24). That is why this file is
+kept: **§9 to §11 are the reasoning that produced the port**, and the reasoning is not
+recoverable from the port.
+
+Everything before §9 is a proposal against a runner nothing launches any more. Each section now
+opens with what became of it. Where a section is unbuilt, it is unbuilt — not pending, not
+in flight; nothing schedules it.
 
 The three brakes, in the developer's words:
 
@@ -15,7 +21,15 @@ The three brakes, in the developer's words:
 
 ---
 
-## 0. What a run costs today, measured from the code
+## 0. What a run cost then, measured from the code
+
+> **Since.** Every figure below is `workflows/goal-auto.js`, which nothing on the current chain
+> launches — `/goal:auto` still can, and that is the cost of never deleting it. The runner is
+> `scripts/goal-run.ts` plus `scripts/run/`. The indirection this section
+> complains about is the one the port removed by construction — `spawnSync` in place of a
+> subagent per shell command — and **it was never re-measured on the runner that shipped**. The
+> only cost the run records now is wall-clock seconds per iteration, accumulated at
+> `goal-run.ts:97` and handed to the auditor at `run/close.ts:117-118`.
 
 ### The runner indirection
 
@@ -54,10 +68,19 @@ spawns and a network push to rewrite a PR body nobody reads before the end.
 
 ---
 
-## 1. Found while reading: the lenses have never run
+## 1. Found while reading: the lenses had never run
+
+> **Since — landed, and differently.** The finding was right about `goal-auto.js:916`, which still
+> gates the stage on `input.lenses === true` that `auto.md:219` never passes. The fix was not a
+> field: the current runner has **one** lens, unconditional, invoked at `run/close.ts:107` as soon
+> as the global Definition of Done passes. It has run, and what it saw changed the design — the
+> brief is built from every box the plan carries ticked (`run/close.ts:53`, `:98`), not from the
+> iterations this run happened to land, so a plan delivered across several runs is judged whole.
+> Two things the flag-based design had that the unconditional one does not: a way to skip the
+> stage, and a schema rejecting a finding with no anchor.
 
 `goal-auto.js:916` enters the Lenses phase only when `input.lenses === true`. `auto.md:219`
-launches the workflow without that field. **No run has ever executed a lens.**
+launches the workflow without that field. **No run had ever executed a lens.**
 
 The `completeness` lens asks (`goal-auto.js:297`):
 
@@ -70,6 +93,15 @@ mechanism exists and is inert. Cheapest correction in this document.
 ---
 
 ## 2. Halt taxonomy
+
+> **Since — half-landed, and the half that landed was never checked against this table.** The
+> runner publishes four exit codes (`goal-run.ts:13-17`): landed, halted, refused, paused. That is
+> a real advance on "a halt is a halt", and it is not this taxonomy. The line it actually draws is
+> `gateExit !== 1` at `run/iteration.ts:186`: a gate that **refuses** halts, a gate that **could
+> not be asked** pauses. Classes A and B both land on the same code, which is exactly the
+> distinction `/goal:supervise` was later written to make by reading prose — from a log the halt
+> path never writes to (`run/iteration.ts:186-193` never prints `verdict`). Class C got a recovery
+> only on the implementer call (§5); class D got none.
 
 "Retry more" is the wrong answer. The halts have to be classified before any of them is touched.
 
@@ -88,6 +120,11 @@ die on an estimate without ever having run them.
 ---
 
 ## 3. The core finding: `impl_files` holds four jobs at once
+
+> **Since — unbuilt, and the finding still holds.** `gate/scope.ts:64` still refuses in binary;
+> there are no tiers. The four jobs are still fused, and the anchors below still resolve. Read it
+> as a diagnosis that survived two rewrites of the layer above it without being addressed by
+> either.
 
 Removing the scope check is not available as written, and the reason is not the obvious one.
 
@@ -135,8 +172,8 @@ list, or an implementation can hide in an unlisted file and weaken the check.
 
 ### `Incidental:` stays, and is not absorbed — settled
 
-The header line (`plan.ts:126`) already exists for **generated** tooling a project cannot help
-producing: a lockfile, a tsconfig. It grants a path exactly four properties:
+The header line (`gate/plan.ts:143-144`) already exists for **generated** tooling a project cannot
+help producing: a lockfile, a tsconfig. It grants a path exactly four properties:
 
 | Behaviour | `impl_files` path | `Incidental:` path |
 |---|---|---|
@@ -146,8 +183,8 @@ producing: a lockfile, a tsconfig. It grants a path exactly four properties:
 | Staged and committed | yes | yes (`scope.ts:135`) |
 | Set aside by the bite check | yes | no (`bite.ts:60` filters on `impl_files` only) |
 
-Its rationale (`plan.ts:116`) — *"a lockfile moves on whichever slice happens to touch a
-dependency; a per-slice list is a prediction that is wrong by the next one"* — is the same
+Its rationale (`gate/plan.ts:138-142`) — *"thousands of generated lockfile lines are not the
+slice's authored work, and counting them would make every budget meaningless"* — is the same
 argument this section makes about `impl_files`. It is the precedent, not a competitor.
 
 **The two cover disjoint cases**, so neither replaces the other:
@@ -180,6 +217,9 @@ bite check's selector; it stops being a guillotine.
 
 ## 4. `max_diff` as a soft band
 
+> **Since — unbuilt.** `gate/bounds.ts:41-46` still halts hard the moment the written line count
+> exceeds the declared budget, before any softening.
+
 Halt beyond a factor (2×, 3× — undecided), otherwise record the overshoot in the audit. The
 signal survives, the night survives. Same reasoning as tier 2 above, applied to the other
 planning-time estimate.
@@ -188,26 +228,39 @@ planning-time estimate.
 
 ## 5. Recovery budget, class C only
 
+> **Since — landed on the agent call, not on git.** A quota window on the implementer invocation
+> is slept through and the same iteration retried, three times, then paused
+> (`run/iteration.ts:104-152`). Publication got the opposite treatment: a rejected push or a `gh`
+> error blocks the rest of the run stickily and is never retried (`run/publish.ts:100-108`). The
+> class C this section was written about is the one that did **not** get its budget.
+
 Two attempts, on push rejected / `gh` non-zero / runner returning `-1`. **Never** on a gate
-verdict. The classes and budgets are already written in `loops.md:52` and nothing implements
-them.
+verdict. The classes and budgets are already written in `loops.md`, under *Recovery classes*.
 
 ---
 
 ## 6. Refused on purpose
 
+> **Since — still refused, and now cheap to hold.** The current loop is a `for` that exits on the
+> first refusal (`goal-run.ts:92-98`, `run/iteration.ts:193`); there is no `pending.slice` and no
+> second mode to make conditional.
+
 **Resuming the iterations after a halt**, even when their declared files are disjoint from the
-halted one. `pending.slice(stopped.from)` abandons everything after, and making that conditional
-would put a second execution mode inside one code path — the exact defect `why-not-parallel.md:57`
-documents and that this harness has already paid for once.
+halted one. Making that conditional would put a second execution mode inside one code path — the
+exact defect `why-not-parallel.md` documents under *The design defect, and its three symptoms*,
+and that this harness has already paid for once.
 
 ---
 
 ## 7. One command for every track
 
-The shape already exists in the notes and is unbuilt: `loops.md:88`, *queue drain*, a `for` over
-**plans** rather than iterations. The `Workflow` runtime exposes `workflow(ref, args)`, which
-runs a child workflow inline, one level deep.
+> **Since — unbuilt, and its premise is gone.** There is no `workflow()` primitive on the current
+> path: a queue would be a `for` over plans in an ordinary process. `PR base:` is still read
+> (`run/publish.ts:37-38`) and still the piece a stack would need. The stacked-pull-request
+> paragraph below is a dated external claim nothing in this repository verifies or consumes.
+
+The shape is a *queue drain*: a `for` over **plans** rather than iterations. The `Workflow`
+runtime exposed `workflow(ref, args)`, which ran a child workflow inline, one level deep.
 
 ```js
 for (const plan of order) {
@@ -217,7 +270,7 @@ for (const plan of order) {
 ```
 
 This is not parallelism inside the workflow. It is sequential nesting, the Temporal
-child-workflow shape `why-not-parallel.md:129` explicitly endorses.
+child-workflow shape `why-not-parallel.md` explicitly endorses.
 
 **Be honest about what it does not buy:** no tokens. It removes the human gesture between two
 plans, nothing else.
@@ -248,9 +301,10 @@ runs stay better.
 
 ### Open, in this section
 
-- **Worktree topology for a queue.** One worktree per plan, or one for all? The branch check
-  (`goal-auto.js:539`) requires the checkout to stand on `feature/<work-id>` matching the plan's
-  own work-id, so a single-worktree queue would have to switch branches between plans. Undecided.
+- **Worktree topology for a queue.** One worktree per plan, or one for all? The branch check —
+  ported unchanged to `run/preflight.ts:75` — requires the checkout to stand on
+  `feature/<work-id>` matching the plan's own work-id, so a single-worktree queue would have to
+  switch branches between plans. Undecided.
 - Whether the queue is a new command (`/goal:queue`) or an argument to `/goal:auto`.
 - Whether the index `<work-id>-plans.md` (`run-issue.md:368`) becomes machine-read, and what
   refuses a queue whose order contradicts a plan's own `Trigger:`.
@@ -258,6 +312,12 @@ runs stay better.
 ---
 
 ## 8. A really functional application
+
+> **Since — untouched, and the third brake is still unrelieved.** No `App:` header exists, no
+> instance is booted, no visual lens is invoked. The proposed shape below still names
+> `LENSES` in the workflow; the current runner has one lens and no catalogue to add a fourth
+> entry to (`run/close.ts:98-107`). §10 names the real precondition — an environment where the
+> project's own gate commands execute — and that is untouched too.
 
 Two distinct gaps. Conflating them would produce a bad design.
 
@@ -301,7 +361,27 @@ in `adversarial-verification.md`.
 
 ---
 
-## 9. Does `/goal:auto` earn its orchestration? — open
+## 9. Does `/goal:auto` earn its orchestration? — settled the same day
+
+> **Settled 2026-08-01, in the direction this section leaned.** `scripts/goal-run.sh` landed at
+> 17:13 (#23), `scripts/goal-run.ts` plus `scripts/run/` at 19:25 (#24). The argument below is the
+> whole reason the port exists, which is why it is preserved verbatim rather than summarized.
+>
+> Two things it got wrong, and they are worth more than the parts it got right:
+>
+> - **The size estimate at the end of §10 — "roughly fifteen lines of bash" — was wrong by two
+>   orders of magnitude.** Layer 2 shipped as 594 lines of bash, then as 938 lines of TypeScript
+>   across eight modules. Every line of the difference is a refusal, an ordering constraint or a
+>   diagnosis that only exists because a real run failed without it. The estimate was made by
+>   counting what the loop *decides*, and layer 2 is not made of decisions.
+> - **The loss it told itself to accept did not happen the way it predicted.** `budget.spent()`
+>   went, but the run did not go blind on cost: it records wall-clock seconds per iteration
+>   (`goal-run.ts:97`) and hands them to the auditor. The unit changed; the measurement did not
+>   disappear.
+>
+> What it got right is the load-bearing part: the constraint on the implementer moved from *the
+> workflow has no shell* to *the session is pinned to an agent and denied the verbs the gate owns*,
+> and that is exactly what `run/preflight.ts:157-173` now refuses to start without.
 
 Raised as a challenge: if a script is going to launch `/goal:auto` sequentially over several
 plans, why not have that script launch **native `/goal`** per iteration instead, and drop the
@@ -350,15 +430,25 @@ therefore the per-iteration token cost in the audit report; the `/workflows` pro
 Remote Control visibility. The first is the one that matters — it is the only measurement
 currently held on what a run costs.
 
-**Undecided.** This is a genuine fork in the design, not a refinement of §0–§8. Settling it
-changes what items 4, 5 and 6 of the sequencing below even mean, so it should be settled first.
-
 **§10 narrows it.** Once an external tool holds layer 3, the loop's remaining job is small
 enough that the observability argument decides it.
+
+**Where the sketch above diverged from what shipped.** The invocation is not the plan's raw
+section handed to a reused `goal-implementer`: a dedicated agent was written for it
+(`agents/goal-run-implementer.md`), the section travels inside a constructed brief, and the call
+carries `--output-format stream-json --verbose` so every tool use the implementer performs is
+narrated as it happens (`run/iteration.ts:111-127`). That last flag was not in the design and is
+the one thing the port added that answers the original complaint about an invisible run.
 
 ---
 
 ## 10. Three layers, and where the external tools actually sit
+
+> **Since — the framing is the durable part, and layer 3 is still unheld.** Layer 2 changed twice
+> and layer 1 did not move, which is the prediction this section makes. Nothing external took
+> layer 3: `scripts/goal-launch.sh` still holds it, no Orca, no cron. What did appear is a fourth
+> position the table has no row for — `commands/supervise.md`, a session that watches one run and
+> reacts to how it ended. It sits between 3 and 2 and it has never been executed.
 
 Read against the 2026-07-31 audit artifact *"goal:auto — audit & comparatif"*. Naming the layers
 is what makes the tool question answerable, because the tools and the dissatisfaction are not on
@@ -416,7 +506,7 @@ mechanical, and an Orca cron does the same work with nothing to get wrong.
 Where the autonomy would genuinely earn its place is **after** a run, on the events that do
 require a decision:
 
-- CI went red on the pull request the run just opened — `loops.md:120` calls this the largest
+- CI went red on the pull request the run just opened — `loops.md` still calls this the largest
   open gap: nobody currently learns it;
 - a run halted and the diagnosis says the cause is infrastructure, not the code (§5);
 - the base moved and a halted branch is now stale.
@@ -427,7 +517,7 @@ applies to a narrower surface.
 ### What would actually answer "work at night"
 
 Neither tool. The gates are this project's own `docker compose run` commands, so running without
-the developer's Mac requires an environment where those commands execute. `loops.md:148` already
+the developer's Mac requires an environment where those commands execute. `loops.md` already
 names it and calls it the blocker: *settle the environment question before the scheduling one.*
 Layer 3 tooling does not touch it.
 
@@ -442,9 +532,27 @@ loop, and the observability argument then decides: one process, one log, one not
 disappears. This is an afternoon's experiment, not a paper proof, and it should be run before it
 is written down as a decision.
 
+> **What the afternoon returned.** The experiment was run and layer 2 was taken, twice. The
+> conclusion held; the estimate did not. "Roughly fifteen lines" became 594 lines of bash and then
+> 938 lines of TypeScript, and the difference is not slack — it is the preflight's ten refusals,
+> the quota wait, the sticky publication blocking, the survey, the lock's signal handlers. The
+> reusable lesson is about estimating, not about bash: **a loop that orders three things is
+> small; the layer that decides not to start is not, and it is the layer that stops nights
+> dying.** Layer 3 was never taken. The workflow did not disappear either — `commands/auto.md`
+> still launches `workflows/goal-auto.js`, so all three generations are live at once.
+
 ---
 
 ## 11. Salvage list, if the workflow goes
+
+> **Since — the list was used, and it worked, with one hole.** Eleven of bucket B's twelve items
+> are in `scripts/run/`; the twelfth was lost exactly as this section warned it would be, and
+> nothing noticed for two generations. The `Ported to` column below is the audit, done by reading
+> the port rather than by remembering it. Bucket C was wrong on every line: nothing died.
+>
+> The value of this section is not the twelve items. It is that **a list written before a rewrite,
+> naming what is invisible in the artefact, is the only thing that survives the rewrite** — and
+> that even then, one item can be dropped silently unless something checks. Nothing checked.
 
 Written for the second step (§9 is deferred, not cancelled). What matters here is bucket B: it is
 **invisible**. A rewrite from the README loses every line of it and rediscovers each one through
@@ -461,25 +569,39 @@ layer 1, the actual value); `agents/goal-implementer.md`, `goal-lens.md`, `goal-
 
 Each line came from a real incident.
 
-| # | What it holds | Where |
-|---|---|---|
-| 1 | **The section travels as text, its path never does.** The plan lives outside the worktree (`.claude/` is gitignored); handing its absolute path to the implementer made it write into the wrong checkout, with a correct `cwd` throughout | `:83-87` |
-| 2 | **The plan hash, computed once and carried for the whole run.** Recomputing per iteration would bless a plan rewritten at iteration 1 | `:588` |
-| 3 | **Every iteration proved runnable before any is implemented.** A missing gate block is worth knowing at minute 3, not at iteration 9 | `:574` |
-| 4 | **"the implementer wrote nothing" ≠ "the gate refused".** Unchanged tree + non-empty `impl_files` is a different diagnosis; reporting it as a refusal says "your work was judged and rejected" about work that was never judged | `:784` |
-| 5 | **`gh pr create` targets a fork's *parent*.** The remote and the repo are named explicitly, never inferred. The `sed` is reusable as-is | `:169` |
-| 6 | **No `fixup!` / `squash!` commit before the first push.** After it, folding one would need a force | `:197` |
-| 7 | **Draft PR at the first commit, body rewritten after.** A halt at 3/15 leaves something readable instead of an invisible branch | `:688` |
-| 8 | **A title containing a quote is refused, not stripped** | `:209` |
-| 9 | **The halt report's shape**: landed / notAttempted / the gate's verbatim output / push state | `:269` |
-| 10 | **The `SURVEY` awk**: an iteration heading, then the first checkbox in its section — the same reading the gate uses | `:475` |
-| 11 | **The branch check.** A run publishes the branch its checkout is on, so standing on the wrong one publishes the wrong one | `:539` |
-| 12 | **The "base already green" sweep**: run the DoD's and every `gate2..N`'s commands on the untouched tree before a line is written | `auto.md:153` |
+| # | What it holds | Where | Ported to |
+|---|---|---|---|
+| 1 | **The section travels as text, its path never does.** The plan lives outside the worktree (`.claude/` is gitignored); handing its absolute path to the implementer made it write into the wrong checkout, with a correct `cwd` throughout | `:83-87` | `run/iteration.ts:1-5`, `:91` |
+| 2 | **The plan hash, computed once and carried for the whole run.** Recomputing per iteration would bless a plan rewritten at iteration 1 | `:588` | `goal-run.ts:62-83`, captured by the survey before any iteration runs |
+| 3 | **Every iteration proved runnable before any is implemented.** A missing gate block is worth knowing at minute 3, not at iteration 9 | `:574` | `goal-run.ts:64-83` |
+| 4 | **"the implementer wrote nothing" ≠ "the gate refused".** Unchanged tree + non-empty `impl_files` is a different diagnosis; reporting it as a refusal says "your work was judged and rejected" about work that was never judged | `:784` | `run/iteration.ts:164-169`, and it exits `PAUSED`, not `HALTED` |
+| 5 | **`gh pr create` targets a fork's *parent*.** The remote and the repo are named explicitly, never inferred. The `sed` is reusable as-is | `:169` | `run/publish.ts:16-20` |
+| 6 | **No `fixup!` / `squash!` commit before the first push.** After it, folding one would need a force | `:197` | `run/publish.ts:76-88` |
+| 7 | **Draft PR at the first commit, body rewritten after.** A halt at 3/15 leaves something readable instead of an invisible branch | `:688` | `run/publish.ts:57-60`, `:136-140` |
+| 8 | **A title containing a quote is refused, not stripped** | `:209` | `run/publish.ts:113-119` |
+| 9 | **The halt report's shape**: landed / notAttempted / the gate's verbatim output / push state | `:269` | **lost.** `run/iteration.ts:186-193` reads the gate's exit code and never its output |
+| 10 | **The `SURVEY` awk**: an iteration heading, then the first checkbox in its section — the same reading the gate uses | `:475` | `gate/plan.ts:155-167`, now shared code rather than a duplicated reading |
+| 11 | **The branch check.** A run publishes the branch its checkout is on, so standing on the wrong one publishes the wrong one | `:539` | `run/preflight.ts:75` |
+| 12 | **The "base already green" sweep**: run the DoD's and every `gate2..N`'s commands on the untouched tree before a line is written | `auto.md:153` | `run/preflight.ts:130-141` → `run/sweep.ts` |
 
 1 and 12 are the most expensive to relearn. 12 is also the highest-return check in the whole
 preflight, and it is already pure shell.
 
+**Item 9 is the one that got away, and it cost the next design.** `scripts/goal-run.sh:499-501`
+appends the gate's output to the log and `:523` prints it on the halt path; the Node port reads
+`verdict.status` and drops `verdict.stdout`. `commands/supervise.md:63-65` was then written to
+classify a halt by reading
+that block back from the log — the whole command rests on evidence the run stopped writing. A
+salvage list only works if something re-reads it after the rewrite.
+
 ### C — dies with the workflow, and should
+
+> **Every line of this bucket was wrong.** Nothing died. `agents/goal-runner.md`,
+> `goal-reader.md` and `goal-reporter.md` are still in `agents/`; `workflows/goal-auto.js` is
+> still launched by `commands/auto.md`; `scripts/goal-launch.sh` still creates worktrees and still
+> `exec tmux`s. A third generation was added beside the first two instead of replacing either, and
+> the plugin now carries three live layer-2 implementations. **Deleting is a decision that has to
+> be taken separately from building the replacement, or it is not taken.**
 
 - `agents/goal-runner.md`, `goal-reader.md`, `goal-reporter.md`. They exist **only** because a
   workflow has no shell. In bash they are three indirections for no gain, and they are §0's
@@ -487,13 +609,15 @@ preflight, and it is already pure shell.
 - `docs/workflow-parity.md` — it documents parity between `auto.md`'s prose and the workflow.
 - `scripts/goal-launch.sh`, once Orca holds layer 3 (§10). Its worktree + branch creation moves
   into Orca, which adopts an externally created worktree three documented ways. The audit's
-  "immortal tmux session" finding dies with it, and so does the tmux question in
-  `open-questions.md` §1.
+  "immortal tmux session" finding dies with it, and so does the tmux question `open-questions.md`
+  opens on it.
 - **Notification hooks are not the answer here either.** A hook fires on a Claude Code *session*
   event, so in a script design a `Stop` hook fires once per `claude -p`, i.e. once per iteration —
   rebuilding §0's notification flood from the other end. Orca already reports that a run ended;
   what nothing reports is *with what outcome*. In a shell loop that is one line at the end of the
-  script, which already knows the answer.
+  script, which already knows the answer. **That line was never written**: `goal-run.ts:102-106`
+  prints a `STOP` line to stdout and to `<plan>.run.log`, and nothing in `scripts/run/` reaches
+  any channel a human would see while away.
 - `budget.spent()`, `ITERATION_FLOOR` (`:53`, `:751`), the per-iteration cost in the audit report.
   **Only the proactive floor dies**, and it was already largely theoretical: `:664` logs that with
   no budget armed, `budget.total` is `null` and the floor is inert. Waiting for a quota to come
@@ -502,48 +626,57 @@ preflight, and it is already pure shell.
 
 ### What gets better, not merely cheaper
 
-**Steering becomes safer.** The design (`:406-455`) reduces untrusted text to a bit vector with
-`grep` *before* any model sees it. In bash there is no model at all: the `grep` is the final
-executor. The invariant strengthens.
+Three predictions, of which one landed, one landed sideways, and one never applied.
 
-**Preflight 11 disappears.** It inspects `permissions.defaultMode`, cannot see a CLI
-`--permission-mode`, and ends up asking the developer. `claude -p --permission-mode auto` states
-it explicitly at every invocation. That removes the check **and** `open-questions.md` question 4,
-the one that "reads as mistrust".
+**Steering becomes safer** — never applied. The prediction assumed the steering channel would be
+carried over and reduced to a `grep`. It was not carried over at all: no control panel, no label,
+no reader. A channel that does not exist is not safer, it is absent, and
+`steering-and-injection.md` now says so in those terms.
 
-**Waiting for a quota comes home.** `loops.md:98` states the constraint: *"This is where waiting
-lives, because a workflow script cannot sleep and, when the quota is gone, its agents cannot run
-anyway."* A workflow cannot sleep, which is why the wait had to be lifted to the session with
-`ScheduleWakeup`, above the workflow. In bash `sleep 1800` is free, so the wait moves back down to
-where the iteration boundary already is.
+**Preflight 11 disappears** — landed. It inspected `permissions.defaultMode`, could not see a CLI
+`--permission-mode`, and ended up asking the developer. `claude -p --permission-mode auto` states
+it explicitly at every invocation, so the check has no subject: `run/preflight.ts` has ten
+refusals and none of them inspects a permission mode. The check that took its slot is the deny
+rule (`run/preflight.ts:157-173`), which asks the opposite question — not *what mode is this
+session in* but *is the implementer denied the verbs the gate owns*.
 
-It also becomes **detectable**: `claude -p` exits non-zero with a rate-limit message,
-distinguishable from a gate refusal. That is §5's class C applied to the agent invocation rather
-than to git and `gh`. Safe for the reason already written at `auto.md:23` — the durable state is
-the plan's checkboxes, so relaunching resumes at the first unticked box and a quota wait needs no
-state at all.
+**Waiting for a quota comes home** — landed, and it is the cleanest thing the port bought.
+`loops.md` used to state the constraint the other way round: waiting lived at session level
+*because a workflow script cannot sleep*. A process can. `run/iteration.ts:104-152` sleeps at the
+iteration boundary where the state already is, and no session-level mechanism was ever needed.
 
-**One trap.** A loop sleeping thirty minutes reads, from layer 3, as a run that is "running" and
-doing nothing. That is `loops.md:135` exactly: silence is indistinguishable from still working,
-which is the original complaint. The log has to say *"quota exhausted, resuming at 14:20"*, or one
-invisible wait has been swapped for another.
+It is also **detectable**: `claude -p` exits non-zero with a rate-limit message, distinguishable
+from a gate refusal. That is §5's class C applied to the agent invocation rather than to git and
+`gh`. Safe for the reason already written at `auto.md:23` — the durable state is the plan's
+checkboxes, so relaunching resumes at the first unticked box and a quota wait needs no state at
+all.
+
+**One trap, and it was avoided.** A loop sleeping thirty minutes reads, from outside, as a run
+that is "running" and doing nothing — silence indistinguishable from still working, which is the
+original complaint. `run/iteration.ts:150` names the wait, the attempt and the bound before
+sleeping.
 
 ---
 
-## Proposed sequencing
+## Proposed sequencing — and what happened to it
 
-1. **Turn the lenses on.** One field in `auto.md:219`. Would likely have caught the recent miss,
-   in text, at no design cost.
+The order was proposed on 2026-08-01 at 12:30. By 22:02 the same day, items 1 and 4 were done and
+the whole of §9 to §11 — which the list does not mention at all — had been executed instead of it.
+That is the honest reading: **the sequencing ranked the refinements and the work went to the
+fork.**
+
+1. **Turn the lenses on.** — done, differently (§1): one unconditional lens, no flag.
 2. **Class B halts**: the three scope tiers, the `max_diff` soft band, and the gate tests that go
-   with them.
+   with them. — **not started.** `gate/scope.ts:64` and `gate/bounds.ts:41-46` still halt hard.
 3. **Move the determinism replays out of the per-iteration loop** — a suite that depends on its
-   own leftovers is a property of the suite, not of the slice. Where they move to (`dod`,
-   preflight) is undecided.
-4. **Collapse the runner indirection** and stop mirroring every iteration. Mechanical, no design
-   change.
-5. **Queue + stack via `PR base:`.** Mostly configuration; blocked on the worktree topology
-   question.
-6. **`App:` contract + visual lens.** Largest, and it depends on 1 and 5.
+   own leftovers is a property of the suite, not of the slice. — **not started.**
+   `goal-gate.ts:72` still calls `determinismCheck` inside the per-iteration verdict.
+4. **Collapse the runner indirection** and stop mirroring every iteration. — half done. The
+   indirection went with the port; the mirroring did not. `run/publish.ts` still pushes and
+   rewrites the pull request body on every landed iteration.
+5. **Queue + stack via `PR base:`.** — **not started**, and still blocked on the same worktree
+   topology question.
+6. **`App:` contract + visual lens.** — **not started.** Still the third brake, still unrelieved.
 
-Items 1 and 4 are the two with no design cost. Everything else in this file is a proposal that
-still has to survive a pass the developer has said they want to take further.
+Items 2, 3, 5 and 6 have had no work on them and nothing schedules them. Read that as the state,
+not as a backlog: four of the six things this document proposed are exactly where they were.

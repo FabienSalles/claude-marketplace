@@ -4,60 +4,70 @@ Things noticed while running the harness for real, parked rather than acted on. 
 was observed, what it would change, and what has to be measured before deciding — so picking one
 up later does not start from the intuition again.
 
-## 1. Is tmux still the right isolation layer?
+A question that got answered stays here with its answer: what it cost and what it revealed is the
+part worth reading twice, and deleting it would leave the next reader with the same intuition and
+no record of where it led. Three questions below were answered by building something that has never
+run once, which is a third state and is said so where it applies.
 
-**Observed.** The launcher's own justification was wrong. It claimed a run living in an
-interactive session "dies from a keystroke", while `README.md`'s troubleshooting table — written
-later, from a real case — says backgrounding kills nothing and names the actual cause: a
-permission prompt nobody answered. Both texts have been corrected, but the correction narrows
-what tmux buys, and that is the open part.
+## 1. The current chain has no isolation layer at all
 
-**What tmux still buys**, once the false premise is removed:
+**Observed.** This opened as *"is tmux still the right isolation layer"*, after the launcher's own
+justification turned out to be false: it claimed a run living in an interactive session "dies from
+a keystroke", where backgrounding kills nothing and the real cause was a permission prompt nobody
+answered. That correction stands. What changed since is bigger than the correction. The chain that
+runs today has no isolation layer: `/goal:supervise` starts the runner as a plain background shell
+(`commands/supervise.md`, Phase 1), in the developer's own checkout, with no worktree and no named
+session to reattach to. `scripts/goal-launch.sh:133` still opens tmux — but it launches
+`/goal:auto`, the abandoned generation.
 
-- surviving the terminal that opened it (window closed, SSH dropped)
-- a stable, named reattach point
+So the table of candidates below never had a row for what is actually in use, and the layer was
+not replaced by a better one. It was dropped along the way.
 
-**What it does not buy**, contrary to what the docs implied: a free checkout. That comes from the
-worktree, and would with or without tmux.
-
-**What it costs.** A detached session is invisible: no notification reaches you, and the machine
-must stay awake and online. That cost is the whole of question 2.
-
-**Candidates**, roughly in order of how well they fit "I leave and want to be told if it jams":
+**What tmux buys**, once the false premise is removed: surviving the terminal that opened it, and
+a stable reattach point. **What it does not buy:** a free checkout. That comes from the worktree —
+and the worktree is what the current chain gave up with it, silently.
 
 | Option | Buys | Costs |
 |---|---|---|
-| Claude Code on the web (claude.ai/code) | the run lives in the cloud; the machine may sleep | not yet tested against a full `/goal:auto` |
+| Background shell under `/goal:supervise` (today) | the supervising session reads the exit code and can act on it, which is the whole of §8 | tied to the session that launched it, untested against that session ending; runs in the developer's own tree, so a halt leaves that tree dirty |
+| tmux + worktree (`goal-launch.sh`) | terminal-independent, stable name, a tree of its own | invisible while detached, and only reachable through `/goal:auto` |
+| Claude Code on the web (claude.ai/code) | the run lives in the cloud; the machine may sleep | never tested against a full run |
 | Native backgrounding (`/bg`, `claude agents`) | integrates with notifications and Remote Control, so question 2 mostly dissolves | believed not to survive the terminal closing — **unverified** |
-| tmux (today) | terminal-independent, stable name | invisible while detached |
 
-**To measure before deciding:** whether a web or backgrounded session sustains a complete
-`/goal:auto` run, and whether a backgrounded run survives closing the terminal. Both are one
-experiment each, and neither has been run.
+**To settle:** whether a supervising session watching the run *is* the isolation answer — it buys
+something tmux never could, a reader for the exit code — or merely the thing that made the
+question invisible. And separately, whether a run should ever write in the developer's own
+checkout at all: the tree is exactly where a halt leaves the implementer's partial work, and §8's
+repair path has to reason about that tree.
 
-## 2. Surfacing a blocked run while the session is detached
+## 2. Surfacing a blocked run while nobody is attached
 
-**Observed.** A detached run that stalls is indistinguishable from one that is working. Nothing
-reaches the developer.
+**Observed.** A run that stalls with nobody watching is indistinguishable from one that is
+working. Nothing reaches the developer.
 
-**Mechanism, already available.** The `Notification` hook takes a matcher on the notification
-type — `permission_prompt`, `idle_prompt`, `agent_needs_input`, `elicitation_dialog`,
-`agent_completed` — alongside `Stop` and `SessionEnd`
-([hooks reference](https://code.claude.com/docs/en/hooks)).
+**The gap is wider than this question first stated it.** *"The workflow already posts a halt report
+to the GitHub issue when one exists"* was true of `workflows/goal-auto.js` and of nothing else. The
+current runner's only GitHub calls are `pr view`, `pr edit`, `pr create` (`scripts/run/publish.ts`)
+and `pr ready` (`scripts/run/close.ts`). It never comments on an issue, and on a halt it never
+reaches the closing stage at all (§15). Its entire account of itself is `<plan>.run.log` and an
+exit code.
 
-**Scope trap.** `.claude/` is gitignored, so it is absent from the worktrees the launcher
-creates. A hook declared in a project's `.claude/settings.json` would never see these runs. It
-has to live in `~/.claude/settings.json`, which every `claude` session inherits.
+**What partly covers it now.** `--permission-mode auto` is passed at every agent invocation, which
+removes most permission prompts; and `/goal:supervise` puts a live session in front of the run,
+which is a channel of a kind — it reads the exit code and acts on it. That is why the question
+stopped feeling urgent rather than being answered. An unwatched run still has nothing.
 
-**Already covered, partly.** `--permission-mode auto` removes most of `permission_prompt`, and
-the workflow already posts a halt report to the GitHub issue when one exists. The gap is the
-blockage that is neither a permission prompt nor a gate halt: a genuine question, an error, a
-rate limit.
+**Mechanism, still available.** The `Notification` hook takes a matcher on the notification type,
+alongside `Stop` and `SessionEnd` ([hooks reference](https://code.claude.com/docs/en/hooks)).
 
-**Undecided:** the channel. ntfy.sh reaches a phone and is the only option that works when you
-are away from the machine; `osascript` is local-only; a tmux marker plus a log file gives
-history but only on reattach. Deferred because it depends on question 1 — a different isolation
-layer changes what needs a channel at all.
+**Scope trap.** `.claude/` is gitignored, so it is absent from any worktree a launcher creates. A
+hook declared in a project's `.claude/settings.json` would never see those runs. It has to live in
+`~/.claude/settings.json`, which every `claude` session inherits.
+
+**Undecided:** the channel. ntfy.sh reaches a phone and is the only option that works when you are
+away from the machine; `osascript` is local-only; a log file gives history but only on reattach.
+Still downstream of question 1 — a run watched by a supervising session wants a very different
+channel from one nobody is attached to, and the harness now has both shapes.
 
 ## 3. The fetch-first guard matches command text, not command effect
 
@@ -76,216 +86,202 @@ than an occasional false block. Wants a deliberate pass, not a quick regex edit.
 
 ## 4. Preflight 11 asks the developer what the session already knows
 
-**Observed.** A run launched by `goal-launch.sh` — which now always passes
-`--permission-mode auto` — still stops at preflight 11 to ask the developer which permission
-mode the session is in. It reads mistrust: the first reaction to the question was "why is it
-asking permission again, do I need to merge something?", when nothing was wrong at all.
+**Observed.** A run launched by `goal-launch.sh` — which always passes `--permission-mode auto` —
+still stopped at preflight 11 to ask the developer which permission mode the session was in. It
+read as mistrust: the first reaction was *"why is it asking permission again, do I need to merge
+something?"*, when nothing was wrong at all. The check inspects `permissions.defaultMode` in the
+settings files, which reflects neither a CLI flag nor a `Shift+Tab` override, so it cannot see the
+mode it is running under and falls back to asking.
 
-**Why it asks.** The check inspects `permissions.defaultMode` in the settings files, which
-reflects neither a CLI `--permission-mode` flag nor a `Shift+Tab` override. So it cannot see the
-mode it is actually running under, and falls back to asking.
+**Answered by a third option nobody proposed here.** The current preflight is ten refusals and not
+one of them inspects a permission mode (`scripts/run/preflight.ts`). The runner states the mode
+instead, at every single agent invocation. A check that *sets* the condition it wanted to verify
+does not need to verify it, and that is strictly better than both candidates this question weighed
+(read a variable the launcher exported, or keep asking). The question survives only in
+`commands/auto.md`, on the abandoned chain.
 
-**What changed.** The launcher now sets the mode itself, so for launcher-started runs the answer
-is known at launch time. An environment variable exported alongside the flag would let the
-preflight read what the launcher did, and ask only when the variable is absent — which is
-exactly the hand-started case the question is for.
-
-**Care needed:** the variable records the launcher's intent, not the live mode, so a `Shift+Tab`
-during the run would make it lie. Whether that matters depends on whether the check exists to
-know the mode or to make the developer accept it — worth settling before writing anything.
+**What stays worth reading.** The framing was the useful part and it generalises: when a check
+cannot observe what it asks about, decide whether it exists to *know* the answer or to make the
+developer *accept* it. Only the second survives being blind — and if the answer is neither, the
+check should be replaced by an assertion of the thing it wanted.
 
 ## 5. `/goal:next` offers a command whose preflight always refuses
 
 **Observed.** On 2026-08-01, `/goal:next` closed iteration 1 of `goal-run-script-spec.md` and
 offered `/goal:auto` for the remaining six. `/goal:auto` refused on preflight check 9: a pull
 request was already open on the branch. The developer read the refusal as their own omission —
-"you told me I could run auto, not that I had to merge the PR first" — and nothing was omitted.
+*"you told me I could run auto, not that I had to merge the PR first"* — and nothing was omitted.
 
 **Why it is systematic, not a one-off.** `/goal:next` Phase 5 offers `/goal:auto` whenever
-`Policy:` is `commit` / `commit+pr` and every remaining iteration carries a `gate1`. It never
-looks at whether a pull request exists. Under `commit+pr` one **always** does from iteration 1
-onward, because that policy opens the draft PR at the first commit. So after any first
-iteration, the two commands contradict each other by construction.
+`Policy:` is `commit` / `commit+pr` and every remaining iteration carries a `gate1`. It never looks
+at whether a pull request exists. Under `commit+pr` one **always** does from iteration 1 onward,
+because that policy opens the draft PR at the first commit. So after any first iteration, the two
+commands contradict each other by construction.
 
-**The check is not merely conservative.** `goal-auto.js:671` initialises `shipping.pr` to
-`false`, so the first `mirror()` runs `gh pr create` on a branch that already has one. It fails,
-`shipping.pr` stays false, every later iteration retries `create` and fails again, the body is
-never rewritten, and `gh pr ready` (`:908`) never fires. Removing check 9 would trade a clean
-refusal for a run that lands its work and silently fails to publish any of it.
+**The dangerous half is fixed; the confusing half is not.** The reason check 9 could not simply be
+deleted was that `goal-auto.js:671` initialises `shipping.pr` to `false`, so every later `mirror()`
+retries `gh pr create` on a branch that already has one, and the body is never rewritten — removing
+the check would have traded a clean refusal for a run that lands its work and silently publishes
+none of it. That cause is gone on the current runner: the publisher asks `gh` whether a pull
+request exists before creating one, and adopts it (`scripts/run/publish.ts`, *"Asked, not
+assumed"*). What survives is the contradiction itself. `commands/next.md` still offers
+`/goal:auto <plan path>`, `/goal:auto`'s check 9 still refuses on an open PR
+(`commands/auto.md`), and `next.md` names neither `/goal:supervise` nor the runner it launches.
 
-**Three fixes, and they are not equivalent:**
-
-1. **`/goal:next` learns the check** — run `gh pr list --head <branch>` before offering, and when
-   one is open, emit only the manual handoff. Cheapest, and it makes the two commands agree. But
-   it concedes that a `commit+pr` plan is never autonomous past iteration 1, which is backwards:
-   that policy exists precisely to be left alone.
-2. **`/goal:auto` narrows check 9** — refuse only on a pull request that is not this run's own.
-   The branch is named after the plan, so any open PR on `feature/<work-id>` is arguably this
-   plan's. Needs the rule written down, or it becomes a hole someone widens later.
-3. **The orchestrator adopts an existing PR** — seed `shipping.pr` from `gh pr view --json
-   number` before the first `mirror()`. Fixes the cause rather than the symptom.
-
-**What to settle first:** whether `goal-auto.js` survives at all (`unattended-run-spec.md` §9).
-If it is replaced by `goal-run.sh`, fix 3 belongs in that script's iteration 4 instead — and
-**R14 has to say so explicitly**, because as written ("a draft pull request exists from the
-first commit and its body is rewritten after each landing") it describes a PR the run itself
-opened and says nothing about one that was already there. That gap is what this incident
-exposed, and it would reproduce in the replacement.
+**So the question changed shape: what should `/goal:next` offer at all?** The autonomous entry
+point today is `/goal:supervise`, whose preflight has no PR check, so it would simply work. That
+makes fix 1 (teach `next` the check) and fix 2 (narrow check 9) both bets on `/goal:auto`
+surviving — which is §6's leftover, not this one's. Pointing the checkpoint command at the current
+generation is one line and one decision about which generation the workflow endorses.
 
 ## 6. The orchestrator is bash, and that was never a decision
 
-**Observed.** `goal-run.sh` shipped across seven iterations without bash ever being weighed
-against Node. The reasoning went "a `Workflow` script has no shell, therefore a shell script" —
-but the missing shell belonged to the *Workflow runtime*, not to JavaScript. `node` has
-`spawnSync`, and `goal-gate.ts` is already TypeScript executed natively, no build step and no
-dependency.
+**Settled: the port landed** (*Port `goal-run.sh` to Node/TypeScript*, #24, delivered across three
+runs). Kept here for what it cost and what the A/B showed.
 
-**What it costs, and the second column is the argument:**
+**The argument, unchanged.** Bash was never weighed against Node. The reasoning went "a `Workflow`
+script has no shell, therefore a shell script" — but the missing shell belonged to the *Workflow
+runtime*, not to JavaScript. The decisive column was never the language, it was the file count: one
+594-line file with eight functions holding argument parsing, ten preflight checks, the loop,
+publication, the quota wait and the closing stage, against a gate split one module per group of
+business rules, each with its matching test file — a convention `goal-gate.ts` states in its own
+header and that `goal-run.sh` was the one place in the plugin unable to follow.
 
-| | Lines | Files |
-|---|---|---|
-| `goal-run.sh` | 594 | **1**, eight functions |
-| `goal-gate.ts` + `gate/` | 903 | **10**, largest 158 |
+**What it cost.**
 
-The gate does more work than the script and is split one module per group of business rules,
-each with its matching test file — a convention `goal-gate.ts` states in its own header.
-`goal-run.sh` is the one place in this plugin that cannot follow it: argument parsing, twelve
-preflight checks, the loop, publication, the quota wait and the closing stage all live in one
-file. That is the maintainability cost, and it is what decided this — not a taste in languages.
+| | Lines | Files | Largest |
+|---|---|---|---|
+| `scripts/goal-run.sh` (frozen) | 594 | 1 | — |
+| `scripts/goal-run.ts` + `scripts/run/` | 938 | 8 | 194 |
+| `scripts/goal-gate.ts` + `scripts/gate/` | 920 | 10 | 175 |
 
-**A second defect, and this one is language-independent.** The script re-implements in
-`sed`/`awk` what `scripts/gate/plan.ts` already exports: `iterationSection()` (`plan.ts:56`) is
-`sed -n "/^### Iteration $n /,/^### Iteration /p"` (`goal-run.sh:418`), `iterationNumbers()`
-(`:138`) is the survey's `awk`, and five header reads have their equivalent too. `goal-auto.js`
-carried the same duplication and admitted it in a comment. **The orchestrator should not read
-the plan at all**: the gate hashes it, reads its blocks and refuses when it moved, so it is the
-authority — a second reader is a drift waiting to happen. Giving the gate `section <plan> <n>`
-and `survey <plan>` verbs, as `check` already publishes `plan_hash`, removes it in either
-language and costs tens of lines rather than a rewrite.
+344 lines bought the split. The second defect this question named — the orchestrator re-reading
+the plan in `sed`/`awk` where `gate/plan.ts` already exported the same accessors — did go, but not
+the way proposed: the runner imports `gate/plan.ts` directly instead of the gate gaining `section`
+and `survey` verbs. Same outcome, one reader, and no extra process boundary. The harness did not
+shrink: `tests/support/goal-run-harness.ts` is 273 lines and still spawns the runner by path,
+which is precisely what keeps the A/B possible.
 
-**The port is guarded, not blind.** `goal-run-harness.ts:237` spawns the script by path —
-`spawnSync('bash', [RUN, ...args])` — so switching to `node` is two lines and the forty-odd
-tests now on `main` become a parity harness. They already encode the eighteen business rules.
+**What the A/B showed, on one run each.** The bash run (PR #24) published a `## Landed` section
+that was empty for all six of its landed iterations: `landed` accumulates from an empty string, so
+it carries a leading space, and `tr ' ' '|'` turns the body's regex into `^### Iteration (|1) `, an
+empty alternative BSD grep refuses outright (`scripts/goal-run.sh:235`). The Node run (PR #26)
+listed all seven of its own, because the body is built from an array of iteration numbers looked up
+through `iterationHeading()` rather than from a string spliced into a grep alternation. One
+observed defect, in the one place where the two languages' handling of a list actually differs,
+found on the first real use of either runner.
 
-1. Port `goal-run.sh` to Node, same tests, two lines of harness. Green means parity proven.
-2. Split into modules on the gate's convention. Tests stay green.
-3. Convert what no longer needs a subprocess to imports; most of the 253-line harness goes, and
-   the plan-parsing duplication with it.
+**What the A/B cannot show, as wired.** CI runs the suite once with no `GOAL_RUN_IMPL`, which means
+bash: 188 pass and 6 skip in silence. Under `GOAL_RUN_IMPL=node` the same suite is 194/194. The
+frozen reference is the covered one; the runner that actually ships is exercised only by hand. A
+parity harness that only one side of the parity runs in CI proves nothing about the other.
 
-**Honest reservation.** The suite covers the eighteen rules, not every behaviour: exact log
-wording, argument ordering and the edge cases of the twelve preflight checks are not all
-asserted. A port held by this suite is far safer than a bare rewrite, not free of new bugs.
+**Honest reservation, unchanged and still true.** The suite covers the eighteen business rules, not
+every behaviour: exact log wording, argument ordering and the edges of the preflight checks are not
+all asserted. The port was far safer than a bare rewrite, not free of new defects.
 
-**What is not settled: when.** The port is its own plan. Running it is the first genuine use of
-`goal-run.sh`, which also makes it the first time an advisory lens ever runs — `goal-auto.js`
-never enabled them.
+**What is not settled: what happens to the loser.** `goal-run.sh` is frozen as the A/B reference,
+and `workflows/goal-auto.js` is 941 lines still reachable from `/goal:auto`. Three generations
+coexist and one is current. Keeping the bash reference costs a suite that must stay green in two
+languages and a doubling of every behavioural change; deleting it ends the A/B and the only
+independent check on the Node runner's behaviour. Nothing decides that yet, and §12 is a reason to
+decide it soon.
 
 ## 7. A run is invisible for minutes at a time, by construction
 
 **Observed.** On the first real run of `goal-run.sh` (2026-08-01, `goal-run-node-port-spec.md`),
-the developer asked twice whether anything was happening. Twice it was. Two distinct silences:
+the developer asked twice whether anything was happening. Twice it was. Two distinct silences: a
+preflight that printed nothing at all unless it refused, and an implementer whose output was
+captured by command substitution and therefore could not stream by construction.
 
-- **The preflight.** Measured at 2 min 50 s on this plan, during which nothing is printed and no
-  log file exists. `say()` writes to `$plan.run.log`, but the ten checks call it only to *refuse*
-  — a passing preflight says nothing at all. A healthy run and a jammed one are indistinguishable
-  for the longest stretch before the first iteration.
-- **The implementer.** `goal-run.sh:457` is `implemented=$(claude -p … 2>&1)`. Command
-  substitution captures, so nothing can stream by construction, and the text reaches the log at
-  `:460` only once the call has returned. That is minutes per iteration.
+**Both were answered, in the expensive variant, and the wait is unchanged.** The preflight now
+narrates each check as it passes (`scripts/run/preflight.ts`), and `narrate()` renders one line per
+tool use — `RUN implementer: Edit run/publish.ts` — from `--output-format stream-json`
+(`scripts/run/iteration.ts`), which was the right choice: it shows what the agent *does* rather
+than what it says, so the developer's output style stops mattering. But the implementer is spawned
+with `spawnSync`, which returns only when the child exits, so every narrated line is printed after
+the fact. The log is complete; the minutes of silence are exactly as long as before.
 
-**Not a missing flag.** `claude --help` publishes `--output-format stream-json`, `--verbose` and
-`--include-partial-messages`. The capture is the cause, not the CLI.
+**What that leaves open is a design decision, not a bug.** Live rendering needs `spawn` and a
+line-by-line reader, which would also remove the 1 MiB buffer ceiling on the harness's single
+largest call. That turns the iteration step asynchronous — the one place where the synchronous
+shape makes every state transition trivially readable, and where every test in the suite currently
+asserts against a returned result rather than a stream. Worth deciding on purpose.
 
-**Two fixes, and they differ in kind.** `… 2>&1 | tee -a "$log"` with `PIPESTATUS` for the exit
-code shows the raw stream — cheap, but it hands the developer the sub-agent's full prose, which
-under a `learning` output style is mostly noise about work they are not steering. Parsing
-`--output-format stream-json` and printing one line per tool use (`RUN implementer: Edit
-run/publish.ts`) shows what the agent *does* rather than what it says, and makes the output style
-irrelevant because its prose is never consumed.
-
-**Where it can land.** `goal-run.sh` is frozen for the duration of the A/B (see §6), so this is a
-deliberate divergence in the Node runner or nothing. Note that the run loop landed in that plan's
-iteration 3, so it fits no remaining slice: it is a follow-up plan, not an amendment.
-
-**To measure before deciding:** whether the stream-json event shape is stable enough to render
-from without re-parsing at every Claude Code release, and whether a per-tool-use line is the right
-granularity or already too much for a fifteen-iteration run.
+**To measure before deciding:** whether the stream-json event shape is stable enough to render from
+without re-parsing at every Claude Code release, and whether a per-tool-use line is the right
+granularity or already too much for a fifteen-iteration run. Still unmeasured — the only run since
+narration landed printed no narration at all, for the reason §12 gives.
 
 ## 8. Could a supervisor diagnose a halt and relaunch by itself?
 
-**Observed.** The same run halted at iteration 5. The developer pasted the output into a session,
-which diagnosed it in one pass: the plan was at fault, iteration 3's `gate1` asserted
+**Observed.** A run halted at iteration 5. The developer pasted the output into a session, which
+diagnosed it in one pass: the plan was at fault, iteration 3's `gate1` asserted
 `! grep -rq '### Iteration' …` while publication legitimately needs that literal, and `plan.ts`
 published no accessor for an iteration heading. The repair — add `iterationHeading` to `plan.ts`,
-declare it in iteration 5's `impl_files` — was mechanical once stated. Everything after it was
-too: restore the tree, relaunch. None of it needed a human except to authorize destroying the
-implementer's partial work.
+declare it in iteration 5's `impl_files` — was mechanical once stated, and so was everything after
+it. None of it needed a human except to authorize destroying the implementer's partial work.
 
-**So the loop is obvious**: run, and on a non-zero exit hand the exit code and the log tail to a
-`goal-run-doctor`, which classifies, repairs, cleans and relaunches.
+**The loop is obvious**: run, and on a non-zero exit hand the exit code and the log tail to a
+doctor which classifies, repairs, cleans and relaunches.
 
-**And the loop is dangerous, for a reason this incident demonstrates exactly.** There were two
-repairs available:
+**And the loop is dangerous, for a reason this incident demonstrates exactly.** Two repairs were
+available: delete the offending `gate1` clause (the run resumes immediately), or add the accessor
+(more work, and the correct one). An agent whose objective is *make the run continue* takes the
+first every time. The port would have finished green carrying precisely the duplication the plan
+existed to remove, and nothing would have said so. A supervisor optimizing for green is a
+supervisor that deletes the rules.
 
-1. delete `! grep -rq '### Iteration'` from iteration 3's `gate1` — the run resumes immediately;
-2. add the accessor — more work, and the correct one.
+**The guardrail was built, and it does not close the hole it was built for.** `plan-guard.ts`
+hashes the plan's `gateN=` and `dodN=` lines and refuses when that hash moves. But
+`commands/supervise.md` explicitly permits the doctor to edit `test_files` and `impl_files`, and
+neither key is hashed — while an empty `test_files=` makes the gate skip the bite check outright
+(`scripts/gate/bite.ts`, *"declares no test_files, so there is nothing to set aside"*). Emptying
+one line disarms the invariant that a test must fail without its implementation, and the guard
+answers OK. That is the *make the halt disappear* repair the guardrail exists to forbid, reachable
+through the one door left open.
 
-An agent whose objective is *make the run continue* takes the first every time. The port would
-have finished green carrying precisely the duplication the plan existed to remove, and nothing
-would have said so. A supervisor optimizing for green is a supervisor that deletes the rules.
+**And the classification, which this question correctly said had to come first, has nothing to read.**
+The same plan halted again at iteration 6 and needed the opposite response — nothing in the plan
+was wrong, the implementation was, and the repair was to discard it and have it redone. From the
+outside the two halts are indistinguishable, so the doctor's first act must be to classify, not to
+repair. It classifies from the run log, and the run log never contains the gate's verdict (§15).
 
-**The guardrail, and it is mechanically checkable.** The doctor may never touch a `gateN=` or
-`dodN=` line. It may add a path to `impl_files`, raise a `max_diff`, correct a mistyped path,
-rewrite prose. Hash the plan's command lines before and after its pass: different hash, refuse and
-wake the human. Everything it cannot classify halts too.
+**Built, never run.** `commands/supervise.md` and `scripts/plan-guard.ts` shipped in one commit and
+have not been exercised once. The measurement this question demanded — *what share of real halts
+fall inside the closed repair set* — was never taken; `supervise.md` says so in its own header
+(*"two prior halts are the whole evidence"*). Building before measuring is a defensible choice on a
+cheap component; recording that it was made is not optional.
 
-**And the guardrail is necessary, not sufficient.** The same plan halted again at iteration 6, and
-that halt needed the opposite response: `close.ts` guarded PR-readiness on the policy alone and
-asked `gh` where `goal-run.sh:544` reads the run's own state. Nothing in the plan was wrong. The
-repair was to discard the implementation and have it redone. From the outside the two halts are
-indistinguishable — same exit code, same regression-wall message, same shape of failing command —
-so the doctor's **first** act cannot be to repair, it has to be to classify: plan at fault, or
-implementation at fault. A doctor that only knows how to amend a plan will go looking for
-something to amend, and will widen an `impl_files` or raise a `max_diff` for a defect that is
-neither.
-
-**To measure before deciding:** what share of real halts fall inside the closed repair set, and
-whether the classification is reliable at all — two cases are an anecdote, not a measurement. If
-the repair set turns out small, the supervisor buys little and adds a component that can itself be
-wrong. Also unresolved: whether it may discard an implementer's partial work without asking, which
-is the one destructive step in the loop.
+**Still unresolved:** whether the doctor may discard an implementer's partial work without asking,
+which is the one destructive step in the loop.
 
 ## 9. Nothing harvests what a session learns
 
 **Observed.** The session that planned and drove the run above produced findings no artifact
-records:
+recorded: the `pr_body` defect of §6, a plan assertion that was too broad in a way only executing
+it revealed, a preflight replaying fifteen commands without de-duplicating identical ones. Each
+surfaced because a human was reading. The run's own auditor measures elapsed time and recurring
+failures and is explicitly told not to judge the work. Nothing looked at the *session* — the
+instructions given, what the assistant did with them, where it guessed wrong.
 
-- `goal-run.sh:235` builds `landed` as `landed="$landed $iteration"` from an empty string, so it
-  always carries a leading space; `tr ' ' '|'` makes the `pr_body` regex `^### Iteration (|1) `,
-  an empty alternative BSD grep refuses outright. PR #24's `## Landed` section was empty for every
-  landed iteration. A real bug in a script that had shipped across seven iterations, found the
-  first time anyone ran it.
-- The plan's own R4 assertion was too broad, in a way only executing it revealed.
-- The preflight replays fifteen commands without de-duplicating identical ones.
+**Built, never run.** `agents/goal-session-auditor.md` exists, `scripts/transcripts.ts` locates a
+run's transcripts, and `commands/supervise.md` invokes the auditor once per invocation — with the
+bar this question called the hard part actually written down (a finding must be anchored to a
+tool-call sequence). None of it has executed once, and it shows: no run has ever produced the
+`<plan>.run.session` file the locator prefers, and its fallback turns `/` into `-` and stops there,
+where Claude Code also turns `.` into `-` — so any run launched into the launcher's own
+`.worktrees/` directory resolves to a path that does not exist, and the auditor is handed nothing.
+Neither defect could have survived one real invocation.
 
-Each surfaced because a human was reading. The run's own auditor (`goal-run-auditor`) measures
-elapsed time and recurring failures; it is explicitly told not to judge the work. Nothing looks at
-the *session* — the instructions given, what the assistant did with them, where it guessed wrong.
+**Open, and it is still the hard part:** a transcript is long and mostly uneventful, so an agent
+reading it will find *something* every time — which is how continuous improvement becomes a backlog
+nobody reads. The written bar is a hypothesis, not a result; whether it holds is the measurement,
+and nothing has measured it.
 
-**What it would be.** An agent reading a finished session's transcript and proposing improvements
-in three buckets, because they have three different owners: the **codebase** (a bug like
-`pr_body`), the **workflow** (a command that asks what the session already knows — see §4), and
-the **marketplace** (a skill that failed to trigger, a convention that should have been stated).
-
-**Open, and it is the hard part:** a transcript is long and mostly uneventful, so an agent reading
-it will find *something* every time — which is how continuous improvement becomes a backlog nobody
-reads. It needs a bar for what counts as a finding, and that bar is what has to be designed, not
-the agent. A candidate: only findings that can name a file and line, or a specific exchange where
-a decision went wrong.
-
-Also undecided: whether a verbose output style helps or hurts here. Its prose states reasoning the
-transcript would otherwise only imply, which is exactly what such an auditor reads — but it is
-also the noise the developer wanted removed in §7. The two may want opposite settings.
+Also undecided: whether a verbose output style helps or hurts. Its prose states reasoning the
+transcript would otherwise only imply, which is exactly what such an auditor reads — and it is also
+the noise §7 wanted removed. The two may want opposite settings.
 
 ## 10. Nothing reviews what the gate accepted
 
@@ -293,46 +289,178 @@ also the noise the developer wanted removed in §7. The two may want opposite se
 declared scope, diff budget, removals, acceptance commands, the bite check, and secrets. What it
 does not verify is whether the code is *good*: naming, design, error handling, security posture,
 whether an abstraction leaks. The gate was built to refuse the failures an unattended agent
-produces mechanically, not to hold an opinion.
+produces mechanically, not to hold an opinion. So a plan can land complete and green with nobody
+having read a line — the intended economy — leaving the review debt where attention is scarcest.
 
-So a plan can land complete and green with nobody having read a line, which is the intended
-economy — and it leaves the review debt exactly where the developer's attention is scarcest.
+**Built and decided, never fired.** `agents/goal-run-reviewer.md` is invoked at the one moment
+publication can no longer be blocked behind it: right after the pull request goes ready
+(`scripts/run/close.ts`). Both open sub-questions were settled in the code and its brief: inline
+comments rather than one summary, and never `REQUEST_CHANGES` — pushed work is already shipped, so
+a review that cannot block would only add friction to clear by hand. The reviewer has not run once:
+the run that added it could not use it (§12), and no run has closed since.
 
-**What it would be.** A reviewer agent invoked at the closing stage, alongside the advisory lens
-and the auditor, posting its findings as review comments on the pull request rather than into a
-local log — best practices, security, and the project's own convention skills as the yardstick.
-The lens already occupies the neighbouring slot but asks a narrower question (does what landed
-implement the iteration's stated goal, or a comfortable reading of it) and writes only to the log.
-
-**Open:** whether it comments inline or posts one summary. Inline comments are actionable and
-also the fastest way to make a pull request unreadable when an agent finds twenty of them. And
-whether it may block: it should not — the work is already landed and pushed by the time it runs,
-so like the lens it can only advise. If blocking is wanted, the check belongs in the gate, which
-is a different and much stricter design conversation.
+**What that leaves genuinely open** is the one this question raised and did not answer: whether
+twenty inline comments make a pull request unreadable, which is a cap and not a design, and is
+unmeasurable until the reviewer actually posts something.
 
 ## 11. The advisory lens only ever sees the last run's landings
 
 **Observed.** `goal-run-node-port-spec.md` was delivered across three runs: run 1 landed
 iterations 1–4 and halted at 5, run 2 landed 5 and halted at 6, run 3 landed 6. The lens fired
-once, at the end of run 3, and its own verdict names its scope: *"I reviewed iteration 6's Goal,
-its business rules (R8, R9, R10)"*. Five of the six iterations were never looked at.
+once, at the end of run 3, and its own verdict named its scope: *"I reviewed iteration 6's Goal,
+its business rules (R8, R9, R10)"*. Five of the six iterations were never looked at. The defect was
+that `landed` is a per-process variable used as if it were a per-plan one: a halt skips the closing
+stage entirely, and the relaunch starts the accumulator empty. So the coverage of the only review
+step in the harness was inversely proportional to how much the plan resisted.
 
-**Why, mechanically.** The closing stage runs only when every requested iteration landed, and its
-brief is built from `$landed` (`goal-run.sh:558`), which accumulates within one process. A halt
-skips the closing stage entirely, and the relaunch that follows starts `landed` empty. So the
-coverage of the only review step in the harness is inversely proportional to how much the plan
-resisted — the plans that most deserve a second pair of eyes get the least.
+**Settled, by two of the three candidates at once.** The lens is now briefed from the plan re-read
+on disk — every box the gate ticked, this run's or an earlier run's (`scripts/run/close.ts`) — so
+the last run of a plan reviews the whole plan. And the review also moved to the pull request, where
+the diff is the whole branch and the question of which run landed what disappears (§10). The third
+candidate, firing per landing, was not taken: it multiplies the calls to solve a problem the first
+two already close.
 
-**Not a bug in the lens.** It reviewed exactly what it was handed. The defect is that `landed` is
-a per-process variable being used as if it were a per-plan one.
+**The measurement it asked for was taken and thrown away.** *Whether a lens handed six iterations
+at once still anchors its findings, or dilutes into a summary* — the run of 2026-08-01 handed its
+lens all seven of its landed iterations, and that verdict exists nowhere. The version of the
+closing stage that ran spawned the lens and discarded its output while announcing *"lens findings
+recorded, advisory only"*. Capturing it is now in the code; the datapoint is lost, and the question
+still has exactly one observation, from a lens given a single iteration, which did anchor.
 
-**Candidates:** brief the lens from the plan's ticked iterations rather than from `$landed`, which
-makes the last run of a plan review the whole plan; or fire it per landing rather than at the
-close, which spreads the cost but multiplies the calls; or move the review to the pull request
-(§10), where the diff is the whole branch and the question of which run landed what disappears.
-The third also survives a plan delivered across three runs without any bookkeeping, which is the
-case that produced this.
+## 12. A plan that improves the runner cannot use its own improvements
 
-**To measure before deciding:** whether a lens handed six iterations at once still anchors its
-findings, or dilutes into a summary. The one real datapoint is a lens given a single iteration,
-and it did anchor.
+**Observed, 2026-08-01.** Seven iterations of runner improvements landed, gate-verified, in a single
+run — and not one of them acted on the run that produced them. The run's own log is the proof, and
+every line of it can be checked against the plan it executed:
+
+- iteration 2 made the preflight narrate each passing check; the log holds no preflight line;
+- iteration 3 made the implementer narrate one line per tool use, and record its session id beside
+  the run; the log holds no `RUN implementer:` line, and no `.run.session` file was ever written;
+- iteration 4 added the reviewer at close; the log goes straight from *"the pull request was marked
+  ready"* to *"lens findings recorded"*;
+- the log holds nothing but `RUN` and `STOP` lines, though those same iterations added the recording
+  of every advisory agent's answer into it.
+
+**The cause is not a bug and cannot be fixed by a better plan.** Node resolves an import once, at
+load. `goal-run.ts` imports its eight modules at startup, so the process runs the code as it stood
+when it was launched, whatever the implementer writes to those files afterwards. Iterations 5 to 7
+landed outside the import graph and could not have acted either, for the mirror reason: nothing in
+the runner imports `plan-guard.ts` or `transcripts.ts` — only the `/goal:supervise` chain reaches
+them, and it was not what launched this run.
+
+**The boundary is exact, and it cuts both ways.** What the runner *imports* is frozen at launch.
+What it *spawns* is re-read at every call: the gate is `node goal-gate.ts` invoked per iteration,
+and each agent is a fresh `claude -p`. So the harness has the property nobody chose — a plan cannot
+improve the process running it, **and** a plan can rewrite its own judge mid-run. An iteration that
+edits `gate/bounds.ts` is judged by the old bounds; iteration N+1 is judged by the new ones, as is
+every earlier iteration the regression wall replays. Nothing pins the gate's own source the way
+`plan-guard.ts` pins the plan's command lines.
+
+**What it changes, and it applies to every plan on this harness from here.** A self-improving plan
+must be written knowing that the first run proves the code compiles, passes its gates and ships,
+and proves *nothing* about whether the improvement works. Verification is a second run, on a
+different plan. That is a planning rule, not a code change: an iteration whose Definition of Done
+is "the log shows X" cannot be satisfied by the run that writes it, and declaring it that way makes
+the plan lie.
+
+**To settle:** whether the runner should refuse a plan that declares any of its own modules in
+`impl_files` (cheap, honest, and blocks the harness from ever improving itself in one pass), or
+whether the frozen-process property should simply be stated in the plan template so the author
+budgets a proving run. And separately, whether the gate being mutable mid-run is acceptable at all
+— it is the one component the whole design says must not be influenced by what it judges.
+
+## 13. The confinement axis is empty, and that was never a decision either
+
+**Observed.** The harness is built entirely on *detection*: the gate reads `git status`, compares
+HEAD before and after, replays declared commands, refuses undeclared paths. There is no
+*confinement* anywhere — no sandbox, no container, no filesystem boundary, no egress control. The
+implementer is an ordinary `claude -p` holding `Read, Write, Edit, Grep, Glob, Bash` under
+`--permission-mode auto`, and the only fence around it is three deny prefixes on git verbs.
+
+**What that costs is not hypothetical, and it is structural rather than a list of bugs.** Every
+detection the design relies on has a blind spot that confinement would close and that no additional
+check inside the same model can:
+
+- the scope check knows only what `git status --porcelain -uall` reports, and the git directory is
+  not in it — so the component with no git rights can leave something the privileged component
+  executes at commit time;
+- HEAD-before/HEAD-after cannot see a `git push`, which moves neither HEAD nor the tree, and no
+  remote refs are ever recorded;
+- the deny rule is read once, at preflight, from a gitignored file the implementer can write to
+  without appearing in any diff;
+- `docs/steering-and-injection.md` already names network egress from the implementer as untreated,
+  and says why it stayed untreated: *"That is a sandbox question, not an orchestration one."*
+
+**And that sentence is the question.** It was written as a scoping decision and has been read ever
+since as a resolution. Nobody has decided whether this harness should acquire a confinement layer,
+which is a different kind of answer from adding an eleventh check: a sandbox constrains what the
+implementer *can* do, where every mechanism currently shipped only observes what it *did*, and
+observation is bounded by the imagination of whoever wrote the observer.
+
+**To measure before deciding:** what a run actually needs. The implementer's real requirements are
+narrow — read the repository, write declared paths, run the project's test commands — and if that
+set is small enough to enumerate, a container or a per-run user account is cheaper than the growing
+list of blind spots it would retire wholesale. If it is not enumerable (a project whose tests need
+the network, a `make` that pulls images), confinement is a per-project setting and the question
+becomes who declares it. That is the fork, and nothing has explored either branch.
+
+## 14. The port dropped every quantitative ceiling, and nobody noticed for a generation
+
+**Observed.** `workflows/goal-auto.js` carried two numbers the current runner does not: a token
+floor per iteration, below which the run refused to start a slice it could not finish — inert
+unless the run declared a budget, and the legacy said so in its own log — and a per-iteration token
+count written into the run's report. Neither was ported to `goal-run.sh`, and neither was ported to
+`goal-run.ts`. The current runner has no turn cap, no wall-clock timeout on any subprocess, and no
+cost measurement at all. Its single brake is the quota wait — thirty minutes, three times — which
+arms only when the output matches a rate-limit string.
+
+**Two consequences, and the second is the one that matters here.** An implementer looping on an
+impossible slice runs to quota exhaustion, sleeps, and repeats, with nothing anywhere saying *this
+slice is not converging*. And the A/B of §6 is not decidable on cost: the Node runner measures
+neither tokens nor money per iteration, so the comparison it was kept alive for has no data on the
+axis where the two runners could plausibly differ most.
+
+**Why it is a question and not a plan item.** A turn cap is one flag and would have been written by
+now if the answer were only *add a cap*. The open part is what a ceiling should be a ceiling *on*.
+Tokens are what the legacy counted and are the wrong unit for a harness whose iterations vary by an
+order of magnitude in size. Wall-clock is honest and punishes a slow machine. Turns are cheap to
+cap and easy to game by an agent that does more per turn. And whatever the unit, hitting the
+ceiling has to leave a signal §8's classifier can act on — where the gate already collapses every
+refusal it makes into one exit code whatever caused it (`scripts/gate/halt.ts`), so a fifth
+stopping reason joins a contract that already conflates two.
+
+**To measure before deciding:** the real distribution. No run on record was instrumented — the
+auditor is handed elapsed seconds per iteration and nothing about cost. Recording both per
+iteration blocks no decision and is the prerequisite for every version of this question.
+
+## 15. A halt leaves nothing to diagnose from
+
+**Observed.** The harness's account of itself exists only on the success path. When the gate
+refuses an iteration, the runner prints *"iteration N was refused by the gate"* and exits — the
+gate's own verdict, the block naming which check failed and on what, is captured and never written
+anywhere (`scripts/run/iteration.ts`). The closing stage is not reached, so there is no run report,
+no lens, no auditor. The bash runner logged that verdict; the port dropped it.
+
+**This is the fifth stated invariant failing at the one moment it is load-bearing.** *Every claim is
+a command that ran* holds for everything the harness asserts about success, and produces nothing at
+all about failure. A refusal is the single most information-dense event a run generates, and it is
+the only one that leaves no artifact.
+
+**What it blocks is not one feature but three.** `/goal:supervise` must classify a halt as *plan at
+fault* or *implementation at fault* and has only a one-line message to do it with (§8). §14's
+ceiling needs a stop tellable apart from a gate refusal, on a gate that collapses every refusal it
+makes into one exit code. And §9's session auditor is meant to learn from what went wrong, on a
+harness that records only what went right.
+
+**Why it is structural rather than a missing log line.** Adding the verdict to the log is a small
+change and should happen. The question underneath it is what a run owes the outside world when it
+stops: today the closing stage — report, lens, audit — is conditioned on every requested iteration
+landing, which means the runs that most deserve a post-mortem are precisely the ones that get none.
+Inverting that (always close, and let the closing artifacts describe a halt) changes what the lens
+and auditor are for, since both are currently briefed on landed work. That is a design decision
+about whether this harness reports on plans or on runs.
+
+**To measure before deciding:** what a real halt actually needs in order to be classified. The two
+recorded halts were both diagnosed by a human reading a pasted terminal — nobody has established
+which parts of that paste were load-bearing, and building the artifact before knowing repeats
+exactly what §8 did.
