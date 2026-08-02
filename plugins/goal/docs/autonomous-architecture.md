@@ -1,25 +1,30 @@
 # Autonomous execution — architecture
 
-How `/goal:auto` is meant to run a locked plan without supervision: what enforces what, and
-why each guarantee sits in the layer it sits in.
+How a locked plan is run without supervision: what enforces what, and why each guarantee sits in
+the layer it sits in.
 
-The rule that shapes everything: **a guarantee belongs to the lowest layer that can hold
-it.** A rule written in prose is obeyed by a model. A rule written in JavaScript is
-executed. A rule written in bash is a fact. Push each one down until it stops moving.
+The chain is `/goal:draft-issue` → `/goal:run-issue` → `node goal-run.ts <plan>` →
+`goal-gate.ts` → advisory agents → `/goal:supervise`. Only the middle of it is unattended.
+
+The rule that shapes everything: **a guarantee belongs to the lowest layer that can hold it.**
+A rule written in prose is obeyed by a model, which is to say sometimes. A rule written in a
+program is executed. A rule that is an exit code is a fact. Push each one down until it stops
+moving.
 
 ## The six layers
 
 | # | Layer | Medium | Holds |
 |---|---|---|---|
 | 0 | The plan | markdown, gitignored, hashed | what to build, and the exact commands that prove it |
-| 1 | Verification | TypeScript run natively by node (`scripts/goal-gate.ts`) | did this iteration pass — the only authority |
-| 2 | Orchestration | JavaScript (`workflows/goal-auto.js`) | order, parallelism, halt, budget, model tiering |
-| 3 | Advisory quality | agents (lenses, review skills) | what the gate structurally cannot see |
-| 4 | Session lifecycle | the command + `/loop` | quota waits, context budget, resume |
-| 5 | Remote surface | GitHub + Remote Control | where a human sees it and steers it |
+| 1 | Verification | TypeScript run natively by node (`goal-gate.ts`, nine modules under `gate/`) | did this iteration pass — the only authority, and the only thing that commits |
+| 2 | Orchestration | a node process (`goal-run.ts`, seven modules under `run/`) | preflight, order, halt, quota wait, publication |
+| 3 | Advisory quality | agents (reviewer, lens, auditor) | what the gate structurally cannot see |
+| 4 | Session lifecycle | a command (`/goal:supervise`) | classify a halt, repair or discard, relaunch once |
+| 5 | Remote surface | a draft pull request on the plan's declared remote | where a human sees it |
 
-Layers 0–2 are where correctness lives. Layer 3 can only ever *inform*. Layers 4–5 cannot
-live inside the workflow at all, for reasons given below.
+Layers 0–2 are where correctness lives. Layer 3 can only ever *inform*. Layer 4 is whatever is
+left once everything mechanical has been pushed down, and it keeps shrinking — the quota wait
+used to live there.
 
 ## Layer 1 is the trust anchor, and it is a script
 
@@ -35,57 +40,104 @@ Concretely: `goal-gate.ts commit` verifies, commits and ticks **inside one proce
 The orchestrator does not commit. It calls a script that commits only after it has verified,
 so an orchestrator that misreads a result cannot produce a bad commit.
 
-## Layer 2 is JavaScript because prose is a suggestion
+The boundary of that anchor is worth naming. *Only the gate commits* holds against an
+implementer denied `git commit`, `git push` and `git add` by a Claude Code settings rule — and
+what the run checks is that `.claude/settings.local.json` contains those three strings
+(`run/preflight.ts:163`). An ALLOW list satisfies that check exactly as well as a DENY one. The
+denial is a real mechanism; the reading of it is a substring.
 
-The prose version of the loop ends with seventeen prohibitions (*never tick before the
-gate*, *a halt is final*, *never touch the index*). One writes those sentences only about
-things that are possible. In a script the ordering is instructions, and `break` executes.
+## Why layer 2 is a program, and this one
 
-The workflow also buys three things prose cannot express at all:
+Four forms of the loop were tried. Each is named here by what it made impossible.
 
-- **Parallel tracks as a primitive.** `parallel()` returns `null` for a thunk that throws
-  instead of rejecting, which is exactly the plugin's own rule that one track failing must
-  never cancel a healthy sibling.
-- **A token ceiling.** `budget.remaining()` lets the run shed optional work before it hits
-  the wall, instead of dying mid-iteration.
-- **Per-stage model and effort.** The agent that runs a gate is a button (`effort: 'low'`).
-  The agent that implements a slice is not. Today every subagent is identical.
+**`/goal` on its own.** There is no judge: the model decides when the work is done. That is why
+`/goal:next` exists — it is "the only step that replays the acceptance commands independently"
+(`commands/run-issue.md:731`), and skipping it means a green iteration is only ever
+self-certified. Everything below is an answer to that one hole.
 
-**The workflow cannot touch the filesystem.** That is the load-bearing constraint of the
-whole design: JS in a workflow has no disk and no shell, only `agent()`. Everything that
-must read the repo goes through a script invoked by an agent — which is why
-`goal-gate.ts` exists. It is not plumbing between two files; it is the boundary
-between a language that cannot read the plan and a plan that must not be interpreted.
+**A dynamic Workflow (`workflows/goal-auto.js`).** It takes a subagent to run `git status`. The
+proof is checked into the repository: `agents/goal-runner.md` exists, and its whole trade is
+that it "runs exactly one command and reports its exit code. […] Never interprets, never fixes,
+never retries", because "a verdict must cross back as an exit code, not as a reading of the
+output". An agent whose profession is to be a shell. Every `sed`, every `git status` costs a model call,
+a latency and a notification. The abstraction fights the task: orchestrating *is* sequencing
+deterministically, and a workflow turns every deterministic step non-deterministic. The defect
+that shape produced: `goal-auto.js:671` initialises `shipping.pr` to `false`, so on a branch
+that already carries an open pull request the run retries `gh pr create` at every iteration,
+never rewrites the body and never marks it ready — it lands all of the work and silently
+publishes none of it.
+
+The prose version of the same loop ended in seventeen prohibitions (*never tick before the
+gate*, *a halt is final*, *never touch the index*), and the workflow reduced them to four
+(`commands/auto.md:362`). One writes those sentences only about things that are possible, so
+that reduction was real. It was not worth its price.
+
+**A bash script (`scripts/goal-run.sh`).** The right instinct, stated in its own header: a
+workflow has no shell, so there every `sed` and every `git status` crosses through a subagent —
+"here a command is a command" (`goal-run.sh:8-10`). Wrong material. 594 lines in one file cannot
+follow the convention the plugin holds itself to, one module per group of business rules, which
+is what `gate/` does across nine of them. The defect found on the first real use: `pr_body`
+builds a regex alternation from `landed`, which accumulates from an empty string
+(`goal-run.sh:235`); the leading space becomes an empty alternative, BSD `grep` refuses it, and
+the pull request body stayed empty for six iterations.
+
+**A command that launches a node script that launches `claude -p`.** What each part buys:
+
+- **the script**, against the workflow: `git status` is a system call, not a model call.
+- **node**, against bash: 938 lines across 8 modules — the same total as `goal-auto.js`, but
+  each with its own test file and the largest under 200 lines — and whole classes of bug
+  disappear structurally, since `landed: string[]` (`run/publish.ts:44`) cannot produce bash's
+  empty alternative.
+- **`claude -p`**, against a subagent: one fresh, bounded session per iteration, no context
+  leaking from one slice into the next, each one persisted separately — which is what makes a
+  session auditor possible at all.
+- **the command**, against a binary: classifying a halt is a judgment, and Claude Code already
+  owns the loop.
+
+The constraint that shaped the second form — no disk, no shell, only `agent()` — is exactly the
+one the two forms after it rejected. `run/preflight.ts` reads the settings file itself;
+`run/sweep.ts` spawns the plan's own commands. Having a shell is the design, not a leak in it.
+
+What falls out is the principle: **the model is used exactly where something has to be judged —
+implementing, classifying, reviewing — and nowhere else.** Every deterministic step is a
+program. The workflow had that inverted; `/goal` on its own had deleted the program.
 
 ## Layer 3 informs and never blocks
 
-See `adversarial-verification.md` for the lens catalogue and the required/optional rules.
-The one architectural point: **a lens finding never stops a run.** A false positive that
-kills a provably-green run at 3am costs more than the finding is worth, and the literature
-puts the false-positive rate for requirement-conformance judgement high enough that this is
-not a hypothetical.[^overcorrect]
+See `adversarial-verification.md` for the lens catalogue and the required/optional rules. The
+one architectural point: **a lens finding never stops a run.** A false positive that kills a
+provably-green run at 3am costs more than the finding is worth, and the literature puts the
+false-positive rate for requirement-conformance judgement high enough that this is not a
+hypothetical.[^overcorrect]
 
-Findings go to the GitHub issue. The developer adjudicates them awake.
+The three agents are invoked at the close, after everything is committed and pushed, which makes
+that rule structural rather than a promise: none of them can undo what the gate already
+verified. Their answers land in `<plan>.run.log` (`run/close.ts:108`) and, for the auditor, in
+`.claude/goal-runs/<sha>.md`. The developer adjudicates them awake.
 
-## Layer 4 cannot live in the workflow
+## Layer 4 — what survives the process
 
-Three things the workflow structurally cannot do, and where they go instead:
+**Durable state is the plan's `[x]` boxes**, ticked by the gate in the same process that
+verified and committed (`gate/scope.ts`). A fresh run re-reads them and resumes at the first
+unchecked iteration. That is the external-memory pattern the long-horizon-agent literature
+converged on — state written to structured files and read back explicitly, rather than carried
+in a context window.[^memory]
 
-**Wait for a quota.** A workflow script has no sleep, and when the quota is gone the agents
-cannot run anyway. The waiting belongs to the command, via `/loop` and `ScheduleWakeup`, and
-works only because the run is resumable from disk.
+**The quota wait moved down.** It used to sit here, on the grounds that a workflow script has no
+sleep. It now lives in the runner, which detects the window from the shape of a failed call,
+sleeps, retries the same iteration and gives up into a pause rather than spinning
+(`run/iteration.ts:104-152`). That is this page's own rule applied to itself.
 
-**Survive a session.** `resumeFromRunId` is same-session only. The durable state is the
-plan's `[x]` checkboxes, ticked by bash after a green gate. A fresh run re-reads them and
-resumes at the first unchecked iteration. That is the external-memory pattern the
-long-horizon-agent literature converged on — state written to structured files and read
-back explicitly, rather than carried in a context window.[^memory]
+**What is left at layer 4 is the part that is not mechanical**: reading a non-zero exit and
+saying which of two very different things happened — the plan's contract was wrong, or the
+implementation was. The runner's four exit codes exist for that call and no other
+(`goal-run.ts:13-17`), and `/goal:supervise` makes it. It says so itself: the rule was written
+from two halts, and it is a hypothesis rather than a proven procedure.
 
-**Keep the context window honest.** The orchestrator's context must not grow with the
-number of iterations. Two mechanisms: every implementation happens in a subagent whose
-transcript never enters the orchestrator, and every command result crosses back through a
-schema (`{exitCode, output}`) rather than as free transcript. A fifteen-iteration run costs
-the orchestrator roughly what a two-iteration one costs.
+It is also where the layering leaks today. On a gate refusal the runner exits without ever
+writing the gate's own output to the log (`run/iteration.ts:186-193`), and that HALT block is
+the only evidence the classifier has to read. A layer whose entire job is to classify is being
+fed by a layer that throws the evidence away.
 
 **Never rely on auto-compaction inside a run.** Compaction is lossy and it fires when it
 fires. When the context is genuinely spent, the correct move is the one `/goal:next` already
@@ -93,19 +145,24 @@ formalises: stop at an iteration boundary, verify the tree, and hand off to a fr
 that reads the plan. A handoff at a clean boundary loses nothing, because the boundary state
 is entirely on disk.
 
-## Layer 5 — the GitHub surface, and the security invariant that shapes it
+## Layer 5 — the remote surface, and the security invariant that shapes it
 
-The run maps onto GitHub as: **the issue is the log, the PR is the deliverable.**
+The run maps onto GitHub as a single object: **a draft pull request, opened at the first landed
+iteration and its body rewritten by every one after it** (`run/publish.ts:57-60`), so a run that
+halts at 3 of 15 still leaves something a human can read instead of a local branch nobody can
+see. At the close, if the global Definition of Done passes, that pull request is marked ready
+and reviewed (`run/close.ts:59-80`). Nothing is ever written to an issue.
 
-- run starts → a comment on the issue: plan, tracks, iteration count, policy
-- a track halts → its branch is pushed and a comment carries the gate output verbatim,
-  plus the iterations never attempted
-- a track finishes → its own PR, and a comment linking it
-- lens findings → appended to the PR body and the issue comment, marked advisory
+Pushing is no longer something that happens *on* a halt: it has already happened, at every
+landed iteration (`run/publish.ts:100`). The old rule that nothing is pushed on failure was
+first reversed, and then made moot.
 
-Pushing a halted branch is a deliberate reversal of the old rule that nothing is pushed on
-failure. Unattended, the alternative is that the only machine that knows what happened is
-the one that is now asleep.
+That ordering costs one guarantee, and it is the sharpest layering fault on this page.
+`gate/ship.ts:11` describes the global Definition of Done as the barrier replayed once before
+anything ships, because every slice gate only ever saw its own slice. But the runner publishes
+inside the loop (`goal-run.ts:95`) and only calls that barrier at the close
+(`goal-run.ts:100`). Per slice the invariant holds — no commit exists that a gate did not
+verify. At run level, the last barrier guards nothing it could still stop.
 
 ### The autonomous run is write-only towards GitHub
 
@@ -119,15 +176,22 @@ injection away from using them.
 
 So:
 
-- **The loop never reads issue or PR text.** Not titles, not bodies, not comments. Reading a
-  source happens once, in `/goal:draft-issue`, under a human's eyes, and its output is the
-  local plan.
-- **The plan is the only instruction source**, it is gitignored, and its hash is checked at
-  every iteration. An instruction that is not in the plan is not an instruction.
+- **The loop never reads issue or PR text.** The one thing it reads back from GitHub is a
+  number — `gh pr view --json number` (`run/publish.ts:129`) — and it reads it only to decide
+  whether to create a pull request or edit the one that exists. Reading a source happens once,
+  in `/goal:draft-issue`, under a human's eyes, and its output is the local plan.
+- **The plan is the only instruction source**, it is gitignored — a plan directory visible to
+  git is a refusal, not a warning (`run/preflight.ts:93`) — and its hash is checked at every
+  iteration. An instruction that is not in the plan is not an instruction.
 - **Gate commands come from the plan**, frozen by a human at lock time. The run installs
   nothing and resolves no dependency it was not told to.
 - Agents that write to GitHub receive the text to post as data; they do not decide what to
   post from something they read there.
+
+The last bullet is the weak one and deserves to be named as such: the reviewer is briefed to
+read the plan and the branch's commits (`agents/goal-run-reviewer.md`), but it holds `Bash`, so
+nothing mechanically stops it from reading the pull request it is posting to. There the
+invariant is prose again.
 
 The cost of this invariant is real and worth naming: you cannot steer a run by commenting on
 the issue.
@@ -139,10 +203,17 @@ GitHub separate from any agent that can act. The richest safe channel is a check
 panel the run writes itself and reads back as a bit vector — you steer by ticking, and no
 text authored by anyone else ever crosses.
 
-## What is *not* worth moving into the workflow
+## What is deliberately not a program
 
-Phase 4's history reshaping and Phase 5's cleanup PR run once, at the end, under a human's
-eye. They are judgment, they are cheap in prose, and porting them buys nothing. Leave them.
+The grill is. `/goal:run-issue` asks one question at a time and a human answers
+(`commands/run-issue.md:94`), and that is the step that decides what is being built. Nothing
+downstream can recover from a plan that is wrong, because every mechanism below it checks the
+plan against itself. Automating it would move the one judgment with no fallback into the layer
+with the weakest guarantees.
+
+Not everything outside the runner is there by choice, though. The cleanup plan and the
+post-merge checklist exist only as prose in the abandoned command (`commands/auto.md:315-358`),
+and no runner carries them. That is a gap, not a decision.
 
 ---
 

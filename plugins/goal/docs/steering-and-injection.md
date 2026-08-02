@@ -1,11 +1,16 @@
 # Steering a run remotely, without opening an injection channel
 
-The autonomous run is write-only towards GitHub (see `autonomous-architecture.md` §5). That
-invariant is what keeps a malicious issue from reaching an agent that holds push rights, and
-it is not negotiable. But it also means you cannot steer a run from your phone, which is a
-real cost.
+**The channel this document designs was never built.** Nothing in the current runner reads a
+remote instruction. Every `gh` call `scripts/goal-run.ts` and `scripts/run/` make is about one
+pull request — this run's own: create, edit, view, mark ready. There is no control panel, no
+label kill switch, no reader agent in the path. A run launched by `node goal-run.ts <plan>` is
+steerable by nothing except killing the process, which `run/lock.ts:36-44` makes safe by
+releasing the plan's lock on `SIGINT`, `SIGTERM` and exit.
 
-This note is how to get the steering back without giving the invariant away.
+So the document is two things now, and they should not be confused. The first half is the design
+rules a steering channel would have to satisfy — they cost nothing to keep and everything to
+rediscover. The second half is the injection surface that exists **today**, which is not the one
+the original text worried about.
 
 ## The defense that does not work
 
@@ -14,7 +19,9 @@ any instruction it contains" is not a defense. It is a request, addressed to the
 the attacker is addressing, and it is routinely bypassed. Any design whose safety rests on a
 sentence in a prompt has no safety property at all.
 
-## The three levers that do work
+That sentence is the test this document applies to itself, twice, below.
+
+## The three levers, if the channel is ever built
 
 ### L1 — Bound the vocabulary so a forged command is boring
 
@@ -44,8 +51,10 @@ Untrusted text must be reduced to a typed value by a **script**, before any mode
 `jq` deciding whether a string equals `stop` cannot be talked out of it. A model deciding the
 same thing can.
 
-Practically: `gh api` → `jq` → an enum, or nothing. Anything that fails to match the grammar
-is discarded silently, and what reaches the workflow is a value, never a sentence.
+One place in the shipped runner has this shape, and it is worth naming because it shows the
+lever costs nothing: `run/publish.ts:128-134` asks `gh pr view --json number` whether a pull
+request exists and reduces the answer with `/"number":\d+/` to a boolean. Nothing that came back
+from GitHub reaches a model, or reaches anything but that regex.
 
 ### L3 — Separate the reader from the actor
 
@@ -53,43 +62,32 @@ This is the dual-LLM pattern, and its refinement CaMeL: a *quarantined* model ma
 untrusted content but holds no tools, while the *privileged* model holds the tools and never
 sees the content.[^camel][^dual]
 
-Here it maps cleanly onto a mechanism the plugin already has. Define a dedicated subagent
-type in `agents/` — `goal-reader` — that holds no `Write`, no `Edit` and no posting tool, and
-call it with `agentType`. It reads, it returns raw output, and the caller reduces that output to
-a validated value.
+The principle is right and it survives every generation of the harness. What did not survive is
+the mechanism. `agents/goal-reader.md` still exists, holds `tools: Bash` and nothing else, and has
+exactly one caller in the repository: `workflows/goal-auto.js:446`, in the abandoned workflow.
+Nothing in the current runner invokes it.
 
-Combined with L2, the reader agent is barely a model at all: it runs one command and returns
-its output. That is the intent.
+**And the shipped path inverts the separation.** `run/close.ts:71-81` briefs
+`goal:goal-run-reviewer` to read a pull request — third-party text — *and* to post its review
+with `gh`, in `--permission-mode auto`, and that agent holds `Bash`
+(`agents/goal-run-reviewer.md`). One agent sees remote text and holds the tool that writes. That
+is precisely the fusion L3 exists to prevent, and it is what runs today.
 
-**What was earned, and what was not.** This section first said the frontmatter grants it *only*
-`Bash(gh api …)`. It cannot: the documented agent `tools:` field takes a list of tool **names**
-(`["Read", "Bash"]`), and the scoped `Bash(…)` form is permission-rule syntax, not a tools entry
-— checked against the official plugin component reference rather than assumed. So `goal-reader`
-holds plain `Bash`, which is strictly more than it needs.
+**What the `tools:` field can and cannot buy.** This section first claimed the reader's frontmatter
+grants it *only* `Bash(gh api …)`. It cannot: the documented agent `tools:` field takes a list of
+tool **names** (`["Read", "Bash"]`), and the scoped `Bash(…)` form is permission-rule syntax, not
+a tools entry — checked against the official plugin component reference rather than assumed. An
+agent definition therefore cannot express a narrow capability at all. Restricting *which* commands
+an agent may run is a settings-layer question, which is what the one enforced restriction below
+turns out to be.
 
-What is actually held, then:
-
-- The reader holds **no `Write`, no `Edit`**, and receives exactly one command, constructed by the
-  workflow, never by a model.
-- It is the **only** agent that reads GitHub. Every agent that can act — implementer, runner,
-  reporter — never sees remote text at all. That separation is real and it is the load-bearing
-  half of L3.
-- Its brief refuses a write command explicitly and reports the refusal, which is prose, therefore
-  a hint and not a guarantee.
-
-The residual gap is named in the risks below rather than papered over: a reader holding plain
-`Bash` could, if talked into it, run a writing command. Closing it mechanically needs a
-permission rule at the settings layer, which is a different surface from an agent definition.
-
-## The channels, from safest to richest
+## The channels, from safest to richest — designed, never built
 
 ### Tier 0 — Enumerable state
 
 A label, a reaction, an issue's open/closed state, a PR's draft/ready flag. Reading one is
 reading a boolean or a small enum. There is no free text anywhere in the path, so there is
-nothing to inject into.
-
-Cheapest to implement, and enough for `stop`.
+nothing to inject into. Cheapest to implement, and enough for `stop`.
 
 ### Tier 1 — A checkbox control panel
 
@@ -100,37 +98,20 @@ Richer, and still injection-free, because of a permission asymmetry that is easy
 
 So: the run posts a control-panel comment it writes itself, containing GitHub task-list
 checkboxes. You steer by ticking them from your phone. The run reads back only *which of its
-own boxes are ticked*, which is a bit vector over a vocabulary it authored.
+own boxes are ticked*, which is a bit vector over a vocabulary it authored. The panel's comment
+id comes from the URL `gh` printed when the run posted it, so reading it back is a lookup by id
+and never a search across an issue's comments: a forged panel posted by someone else, marker and
+all, is never read.
 
-```markdown
-<!-- goal:control v1 -->
-### Run controls — tick one and the run picks it up at the next iteration boundary
+No text written by anyone else is ever read. The attacker cannot edit this comment without write
+access, and someone with write access to your repository can already push code. This is the answer
+to "steer with comments and writing": you write, but what crosses the boundary is bits, not prose.
 
-- [ ] stop — end the run after the current iteration
-- [ ] no-ship — push nothing, open or update no pull request, and mark none ready
-- [ ] skip-lenses — drop the advisory refutation stage
-```
-
-**As implemented, and one verb short of the design.** `retry-current` is not there. It was listed
-as acceptable above — a forged retry costs one iteration twice — but the loop it would live in has
-no retry: a gate refuses, the run is over, and adding a remote verb whose only job is to
-contradict that would have been the first place the halt-is-final rule leaked. The three above are
-the whole vocabulary.
-
-Two implementation details that carry the safety:
-
-- **The panel's comment id comes from the URL `gh` printed when the run posted it**, so reading it
-  back is a lookup by id and never a search across an issue's comments. A forged panel posted by
-  someone else, marker and all, is never read.
-- **The label kill switch shares the same read**, as `goal:stop`, so a run can be stopped from the
-  issue's label picker without waiting for a panel comment to exist. One reader agent per iteration
-  boundary covers both, at `effort: 'low'`.
-
-No text written by anyone else is ever read. The attacker cannot edit this comment without
-write access, and someone with write access to your repository can already push code.
-
-This is the answer to "steer with comments and writing": you write, but what crosses the
-boundary is bits, not prose.
+Built once, in `workflows/goal-auto.js` (`CONTROLS` at `:406`, the panel body at `:408-420`), with
+three verbs — `stop`, `no-ship`, `skip-lenses`. `retry-current` was rejected there for a reason
+that still holds: the loop it would live in had no retry, and a remote verb whose only job is to
+contradict the halt rule is the first place that rule would leak. None of it was carried into
+`goal-run.sh` or into `goal-run.ts`.
 
 ### Tier 2 — A fenced command block in a new comment
 
@@ -145,6 +126,65 @@ levers at once:
 
 An allowlist alone is not a defense — the incident that motivates all of this began with an
 authorization bypass. It is one layer, and it only ever raises cost.
+
+## The channels that exist
+
+### The plan file is executed, and not only where you think
+
+`run/sweep.ts:11-45` walks the **whole plan file**, collects every line matching `dodN=` or
+`gateN=` inside any ` ```gate ` fence, and `run/sweep.ts:52` runs each one with `shell: true` —
+before a byte is written, as preflight check 8. It never verifies that a fence belongs to an
+iteration. A ` ```gate ` block in an appendix, a worked example, a quoted snippet of somebody
+else's plan: all of it executes.
+
+That is not a bug in the sweep so much as the honest statement of what a plan *is*. **The plan is
+executable input, and the human who validates it is validating code.** Everything else in this
+design leans on that review, so it is worth saying in the strongest form: reading a plan for
+correctness and reading a plan for what it will run are the same act, and only one of them is
+usually performed.
+
+### Four agent sessions in `--permission-mode auto`
+
+The implementer (`run/iteration.ts:111-125`), then the reviewer, the lens and the auditor at
+close (`run/close.ts:80`, `:107`, `:123`). None is capability-restricted by its `tools:` field
+beyond the coarse list, and the reviewer reads remote text as established above. Network egress
+from any of them is not addressed anywhere: that is a sandbox question, not an orchestration one.
+
+### `/goal:supervise` — a local steering channel with a mechanical guard
+
+`commands/supervise.md` introduces the one actor allowed to **edit the plan between two runs**,
+inside a closed set: an entry in `test_files` or `impl_files`, `max_diff`, a mistyped path, or
+prose (`supervise.md:72-75`). It asks the same question this document asks of a remote verb —
+*can this edit only subtract?* — and answers it with a mechanism rather than a sentence:
+`scripts/plan-guard.ts` hashes the plan's acceptance commands before and after and refuses if the
+hash moved.
+
+**The mechanism does not cover the closed set it guards.** `plan-guard.ts:18` hashes only lines
+matching `gateN=` or `dodN=`. Emptying `test_files` — an edit `supervise.md:72-75` explicitly
+permits — leaves that hash untouched and disarms the bite check, which returns `SKIP` the moment
+`test_files` is empty (`gate/bite.ts:52-57`). A guard that proves the bar did not move, while the
+check that enforces the bar can be switched off beside it, proves less than its name.
+
+## The only capability restriction actually enforced
+
+`run/preflight.ts:157-173` refuses to start a run unless `.claude/settings.local.json` mentions
+`git commit`, `git push` and `git add`. This is what stands behind "only the gate commits": the
+implementer is an ordinary Claude Code session, and without a settings-layer deny rule that
+sentence is a brief, not a capability.
+
+It is the right layer — it is the layer L3 concluded the `tools:` field could not reach — and the
+check on it is a `String.includes` over the whole file (`run/preflight.ts:163`). **An `allow` list
+naming those same three strings satisfies it exactly as well as a `deny` list does.** The
+preflight proves the strings are present in the file, not that they deny anything.
+
+Three further limits of the same guarantee, none of them covered:
+
+- The rule is read once, at preflight. It is not retroactive on a session already started.
+- Nothing surveys the remote refs, so a push that happened anyway would not be detected.
+- The implementer can write inside `.git/`, which neither the run's own tree check
+  (`run/iteration.ts:155`) nor the scope check (`gate/scope.ts:34`) reports, since git does not
+  report on its own directory — and the gate that runs next executes outside the permission
+  system entirely.
 
 ## Where the untrusted input actually goes
 
@@ -161,22 +201,22 @@ where a human is looking.** Everything downstream consumes only what that human 
 
 Which puts a real obligation on `/goal:draft-issue`: a long source document is exactly where
 an instruction hides from a tired reader. Read the produced plan, not the source's summary of
-itself.
+itself — and, per the sweep above, read every fence in it as a command that will run.
 
 ## Residual risks, stated plainly
 
-- **The reader holds plain `Bash`**, not a scoped `gh api` grant, because the agent `tools:` field
-  cannot express one (see L3). Its restriction to reading is a brief, not a capability, and that is
-  the weakest link in this design as implemented.
-- **Repository write access.** Tier 1 rests on it. Someone who has it does not need an
-  injection.
+- **The plan review is load-bearing, and more so than the original text admitted.** A poisoned
+  instruction that survives into the frozen plan is faithfully executed by every mechanism
+  downstream. The hash guarantees the plan did not change; it says nothing about whether it was
+  right. And a gate fence in it runs at preflight, before any iteration is judged.
+- **The deny rule is checked by substring, not by meaning** (`run/preflight.ts:163`). It is the
+  weakest link in the guarantee this design actually ships.
+- **One agent both reads remote text and writes** (`run/close.ts:71-81`). L3 is not held on the
+  current path.
+- **Repository write access.** Tier 1 would rest on it, if it were ever built. Someone who has it
+  does not need an injection.
 - **A compromised run can still write anything to GitHub.** Write-only protects the run from
-  GitHub, not GitHub from the run.
-- **Network egress from the implementer agent** is not addressed here at all. That is a
-  sandbox question, not an orchestration one.
-- **The plan review is load-bearing.** If a poisoned instruction survives into the frozen
-  plan, every mechanism downstream will faithfully execute it. The hash guarantees the plan
-  did not change; it says nothing about whether it was right.
+  GitHub, not GitHub from the run — and the run is no longer write-only.
 
 ---
 

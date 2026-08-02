@@ -1,25 +1,31 @@
 # Why a run is not parallel
 
 The harness ran parallel tracks — one git worktree per track, one pull request each, all at
-once — from 2026-07-26 to 2026-07-28. It was removed on purpose, under
-`.claude/plans/goal-single-run-spec.md`. This is the argument, kept so nobody rebuilds it
-from the same intuition.
+once — from 2026-07-26 to 2026-07-28. It was removed on purpose. This is the argument, kept so
+nobody rebuilds it from the same intuition.
 
-**The short version.** Parallelism inside the workflow costs tokens rather than saving them,
-buys only wall-clock — the cheapest resource an unattended overnight run has — and does not
-even keep that, since the concurrency cap is per workflow and several runs each get their own.
-It cost a second execution mode inside one code path, and that mode is what produced every
-failure below.
+**The short version.** Parallelism inside the orchestrator costs tokens rather than saving them,
+buys only wall-clock — the cheapest resource an unattended overnight run has — and does not even
+keep that to itself, since several separate runs buy exactly the same wall-clock. It cost a second
+execution mode inside one code path, and that mode is what produced every failure below.
 
 The replacement is not "no parallelism". It is **parallelism at the launch site**: a plan that
 splits becomes several plan files, and the developer launches one run per file.
+
+**What a run is, as of today.** A run is one `node goal-run.ts <plan>` process
+(`scripts/goal-run.ts` plus `scripts/run/*.ts`), which is what `/goal:supervise` launches
+(`commands/supervise.md:31`). It surveys the plan's unchecked boxes, then implements them one at a
+time in a single `for` loop (`goal-run.ts:92-98`). The harness that carried tracks,
+`workflows/goal-auto.js`, is still checked in and still reachable through `/goal:auto`
+(`commands/auto.md:220`) and through `scripts/goal-launch.sh:133` — it orchestrates nothing that
+ships, and the sections below describe it in the past tense on purpose.
 
 ---
 
 ## 1. What it cost, measured
 
-Two real runs, back to back, on the same repository and comparable work — markdown edits
-across plugin files.
+Two real runs of the workflow harness, back to back, on the same repository and comparable work —
+markdown edits across plugin files.
 
 | | Sequential (plan A, 2026-07-26) | Parallel (plan B, 2026-07-27) |
 |---|---|---|
@@ -39,24 +45,32 @@ work.
 
 ### Tokens are never the thing parallelism buys
 
-It is the same work plus coordination. The only thing it can buy is **wall-clock**, and
-`/goal:auto` exists precisely to run while nobody is watching. Wall-clock is what you have
+It is the same work plus coordination. The only thing it can buy is **wall-clock**, and an
+unattended run exists precisely to advance while nobody is watching. Wall-clock is what you have
 most of at 3am.
 
 ### And moving it up loses none of it
 
-The `Workflow` runtime caps concurrent agents at `min(16, cores − 2)` **per workflow**. Five
-separate `/goal:auto` invocations therefore get five caps, not one shared between them. The
-parallelism is not given up; it moves from inside the script to the session level, where the
-developer decides it.
+This used to be an argument about the `Workflow` runtime's per-workflow concurrency cap: five
+invocations got five caps, so nothing was surrendered by moving the parallelism up. There is no
+runtime to appeal to now. A run is an ordinary Node process that spawns one `claude -p` per
+iteration (`run/iteration.ts:111`), and nothing inside it bounds concurrency, tokens or
+wall-clock — the 80k floor at `goal-auto.js:53` was the only cost ceiling any generation ever
+had, it was inert unless a directive armed a budget (`:664`), and neither runner since has
+carried anything in its place.
+
+Which makes the conclusion cheaper rather than weaker. What actually limits five concurrent runs
+is the subscription and the machine, and that limit is the same whether the parallelism lives
+inside one script or across five sessions. The harness was never the thing providing it, so moving
+the parallelism to the launch site surrenders nothing.
 
 ---
 
 ## 2. The design defect, and its three symptoms
 
 `goal-auto.js` served two execution modes in one code path, and **the mode was inferred from
-an absence**: `DIR === undefined` meant sequential. Nine sites branched on it across 919
-lines.
+an absence**: `DIR === undefined` meant sequential. Nine sites branched on it, by the count taken
+when they were removed.
 
 That inference is the whole problem. A site that never asks the question gets sequential
 behaviour **by default** — which is exactly wrong in track mode. So forgetting a branch does
@@ -86,9 +100,12 @@ and not sufficient: the brief still opened on the plan's absolute path, and the 
 outside the run's tree because its directory is gitignored. On 2026-07-29 the first end-to-end
 run read the plan there, took its parent as the repository root, and wrote its whole iteration
 into the main checkout — with a correct `cwd` throughout. Naming the right tree does not beat
-handing over a path to the wrong one. The section now travels as text and its path does not
-travel at all, and a run whose tree is unchanged says so instead of letting the gate report a
-refusal it never earned.
+handing over a path to the wrong one.
+
+The rule that came out of it is now the first thing the current runner's iteration module states,
+and the shape of the brief enforces it: the section travels as text and the plan's path does not
+travel at all (`run/iteration.ts:1-5`, `:56-74`). A run whose tree is unchanged says so
+(`iteration.ts:164-169`) instead of letting the gate report a refusal it never earned.
 
 ### Symptom 2 — the regression wall assumes one continuous branch
 
@@ -111,7 +128,11 @@ file is one object and four runs disagreed about what it described.
 
 The audit reports collided the same way. All four wrote `.claude/goal-runs/<base-sha>.md`, and
 the base sha is identical for every track by construction, so they overwrote each other. One
-auditor noticed the file changing under it mid-analysis and said so in what survived.
+auditor noticed the file changing under it mid-analysis and said so in what survived. That half
+was never replayed against the current runner: `run/close.ts:112-115` briefs the auditor with a
+relative `.claude/goal-runs/<sha>.md`, so a run launched inside a worktree writes its report into
+that worktree's own gitignored `.claude/`, which disappears with it. One run per plan makes the
+collision impossible; it does not make the path right.
 
 ---
 
@@ -141,18 +162,23 @@ the file lists, and a mistake costs an edit.
 
 **Every plan resumes correctly, alone.** With one shared file, each run must be told its scope
 at launch — so the scope lives in the invocation arguments, not in the plan. A relaunch that
-forgets them does not fail: **it does something else, silently.** With one file per part,
-`/goal:auto <plan>` reads the boxes and resumes, which is the property the whole "the plan is
-the state" design rests on.
+forgets them does not fail: **it does something else, silently.** With one file per part, the
+plan's own boxes are the whole state and a relaunch reads them: `goal-run.ts:56` surveys the
+unchecked iterations and starts at the first, which is the property the whole "the plan is the
+state" design rests on.
 
 **A run stops confiscating the checkout.** It works in the directory it was launched from, so
 `cd` into a worktree and it is isolated while your main tree stays free.
 
-**A run stops dying from a keystroke.** This one was observed, not designed for: a run living
-in the interactive session is interrupted by navigating out of its progress view — *looking at
-the run is the gesture that kills it*. It needs a session of its own regardless, and once that
-session is born inside a worktree, isolation is free and the harness needs no worktree code at
-all. `scripts/goal-launch.sh` is the one gesture that sets it up.
+**A run gets a session it does not share.** The reason is narrower than it was once written here.
+Backgrounding does not kill a run: the case observed was a **permission prompt nobody answered**,
+which leaves a session looking alive in `Needs input` while no iteration advances, and what fixes
+it is `--permission-mode auto`, not a session of its own (`scripts/goal-launch.sh:129-132` states
+the diagnosis where the flag is passed). What a dedicated session does buy is outliving the
+terminal that opened it and a stable name to reattach to; once it is born inside a worktree,
+isolation is free and the harness needs no worktree code at all. `goal-launch.sh` is the one
+gesture that sets that up — and its last line still opens `/goal:auto` (`:133`), so the documented
+launcher reaches the abandoned harness rather than `goal-run.ts`.
 
 ---
 
@@ -176,7 +202,13 @@ discovered after both runs have already paid for themselves.
 
 ## What this argument does not cover
 
-`/goal:auto` has never run end to end on the refactored harness. The 87 tests of
-`plugins/goal/tests/` prove the structure — no mode conditionals survive, the gate judges the
-tree it stands in, the launcher creates its worktree — and the numbers above come from runs of
-the **old** harness. The first real launch remains the real test.
+**The numbers are the old harness's.** Both runs in §1 were `goal-auto.js` runs, in July. The
+runner that replaced it has since driven a plan end to end — seven iterations landed, global
+Definition of Done green, pull request marked ready, lens and audit recorded, all of it in
+`.claude/plans/goal-run-improvements-spec.md.run.log`. Nobody has remeasured the cost of an
+iteration on it. The ratios above argue about a shape, not about today's price.
+
+**A halt is a second axis of "how many runs".** `/goal:supervise` classifies a non-zero exit and
+relaunches the same plan once. That is sequential re-execution of one plan, not parallelism, but it
+is a multiplier on cost that this argument never counted — and its own frontmatter calls the
+classifier unproven, written from two cases.

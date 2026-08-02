@@ -1,325 +1,205 @@
-# goal — Source → Plan → Autonomous `/goal` execution
+# goal — Source → plan → gate-verified execution
 
 ## What it does
 
-Turns **any planning source** (a Jira US, a GitHub issue, a spec file, a note you
-paste) into a **validated, iterated plan**, then delivers it as working code with
-Claude Code's native `/goal` command — iteration by iteration, each stopping with a
-readable synthesis and an auto-regenerated audit log.
+Turns any planning source (a Jira US, a GitHub issue, a spec file, a note you paste) into a
+**locked plan**, then delivers it iteration by iteration under a judge that is a program and not
+a prompt: `scripts/goal-gate.ts` decides whether a slice passed, and it is the only thing in the
+system that commits.
 
-The idea in one line: **don't drop `/goal "deliver CT-1234"` and walk away.** First
-lift the ambiguities and build a Definition of Done a machine can check, *then* let
-`/goal` execute against that contract, one small reviewable slice at a time.
+The idea in one line: **don't hand a goal to an agent and walk away.** Lift the ambiguities and
+build a Definition of Done a machine can check, *then* let a runner execute against that
+contract, one reviewable slice at a time.
 
-## Why it's different — what it does well
+## The path that runs today
 
-Native `/goal` alone is brittle: drop `/goal "deliver X"` and walk away and it drifts. This plugin wraps it with the disciplines that make autonomous execution actually hold:
+| Step | You run | What happens |
+|---|---|---|
+| 0 · optional | `/goal:draft-issue <source>` | Normalizes any source into `.claude/plans/<work-id>-spec.md`, flags the gaps, offers to mirror it as a GitHub issue |
+| 1 | `/goal:run-issue <source>` | The grill: closes functional gaps, maps every business rule to a command, decomposes into iterations, asks the commit policy and the remote, locks the plan on `feature/<work-id>-<slug>` |
+| 2 | `node scripts/goal-run.ts <plan>` | The runner: ten preflight refusals, a base sweep, one `claude -p` implementer per iteration, a gate verdict on each, publication, close |
+| 2 · watched | `/goal:supervise [plan]` | Launches the same runner in the background, classifies a halt (plan at fault / implementation at fault / unknown), repairs or discards **once**, then stops |
+| — | `scripts/goal-gate.ts` | Judges each iteration and commits it. Nothing else in the system commits |
+| 2 · manual | `/goal` (native) + `/goal:next` | The alternative under `Policy: manual` — the runner refuses that policy outright, since nothing may be committed |
 
-- **A Definition of Done with teeth.** Every business rule maps to a command-line check, and the native `/goal` evaluator judges each iteration on the **real exit code and output** — not "looks done". A runner that merely "runs the verifications" can't tell whether the change did what was asked.
-- **A fresh session per iteration.** `/goal:next` + `/clear` + a size-capped handoff mean a long run never rots its own context — the most expensive failure mode of hands-off agents.
-- **Plan ↔ code reconciliation.** Between slices, `/goal:next` re-reads the repo and fixes stale plan claims before the next iteration, instead of trusting the plan blindly.
-- **You stay the controller.** Git, commits, and PRs are opt-in (default manual) — nothing is branched in the spec phase or shipped behind your back.
-- **Small green slices, and they are real slices.** Decomposition runs on [`product:vertical-slice`](../product/skills/vertical-slice/SKILL.md) — the core complexity is named, the splitting technique follows from it, and the granularity is sized for the policy you chose (a diff you review yourself is not the same slice as one an unattended agent must gate on a command). Each iteration also carries a **delivery strategy** from [`product:delivery`](../product/skills/delivery/SKILL.md), so it can ship while the rest is unfinished — and so an autonomous run only ever adds, never removes what it might need to roll back to.
-- **It hunts the *unknown unknowns*.** The opt-in adversarial grill doesn't just re-read your prose — it enumerates the interaction's finite **states**, extracts the **invariants** that must always hold, and builds the full **`(state × action)` transition matrix** as a hostile user. Every unmodelled cell becomes an owned, tested rule. That's the class of edge case a one-pass Socratic or text-scan review structurally can't surface — and where this goes further than the competition.
-
-## When to use it
-
-Reach for `goal` when you want a **feature or issue delivered rigorously** — especially when the source is fuzzy, or the work is big enough to span several sessions and you want every slice reviewed and auditable.
-
-Not the right tool when:
-- you'll build it in **one sitting** without branch/handoff machinery → [`/spec-first-dev`](../common/commands/spec-first-dev.md)
-- the task is a **non-feature** plan (a migration, a large refactor) you'll drive yourself → [`crispi-planning`](../common/skills/crispi-planning/SKILL.md) or native plan mode
-
-Full map: [`docs/workflows-decision-guide.md`](../../docs/workflows-decision-guide.md).
+**Step 1 is deliberately not automated.** The ambiguity a source leaves cannot be lifted from
+inside a run: an unattended implementer resolves it by guessing, and the guess surfaces thirty
+turns later as work to throw away. The grill is the one place a human is load-bearing.
 
 ## Quick start
 
 ```bash
 cd ~/projects/<repo>
+
+# Once per tree: install the rule that denies the implementer git commit/push/add.
+# The runner's preflight refuses to start until it is there.
+bash <plugin>/scripts/goal-deny-setup.sh
+
 claude
-
-# Step 0 (optional) — normalize a source
-> /goal:draft-issue CT-1234                    # Jira, read via MCP
-> /goal:draft-issue .claude/plans/x-spec.md    # a spec file
-> /goal:draft-issue inline                     # paste a note
-
-# Session 1 — build the plan
-> /goal:run-issue CT-1234                       # or an issue number, a spec path, or 'inline'
-
-# Session 2 — execute one iteration, then checkpoint
-> <paste the /goal handoff>
-> /goal:next                                    # verify + emit the next handoff
-> /clear                                   # then paste the next handoff in a fresh session
+> /goal:draft-issue CT-1234        # optional — Jira via MCP, a spec path, or 'inline'
+> /goal:run-issue CT-1234          # the grill, then the locked plan on a feature branch
 ```
 
-Or hand the whole plan to an unattended run, in a session of its own:
+Then, from the branch the plan locked, either let a session watch the run:
+
+```
+> /goal:supervise .claude/plans/<work-id>-spec.md
+```
+
+or launch the runner yourself:
 
 ```bash
-./plugins/goal/scripts/goal-launch.sh .claude/plans/<work-id>-spec.md
+node <plugin>/scripts/goal-run.ts .claude/plans/<work-id>-spec.md
 ```
 
-It creates the worktree, names the branch `feature/<work-id>` after the plan, and opens a
-tmux session inside it running `/goal:auto` on the plan — passed as an absolute path, since
-`.claude/` is gitignored and therefore absent from the worktree it just made. Three gestures
-become one.
+`/goal:supervise` resolves the plugin path through `${CLAUDE_PLUGIN_ROOT}`; a bare shell needs
+the marketplace checkout's real path. Exit `0` landed · `1` the gate refused an iteration · `2`
+refused before anything was attempted · `3` paused at a clean boundary, relaunch resumes there.
 
-The session is dedicated so it outlives the terminal that opened it, with a stable name to
-reattach to — not because backgrounding kills a run. It does not: see the troubleshooting
-table below, where that case was diagnosed as a permission prompt nobody answered, now handled
-by the mode the launcher passes. Your checkout staying free comes from the worktree, and would
-with or without tmux.
+The run writes beside the plan, inside the git-ignored `.claude/plans/`: `<plan>.run.log` (the
+same lines it prints), `<plan>.run.session` (the implementer session ids, so a transcript can be
+found later) and `<plan>.run.lock` while it holds the plan.
 
-The session opens in `--permission-mode auto`, because a run nobody watches must never sit on a
-prompt: that is not a stalled run, it is one that looks alive and advances no iteration.
+## Why it is built this way
 
-It reclaims what a previous launch left. A run that refuses at preflight writes nothing and
-leaves a worktree and a branch behind, so the same command has to work twice — otherwise every
-preflight refusal costs a manual `worktree remove` + `branch -D` before you can retype it.
-Reclaiming stops at what cannot be recovered: uncommitted work in the tree, or commits that
-exist on no other branch. There it refuses and prints the command to run yourself.
+- **The judge is a program, not a prompt** (`scripts/goal-gate.ts` + `scripts/gate/*.ts`). A
+  slice lands on an exit code, never on what an agent says about its own work. Scope, diff
+  budget, removals, acceptance commands, determinism, the regression wall over earlier slices,
+  and the bite check are each their own module, each with its own test file.
+- **The implementer is not trusted with git.** It writes only inside the paths its gate block
+  declares, and a `permissions.deny` rule takes `git commit`, `git push` and `git add` away from
+  it. A brief is a sentence; the deny rule is the mechanism.
+- **The plan is the whole state.** Checkboxes are the only progress marker, so a run that halts
+  or pauses resumes at the first unticked box with no memory of the one before it. The plan is
+  hashed, so a run cannot quietly rewrite the contract it is judged by.
+- **One fresh session per iteration.** Each iteration is handed to its own `claude -p`
+  implementer with the plan section as text — never the plan's path, which is how a real run
+  once read the plan in another checkout and wrote the whole iteration into the wrong tree.
+- **Small green slices, and they are real slices.** Decomposition runs on
+  [`product:vertical-slice`](../product/skills/vertical-slice/SKILL.md); each iteration also
+  carries a delivery strategy from [`product:delivery`](../product/skills/delivery/SKILL.md), so
+  it can ship while the rest is unfinished.
+- **The opt-in adversarial grill hunts unknown unknowns.**
+  [`grill-adversarial`](skills/grill-adversarial/SKILL.md) enumerates the interaction's states,
+  extracts the invariants, and builds the `(state × action)` matrix before iterations freeze.
 
-It refuses rather than guesses: no plan named, or an unreadable plan. The plan is always an
-argument — a bare `/goal:auto` resolves the most recently modified `*-spec.md`, which is
-ambiguous the moment a split produced several.
+## What the barriers actually hold
 
-**Learn more:** which workflow fits your task → [decision guide](../../docs/workflows-decision-guide.md) · the *unknown-unknowns* engine → [`grill-adversarial`](skills/grill-adversarial/SKILL.md) · why a run is not parallel, with the two runs that measured it → [`docs/why-not-parallel.md`](docs/why-not-parallel.md) · how it's audited against competing frameworks → [`self-audit`](../self-audit/README.md).
+Each of these is a real mechanism with a real edge. Stated here so nobody plans against a
+guarantee that is narrower than its slogan.
 
-## How it works
+- **No commit the gate did not verify** — holds per slice. It is not the last barrier before
+  publication: `goal-run.ts` publishes after every landed iteration and the global Definition of
+  Done replays only at close (`run/close.ts`), so a DoD refusal arrives with the work already
+  pushed.
+- **The implementer is mechanically denied git** — the preflight reads for the deny rule as a
+  substring of the raw settings JSON (`run/preflight.ts`), which an `allow` entry naming the same
+  verb also satisfies. It binds a session started after it, not one already running.
+- **A test that passes without the implementation halts the slice** (`gate/bite.ts`) — unless the
+  iteration declares no `test_files`, which skips the check. `plan-guard.ts` hashes only `gateN=`
+  and `dodN=` lines, so `test_files=` can be emptied without moving the guard hash.
+- **The plan is hashed** (`gate/plan.ts`) — the hash normalizes ticks away, which also means
+  unticking a box drops that iteration out of the regression wall without moving the hash.
+- **Every claim is a command that ran** — except the gate's own refusal: `run/iteration.ts` exits
+  on a refusal without copying the gate's `HALT` block into the run log. The log names the halt;
+  the reason is only on the terminal.
 
-`goal` is a pipeline of four commands across two-plus sessions. Only `/goal` (native) writes code; the three `/goal:*` commands plan, checkpoint, and hand off. An optional **draft-issue** shapes the source, **run-issue** locks a plan, then **`/goal`** and **`/goal:next`** alternate — one iteration per fresh session — until the spec is done.
+## Three generations live in this tree
 
-| Step | Command | When | What it does |
-|---|---|---|---|
-| 0 · optional | `/goal:draft-issue <source>` | before you start | Normalize any source (Jira / issue / file / note) into a clean spec; ask whether to mirror it as a GitHub issue and whether to run the adversarial grill. |
-| 1 | `/goal:run-issue <source>` | Session 1 · interactive | Grill to close gaps + build a command-checkable **DoD** → decompose into small functional iterations → lock the plan on `feature/<id>` → echo the first `/goal` handoff. |
-| 2 | `/goal` *(native)* | Session 2 · per iteration | Implement the next unchecked iteration test-first, verify each rule by **running its command**, then stop with a synthesis. |
-| ↻ | `/goal:next` | between iterations | Verify the finished iteration's DoD, reconcile plan ↔ code, emit the next handoff. You `/clear` and paste it into a fresh session. |
-| ⚡ *alternative to 2 + ↻* | `/goal:auto` | once, then unattended | Runs **every** remaining iteration in one turn and ends with a pushed branch and an open PR. One subagent per iteration (isolated context, so the orchestrator's context stays flat), and after each one a **verification script** replays the acceptance commands: the loop advances only on its exit code, never on what the subagent claims. Halts hard on the first failure without attempting the ones after it. Needs `commit` or `commit+pr`; refuses under `manual`. No new hook. **One run, one plan, one branch, one PR** — it works in the directory it was launched from, so `cd` into a worktree first and the run is isolated while your checkout stays free. Parallelism is several runs, one per plan file, not a second mode inside the workflow. |
+| Generation | Status |
+|---|---|
+| `workflows/goal-auto.js` (941 lines), `/goal:auto`, `scripts/goal-launch.sh`, and the six `goal-*` agents | **Legacy.** Still invocable, still documented in `commands/auto.md`, no longer the path anything is built against. `goal-launch.sh` creates a worktree and a tmux session, and launches `/goal:auto` inside it |
+| `scripts/goal-run.sh` (594 lines) | **Frozen**, kept as the A/B reference the suite proves the Node runner interchangeable with, one behaviour at a time |
+| `scripts/goal-run.ts` + `scripts/run/*.ts` (938 lines over 8 modules) | **Current.** What `/goal:supervise` launches and what the barriers above describe |
 
-Everything runs on your **Claude Code subscription** (no API surcharge); **GitHub is optional at every step** — you're asked whether you want an issue, and whether Claude should commit or open the PR.
+Five shipped artifacts have never been exercised by a real run: `commands/supervise.md` (whose
+own frontmatter concedes the classifier is unproven, two halts being its whole evidence),
+`scripts/plan-guard.ts`, `scripts/transcripts.ts`, `agents/goal-run-reviewer.md` (wired in
+`run/close.ts`, never fired) and `agents/goal-session-auditor.md`. Treat them as proposals with
+code attached.
 
-### Two typical modes
-
-| | **Pro** (e.g. Jira, no GitHub) | **Perso** (GitHub) |
-|---|---|---|
-| Source | Jira key via MCP, or paste | GitHub issue, or spec file |
-| Issue creation | skipped | opt-in via `/goal:draft-issue` |
-| Commit/PR policy | **manual** — you review + commit each iteration | **commit** or **commit+pr** for hands-off |
-| Cadence | stop + synthesis after each iteration | same, or iterations back-to-back |
-
-Each command owns a distinct moment in the lifecycle — here is the detail behind the table above:
-
-### Step 0 — `/goal:draft-issue <source>` (optional)
-
-Normalizes whatever you have into a clean spec so `/goal:run-issue` starts from a
-consistent shape.
-
-1. Reads the source (Jira via MCP / `gh` / file / inline paste).
-2. Writes `.claude/plans/<work-id>-spec.md` and flags the gaps `/goal:run-issue` will grill.
-3. **Asks** (`AskUserQuestion`) whether to run the **adversarial grill** in
-   `/goal:run-issue`, and records the answer verbatim on the spec's `## Adversarial grill`
-   line. Recommend **yes** for front / interactive work or when gaps were flagged.
-4. **Asks** whether to mirror the spec as a GitHub issue (default no; `gh`
-   only touched if you say yes).
-
-It never writes production code, creates branches, or builds the DoD — that's
-`/goal:run-issue`'s job.
-
-### Session 1 — `/goal:run-issue <source>` (interactive, ~5–15 min)
-
-Turns the source into a locked, executable plan.
-
-1. **Resolves and reads** the source, summarizes it back, asks you to confirm.
-2. **Grills you one question at a time**: closes functional gaps, surfaces
-   technical consequences, and maps **each business rule to a command-line check** so
-   the Definition of Done has teeth.
-3. **Adversarial grill (opt-in)**: if the spec's `## Adversarial grill` line
-   says `requested` (or it's front / interactive and gaps were flagged), loads the
-   `goal:grill-adversarial` skill. It enumerates the interaction state space, extracts
-   invariants, builds the `(state × action)` transition matrix, and turns every
-   unmodelled hole into an owned + tested rule — the failures a Socratic grill misses.
-4. **Decomposes** the work into small functional iterations, each an
-   independently reviewable slice with its own files + acceptance criteria.
-5. **Asks the commit/PR policy**: `manual` (default) / `commit` / `commit+pr`.
-6. **Asks which remote** a run pushes to, and writes it on the plan's `Remote:` line.
-   There is no default: `/goal:auto` refuses a plan that does not carry one. On a fork
-   this is what keeps both the push and the pull request on *your* fork, since
-   `gh pr create` targets a fork's parent otherwise.
-7. **Splits, when the work really splits**: one self-sufficient plan per part
-   (`<work-id>-<suffix>-spec.md`, full header copied — nothing inherits), plus an ordering
-   index at `<work-id>-plans.md` carrying the set, the order and the launch command. Named
-   outside the `*-spec.md` glob on purpose, so a bare `/goal:auto` never tries to run the
-   index. Every split plan's DoD checks the index both ways, so adding a sibling without
-   listing it breaks the others until you do.
-8. **Locks**: creates `feature/<work-id>-<slug>` and writes the plan
-   (never committed: `.claude/plans/` is gitignored in most projects, and the plan reaches
-   the reviewer through the PR body instead).
-9. **Echoes** the per-iteration `/goal` text for you to paste.
-
-### Session 2 — `/goal` (native), one iteration at a time
-
-Paste the `/goal` text. It loads project convention + TDD skills, implements the
-**next unchecked** iteration test-first, verifies the criteria by **running the
-commands** (not asserting from memory), marks the iteration `[x]`, and **stops with a
-structured synthesis**:
-
-> **Fait** · **Pourquoi** · **Règles métier couvertes** · **À reviewer** ·
-> **Commit suggéré** · **Reste**
-
-Commit behavior follows the policy:
-
-- **manual** — Claude commits nothing. You read the synthesis, review the diff, commit yourself.
-- **commit** — Claude commits the iteration (conventional message, **no `Co-Authored-By` trailer**), no push/PR.
-- **commit+pr** — plus push to the plan's declared `Remote:`, and one PR per branch on that same repository: opened as a **draft at the first commit**, its body updated by every iteration after it, marked ready at the last. A run that halts halfway still leaves something reviewable.
-
-The execution log is refreshed at **every Stop** by the `issue-execution-log.sh` hook.
-
-### Between iterations — `/goal:next`
-
-The checkpoint that makes a fresh session safe. It verifies the finished iteration's
-DoD, reconciles the plan with what actually changed in the codebase, makes the working
-tree safe (clean, or fully staged — in manual mode it never stages, leaving the tree
-for your review), and confirms the next iteration is doable cold. It then **re-emits
-the next `/goal` handoff**.
-
-It does **not** clear context or launch `/goal` — Claude Code can't self-chain — so
-you `/clear` and paste the handoff into a fresh session. Repeat until the spec has no
-unchecked iterations.
-
----
-
-## Why split clarification from execution
-
-Dropping `/goal "deliver CT-1234"` and walking away usually fails:
-
-- **Ambiguity is unmovable from inside `/goal`.** The evaluator only sees what Claude
-  surfaced; it can't ask "what do you mean by X?". A US's silence becomes a wrong
-  assumption in turn 2 that wastes turns 3–30.
-- **A US rarely ships a Definition of Done.** Without command-line criteria the
-  evaluator has nothing objective to check. Session 1 builds that DoD.
-- **A scope-creeping diff is hard to review and harder to revert.** Small functional
-  iterations + the Karpathy trace test keep each diff reviewable.
-
-This mirrors `/spec-first-dev`'s philosophy: **lift ambiguities → lock a plan →
-deliver against it**, iteration by iteration.
-
----
+The test suite selects its runner with `GOAL_RUN_IMPL` and defaults to bash
+(`tests/support/goal-run-harness.ts`); CI calls `bash plugins/goal/tests/run.sh` once, without
+that variable. **The current runner is not exercised in CI** — run it with `GOAL_RUN_IMPL=node`
+yourself before trusting a green build.
 
 ## What the plugin ships
 
 | Component | Path | Role |
 |---|---|---|
-| [`/goal:draft-issue`](commands/draft-issue.md) | `commands/draft-issue.md` | **Step 0** — any source → normalized spec; opt-in GitHub issue; asks whether to run the adversarial grill |
-| [`/goal:run-issue`](commands/run-issue.md) | `commands/run-issue.md` | **Session 1** — source → grilled plan (DoD + functional iterations) + commit/PR policy + per-iteration `/goal` handoff |
-| [`/goal:next`](commands/next.md) | `commands/next.md` | **Between iterations** — verify DoD, reconcile plan vs codebase, make the tree safe, re-emit the next `/goal` handoff (you `/clear` + paste) |
-| [`/goal:auto`](commands/auto.md) | `commands/auto.md` | **Unattended alternative to Session 2** — preflight, then one subagent per iteration until the PR is open; halts on the first failure |
-| [`grill-adversarial`](skills/grill-adversarial/SKILL.md) | `skills/grill-adversarial/SKILL.md` | Opt-in skill loaded during `/goal:run-issue`'s adversarial grill — enumerates states, invariants, and transitions before iterations freeze |
-| [`product:vertical-slice`](../product/skills/vertical-slice/SKILL.md) | *(plugin `product`)* | Loaded by `/goal:run-issue` Phase 3 — the procedure that turns a spec into thin vertical iterations sized and ordered for the chosen policy (manual review vs `/goal:auto`) |
-| [`product:delivery`](../product/skills/delivery/SKILL.md) | *(plugin `product`)* | Loaded by `/goal:run-issue` Phase 3 and by every execution session — gives each iteration a way to reach production while the rest is unfinished (flag, additive, expand/contract), plus the gated cleanup iteration |
-| `goal-gate.ts` | `scripts/goal-gate.ts` | **The single authority.** TypeScript run natively by node — no build, no dependency. `check` validates an iteration offline, `verify` runs every check, `commit` verifies then stages the declared paths, commits and ticks, `dod` replays the global barrier, `scan` guards a push, `lock` / `unlock` hold the run. Exit 0 runnable, 1 `HALT` with a reason, 2 misuse. |
-| `goal-auto.js` | `workflows/goal-auto.js` | The orchestration layer `/goal:auto` launches by path: survey, then one implementer and one gate per iteration, in plan order. Returns `{status, plan, dir, branch, sha, iteration, detail, landed, notAttempted}` and stops at the first refusal. Every report names the tree, the branch and the commit it describes, because the identity of a run is the directory it was launched from. It has no disk and no shell, so it cannot commit even by mistake. |
-| `goal-runner` / `goal-implementer` | `agents/` | Capability restriction, not hierarchy: the runner holds only `Bash` and reports one exit code without interpreting it; the implementer writes only the declared paths and cannot commit, push or tick. |
-| `issue-execution-log.sh` Stop hook | `hooks/issue-execution-log.sh` | Regenerates the execution log at every Stop, only when **all three** hold: (1) branch `feature/<work-id>-…` for an existing spec, (2) `.claude/plans/<work-id>-spec.md` exists, (3) the transcript contains a `/goal` command. Silent no-op otherwise. |
-| `tests/run.sh` | `tests/run.sh` | The gate's own suite, one file per group of rules. It wraps `node --test` because that exits 0 on a glob matching nothing: the wrapper additionally requires at least one pass and no failure. Run it with `bash plugins/goal/tests/run.sh` |
-| `extract-execution-log.py` | `scripts/extract-execution-log.py` | Parses the session JSONL into a readable markdown summary keyed by `<work-id>` |
-| `done-criteria.template` | `templates/done-criteria.template` | Reusable baseline for the acceptance-criteria / DoD section of any plan |
-| `post-merge.template` | `templates/post-merge.template` | What a merged run leaves behind (branches both sides, safety refs, control labels, plan checkboxes, unblocked follow-up plan). Emitted by `/goal:auto`'s final report and by `/goal:next` when no iteration remains. Printed, never executed — no goal command may delete a branch or a label |
+| [`/goal:draft-issue`](commands/draft-issue.md) | `commands/draft-issue.md` | Any source → normalized spec; opt-in GitHub issue; asks whether to run the adversarial grill |
+| [`/goal:run-issue`](commands/run-issue.md) | `commands/run-issue.md` | The grill → DoD + iterations + policy + remote → the locked plan on a feature branch |
+| [`/goal:supervise`](commands/supervise.md) | `commands/supervise.md` | Launches the runner, classifies a halt, repairs or discards once. **Never run** |
+| [`/goal:next`](commands/next.md) | `commands/next.md` | Manual-loop checkpoint: verify the DoD, reconcile plan against code, emit the next `/goal` handoff |
+| `goal-run.ts` + `run/*.ts` | `scripts/` | The runner: preflight, sweep, lock, iteration, publish, close, report |
+| `goal-gate.ts` + `gate/*.ts` | `scripts/` | The judge, and the only committer. Exit 0 runnable · 1 `HALT` with a reason · 2 misuse. TypeScript run natively by node — no build, no dependency |
+| `goal-deny-setup.sh` | `scripts/` | Unions the three deny rules into the tree's `.claude/settings.local.json`. Additive and idempotent; needs `jq` |
+| `plan-guard.ts` | `scripts/` | Hashes every `gateN=`/`dodN=` line so a repair can prove it moved none. Used only by `/goal:supervise`. **Never run** |
+| `transcripts.ts` | `scripts/` | Resolves a run's transcripts from its recorded session ids. Used only by `goal-session-auditor`. **Never run** |
+| `goal-run-implementer`, `goal-run-lens`, `goal-run-auditor` | `agents/` | Spawned by the runner: one implementer per iteration, then an advisory lens and an auditor at close — neither able to undo what shipped |
+| `goal-run-reviewer`, `goal-session-auditor` | `agents/` | Post-publication review and transcript audit. **Never run** |
+| [`grill-adversarial`](skills/grill-adversarial/SKILL.md) | `skills/` | Opt-in, loaded during `/goal:run-issue`'s grill |
+| [`product:vertical-slice`](../product/skills/vertical-slice/SKILL.md) · [`product:delivery`](../product/skills/delivery/SKILL.md) | *(plugin `product`)* | Loaded by `/goal:run-issue` Phase 3 — how the spec splits, and how each slice ships alone |
+| `issue-execution-log.sh` Stop hook | `hooks/` | Regenerates the execution log at every Stop, only when all three hold: a `feature/<work-id>-…` branch, a matching `<work-id>-spec.md`, and a `/goal` command in the transcript. Silent no-op otherwise |
+| `extract-execution-log.py` | `scripts/` | Parses a session JSONL into a readable summary keyed by `<work-id>`. Run it as `python3 <plugin>/scripts/extract-execution-log.py <work-id>` |
+| `tests/run.sh` | `tests/` | The suite for the gate, both runners, the legacy workflow, the launcher and the guards. Wraps `node --test`, which exits 0 on a glob matching nothing, and additionally requires at least one pass and no failure |
+| `done-criteria.template` · `goal-handoff.template` · `post-merge.template` | `templates/` | The DoD baseline, the `/goal` handoff `/goal:next` fills, and what a merged run leaves behind — printed, never executed |
 
-The **work-id** generalizes the old issue number: `issue-<N>` for a GitHub issue, the
-lowercased key (`ct-1234`) for Jira, a slug for a file/inline source.
-
-Two artifacts live in `.claude/plans/`:
-
-- `<work-id>-spec.md` — the contract (business rules, DoD, iterations)
-- `<work-id>-execution-log.md` — auto-regenerated audit of what Claude did
-
-### Regenerate the log manually (mid-session snapshot)
-
-```bash
-python3 ~/projects/github/claude-marketplace/plugins/goal/scripts/extract-execution-log.py <work-id>
-```
-
-Auto-detects `<work-id>` from the `feature/<work-id>-…` branch when omitted, and finds the most recent JSONL referencing the spec.
-
----
+The **work-id** generalizes the old issue number: `issue-<N>` for a GitHub issue, the lowercased
+key (`ct-1234`) for Jira, a slug for a file or inline source. Two artifacts live in
+`.claude/plans/`: `<work-id>-spec.md`, the contract, and `<work-id>-execution-log.md`, the
+regenerated audit.
 
 ## Prerequisites
 
-### Hard requirement
-
-| Item | Check | Fix |
+| Item | Needed for | Note |
 |---|---|---|
-| Claude Code ≥ 2.1.139 (for `/goal`) | `claude --version` | Update Claude Code |
-| `goal` plugin enabled | `/plugin` list, or check settings | `/plugin install goal@…` then restart |
-| Workspace trusted | `/trust` inside `claude` | once per workspace |
+| Node 24 | the runner and the gate | Types are stripped at run time, never checked; `tsc --noEmit` is a CI concern |
+| `jq` | `goal-deny-setup.sh` | |
+| A git-ignored `.claude/` | every run | Preflight refuses a plan directory git can see: the spec, the ticked box and the run log would read as an undeclared scope leak |
+| `gh` authenticated | `Policy: commit+pr`, or a GitHub source | `gh auth login` |
+| `python3` | the Stop hook and `extract-execution-log.py` | |
+| Atlassian MCP | a Jira source | Or paste with `inline` |
 
-### Conditional (only for the path you use)
-
-| Item | Needed when | Fix |
-|---|---|---|
-| Atlassian MCP connected | source is a **Jira** key | connect the Atlassian MCP in this session |
-| `gh` CLI authenticated | source is a **GitHub issue**, or you opt into an issue / `commit+pr` | `gh auth login` |
-| `tmux` | you want a hands-off Session 2 (perso) | `brew install tmux` |
-
-### Optional enhancers (graceful fallback)
-
-| Plugin | Adds | If missing |
-|---|---|---|
-| `pocock` | `grill-me` / `grill-with-docs` for the grilling step, composed by the adversarial grill | inlined baseline questions |
-| `superpowers` | `verification-before-completion`, `systematic-debugging` in Session 2 | Claude's native discipline |
-| `craft` / language TDD | `tdd-workflow-principles`, `php-tdd-workflow`, `vitest-tdd-workflow`… | trace test still in the template |
-| `common` | `/spec-first-dev` upstream | `/goal:draft-issue` accepts any source |
-
-The plugin is **self-contained**: the optional plugins enhance the workflow, but the
-commands fall back to inlined behavior when they're absent.
-
----
+Optional plugins enhance and never gate: `pocock` (`grill-me` / `grill-with-docs`, composed by
+the adversarial grill), `superpowers` (`verification-before-completion`,
+`systematic-debugging`), `craft` and the language TDD packs. The commands fall back to inlined
+behavior when they are absent.
 
 ## Troubleshooting
 
-| Symptom | Likely cause | Fix |
+| Symptom | Cause | Fix |
 |---|---|---|
-| `/goal:run-issue` / `/goal:draft-issue` not recognized | Plugin not enabled or Claude not restarted | enable + restart `claude` |
-| Jira source won't read | Atlassian MCP not connected in this session | connect it, or paste with `inline` |
-| `gh` errors on the GitHub path | token missing/expired | `gh auth refresh -h github.com -s repo,read:org` |
-| `/goal:run-issue` says "branch is dirty" | uncommitted changes | `git stash` or commit, then re-run |
-| `/goal` not recognized | workspace not trusted | `/trust` |
-| Execution log not regenerating | one of the 3 hook preconditions failed | verify (1) `git branch --show-current`, (2) `ls .claude/plans/`, (3) that you actually launched `/goal`. Or regenerate manually. |
-| Claude committed with a `Co-Authored-By` trailer | policy `commit`/`commit+pr` and the trailer slipped in | the handoff forbids it; amend to strip it |
-| `/goal:auto` refuses to start | policy is `manual`, tree dirty, wrong branch, or a PR already open | read the refusal: each one names the failing check. Fix it and re-run |
-| `/goal:auto` halted mid-run | a gate refused: an acceptance command failed, a scope leak, a hollow test, a blown diff budget, a regression in an earlier slice, a plan rewrite | the halt is printed verbatim: reason, command, exit code, real output, then the iterations that were not attempted. Reproduce it from the repository root: `node ~/.claude/plugins/…/goal/scripts/goal-gate.ts verify .claude/plans/<work-id>-spec.md <n>` (the gate reads the tree it stands in) |
-| `/goal:auto` stopped mid-run without halting | the turn ended (rate limit, closed session, interruption), or the run paused on its token floor | relaunch `/goal:auto`: the plan's checkboxes are the whole state, so it resumes at the first unchecked iteration. A dirty tree is refused by preflight first — deal with it yourself |
-| `/goal:auto` refuses on `<plan>.run.lock` | another session holds the plan, or one died without releasing it | wait, or release it with `node <gate> unlock <plan>` once you know the holder is gone. Never remove the directory by hand |
-| The run seems to stop the moment you background the session (`←` or `/bg`) | backgrounding kills nothing — the supervisor keeps the workflow, its subagents and their shells running. What stopped is a **permission prompt** nobody answered: the session sits in `Needs input` and no iteration advances | `claude agents`, attach with `←`, answer it. `goal-launch.sh` already opens its session in `--permission-mode auto`, so this only reaches a run started by hand: pass the same flag, or `Shift+Tab` to `auto` / `bypass permissions` before `/goal:auto` |
-| The gate halts on files you did consider in scope | the iteration's *Files to touch* list does not match reality | the declared list is the contract. Fix the list in the spec, or keep the change out of this iteration |
+| Exit 2, "the implementer is not denied git…" | the deny rule is missing from this tree | `bash <plugin>/scripts/goal-deny-setup.sh` |
+| Exit 2, "the plan's directory is visible to git" | `.claude/` is tracked | Ignore it, untracking any spec already committed |
+| Exit 2, "Policy is manual" | the runner has nowhere to put the work | Change the `Policy:` line, or run the manual loop with `/goal` and `/goal:next` |
+| Exit 2, "the plan declares no Remote line" | never defaulted to `origin` | Write the remote on the plan. Guessing here pushes a fork's work to its parent |
+| Exit 2, "another run holds this plan" | a `<plan>.run.lock` survived a dead run | `node <plugin>/scripts/goal-gate.ts unlock <plan>` once you know the holder is gone |
+| Exit 2, "the base is not green" | a command the plan will hold every iteration to already fails | Fix the base. The sweep runs before a byte is written, so nothing needs undoing |
+| Exit 1, an iteration was refused | the gate halted | The log names the iteration but not the reason. Reproduce it from the repo root: `node <plugin>/scripts/goal-gate.ts verify <plan> <n>` |
+| Exit 3, paused | quota exhausted, or the implementer wrote nothing | Relaunch: the checkboxes are the whole state, so it resumes at the first unticked box |
+| The gate halts on files you considered in scope | the iteration's declared paths do not match reality | The declared list is the contract. Fix it in the spec, or keep the change out of this iteration |
+| Execution log not regenerating | one of the hook's three preconditions failed | Check the branch, the spec file, and that `/goal` was actually used. Or regenerate manually |
 
----
+## Cost
 
-## Cost expectations
+Everything runs on your **Claude Code subscription** — the runner spawns `claude -p`, so no API
+surcharge, and the 5-hour rate-limit window applies normally. A quota-exhausted implementer is
+slept through and retried against the same iteration, bounded, then paused rather than spun.
 
-Everything runs on your **Claude Code subscription** (no API surcharge) when you use
-**interactive `claude`**. The `/goal` evaluator runs on your small fast model and is
-included. The 5-hour rate-limit window applies normally.
-
-**One measured unattended run**, for calibration: a four-iteration plan touching 30 files
-(a new validation script and its test suite, three directory renames, fourteen frontmatter
-edits) cost **82 000 tokens** across the slices, 23 agents and about thirty minutes, and ended
-with four gate-verified commits and a clean tree.
-
-The number that transfers is not the total but its shape: the most expensive slice had the
-**smallest diff** of the run. Cost tracks the number of files and gates a slice touches, not
-the lines it writes — so a `max_diff` bounds the diff, and the diff is not the cost. Budget by
-file count and gate count instead. Every run writes its own figures to
-`.claude/goal-runs/<sha>.md`, local evidence meant to be read at breakfast, never committed.
-
----
+Every run has its auditor write a report to `.claude/goal-runs/<sha>.md`: elapsed seconds per
+iteration, what halted it, and which failures recur across earlier reports. Local evidence, never
+committed.
 
 ## See also
 
-- [`/goal` official docs](https://code.claude.com/docs/en/goal)
-- [`common:spec-first-dev`](../common/commands/spec-first-dev.md) — the gated,
-  spec-first inspiration; chain into `/goal:draft-issue` after its Phase 3
-- [`craft:tdd-workflow-principles`](../craft/skills/tdd-workflow-principles/SKILL.md)
-  — cross-language TDD used during Session 2
-- [`docs/workflows-decision-guide.md`](../../docs/workflows-decision-guide.md) — when to
-  reach for `goal` vs `/spec-first-dev` vs `crispi-planning`
+- [`docs/workflows-decision-guide.md`](../../docs/workflows-decision-guide.md) — `goal` vs
+  [`/spec-first-dev`](../common/commands/spec-first-dev.md) vs
+  [`crispi-planning`](../common/skills/crispi-planning/SKILL.md)
+- [`docs/autonomous-architecture.md`](docs/autonomous-architecture.md) — which layer holds which
+  guarantee, and why
+- [`docs/target-harness.md`](docs/target-harness.md) — the properties an unattended loop must hold
+- [`docs/why-not-parallel.md`](docs/why-not-parallel.md) — parallel tracks were built, measured
+  and removed
+- [`docs/open-questions.md`](docs/open-questions.md) — what is still undecided, with what would
+  have to be measured
