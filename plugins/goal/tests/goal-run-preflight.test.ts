@@ -211,7 +211,7 @@ test('a command declared identically by two iterations runs once, not once per d
 });
 
 // R3 — the sweep announces how many distinct commands it ran against how many the plan declared,
-// and every one of the ten preflight checks narrates on stdout once it passes, so the run reads
+// and every one of the nine preflight checks narrates on stdout once it passes, so the run reads
 // as a sequence rather than silence.
 
 test('the sweep announces the reduction from declared commands to the distinct ones it ran', { skip: NODE_ONLY }, () => {
@@ -253,5 +253,4 @@ test('every preflight check narrates on stdout once it passes', { skip: NODE_ONL
   assert.match(output, /RUN preflight: no other run holds the lock/, output);
   assert.match(output, /RUN base sweep: \d+ distinct commands? run, \d+ declared/, output);
   assert.match(output, /RUN preflight: branch is caught up with/, output);
-  assert.match(output, /RUN preflight: the implementer is denied git commit, push and add/, output);
 });

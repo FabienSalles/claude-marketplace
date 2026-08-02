@@ -1,9 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+
+import { tmpDir } from './support/tmp.ts';
 
 const GATE = resolve(import.meta.dirname, '..', 'scripts', 'goal-gate.ts');
 
@@ -42,7 +43,7 @@ const fixture = (
   gateLines: string[] = GATE_BLOCK,
   header: readonly string[] = ALLOW,
 ): { repo: string; plan: string } => {
-  const repo = mkdtempSync(join(tmpdir(), 'goal-gate-bounds-'));
+  const repo = tmpDir('goal-gate-bounds-');
   git(repo, 'init', '-q');
   git(repo, 'config', 'user.email', 'gate@example.com');
   git(repo, 'config', 'user.name', 'Gate');
@@ -53,7 +54,7 @@ const fixture = (
   git(repo, 'add', '-A');
   git(repo, 'commit', '-qm', 'init');
 
-  const plan = join(mkdtempSync(join(tmpdir(), 'goal-gate-plan-')), 'spec.md');
+  const plan = join(tmpDir('goal-gate-plan-'), 'spec.md');
   writeFileSync(plan, planWith(gateLines, header));
 
   return { repo, plan };
@@ -69,7 +70,7 @@ const touchDeclared = (repo: string): void => {
   writeFileSync(join(repo, 'src', 'a.ts'), 'export const a = 2;\n');
 };
 
-const tally = (): string => join(mkdtempSync(join(tmpdir(), 'goal-gate-runs-')), 'runs');
+const tally = (): string => join(tmpDir('goal-gate-runs-'), 'runs');
 
 const counted = (path: string): number =>
   existsSync(path) ? readFileSync(path, 'utf8').split('\n').filter((line) => line !== '').length : 0;

@@ -9,6 +9,21 @@
 
 set -uo pipefail
 
+# This wrapper runs a glob that contains the tests which invoke it, so a nested call re-enters it
+# and forks the whole harness again at every level. Measured once, on 2026-08-02: ~200 nested runs,
+# 114 056 leaked fixtures, and a machine that stayed pegged through a reboot.
+#
+# The refusal is unconditional, and an exemption keyed on a caller-declared variable would be worse
+# than none. This version runs one hardcoded glob, so a caller asking for a fixture suite is
+# ignored and the real one runs anyway — which is exactly the case a `git stash` of this file, or
+# the gate's own bite check, produces. Whichever commit teaches this wrapper to read a fixture root
+# is the commit that may relax this, and not before.
+if [ -n "${GOAL_TESTS_DEPTH:-}" ]; then
+  printf 'HALT: this wrapper is already running, and it runs a glob containing the tests that invoke it. Refusing to re-enter.\n' >&2
+  exit 1
+fi
+export GOAL_TESTS_DEPTH=1
+
 TESTS="$(cd "$(dirname "$0")" && pwd)"
 cd "$TESTS/../../.."
 

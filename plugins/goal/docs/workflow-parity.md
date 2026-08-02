@@ -30,7 +30,7 @@ and the property was never mechanical to begin with).
 | Every refusal runs before the lock is taken — a run that starts wrong is worse than one that never starts | **held** | `preflight` is called at `goal-run.ts:54`, `createLock` at `:85`. |
 | The base sweep replays each distinct command once, not once per declaration | **gained** | `run/sweep.ts:49` de-duplicates and `:62` announces the reduction. `goal-run.sh:174` runs the awk output line by line, so a six-iteration plan repeating the same command sweeps it six times. |
 | Each passing check narrates | **gained** | `preflight.ts:100-104`, `:116`, `:128`, `:155`, `:173`. Bash narrates only the check it skips (`goal-run.sh:161`). On a run nobody is watching, the account of what passed is what says where a refusal came from. |
-| "Only the gate commits" is a fact, not a sentence in the plan | **held by neither** | `preflight.ts:163` is `denyContent.includes('git commit')` over the raw file — an ALLOW list naming the same three verbs satisfies it. `goal-run.sh:208` greps for the same strings. The port is faithful; the check proves three substrings appear somewhere in a file. |
+| "Only the gate commits" is a fact, not a sentence in the plan | **held by the HEAD snapshot alone** | The deny rule proved three substrings appeared somewhere in a file, which an ALLOW list naming the same verbs satisfied. `goal-run.sh:208` still greps for them; the current runner dropped the check rather than repair it. What holds the claim is `iteration.ts:98`/`:154`, which compares HEAD around the implementer and halts when it moved. |
 
 ## Phase 2 — The loop
 
@@ -112,10 +112,11 @@ and take it for a description of what runs.
 - **A remote steering channel.** The control panel and the `goal:stop` label live only in
   `goal-auto.js:406-419`. A run launched by `node goal-run.ts <plan>` is stoppable by killing the
   process, and `run/lock.ts:36-44` is what hands the plan's lock back when you do.
-- **Two checks the Workflow never had, and both later runners do.** The deny rule
-  (`preflight.ts:157-173`) and the HEAD comparison around the implementer (`iteration.ts:98`,
-  `:154`) have no equivalent anywhere in `goal-auto.js`. The default entry point — `/goal:auto`,
-  which is what `goal-launch.sh` opens — is therefore the weakest of the three paths.
+- **A check the Workflow never had, and both later runners do.** The HEAD comparison around the
+  implementer (`iteration.ts:98`, `:154`) has no equivalent anywhere in `goal-auto.js`. The default
+  entry point — `/goal:auto`, which is what `goal-launch.sh` opens — is therefore the weakest of
+  the three paths. The deny rule used to be a second such check; `goal-run.sh` still enforces it and
+  the current runner dropped it, for reasons `steering-and-injection.md` gives in full.
 
 The first real run of that generation stays worth its record: `.claude/plans/issue-3-spec.md`, four
 iterations, 2026-07-26, **82 438 tokens** across 23 agents in about thirty minutes, four commits

@@ -1,9 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+
+import { tmpDir } from './support/tmp.ts';
 
 const GATE = resolve(import.meta.dirname, '..', 'scripts', 'goal-gate.ts');
 
@@ -29,7 +31,7 @@ const planWith = (gateLines: string[], ticked = false): string =>
   ].join('\n');
 
 const writePlan = (content: string): string => {
-  const path = join(mkdtempSync(join(tmpdir(), 'goal-gate-')), 'spec.md');
+  const path = join(tmpDir('goal-gate-'), 'spec.md');
   writeFileSync(path, content);
 
   return path;
@@ -180,7 +182,7 @@ test('an unreadable plan exits 2 rather than reporting a bad plan', () => {
 // `.claude/` of its own.
 test('the gate judges the directory it stands in, not the one beside it', () => {
   const git = (cwd: string, ...args: string[]) => spawnSync('git', args, { cwd, encoding: 'utf8' });
-  const main = mkdtempSync(join(tmpdir(), 'goal-gate-standing-'));
+  const main = tmpDir('goal-gate-standing-');
 
   git(main, 'init', '-q');
   git(main, 'config', 'user.email', 'gate@example.com');

@@ -168,12 +168,14 @@ iteration (`goal-run.ts:92-98`), and the DoD replays only afterwards, in `close(
 the pull request body already claims every commit was verified. The invariant is true of every
 commit and false of the sentence the run publishes about them.
 
-**2. The implementer is mechanically denied git.** The mechanism named is a `permissions.deny`
-rule in `.claude/settings.local.json`; what checks it is `run/preflight.ts:163`, three
-`String.includes` on the raw file. An `allow` list naming those same three commands satisfies
-it, and the run then narrates "the implementer is denied git commit, push and add" — a false
-claim in its own log. It is read once, before the loop, so it binds a session started after it
-and not one already running. Nothing surveys remote refs across the implementer, and a
+**2. The implementer is mechanically denied git.** ~~The mechanism named is a `permissions.deny`
+rule in `.claude/settings.local.json`, checked by three `String.includes` on the raw
+file.~~ **Resolved for the current runner**, which dropped the check
+rather than repair it: an `allow` list naming those same three commands satisfied it, the rule was
+installed project-wide so it also restrained the developer's own session, and it was read once
+before the loop, so it bound a session started after it and not one already running. `goal-run.sh`
+is frozen and keeps it. The claim now rests on the HEAD snapshot in `run/iteration.ts`, which is
+executed. Nothing surveys remote refs across the implementer, and a
 `git push` moves neither HEAD nor the working tree, so it passes both post-implementer checks
 (`run/iteration.ts:154-162`). And what the implementer writes inside the git directory is
 invisible to `git status --porcelain -uall` — verified — therefore invisible to the scope

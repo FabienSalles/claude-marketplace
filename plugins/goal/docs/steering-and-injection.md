@@ -165,22 +165,28 @@ permits — leaves that hash untouched and disarms the bite check, which returns
 `test_files` is empty (`gate/bite.ts:52-57`). A guard that proves the bar did not move, while the
 check that enforces the bar can be switched off beside it, proves less than its name.
 
-## The only capability restriction actually enforced
+## The capability restriction there used to be, and what replaced it
 
-`run/preflight.ts:157-173` refuses to start a run unless `.claude/settings.local.json` mentions
-`git commit`, `git push` and `git add`. This is what stands behind "only the gate commits": the
-implementer is an ordinary Claude Code session, and without a settings-layer deny rule that
-sentence is a brief, not a capability.
+`goal-run.sh` refuses to start unless `.claude/settings.local.json` mentions `git commit`,
+`git push` and `git add`. That was the one capability restriction the harness enforced, and the
+current runner dropped it for three reasons: the check was a `String.includes` over raw JSON, so an
+`allow` entry naming the same verbs passed it; it was installed as a project rule, so it restrained
+the interactive session where the developer reads every diff, every day, for a protection that only
+matters during a run; and permissions are read at session start, so it described a session yet to
+begin and never the one it was checking.
 
-It is the right layer — it is the layer L3 concluded the `tools:` field could not reach — and the
-check on it is a `String.includes` over the whole file (`run/preflight.ts:163`). **An `allow` list
-naming those same three strings satisfies it exactly as well as a `deny` list does.** The
-preflight proves the strings are present in the file, not that they deny anything.
+So nothing restrains the implementer's capabilities today. What stands behind "only the gate
+commits" is `run/iteration.ts`, which snapshots HEAD around the implementer and halts when it
+moved — a claim the run executes rather than one it reads off a file.
 
-Three further limits of the same guarantee, none of them covered:
+The settings layer was the right one — it is the layer L3 concluded the `tools:` field could not
+reach. The check on it never was: a `String.includes` over the whole file, which **an `allow` list
+naming those same three strings satisfied exactly as well as a `deny` list did.** It proved the
+strings were in the file, not that they denied anything.
 
-- The rule is read once, at preflight. It is not retroactive on a session already started.
-- Nothing surveys the remote refs, so a push that happened anyway would not be detected.
+Two limits of that guarantee outlived it, and neither is covered:
+
+- Nothing surveys the remote refs, so a push would not be detected.
 - The implementer can write inside `.git/`, which neither the run's own tree check
   (`run/iteration.ts:155`) nor the scope check (`gate/scope.ts:34`) reports, since git does not
   report on its own directory — and the gate that runs next executes outside the permission
@@ -209,8 +215,9 @@ itself — and, per the sweep above, read every fence in it as a command that wi
   instruction that survives into the frozen plan is faithfully executed by every mechanism
   downstream. The hash guarantees the plan did not change; it says nothing about whether it was
   right. And a gate fence in it runs at preflight, before any iteration is judged.
-- **The deny rule is checked by substring, not by meaning** (`run/preflight.ts:163`). It is the
-  weakest link in the guarantee this design actually ships.
+- **Nothing restrains the implementer's capabilities.** The deny rule was checked by substring
+  rather than by meaning, and the current runner dropped the check instead of repairing it. What
+  the design ships now is detection after the fact, not denial before it.
 - **One agent both reads remote text and writes** (`run/close.ts:71-81`). L3 is not held on the
   current path.
 - **Repository write access.** Tier 1 would rest on it, if it were ever built. Someone who has it

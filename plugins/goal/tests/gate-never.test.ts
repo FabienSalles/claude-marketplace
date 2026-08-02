@@ -1,9 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+
+import { tmpDir } from './support/tmp.ts';
 
 const GATE = resolve(import.meta.dirname, '..', 'scripts', 'goal-gate.ts');
 
@@ -33,7 +34,7 @@ const fixture = (
   gateLines: string[] = GATE_BLOCK,
   header: string[] = [],
 ): { repo: string; plan: string } => {
-  const repo = mkdtempSync(join(tmpdir(), 'goal-gate-never-'));
+  const repo = tmpDir('goal-gate-never-');
   git(repo, 'init', '-q');
   git(repo, 'config', 'user.email', 'gate@example.com');
   git(repo, 'config', 'user.name', 'Gate');
@@ -44,7 +45,7 @@ const fixture = (
   git(repo, 'add', '-A');
   git(repo, 'commit', '-qm', 'init');
 
-  const plan = join(mkdtempSync(join(tmpdir(), 'goal-gate-never-plan-')), 'spec.md');
+  const plan = join(tmpDir('goal-gate-never-plan-'), 'spec.md');
   writeFileSync(plan, planWith(gateLines, header));
 
   return { repo, plan };

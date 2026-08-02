@@ -380,8 +380,10 @@ in `adversarial-verification.md`.
 >   disappear.
 >
 > What it got right is the load-bearing part: the constraint on the implementer moved from *the
-> workflow has no shell* to *the session is pinned to an agent and denied the verbs the gate owns*,
-> and that is exactly what `run/preflight.ts:157-173` now refuses to start without.
+> workflow has no shell* to *the session is pinned to an agent and denied the verbs the gate owns*.
+> `goal-run.sh` refuses to start without that rule. The current runner dropped the check, having
+> established that it read a substring, restrained the developer's own session, and described a
+> session other than the one it was checking.
 
 Raised as a challenge: if a script is going to launch `/goal:auto` sequentially over several
 plans, why not have that script launch **native `/goal`** per iteration instead, and drop the
@@ -635,10 +637,10 @@ no reader. A channel that does not exist is not safer, it is absent, and
 
 **Preflight 11 disappears** — landed. It inspected `permissions.defaultMode`, could not see a CLI
 `--permission-mode`, and ended up asking the developer. `claude -p --permission-mode auto` states
-it explicitly at every invocation, so the check has no subject: `run/preflight.ts` has ten
-refusals and none of them inspects a permission mode. The check that took its slot is the deny
-rule (`run/preflight.ts:157-173`), which asks the opposite question — not *what mode is this
-session in* but *is the implementer denied the verbs the gate owns*.
+it explicitly at every invocation, so the check has no subject: `run/preflight.ts` has nine
+refusals and none of them inspects a permission mode. The deny rule took its slot for a while,
+asking the opposite question — not *what mode is this session in* but *is the implementer denied
+the verbs the gate owns* — and was itself removed once it turned out to answer neither.
 
 **Waiting for a quota comes home** — landed, and it is the cleanest thing the port bought.
 `loops.md` used to state the constraint the other way round: waiting lived at session level

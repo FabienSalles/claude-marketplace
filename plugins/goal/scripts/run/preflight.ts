@@ -1,11 +1,18 @@
-// The ten refusals a run judges before writing a byte, worded exactly as goal-run.sh words
+// The nine refusals a run judges before writing a byte, worded exactly as goal-run.sh words
 // them: policy, remote, branch, clean tree, ignored plan directory, cleanup iteration inside a
-// feature plan, existing lock, base sweep (with the Bootstrap carve-out), branch behind its
-// base, and the deny rule. Every one is a refusal, never a warning, and every one runs before
-// the lock is taken: a run that starts wrong is worse than one that never starts.
+// feature plan, existing lock, base sweep (with the Bootstrap carve-out), and branch behind its
+// base. Every one is a refusal, never a warning, and every one runs before the lock is taken:
+// a run that starts wrong is worse than one that never starts.
+//
+// goal-run.sh has a tenth, reading `.claude/settings.local.json` for a deny rule. This runner
+// dropped it: the check was a substring match over raw JSON, so a file whose permissions.allow
+// granted `Bash(git commit:*)` satisfied it while granting the opposite; it was installed
+// project-wide, so it also restrained the interactive session where the developer reads every
+// diff; and permissions are read at session start, so it described a future session and never
+// the running one. What replaces it is detection in run/iteration.ts, which is executed.
 
 import { spawnSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import { basename, dirname, resolve } from 'node:path';
 
 import { header, iterationNumbers } from '../gate/plan.ts';
@@ -153,24 +160,6 @@ export const preflight = (plan: string, source: string, reporter: Reporter, gate
   }
 
   reporter.say(`RUN preflight: branch is caught up with ${originBase}`);
-
-  // 10. Deny — the implementer runs as an ordinary Claude Code session; without a settings rule
-  // denying it `git commit`, `git push` and `git add`, "only the gate commits" is a sentence in
-  // the plan and not a fact this run can stand behind. goal-deny-setup.sh installs the rule once;
-  // this only reads for it.
-  const denyFile = resolve(process.cwd(), '.claude', 'settings.local.json');
-  const denyContent = existsSync(denyFile) ? readFileSync(denyFile, 'utf8') : '';
-  const denyMissing = ['commit', 'push', 'add'].filter((verb) => !denyContent.includes(`git ${verb}`));
-
-  if (denyMissing.length > 0) {
-    const here = resolve(import.meta.dirname, '..');
-    reporter.stop(
-      `the implementer is not denied git ${denyMissing.join(' ')}. Run: ${here}/goal-deny-setup.sh`,
-      REFUSED,
-    );
-  }
-
-  reporter.say('RUN preflight: the implementer is denied git commit, push and add');
 
   return { policy, remote, workId, cleanup };
 };

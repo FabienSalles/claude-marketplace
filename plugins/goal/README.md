@@ -31,10 +31,6 @@ turns later as work to throw away. The grill is the one place a human is load-be
 ```bash
 cd ~/projects/<repo>
 
-# Once per tree: install the rule that denies the implementer git commit/push/add.
-# The runner's preflight refuses to start until it is there.
-bash <plugin>/scripts/goal-deny-setup.sh
-
 claude
 > /goal:draft-issue CT-1234        # optional — Jira via MCP, a spec path, or 'inline'
 > /goal:run-issue CT-1234          # the grill, then the locked plan on a feature branch
@@ -133,7 +129,7 @@ yourself before trusting a green build.
 | [`/goal:next`](commands/next.md) | `commands/next.md` | Manual-loop checkpoint: verify the DoD, reconcile plan against code, emit the next `/goal` handoff |
 | `goal-run.ts` + `run/*.ts` | `scripts/` | The runner: preflight, sweep, lock, iteration, publish, close, report |
 | `goal-gate.ts` + `gate/*.ts` | `scripts/` | The judge, and the only committer. Exit 0 runnable · 1 `HALT` with a reason · 2 misuse. TypeScript run natively by node — no build, no dependency |
-| `goal-deny-setup.sh` | `scripts/` | Unions the three deny rules into the tree's `.claude/settings.local.json`. Additive and idempotent; needs `jq` |
+| `goal-deny-setup.sh` | `scripts/` | Unions the three deny rules into the tree's `.claude/settings.local.json`. Additive and idempotent; needs `jq`. Required by `goal-run.sh` alone — the current runner dropped that precondition |
 | `plan-guard.ts` | `scripts/` | Hashes every `gateN=`/`dodN=` line so a repair can prove it moved none. Used only by `/goal:supervise`. **Never run** |
 | `transcripts.ts` | `scripts/` | Resolves a run's transcripts from its recorded session ids. Used only by `goal-session-auditor`. **Never run** |
 | `goal-run-implementer`, `goal-run-lens`, `goal-run-auditor` | `agents/` | Spawned by the runner: one implementer per iteration, then an advisory lens and an auditor at close — neither able to undo what shipped |
@@ -170,7 +166,7 @@ behavior when they are absent.
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| Exit 2, "the implementer is not denied git…" | the deny rule is missing from this tree | `bash <plugin>/scripts/goal-deny-setup.sh` |
+| Exit 2, "the implementer is not denied git…" | `goal-run.sh` only — the frozen reference keeps that precondition | `bash <plugin>/scripts/goal-deny-setup.sh`, or use the current runner, which dropped it |
 | Exit 2, "the plan's directory is visible to git" | `.claude/` is tracked | Ignore it, untracking any spec already committed |
 | Exit 2, "Policy is manual" | the runner has nowhere to put the work | Change the `Policy:` line, or run the manual loop with `/goal` and `/goal:next` |
 | Exit 2, "the plan declares no Remote line" | never defaulted to `origin` | Write the remote on the plan. Guessing here pushes a fork's work to its parent |

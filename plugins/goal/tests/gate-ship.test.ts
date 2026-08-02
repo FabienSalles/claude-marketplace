@@ -1,9 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+
+import { tmpDir } from './support/tmp.ts';
 
 const GATE = resolve(import.meta.dirname, '..', 'scripts', 'goal-gate.ts');
 
@@ -27,7 +28,7 @@ const planWith = (dodLines: readonly string[], heading = '## Definition of Done 
   ].join('\n');
 
 const planFile = (source: string): string => {
-  const plan = join(mkdtempSync(join(tmpdir(), 'goal-gate-ship-')), 'spec.md');
+  const plan = join(tmpDir('goal-gate-ship-'), 'spec.md');
   writeFileSync(plan, source);
 
   return plan;
@@ -39,13 +40,13 @@ const runGate = (...args: string[]): { code: number; output: string } => {
   return { code: run.status ?? -1, output: `${run.stdout}${run.stderr}` };
 };
 
-const tally = (): string => join(mkdtempSync(join(tmpdir(), 'goal-gate-runs-')), 'runs');
+const tally = (): string => join(tmpDir('goal-gate-runs-'), 'runs');
 
 const counted = (path: string): number =>
   existsSync(path) ? readFileSync(path, 'utf8').split('\n').filter((line) => line !== '').length : 0;
 
 const withScanners = (installed: readonly { name: string; exit: number }[]): string => {
-  const bin = mkdtempSync(join(tmpdir(), 'goal-gate-bin-'));
+  const bin = tmpDir('goal-gate-bin-');
 
   for (const { name, exit } of installed) {
     writeFileSync(join(bin, name), `#!/bin/sh\nexit ${exit}\n`, { mode: 0o755 });

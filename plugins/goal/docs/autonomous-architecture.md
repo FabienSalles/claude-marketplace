@@ -40,11 +40,18 @@ Concretely: `goal-gate.ts commit` verifies, commits and ticks **inside one proce
 The orchestrator does not commit. It calls a script that commits only after it has verified,
 so an orchestrator that misreads a result cannot produce a bad commit.
 
-The boundary of that anchor is worth naming. *Only the gate commits* holds against an
-implementer denied `git commit`, `git push` and `git add` by a Claude Code settings rule — and
-what the run checks is that `.claude/settings.local.json` contains those three strings
-(`run/preflight.ts:163`). An ALLOW list satisfies that check exactly as well as a DENY one. The
-denial is a real mechanism; the reading of it is a substring.
+The boundary of that anchor is worth naming. *Only the gate commits* used to lean on an
+implementer denied `git commit`, `git push` and `git add` by a Claude Code settings rule, and on a
+preflight check that `.claude/settings.local.json` contained those three strings — a substring
+match an ALLOW list satisfied exactly as well as a DENY one. The current runner dropped that
+check: it was also installed project-wide, so it restrained the developer's own session, and
+permissions are read at session start, so it described a future session and never the running one.
+`goal-run.sh` is frozen and keeps it.
+
+What holds the anchor now is detection rather than denial. `run/iteration.ts` snapshots HEAD around
+the implementer and halts when it moved, which catches the case the rule was written for. The two
+gaps that remain — a push, and a write into `.git/` — are named in `docs/open-questions.md` and are
+what the visibility plan closes.
 
 ## Why layer 2 is a program, and this one
 

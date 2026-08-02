@@ -1,7 +1,8 @@
 import { spawnSync } from 'node:child_process';
-import { chmodSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { chmodSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+
+import { tmpDir } from './tmp.ts';
 
 export const RUN = resolve(import.meta.dirname, '..', '..', 'scripts', 'goal-run.sh');
 export const RUN_NODE = resolve(import.meta.dirname, '..', '..', 'scripts', 'goal-run.ts');
@@ -82,7 +83,7 @@ export type FixtureOptions = {
 // plan_hash on stdout, `lock` creates the same `<plan>.run.lock` directory, `unlock` removes it.
 // That makes the lock assertions real rather than a stand-in.
 export const repo = (options: FixtureOptions = {}): Fixture => {
-  const dir = mkdtempSync(join(tmpdir(), 'goal-run-'));
+  const dir = tmpDir('goal-run-');
   const bin = join(dir, 'fake-bin');
   const claudeLog = join(dir, 'claude-args.txt');
   const gateLog = join(dir, 'gate-args.txt');
@@ -197,7 +198,7 @@ exit 0
   git(dir, 'commit', '-qm', 'init');
 
   if (options.remote) {
-    const root = mkdtempSync(join(tmpdir(), 'goal-run-remote-'));
+    const root = tmpDir('goal-run-remote-');
     const originDir = join(root, 'acme', 'demo.git');
     mkdirSync(join(root, 'acme'), { recursive: true });
     spawnSync('git', ['init', '-q', '--bare', '-b', 'main', originDir]);
@@ -205,7 +206,7 @@ exit 0
   }
 
   if (options.staleOrigin) {
-    const origin = mkdtempSync(join(tmpdir(), 'goal-run-origin-'));
+    const origin = tmpDir('goal-run-origin-');
     git(origin, 'init', '-q', '--bare', '-b', 'main');
     git(dir, 'remote', 'add', 'origin', origin);
     git(dir, 'push', '-q', 'origin', 'main');
@@ -214,7 +215,7 @@ exit 0
 
     // Advances origin's main past what this checkout knows, from a second clone — the shape
     // of a branch left behind while the base kept moving.
-    const clone = mkdtempSync(join(tmpdir(), 'goal-run-clone-'));
+    const clone = tmpDir('goal-run-clone-');
     git(dir, 'clone', '-q', origin, clone);
     git(clone, 'config', 'user.email', 'ahead@example.com');
     git(clone, 'config', 'user.name', 'Ahead');

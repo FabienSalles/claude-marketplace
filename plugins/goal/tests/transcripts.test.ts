@@ -1,12 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { projectDir, runTranscripts } from '../scripts/transcripts.ts';
+import { tmpDir } from './support/tmp.ts';
 
-const projectRoot = (): string => mkdtempSync(join(tmpdir(), 'transcripts-'));
+const projectRoot = (): string => tmpDir('transcripts-');
 
 // R9 — the project directory Claude Code writes into is derived from the cwd alone, so both
 // anchors below look in the same place.
@@ -44,7 +44,7 @@ test('runTranscripts returns nothing when the project dir does not exist', () =>
 test('runTranscripts unions the recorded session ids with the content scan, without duplicates', () => {
   const root = projectRoot();
   const dir = join(root, '-Users-dev-my-repo');
-  const plans = mkdtempSync(join(tmpdir(), 'transcripts-plan-'));
+  const plans = tmpDir('transcripts-plan-');
   const plan = join(plans, 'my-plan-spec.md');
   mkdirSync(dir, { recursive: true });
 

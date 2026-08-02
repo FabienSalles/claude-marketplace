@@ -1,9 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+
+import { tmpDir } from './support/tmp.ts';
 
 const GUARD = resolve(import.meta.dirname, '..', 'scripts', 'plan-guard.ts');
 
@@ -27,7 +28,7 @@ const PLAN = [
 ].join('\n');
 
 const writePlan = (content: string): string => {
-  const path = join(mkdtempSync(join(tmpdir(), 'plan-guard-')), 'spec.md');
+  const path = join(tmpDir('plan-guard-'), 'spec.md');
   writeFileSync(path, content);
 
   return path;

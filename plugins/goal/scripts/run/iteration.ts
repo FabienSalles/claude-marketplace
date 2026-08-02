@@ -7,6 +7,7 @@
 import { spawnSync } from 'node:child_process';
 import { basename } from 'node:path';
 
+import { ceiling } from '../gate/bounded.ts';
 import { iterationSection } from '../gate/plan.ts';
 import { REFUSED } from './preflight.ts';
 import type { Reporter } from './report.ts';
@@ -109,8 +110,12 @@ export const runIteration = (
     reporter.say(`RUN handing iteration ${iteration} to the implementer`);
 
     const implemented = spawnSync(
-      'claude',
+      '/bin/sh',
       [
+        '-c',
+        `${ceiling()}\nexec "$@"`,
+        'sh',
+        'claude',
         '-p',
         '--agent',
         'goal:goal-run-implementer',

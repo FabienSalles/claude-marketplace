@@ -1,9 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { chmodSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { chmodSync, mkdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+
+import { tmpDir } from './support/tmp.ts';
 
 const LAUNCH = resolve(import.meta.dirname, '..', 'scripts', 'goal-launch.sh');
 
@@ -12,7 +13,7 @@ const git = (cwd: string, ...args: string[]) => spawnSync('git', args, { cwd, en
 // A fake `tmux` first on PATH: the launcher's last act is handed to it, so recording its
 // arguments is how the session it would have opened is asserted without opening one.
 const repo = (): { dir: string; tmuxLog: string } => {
-  const dir = mkdtempSync(join(tmpdir(), 'goal-launch-'));
+  const dir = tmpDir('goal-launch-');
   const bin = join(dir, 'fake-bin');
   const tmuxLog = join(dir, 'tmux-args.txt');
 
