@@ -14,7 +14,6 @@ import { changedGitDirPaths, changedRemoteRefs, snapshotGitDir, snapshotRemoteRe
 import { narrate } from './narrate.ts';
 import { REFUSED } from './preflight.ts';
 import type { Reporter } from './report.ts';
-import type { Lock } from './lock.ts';
 
 export const LANDED = 0;
 export const HALTED = 1;
@@ -31,13 +30,8 @@ export const runIteration = (
   hash: string,
   gate: string,
   reporter: Reporter,
-  lock: Lock,
 ): void => {
   reporter.say(`RUN iteration ${iteration} of ${basename(plan)}, in ${process.cwd()}`);
-
-  if (!lock.acquire()) {
-    reporter.stop(`another run holds this plan. Wait for it, or free it with: ${gate} unlock ${plan}`, REFUSED);
-  }
 
   const section = iterationSection(source, iteration).join('\n');
 
@@ -164,7 +158,6 @@ export const runIteration = (
   reporter.record(`${verdict.stdout}${verdict.stderr}`);
 
   if (gateExit === 0) {
-    lock.release();
     reporter.say(`RUN iteration ${iteration} landed, gate-verified`);
 
     return;
@@ -175,7 +168,6 @@ export const runIteration = (
     process.exit(PAUSED);
   }
 
-  lock.release();
   reporter.say(`STOP iteration ${iteration} was refused by the gate. Nothing was committed, and the gate's reasoning is in ${plan}.run.log. The tree is left exactly as the implementer left it.`);
   process.exit(HALTED);
 };

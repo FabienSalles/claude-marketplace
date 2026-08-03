@@ -91,6 +91,12 @@ const main = (): void => {
 
   const lock = createLock(gate, plan);
 
+  // Taken once, before the first iteration, and released only when this process exits — see
+  // lock.ts's process.once('exit') handler, which runs on every path out of here, landed or not.
+  if (!lock.acquire()) {
+    reporter.stop(`another run holds this plan. Wait for it, or free it with: ${gate} unlock ${plan}`, REFUSED);
+  }
+
   const publisher = createPublisher(plan, source, policy, remote, reporter, gate);
 
   const landed: string[] = [];
@@ -103,13 +109,19 @@ const main = (): void => {
     // carry the locked ticked set into that call, the way GOAL_RUN_QUOTA_SLEEP already carries
     // its own knob across the same boundary.
     process.env.GOAL_RUN_TICKED = tickedSets.get(n) ?? '';
-    runIteration(plan, source, n, hashes.get(n)!, gate, reporter, lock);
-    publisher.publish(n);
+    runIteration(plan, source, n, hashes.get(n)!, gate, reporter);
     landed.push(n);
+
+    // Every iteration but the last publishes here, as it lands. The last one's push waits for
+    // close(), behind the whole-branch Definition of Done.
+    if (n !== iterations[iterations.length - 1]) {
+      publisher.publish(n);
+    }
+
     elapsed += `${n}: ${Math.round((Date.now() - start) / 1000)}s\n`;
   }
 
-  const exitCode = close(plan, gate, hashes.get(iterations[iterations.length - 1]!)!, remote, publisher.state, landed, elapsed, reporter);
+  const exitCode = close(plan, gate, hashes.get(iterations[iterations.length - 1]!)!, remote, publisher, landed, elapsed, reporter);
 
   if (exitCode === LANDED) {
     reporter.say(`STOP ${iterations.length} iteration(s) landed, gate-verified`);
