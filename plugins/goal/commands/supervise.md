@@ -119,15 +119,18 @@ command does not model: print everything (both `HALT` blocks, the repair made in
 guards against — an agent that keeps relaunching optimizes for the run continuing, not for the
 work being right.
 
-## Phase 7 — Audit the session, always
+## Phase 7 — Audit the session, unless nothing was attempted
 
-Whichever phase above ended this invocation — landed, paused, refused, or a relaunch that itself
-landed or stopped — invoke the `goal:goal-session-auditor` agent exactly once before you finish,
-passing it the plan's path and `$(pwd)`. It reads the transcripts a run left behind, including
-this supervising session's own, and reports findings anchored to a tool-call sequence: an edit
-reverted, the same command failing twice, a file read five times, a brief that named a
-convention skill with no `Skill` call to match. Print what it returns; nothing it finds changes
-the exit you already reported.
+Skip this phase on exit `2`: the preflight refused before any iteration reached an implementer,
+so there is no implementer transcript and nothing was driven — auditing how work was done when
+none was is waste by construction. Print the Phase 4 report and stop.
+
+Otherwise — landed, paused, halted, or a relaunch that itself landed or stopped — invoke the
+`goal:goal-session-auditor` agent exactly once before you finish, passing it the plan's path and
+`$(pwd)`. It reads the transcripts a run left behind, including this supervising session's own,
+and reports findings anchored to a tool-call sequence: an edit reverted, the same command failing
+twice, a file read five times, a brief that named a convention skill with no `Skill` call to
+match. Print what it returns; nothing it finds changes the exit you already reported.
 
 ## Rules for THIS command
 
