@@ -97,6 +97,32 @@ test('a change that touches no gate or dod line does not move the hash', () => {
   assert.equal(code, 0, output);
 });
 
+// R8 — repairing a mistyped test_files path does not move the hash
+test('a mistyped test_files path repaired to another path does not halt', () => {
+  const plan = writePlan(PLAN);
+  const hash = runGuard([plan]).output.trim().slice('guard_hash='.length);
+
+  writeFileSync(plan, PLAN.replace('test_files=tests/a.test.ts', 'test_files=tests/a-fixed.test.ts'));
+
+  const { code, output } = runGuard([plan, hash]);
+
+  assert.equal(code, 0, output);
+  assert.match(output, /^OK/);
+});
+
+// R8 — emptying an iteration's test_files moves the hash and is refused
+test('emptying an iteration\'s test_files is refused', () => {
+  const plan = writePlan(PLAN);
+  const hash = runGuard([plan]).output.trim().slice('guard_hash='.length);
+
+  writeFileSync(plan, PLAN.replace('test_files=tests/a.test.ts', 'test_files='));
+
+  const { code, output } = runGuard([plan, hash]);
+
+  assert.equal(code, 1, output);
+  assert.match(output, /HALT/);
+});
+
 test('an unreadable plan is a misuse, not a crash', () => {
   const { code, output } = runGuard(['/nonexistent/path/spec.md']);
 

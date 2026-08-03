@@ -126,9 +126,12 @@ export const createPublisher = (
     // iteration has no memory of what an earlier invocation already opened, so whether a pull
     // request exists is read from `gh` itself the first time this process needs to know.
     if (!state.prOpen) {
-      const view = spawnSync('gh', ['pr', 'view', branch, '--repo', repo, '--json', 'number'], { encoding: 'utf8' });
+      const view = spawnSync('gh', ['pr', 'view', branch, '--repo', repo, '--json', 'number,state'], { encoding: 'utf8' });
 
-      if ((view.status ?? 1) === 0 && /"number":\d+/.test(view.stdout)) {
+      // A merged or closed pull request still resolves by branch name, so its state is read
+      // too: only one still open is edited, or this run's iterations land where a reviewer
+      // already stopped looking.
+      if ((view.status ?? 1) === 0 && /"number":\d+/.test(view.stdout) && !/"state":"(MERGED|CLOSED)"/.test(view.stdout)) {
         state.prOpen = true;
       }
     }

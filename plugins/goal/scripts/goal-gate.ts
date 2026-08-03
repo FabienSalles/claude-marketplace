@@ -20,9 +20,10 @@ import { budgetCheck, removalCheck } from './gate/bounds.ts';
 import { regressionWall, resolvabilityCheck } from './gate/cross-iteration.ts';
 import { biteCheck } from './gate/bite.ts';
 import { dodCheck, secretScan } from './gate/ship.ts';
+import { monotonicityCheck, tickedSet } from './gate/ticked.ts';
 
 const USAGE =
-  'usage: goal-gate.ts check|verify|commit <plan> <iteration> [plan_hash]\n       goal-gate.ts dod <plan> [plan_hash]\n       goal-gate.ts scan\n       goal-gate.ts lock|unlock <plan>';
+  'usage: goal-gate.ts check|verify|commit <plan> <iteration> [plan_hash] [ticked]\n       goal-gate.ts dod <plan> [plan_hash]\n       goal-gate.ts scan\n       goal-gate.ts lock|unlock <plan>';
 
 const SUBCOMMANDS = ['check', 'verify', 'commit', 'dod', 'lock', 'unlock'];
 
@@ -77,7 +78,11 @@ const verify = (source: string, iteration: string, declared: Map<string, string>
 };
 
 const main = (): void => {
-  const [subcommand, plan, iteration, locked] = process.argv.slice(2);
+  const [subcommand, plan, iteration, locked, tickedArg] = process.argv.slice(2);
+  // The frozen bash runner never carries this, and the node one cannot hand it through the
+  // implementer's own `gate commit` call it does not touch (run/iteration.ts) except by the
+  // environment that call inherits — same channel goal-run.ts already uses for the quota knobs.
+  const ticked = tickedArg ?? process.env.GOAL_RUN_TICKED;
 
   if (subcommand === 'scan') {
     return secretScan();
@@ -117,7 +122,7 @@ const main = (): void => {
     const commands = [...declared.keys()].filter((key) => key.startsWith('gate')).length;
 
     process.stdout.write(
-      `OK: iteration ${iteration} is runnable (${commands} acceptance command(s)).\nplan_hash=${hash}\n`,
+      `OK: iteration ${iteration} is runnable (${commands} acceptance command(s)).\nplan_hash=${hash}\nticked=${tickedSet(source)}\n`,
     );
 
     return;
@@ -132,6 +137,8 @@ const main = (): void => {
 
     return;
   }
+
+  monotonicityCheck(source, iteration, ticked);
 
   commitAndTick(plan, source, iteration, declared, paths, changed, incidental);
 };

@@ -92,8 +92,9 @@ guarantee that is narrower than its slogan.
   substring of the raw settings JSON (`run/preflight.ts`), which an `allow` entry naming the same
   verb also satisfies. It binds a session started after it, not one already running.
 - **A test that passes without the implementation halts the slice** (`gate/bite.ts`) — unless the
-  iteration declares no `test_files`, which skips the check. `plan-guard.ts` hashes only `gateN=`
-  and `dodN=` lines, so `test_files=` can be emptied without moving the guard hash.
+  iteration declares no `test_files`, which skips the check. `plan-guard.ts` hashes `gateN=` and
+  `dodN=` lines, plus — per iteration — whether `test_files` is empty, so a repair emptying it
+  moves the hash even though repairing a mistyped path in it does not.
 - **The plan is hashed** (`gate/plan.ts`) — the hash normalizes ticks away, which also means
   unticking a box drops that iteration out of the regression wall without moving the hash.
 - **Every claim is a command that ran** — except the gate's own refusal: `run/iteration.ts` exits

@@ -80,16 +80,17 @@ export const changedGitDirPaths = (before: GitDirSnapshot): string[] => {
   return changed.sort();
 };
 
-export type RemoteRefSnapshot = Map<string, string>;
+export type RefSnapshot = Map<string, string>;
 
-// `for-each-ref`, never `ls-remote`: a push from this checkout is what moves the local tracking
-// ref, which is the whole threat model. `ls-remote` asks the remote itself, so it would also
-// catch someone else pushing an unrelated branch at 3am — a false positive that halts an
-// unattended run for a push that was never this implementer's.
-const remoteRefs = (): RemoteRefSnapshot => {
+// `for-each-ref`, never `ls-remote`: a move from this checkout is what moves a local ref, which
+// is the whole threat model. `ls-remote` asks the remote itself, so it would also catch someone
+// else pushing an unrelated branch at 3am — a false positive that halts an unattended run for a
+// push that was never this implementer's. Unqualified, it walks every ref, not only
+// `refs/remotes`: `refs/stash`, a tag or a side branch move exactly as invisibly to `git status`.
+const allRefs = (): RefSnapshot => {
   const out = new Map<string, string>();
 
-  for (const line of git('for-each-ref', 'refs/remotes').stdout.split('\n')) {
+  for (const line of git('for-each-ref').stdout.split('\n')) {
     if (line.trim() === '') {
       continue;
     }
@@ -101,10 +102,10 @@ const remoteRefs = (): RemoteRefSnapshot => {
   return out;
 };
 
-export const snapshotRemoteRefs = (): RemoteRefSnapshot => remoteRefs();
+export const snapshotRefs = (): RefSnapshot => allRefs();
 
-export const changedRemoteRefs = (before: RemoteRefSnapshot): string[] => {
-  const after = remoteRefs();
+export const changedRefs = (before: RefSnapshot): string[] => {
+  const after = allRefs();
   const refs = new Set([...before.keys(), ...after.keys()]);
   const changed: string[] = [];
 

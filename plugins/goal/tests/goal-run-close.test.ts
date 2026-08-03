@@ -3,9 +3,13 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { HASH, PLAN, repo, run } from './support/goal-run-harness.ts';
+import { HASH, PLAN, git, repo, run } from './support/goal-run-harness.ts';
 import { close, LANDED } from '../scripts/run/close.ts';
 import type { Reporter } from '../scripts/run/report.ts';
+
+// The lock-once and publish-behind-the-DoD reordering lives in goal-run.ts only; goal-run.sh is
+// frozen and keeps its own bash ordering, so its own run of this suite skips both.
+const NODE_ONLY = process.env.GOAL_RUN_IMPL !== 'node' ? 'this reordering ported to goal-run.ts only, not goal-run.sh' : false;
 
 const PLAN_PR = PLAN.replace('Policy: commit\n', 'Policy: commit+pr\n');
 
@@ -110,7 +114,7 @@ test('close skips marking the pull request ready when the publisher\'s own state
       join(fixture.bin, 'fake-gate'),
       HASH,
       'origin',
-      { publishes: true, prOpen: true, blocked: true },
+      { publish: () => {}, state: { publishes: true, prOpen: true, blocked: true } },
       ['1'],
       '1: 1s\n',
       reporter,
@@ -167,7 +171,7 @@ test('the lens is briefed from the plan\'s own ticked iterations, not from the r
       join(fixture.bin, 'fake-gate'),
       HASH,
       'origin',
-      { publishes: false, prOpen: false, blocked: false },
+      { publish: () => {}, state: { publishes: false, prOpen: false, blocked: false } },
       ['2'],
       '2: 1s\n',
       reporter,
@@ -207,7 +211,7 @@ test('the reviewer runs once the pull request is marked ready', () => {
       join(fixture.bin, 'fake-gate'),
       HASH,
       'origin',
-      { publishes: true, prOpen: true, blocked: false },
+      { publish: () => {}, state: { publishes: true, prOpen: true, blocked: false } },
       ['1'],
       '1: 1s\n',
       reporter,
@@ -248,7 +252,7 @@ test('the reviewer never runs when marking the pull request ready fails', () => 
       join(fixture.bin, 'fake-gate'),
       HASH,
       'origin',
-      { publishes: true, prOpen: true, blocked: false },
+      { publish: () => {}, state: { publishes: true, prOpen: true, blocked: false } },
       ['1'],
       '1: 1s\n',
       reporter,
@@ -289,7 +293,7 @@ test('the reviewer never runs when the publisher\'s own state says blocked', () 
       join(fixture.bin, 'fake-gate'),
       HASH,
       'origin',
-      { publishes: true, prOpen: true, blocked: true },
+      { publish: () => {}, state: { publishes: true, prOpen: true, blocked: true } },
       ['1'],
       '1: 1s\n',
       reporter,
@@ -301,4 +305,43 @@ test('the reviewer never runs when the publisher\'s own state says blocked', () 
     process.chdir(originalCwd);
     process.env.PATH = originalPath;
   }
+});
+
+// R5 — the lock is acquired once, before the first iteration, and released only when the process
+// exits: two iterations landing in the same run must not show up as two lock/unlock pairs in the
+// gate's own log.
+test('the lock is acquired once for the whole run, not once per iteration', { skip: NODE_ONLY }, () => {
+  const fixture = repo();
+
+  const { code, output } = land(fixture);
+
+  assert.equal(code, 0, output);
+  const calls = readFileSync(fixture.gateLog, 'utf8').split('\n').filter((line) => line !== '');
+  assert.equal(calls.filter((line) => line === 'lock').length, 1, `expected exactly one lock call across both iterations:\n${calls.join('\n')}`);
+  assert.equal(calls.filter((line) => line === 'unlock').length, 1, `expected exactly one unlock call, released once at process exit:\n${calls.join('\n')}`);
+});
+
+// R6 — the final iteration's push moves into close(), behind the global Definition of Done: a
+// refusal there halts with that last commit landed locally but never reaching the remote, while
+// every iteration before it already published as it landed.
+test('a Definition of Done refusal leaves the last iteration\'s commit local, never pushed', { skip: NODE_ONLY }, () => {
+  const fixture = repo({ planText: PLAN_PR, remote: true });
+
+  const { code, output } = land(fixture, { FAKE_GATE_DOD_EXIT: '1' });
+
+  assert.notEqual(code, 0, output);
+  const ahead = git(fixture.dir, 'rev-list', '--count', 'origin/feature/demo..HEAD').stdout.trim();
+  assert.equal(ahead, '1', `expected the last iteration's commit to stay unpushed when the Definition of Done refused:\n${output}`);
+});
+
+// R6 — the pull request the earlier iterations opened is still there, showing what did land,
+// even though the last iteration's own push never went out.
+test('a Definition of Done refusal still leaves the draft pull request open from the iterations that already landed', { skip: NODE_ONLY }, () => {
+  const fixture = repo({ planText: PLAN_PR, remote: true });
+
+  const { code, output } = land(fixture, { FAKE_GATE_DOD_EXIT: '1' });
+
+  assert.notEqual(code, 0, output);
+  const calls = readFileSync(fixture.ghLog, 'utf8');
+  assert.match(calls, /pr\ncreate/, `expected a draft pull request opened once the first iteration landed:\n${calls}`);
 });

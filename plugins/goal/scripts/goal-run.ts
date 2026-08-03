@@ -60,6 +60,7 @@ const main = (): void => {
   }
 
   const hashes = new Map<string, string>();
+  const tickedSets = new Map<string, string>();
 
   for (const n of iterations) {
     const checked = spawnSync(`${gate} check ${quote(plan)} ${quote(n)}`, { shell: true, encoding: 'utf8' });
@@ -80,9 +81,21 @@ const main = (): void => {
     }
 
     hashes.set(n, hash);
+
+    const ticked = /^ticked=(.*)$/m.exec(output)?.[1];
+
+    if (ticked !== undefined) {
+      tickedSets.set(n, ticked);
+    }
   }
 
   const lock = createLock(gate, plan);
+
+  // Taken once, before the first iteration, and released only when this process exits — see
+  // lock.ts's process.once('exit') handler, which runs on every path out of here, landed or not.
+  if (!lock.acquire()) {
+    reporter.stop(`another run holds this plan. Wait for it, or free it with: ${gate} unlock ${plan}`, REFUSED);
+  }
 
   const publisher = createPublisher(plan, source, policy, remote, reporter, gate);
 
@@ -91,13 +104,24 @@ const main = (): void => {
 
   for (const n of iterations) {
     const start = Date.now();
-    runIteration(plan, source, n, hashes.get(n)!, gate, reporter, lock);
-    publisher.publish(n);
+    // run/iteration.ts spawns the gate's `commit` call itself, and is not this iteration's to
+    // touch: the environment it inherits by default from this process is the one channel left to
+    // carry the locked ticked set into that call, the way GOAL_RUN_QUOTA_SLEEP already carries
+    // its own knob across the same boundary.
+    process.env.GOAL_RUN_TICKED = tickedSets.get(n) ?? '';
+    runIteration(plan, source, n, hashes.get(n)!, gate, reporter);
     landed.push(n);
+
+    // Every iteration but the last publishes here, as it lands. The last one's push waits for
+    // close(), behind the whole-branch Definition of Done.
+    if (n !== iterations[iterations.length - 1]) {
+      publisher.publish(n);
+    }
+
     elapsed += `${n}: ${Math.round((Date.now() - start) / 1000)}s\n`;
   }
 
-  const exitCode = close(plan, gate, hashes.get(iterations[iterations.length - 1]!)!, remote, publisher.state, landed, elapsed, reporter);
+  const exitCode = close(plan, gate, hashes.get(iterations[iterations.length - 1]!)!, remote, publisher, landed, elapsed, reporter);
 
   if (exitCode === LANDED) {
     reporter.say(`STOP ${iterations.length} iteration(s) landed, gate-verified`);

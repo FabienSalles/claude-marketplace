@@ -7,6 +7,7 @@ import { spawnSync } from 'node:child_process';
 import { basename } from 'node:path';
 
 import { iterationNumbers, readPlan } from '../gate/plan.ts';
+import type { Publisher } from './publish.ts';
 import type { Reporter } from './report.ts';
 
 export const LANDED = 0;
@@ -37,10 +38,8 @@ export const close = (
   gate: string,
   hash: string,
   remote: string,
-  publish: PublishState,
-  // Unused: the lens below is briefed from the plan's own ticked boxes now, not from this run's
-  // landed iterations. Kept in the signature for the caller passing it.
-  _landed: string[],
+  publisher: Publisher,
+  landed: string[],
   elapsed: string,
   reporter: Reporter,
 ): number => {
@@ -53,8 +52,17 @@ export const close = (
   const ticked = iterationNumbers(readPlan(plan), true);
 
   if (dodExit === 0) {
+    // The last iteration's own push, held back until now: nothing this run committed reaches the
+    // remote until the whole-branch Definition of Done says so.
+    const last = landed[landed.length - 1];
+
+    if (last !== undefined) {
+      publisher.publish(last);
+    }
+
     reporter.say('RUN the global Definition of Done passed');
     const repo = repoOf(remote);
+    const publish = publisher.state;
 
     if (publish.publishes && publish.prOpen && !publish.blocked) {
       const branch = git('branch', '--show-current').stdout.trim();
