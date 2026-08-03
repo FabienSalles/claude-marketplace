@@ -1,9 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync } from 'node:fs';
+import { chmodSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { FAKE_REPO, PLAN, git, repo, run } from './support/goal-run-harness.ts';
+import { tmpDir } from './support/tmp.ts';
 import { createPublisher } from '../scripts/run/publish.ts';
 import type { Reporter } from '../scripts/run/report.ts';
 
@@ -149,6 +150,46 @@ test('resuming a single iteration when the pull request already exists edits it,
   const calls = readFileSync(fixture.ghLog, 'utf8');
   assert.match(calls, /pr\nedit/, `the existing pull request was not edited:\n${calls}`);
   assert.ok(!calls.includes('pr\ncreate'), `a second pull request was created though one already existed:\n${calls}`);
+});
+
+// R7 — a pull request `gh` still resolves by branch name after it was merged or closed is not
+// this run's open one: its state is read alongside its number, and only OPEN keeps it that way.
+test('a pull request already merged is not treated as open, and a new one is opened instead of edited', () => {
+  const fixture = repo({ planText: PLAN_PR, remote: true });
+  const originalCwd = process.cwd();
+  const originalPath = process.env.PATH;
+  const ghBin = tmpDir('goal-run-merged-gh-');
+  const ghLog = join(ghBin, 'gh-calls.txt');
+
+  writeFileSync(
+    join(ghBin, 'gh'),
+    `#!/bin/sh
+printf -- '--- call ---\\n%s\\n' "$*" >> ${ghLog}
+case "$1 $2" in
+  "pr view")   printf '{"number":28,"state":"MERGED"}\\n'; exit 0 ;;
+  *)           exit 0 ;;
+esac
+`,
+  );
+  chmodSync(join(ghBin, 'gh'), 0o755);
+
+  process.chdir(fixture.dir);
+  process.env.PATH = `${ghBin}:${fixture.bin}:${originalPath ?? ''}`;
+
+  try {
+    const publisher = createPublisher(fixture.plan, fixture.plan, 'commit+pr', 'origin', silentReporter, 'true');
+
+    publisher.publish('1');
+
+    const calls = readFileSync(ghLog, 'utf8');
+    assert.match(calls, /pr view/, `the merged pull request was never looked up:\n${calls}`);
+    assert.match(calls, /pr create/, `a merged pull request was edited instead of opening a new one:\n${calls}`);
+    assert.ok(!calls.includes('pr edit'), `a merged pull request was edited as though it were still open:\n${calls}`);
+    assert.equal(publisher.state.prOpen, true, 'the newly opened pull request should be reflected in the publisher\'s own state');
+  } finally {
+    process.chdir(originalCwd);
+    process.env.PATH = originalPath;
+  }
 });
 
 // Under Policy: commit (no `+pr`), nothing is pushed and no pull request is opened — the plan
