@@ -60,6 +60,7 @@ const main = (): void => {
   }
 
   const hashes = new Map<string, string>();
+  const tickedSets = new Map<string, string>();
 
   for (const n of iterations) {
     const checked = spawnSync(`${gate} check ${quote(plan)} ${quote(n)}`, { shell: true, encoding: 'utf8' });
@@ -80,6 +81,12 @@ const main = (): void => {
     }
 
     hashes.set(n, hash);
+
+    const ticked = /^ticked=(.*)$/m.exec(output)?.[1];
+
+    if (ticked !== undefined) {
+      tickedSets.set(n, ticked);
+    }
   }
 
   const lock = createLock(gate, plan);
@@ -91,6 +98,11 @@ const main = (): void => {
 
   for (const n of iterations) {
     const start = Date.now();
+    // run/iteration.ts spawns the gate's `commit` call itself, and is not this iteration's to
+    // touch: the environment it inherits by default from this process is the one channel left to
+    // carry the locked ticked set into that call, the way GOAL_RUN_QUOTA_SLEEP already carries
+    // its own knob across the same boundary.
+    process.env.GOAL_RUN_TICKED = tickedSets.get(n) ?? '';
     runIteration(plan, source, n, hashes.get(n)!, gate, reporter, lock);
     publisher.publish(n);
     landed.push(n);
