@@ -2,7 +2,7 @@
 
 import { spawnSync } from 'node:child_process';
 
-import { bounded } from './bounded.ts';
+import { bounded, spawnOptions } from './bounded.ts';
 import { halt } from './halt.ts';
 import { declaredKeys, gateBlock } from './plan.ts';
 
@@ -47,7 +47,7 @@ export const dodCheck = (source: string): void => {
   }
 
   for (const [key, command] of [...declared.entries()].sort(([a], [b]) => Number(a.slice(3)) - Number(b.slice(3)))) {
-    const run = spawnSync(bounded(command), { shell: true, encoding: 'utf8' });
+    const run = spawnSync(bounded(command), spawnOptions());
 
     if (run.status !== 0) {
       halt(
@@ -87,7 +87,7 @@ export const secretScan = (): void => {
   }
 
   const command = `${scanner} git . --redact`;
-  const run = spawnSync(bounded(command), { shell: true, encoding: 'utf8' });
+  const run = spawnSync(bounded(command), spawnOptions());
 
   if (run.status !== 0) {
     halt(

@@ -2,7 +2,7 @@
 
 import { spawnSync } from 'node:child_process';
 
-import { bounded } from './bounded.ts';
+import { bounded, spawnOptions } from './bounded.ts';
 import { halt } from './halt.ts';
 
 export const gateCommands = (declared: Map<string, string>): [string, string][] =>
@@ -18,7 +18,7 @@ export const runGates = (
   const commands = gateCommands(declared);
 
   for (const [key, command] of commands) {
-    const run = spawnSync(bounded(command), { shell: true, encoding: 'utf8' });
+    const run = spawnSync(bounded(command), spawnOptions());
 
     if (run.status !== 0) {
       const detail = `Command: ${command}\nExit code: ${run.status}\n\nOutput:\n${`${run.stdout}${run.stderr}`.slice(-4000)}`;
@@ -46,7 +46,7 @@ export const determinismCheck = (declared: Map<string, string>, iteration: strin
   const command = declared.get('gate1') ?? '';
 
   for (let run = 2; run <= DETERMINISM_RUNS; run += 1) {
-    const result = spawnSync(bounded(command), { shell: true, encoding: 'utf8' });
+    const result = spawnSync(bounded(command), spawnOptions());
 
     if (result.status !== 0) {
       halt(

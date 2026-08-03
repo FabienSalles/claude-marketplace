@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { resolve } from 'node:path';
 
-import { bounded, ceilingFor } from '../scripts/gate/bounded.ts';
+import { bounded, ceilingFor, spawnOptions } from '../scripts/gate/bounded.ts';
 
 const RUN = resolve(import.meta.dirname, 'run.sh');
 
@@ -98,4 +98,50 @@ test('a caller declaring a fixture root does not earn an exemption from this ver
 
   assert.equal(run.status, 1, `a declared fixture root re-opened the guard:\n${run.stdout}${run.stderr}`);
   assert.match(run.stderr, /Refusing to re-enter/, run.stderr);
+});
+
+// A test waiting on a port or a prompt nobody answers otherwise blocks an unattended run 900
+// seconds and a named halt at a time, rather than costing it the machine.
+test('spawnOptions defaults to a 900 second wall clock and kills with SIGKILL', () => {
+  const options = spawnOptions();
+
+  assert.equal(options.timeout, 900_000);
+  assert.equal(options.killSignal, 'SIGKILL', 'SIGTERM is exactly the signal a hung process already ignores');
+});
+
+// GOAL_CMD_TIMEOUT is read once, at module load, exactly as GOAL_PROC_HEADROOM is — so the override
+// is exercised out of process, the same way the ceiling tests above exercise GOAL_PROC_HEADROOM.
+test('GOAL_CMD_TIMEOUT overrides the default the same way GOAL_PROC_HEADROOM overrides the ceiling', () => {
+  const modulePath = resolve(import.meta.dirname, '../scripts/gate/bounded.ts');
+  const script = `import { spawnOptions } from ${JSON.stringify(modulePath)}; process.stdout.write(String(spawnOptions().timeout));`;
+
+  const run = spawnSync(process.execPath, ['--input-type=module', '-e', script], {
+    encoding: 'utf8',
+    env: { ...process.env, GOAL_CMD_TIMEOUT: '5' },
+  });
+
+  assert.equal(run.stdout.trim(), '5000', `GOAL_CMD_TIMEOUT was not honoured:\n${run.stdout}${run.stderr}`);
+});
+
+// The wall clock's actual job: a command that outlives it is killed rather than left to hang the
+// gate forever. A killed run reports no exit code — `status` is null — so the caller's plain
+// `run.status !== 0` check still halts on it, instead of reading a stalled process as a pass.
+test('a command that outlives the wall clock is killed rather than left hanging', () => {
+  const modulePath = resolve(import.meta.dirname, '../scripts/gate/bounded.ts');
+  const script = `
+    import { spawnSync } from 'node:child_process';
+    import { bounded, spawnOptions } from ${JSON.stringify(modulePath)};
+    const run = spawnSync(bounded('sleep 30'), spawnOptions());
+    process.stdout.write(JSON.stringify({ status: run.status, signal: run.signal }));
+  `;
+
+  const run = spawnSync(process.execPath, ['--input-type=module', '-e', script], {
+    encoding: 'utf8',
+    env: { ...process.env, GOAL_CMD_TIMEOUT: '1' },
+  });
+
+  const { status, signal } = JSON.parse(run.stdout);
+
+  assert.equal(signal, 'SIGKILL', `the overrun command was not killed with SIGKILL:\n${run.stdout}${run.stderr}`);
+  assert.notEqual(status, 0, 'a killed command still read as an exit-0 pass');
 });
