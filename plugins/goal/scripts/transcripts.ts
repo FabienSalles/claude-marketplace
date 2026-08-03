@@ -13,9 +13,9 @@ import { basename, join } from 'node:path';
 
 const PROJECTS_ROOT = join(homedir(), '.claude', 'projects');
 
-// Claude Code keys a project's transcripts by its absolute cwd with every `/` turned into a `-`.
+// Claude Code keys a project's transcripts by its absolute cwd with every `/` and `.` turned into a `-`.
 export const projectDir = (cwd: string, root: string = PROJECTS_ROOT): string =>
-  join(root, cwd.replace(/\//g, '-'));
+  join(root, cwd.replace(/[/.]/g, '-'));
 
 export const recordedTranscripts = (plan: string, dir: string): string[] => {
   const recorded = `${plan}.run.session`;

@@ -171,10 +171,11 @@ through `iterationHeading()` rather than from a string spliced into a grep alter
 observed defect, in the one place where the two languages' handling of a list actually differs,
 found on the first real use of either runner.
 
-**What the A/B cannot show, as wired.** CI runs the suite once with no `GOAL_RUN_IMPL`, which means
-bash: 188 pass and 6 skip in silence. Under `GOAL_RUN_IMPL=node` the same suite is 194/194. The
-frozen reference is the covered one; the runner that actually ships is exercised only by hand. A
-parity harness that only one side of the parity runs in CI proves nothing about the other.
+**What the A/B could not show, as wired — settled.** `tests/run.sh` now runs the suite once per
+runner in a list and refuses a nonzero `skipped` line exactly as it refuses a failure, replacing the
+bash-only default that used to pass 188/6 in silence: bash is now 201 pass/7 skip, node 206 pass/2
+skip. Neither zero, so CI halts on exactly what it used to hide — the two runners are not proven
+equal.
 
 **Honest reservation, unchanged and still true.** The suite covers the eighteen business rules, not
 every behaviour: exact log wording, argument ordering and the edges of the preflight checks are not

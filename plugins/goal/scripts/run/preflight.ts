@@ -149,17 +149,36 @@ export const preflight = (plan: string, source: string, reporter: Reporter, gate
 
   // 9. The branch must be caught up with what it forked from — implementing against a base the
   // branch has since moved past ships a diff that conflicts, and certifies check 8 green against
-  // a base nobody will merge into.
+  // a base nobody will merge into. The base to compare against: the plan's own `PR base:`
+  // header — a bare branch name on the declared remote, the same one publish.ts passes to
+  // `gh pr create --base` — when it resolves there, else `<remote>/HEAD` (the fork this run
+  // pushes to, when it is not origin), else `origin/HEAD` — today's behaviour, unaffected when
+  // the plan declares neither, or declares a base this checkout has not fetched.
   git('fetch', '--prune', '--quiet');
-  const originBaseOut = git('rev-parse', '--abbrev-ref', 'origin/HEAD');
-  const originBase = originBaseOut.status === 0 ? originBaseOut.stdout.trim() : branch;
+  const prBase = header(source, 'PR base:');
+  let base: string | undefined;
 
-  if (git('merge-base', '--is-ancestor', originBase, 'HEAD').status !== 0) {
-    const missing = git('log', '--oneline', `HEAD..${originBase}`).stdout.replace(/\n$/, '');
-    reporter.stop(`the branch is behind ${originBase}:\n${missing}\n\nFetch and rebase before relaunching.`, REFUSED);
+  if (prBase) {
+    const prBaseOut = git('rev-parse', '--abbrev-ref', `${remote}/${prBase}`);
+    base = prBaseOut.status === 0 ? prBaseOut.stdout.trim() : undefined;
   }
 
-  reporter.say(`RUN preflight: branch is caught up with ${originBase}`);
+  if (!base) {
+    const remoteHeadOut = git('rev-parse', '--abbrev-ref', `${remote}/HEAD`);
+    base = remoteHeadOut.status === 0 ? remoteHeadOut.stdout.trim() : undefined;
+  }
+
+  if (!base) {
+    const originHeadOut = git('rev-parse', '--abbrev-ref', 'origin/HEAD');
+    base = originHeadOut.status === 0 ? originHeadOut.stdout.trim() : branch;
+  }
+
+  if (git('merge-base', '--is-ancestor', base, 'HEAD').status !== 0) {
+    const missing = git('log', '--oneline', `HEAD..${base}`).stdout.replace(/\n$/, '');
+    reporter.stop(`the branch is behind ${base}:\n${missing}\n\nFetch and rebase before relaunching.`, REFUSED);
+  }
+
+  reporter.say(`RUN preflight: branch is caught up with ${base}`);
 
   return { policy, remote, workId, cleanup };
 };

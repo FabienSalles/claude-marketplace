@@ -16,6 +16,17 @@ test('projectDir encodes the cwd the same way Claude Code names its own project 
   assert.equal(projectDir('/Users/dev/my-repo', root), join(root, '-Users-dev-my-repo'));
 });
 
+// R8 — Claude Code replaces both `/` and `.`, not `/` alone: a run made from a dotted path (a
+// worktree under `.claude/worktrees`, say) still resolves to the directory Claude Code wrote.
+test('projectDir also encodes the dots in the cwd, the way Claude Code does', () => {
+  const root = projectRoot();
+
+  assert.equal(
+    projectDir('/Users/dev/dotfiles/.claude/worktrees/x', root),
+    join(root, '-Users-dev-dotfiles--claude-worktrees-x'),
+  );
+});
+
 // R9 — the content scan is what finds a session the runner never spawned, and therefore never
 // recorded an id for: the supervising command's own.
 test('runTranscripts returns every transcript under the project dir that names the plan', () => {

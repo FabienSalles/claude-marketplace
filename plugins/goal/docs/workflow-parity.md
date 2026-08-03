@@ -125,23 +125,22 @@ plan it ran — the most expensive iteration produced the smallest diff of the r
 files. Cost tracks the number of files and gates touched, not the number of lines written, which is
 what `max_diff` bounds.
 
-## The ledger nothing enforces
+## The ledger CI now enforces
 
 `GOAL_RUN_IMPL` is the seam the two runners were meant to be proven equal through:
 `tests/support/goal-run-harness.ts:13` reads it, `:254` spawns `bash goal-run.sh` or
-`node goal-run.ts` accordingly. **Nothing ever sets it.**
-`.github/workflows/validate.yml:263` runs `bash plugins/goal/tests/run.sh`, which invokes
-`node --test` once, with the default. Measured, both ways:
+`node goal-run.ts` accordingly. `.github/workflows/validate.yml:263` runs
+`bash plugins/goal/tests/run.sh`, which now runs the suite once per runner in its `RUNNERS` list and
+refuses a nonzero `skipped` line exactly as it refuses a failure. Measured, both runners:
 
 | | Passed | Skipped |
 |---|---|---|
-| `bash plugins/goal/tests/run.sh` (what CI runs) | 188 | 6 |
-| `GOAL_RUN_IMPL=node bash plugins/goal/tests/run.sh` | 194 | 0 |
+| `GOAL_RUN_IMPL=bash` | 201 | 7 |
+| `GOAL_RUN_IMPL=node` | 206 | 2 |
 
-The six are the behaviours the port added and the shell never received, each guarded by a
-`NODE_ONLY` skip reason. `tests/run.sh` refuses an unreadable summary, a failure, and an empty
-suite — it never reads the `skipped` line, so they pass out of sight. CI proves the frozen runner
-and, for anything above module level, proves nothing about the one that ships.
+Neither is zero — seven `NODE_ONLY` behaviours the shell never received, two `BASH_ONLY` ones the
+port dropped on purpose — and CI now halts on exactly that, instead of running the bash-only
+default and never reading the `skipped` line at all.
 
 The A/B those two rows exist to feed has not been run: `git log -- plugins/goal/scripts/goal-run.sh`
 shows two commits, none since the port, and no comparative measurement is checked in. A frozen

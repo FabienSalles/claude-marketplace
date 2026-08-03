@@ -153,9 +153,8 @@ Neither has a gate. This harness does not need rollback, because nothing lands u
 is a coherent trade. But the trade has a cost nobody has paid here: **post-halt forensics.** When
 a slice halts, what exists is the tree as the implementer left it, and nothing else. Roo can
 replay the film; `/goal:supervise` has to classify a halt from a `HALT` block that never reached
-the log (above) and from transcripts read through `transcripts.ts`, whose path encoding replaces
-`/` and not `.` — so any run inside a worktree resolves to a directory that does not exist. The
-forensic path exists on paper. It has never run once.
+the log (above) and from transcripts read through `transcripts.ts`. The forensic path exists on
+paper. It has never run once.
 
 ## The plan as a contract, which is the other thing nobody does
 
