@@ -71,8 +71,9 @@ Sort what it names into exactly one bucket:
   plainly asked for, an `impl_files`/`test_files` entry missing a file the goal names, prose that
   reads one way and was enforced another. The fix stays inside a closed set: an entry in
   `test_files` or `impl_files`, `max_diff`, a mistyped path, or prose. **It may never touch a
-  `gateN=` or `dodN=` line** — that is not a smaller iteration, it is a different one, judged by
-  a bar nobody locked.
+  `gateN=` or `dodN=` line**, nor empty `test_files` — `plan-guard.ts` hashes that field's
+  emptiness, not its content, so it disarms the bite check the same way a rewritten gate line
+  would: not a smaller iteration, a different one, judged by a bar nobody locked.
 - **Implementation fault** — the same gate line is correct and the code it judged is not: a
   wrong file touched, a rule half-implemented, a helper the plan never needed guessed into
   existence. The fix is to try again, not to edit the contract.
