@@ -161,6 +161,8 @@ export const runIteration = (
   });
   const gateExit = verdict.status ?? 1;
 
+  reporter.record(`${verdict.stdout}${verdict.stderr}`);
+
   if (gateExit === 0) {
     lock.release();
     reporter.say(`RUN iteration ${iteration} landed, gate-verified`);
@@ -174,6 +176,6 @@ export const runIteration = (
   }
 
   lock.release();
-  reporter.say(`STOP iteration ${iteration} was refused by the gate. Nothing was committed, and the tree is left exactly as the implementer left it.`);
+  reporter.say(`STOP iteration ${iteration} was refused by the gate. Nothing was committed, and the gate's reasoning is in ${plan}.run.log. The tree is left exactly as the implementer left it.`);
   process.exit(HALTED);
 };
