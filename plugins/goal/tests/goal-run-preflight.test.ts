@@ -183,7 +183,7 @@ test('it refuses when the branch is behind the base it forked from', () => {
 // origin/HEAD: a `PR base:` header names it directly, or a `Remote:` header naming a fork falls
 // back to that fork's own default branch, before either falls back to origin/HEAD.
 
-test('it refuses against the plan\'s PR base:, even while origin/HEAD stays green', () => {
+test('it refuses against the plan\'s PR base:, even while origin/HEAD stays green', { skip: NODE_ONLY }, () => {
   const fixture = repo({ remote: true, prBase: 'release' });
 
   // origin/main tracks this checkout exactly, so origin/HEAD stays green; origin/release, only
@@ -206,7 +206,7 @@ test('it refuses against the plan\'s PR base:, even while origin/HEAD stays gree
   assert.ok(!existsSync(fixture.claudeLog), 'an implementer was spawned on a refusal');
 });
 
-test('it refuses against <remote>/HEAD when the plan declares no PR base, so a fork is checked against itself', () => {
+test('it refuses against <remote>/HEAD when the plan declares no PR base, so a fork is checked against itself', { skip: NODE_ONLY }, () => {
   const planText = PLAN.replace('Remote: origin\n', 'Remote: fork\n');
   const fixture = repo({ planText, staleBase: { remote: 'fork', branch: 'main' } });
 

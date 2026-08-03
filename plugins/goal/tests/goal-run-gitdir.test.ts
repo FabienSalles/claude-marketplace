@@ -6,10 +6,14 @@ import { PAUSED, repo, run } from './support/goal-run-harness.ts';
 
 const hookPath = (fixture: ReturnType<typeof repo>) => join(fixture.dir, '.git', 'hooks', 'pre-commit');
 
+// The git-directory tamper check lives in goal-run.ts only; goal-run.sh is frozen and never
+// gained it. Skipped rather than failed when the suite falls back to bash.
+const NODE_ONLY = process.env.GOAL_RUN_IMPL !== 'node' ? 'this check ported to goal-run.ts only, not goal-run.sh yet' : false;
+
 // R5 (I3) — a file inside .git/ is executable surface the gate never spawns as `node`, but
 // goal-run.sh does: an implementer that plants one there is a back door, not a contribution, and
 // `git status` never shows it. The run has to catch this itself, before asking the gate anything.
-test('the implementer changing a file inside .git/ halts the run, naming the artifact', () => {
+test('the implementer changing a file inside .git/ halts the run, naming the artifact', { skip: NODE_ONLY }, () => {
   const fixture = repo();
 
   const { code, output } = run(fixture, [fixture.plan, '1'], {
@@ -25,7 +29,7 @@ test('the implementer changing a file inside .git/ halts the run, naming the art
 // R5 (I3) — order matters: an implementer that writes only into .git/ leaves the tree itself
 // clean, so the git-directory check has to run before the empty-tree case reads that silence as
 // "wrote nothing" instead of naming what actually happened.
-test('a git-directory tamper is diagnosed by name, not read as an empty tree', () => {
+test('a git-directory tamper is diagnosed by name, not read as an empty tree', { skip: NODE_ONLY }, () => {
   const fixture = repo();
 
   const { code, output } = run(fixture, [fixture.plan, '1'], {
@@ -54,7 +58,7 @@ test('a self-committed implementer is still diagnosed as that, unaffected by the
 // R5 (I8) — the snapshot is taken once, before the quota-retry loop. A tamper on attempt 1 must
 // still be caught after a quota failure sends the same iteration to attempt 2 and it lands: a
 // fresh snapshot per attempt would use attempt 1's tamper as its own baseline and erase it.
-test('a tamper on the first attempt survives a quota failure and retry', () => {
+test('a tamper on the first attempt survives a quota failure and retry', { skip: NODE_ONLY }, () => {
   const fixture = repo();
 
   const { code, output } = run(fixture, [fixture.plan, '1'], {

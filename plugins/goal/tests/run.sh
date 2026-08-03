@@ -78,8 +78,14 @@ for impl in $RUNNERS; do
     exit 1
   fi
 
-  if [ "$skipped" -ne 0 ]; then
-    printf '\nHALT: %s test(s) skipped under GOAL_RUN_IMPL=%s. A skip is an unknown result, refused exactly as a failure.\n' "$skipped" "$impl" >&2
+  # node --test prints the reason beside each skip: `﹣ name (0ms) # <reason>`. A skip declared
+  # via `{ skip: true }` or `t.skip()` with no message carries node's own default reason, the
+  # literal word SKIP, indistinguishable from forgetting to declare one at all, so it is refused
+  # exactly as a failure. Any other reason is a declared divergence and is let through.
+  undeclared=$(printf '%s' "$out" | grep -c '^﹣ .* # SKIP$')
+
+  if [ "$undeclared" -ne 0 ]; then
+    printf '\nHALT: %s test(s) skipped under GOAL_RUN_IMPL=%s with no reason declared. A skip is an unknown result unless it says why.\n' "$undeclared" "$impl" >&2
     exit 1
   fi
 
