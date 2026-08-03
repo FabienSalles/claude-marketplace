@@ -9,6 +9,14 @@ import { spawnSync } from 'node:child_process';
 
 const HEADROOM = Number(process.env.GOAL_PROC_HEADROOM ?? '400');
 
+// `ulimit -u` is a bash extension. `spawnSync({ shell: true })` runs `/bin/sh`, which is bash in
+// POSIX mode on macOS and dash on Debian and Ubuntu — where the option does not exist and the
+// shell answers "Illegal option -u", failing every command the prefix was attached to. That is how
+// this guard turned CI red on two commits. Probed once, and where the shell cannot express the
+// ceiling none is emitted: the incident this exists for happened on a developer's workstation, and
+// a CI runner is a disposable container its host already bounds.
+const shellBoundsProcesses = spawnSync('/bin/sh', ['-c', 'ulimit -u'], { encoding: 'utf8' }).status === 0;
+
 const liveProcesses = (uid: number): number => {
   const ps = spawnSync('ps', ['-u', String(uid), '-o', 'pid='], { encoding: 'utf8' });
 
@@ -39,7 +47,7 @@ export const ceilingFor = (live: number, inherited: number): string => {
 export const ceiling = (): string => {
   const uid = process.getuid?.();
 
-  if (uid === undefined) {
+  if (uid === undefined || !shellBoundsProcesses) {
     return '';
   }
 
