@@ -67,3 +67,8 @@ Say what you built, which rule each test covers, what you had to decide, and any
 that the plan did not anticipate. It goes to the run's log, and nothing acts on it as a verdict —
 the gate is replayed independently and its exit code is the only one there is. Report honestly,
 including that a test is failing and you do not know why.
+
+**A check you ran and saw fail goes in the report, even when it sits outside your own gate, and
+even when you believe the failure predates your work.** Do not reason it away as an established
+pattern, and do not silently narrow your summary to the gates that passed. Say what failed and
+where you saw it; whether it is pre-existing is for the run to judge, not you.
