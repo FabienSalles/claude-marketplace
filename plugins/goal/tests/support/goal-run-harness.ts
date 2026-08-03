@@ -65,6 +65,13 @@ export type FixtureOptions = {
   branch?: string | null;
   trackPlan?: boolean;
   staleOrigin?: boolean;
+  // A remote/branch pair advanced past what this checkout knows, same shape as `staleOrigin`
+  // but naming its own remote and branch — a fork the plan's `Remote:` header points to, or a
+  // base a `PR base:` header names, rather than always `origin`'s default branch.
+  staleBase?: { remote: string; branch: string };
+  // Inserted as a `PR base:` header line right after `Remote:`, so a plan declaring one is
+  // checked against it instead of `<remote>/HEAD`.
+  prBase?: string;
   // A bare `origin` two path segments deep (`acme/demo.git`), so `repoOf`'s parse of a real
   // remote URL has something genuine to strip down to `acme/demo` rather than a stand-in.
   remote?: boolean;
@@ -110,6 +117,10 @@ fi
 # behind it, or a resumed iteration reads as "the implementer wrote nothing".
 [ -n "$FAKE_CLAUDE_WRITES" ] && printf 'written %s\\n' "$$-$RANDOM" >> "$FAKE_CLAUDE_WRITES"
 [ -n "$FAKE_CLAUDE_COMMITS" ] && git add -A >/dev/null 2>&1 && git commit -qm "implementer commit"
+# Opt-in, symmetric to FAKE_CLAUDE_COMMITS: bash's tests never set it, so the shared fake claude
+# stays untouched for them. Pushes HEAD to origin's current branch, which is what moves the local
+# remote-tracking ref this guard watches.
+[ -n "$FAKE_CLAUDE_PUSHES" ] && git push -q origin "HEAD:$(git rev-parse --abbrev-ref HEAD)" 2>/dev/null
 [ -n "$FAKE_CLAUDE_SLEEPS" ] && sleep "$FAKE_CLAUDE_SLEEPS"
 # Only when the caller passed --output-format stream-json does the fixture answer in stream-json:
 # the bash runner never asks for it and keeps grepping this same fixture's plain prose for a
@@ -205,24 +216,32 @@ exit 0
     git(dir, 'remote', 'add', 'origin', originDir);
   }
 
-  if (options.staleOrigin) {
-    const origin = tmpDir('goal-run-origin-');
-    git(origin, 'init', '-q', '--bare', '-b', 'main');
-    git(dir, 'remote', 'add', 'origin', origin);
-    git(dir, 'push', '-q', 'origin', 'main');
-    git(dir, 'fetch', '-q', 'origin');
-    git(dir, 'remote', 'set-head', 'origin', '-a');
+  // Advances <remoteName>/<branchName> past what this checkout knows, from a second clone — the
+  // shape of a branch left behind while the base it forked from kept moving.
+  const advanceBase = (remoteName: string, branchName: string) => {
+    const remoteDir = tmpDir('goal-run-origin-');
+    git(remoteDir, 'init', '-q', '--bare', '-b', branchName);
+    git(dir, 'remote', 'add', remoteName, remoteDir);
+    git(dir, 'push', '-q', remoteName, `HEAD:${branchName}`);
+    git(dir, 'fetch', '-q', remoteName);
+    git(dir, 'remote', 'set-head', remoteName, '-a');
 
-    // Advances origin's main past what this checkout knows, from a second clone — the shape
-    // of a branch left behind while the base kept moving.
     const clone = tmpDir('goal-run-clone-');
-    git(dir, 'clone', '-q', origin, clone);
+    git(dir, 'clone', '-q', remoteDir, clone);
     git(clone, 'config', 'user.email', 'ahead@example.com');
     git(clone, 'config', 'user.name', 'Ahead');
     writeFileSync(join(clone, 'ahead.txt'), 'ahead\n');
     git(clone, 'add', '-A');
     git(clone, 'commit', '-qm', 'ahead commit');
-    git(clone, 'push', '-q', 'origin', 'main');
+    git(clone, 'push', '-q', 'origin', branchName);
+  };
+
+  if (options.staleOrigin) {
+    advanceBase('origin', 'main');
+  }
+
+  if (options.staleBase) {
+    advanceBase(options.staleBase.remote, options.staleBase.branch);
   }
 
   const branch = options.branch === null ? 'main' : (options.branch ?? 'feature/demo');
@@ -240,8 +259,14 @@ exit 0
     writeFileSync(join(dir, '.claude', 'settings.local.json'), JSON.stringify({ permissions: { deny: rules } }));
   }
 
+  let planText = options.planText ?? PLAN;
+
+  if (options.prBase) {
+    planText = planText.replace(/^Remote:.*$/m, (line) => `${line}\nPR base: ${options.prBase}`);
+  }
+
   mkdirSync(join(dir, planDir), { recursive: true });
-  writeFileSync(join(dir, planDir, planFile), options.planText ?? PLAN);
+  writeFileSync(join(dir, planDir, planFile), planText);
 
   if (options.trackPlan) {
     git(dir, 'add', '-A');

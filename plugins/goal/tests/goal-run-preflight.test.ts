@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { PLAN, lockOf, repo, run } from './support/goal-run-harness.ts';
+import { PLAN, git, lockOf, repo, run } from './support/goal-run-harness.ts';
 
 // The sweep dedup and the pass narration below are Node-only: goal-run.sh is not among this
 // iteration's files to touch, so `run()` under its default (bash) selection would replay every
@@ -176,6 +176,44 @@ test('it refuses when the branch is behind the base it forked from', () => {
 
   assert.notEqual(code, 0);
   assert.match(output, /STOP the branch is behind origin\/main:\n.*ahead commit\n\nFetch and rebase before relaunching\./s, output);
+  assert.ok(!existsSync(fixture.claudeLog), 'an implementer was spawned on a refusal');
+});
+
+// R4 — the branch-behind check is verified against the base the plan declares, not always
+// origin/HEAD: a `PR base:` header names it directly, or a `Remote:` header naming a fork falls
+// back to that fork's own default branch, before either falls back to origin/HEAD.
+
+test('it refuses against the plan\'s PR base:, even while origin/HEAD stays green', { skip: NODE_ONLY }, () => {
+  const fixture = repo({ remote: true, prBase: 'release' });
+
+  // origin/main tracks this checkout exactly, so origin/HEAD stays green; origin/release, only
+  // reachable through the plan's PR base: header, carries the commit this checkout never got.
+  git(fixture.dir, 'push', '-q', 'origin', 'HEAD:main');
+  git(fixture.dir, 'fetch', '-q', 'origin');
+  git(fixture.dir, 'remote', 'set-head', 'origin', '-a');
+  git(fixture.dir, 'checkout', '-qb', 'release-ahead');
+  writeFileSync(join(fixture.dir, 'ahead.txt'), 'ahead\n');
+  git(fixture.dir, 'add', '-A');
+  git(fixture.dir, 'commit', '-qm', 'ahead commit');
+  git(fixture.dir, 'push', '-q', 'origin', 'release-ahead:release');
+  git(fixture.dir, 'checkout', '-q', 'feature/demo');
+  git(fixture.dir, 'branch', '-D', 'release-ahead');
+
+  const { code, output } = run(fixture, [fixture.plan, '1']);
+
+  assert.notEqual(code, 0);
+  assert.match(output, /STOP the branch is behind origin\/release:\n.*ahead commit\n\nFetch and rebase before relaunching\./s, output);
+  assert.ok(!existsSync(fixture.claudeLog), 'an implementer was spawned on a refusal');
+});
+
+test('it refuses against <remote>/HEAD when the plan declares no PR base, so a fork is checked against itself', { skip: NODE_ONLY }, () => {
+  const planText = PLAN.replace('Remote: origin\n', 'Remote: fork\n');
+  const fixture = repo({ planText, staleBase: { remote: 'fork', branch: 'main' } });
+
+  const { code, output } = run(fixture, [fixture.plan, '1']);
+
+  assert.notEqual(code, 0);
+  assert.match(output, /STOP the branch is behind fork\/main:\n.*ahead commit\n\nFetch and rebase before relaunching\./s, output);
   assert.ok(!existsSync(fixture.claudeLog), 'an implementer was spawned on a refusal');
 });
 
