@@ -10,7 +10,7 @@ import { basename } from 'node:path';
 import { ceiling } from '../gate/bounded.ts';
 import { iterationSection } from '../gate/plan.ts';
 import { brief } from './brief.ts';
-import { changedGitDirPaths, snapshotGitDir } from './gitwatch.ts';
+import { changedGitDirPaths, changedRemoteRefs, snapshotGitDir, snapshotRemoteRefs } from './gitwatch.ts';
 import { narrate } from './narrate.ts';
 import { REFUSED } from './preflight.ts';
 import type { Reporter } from './report.ts';
@@ -52,6 +52,10 @@ export const runIteration = (
   // up after a quota failure sends the same iteration to attempt 2, so a fresh snapshot per
   // attempt (which would use attempt 1's tamper as its own baseline) is not an option.
   const gitDirBefore = snapshotGitDir();
+
+  // Brackets the implementer only: the runner itself pushes in publish.ts under `commit+pr`,
+  // outside this call, so lifting the snapshot into a wider loop would catch its own push.
+  const remoteRefsBefore = snapshotRemoteRefs();
 
   // A quota window is not a failure, so it is not diagnosed like one: it is detected from the
   // shape of a failed call, slept through, and retried against the same iteration — bounded, so
@@ -129,6 +133,15 @@ export const runIteration = (
   if (gitDirChanges.length > 0) {
     reporter.stop(
       `the implementer changed the git directory: ${gitDirChanges.join(', ')}. \`git status\` will not show this: the artifact is still in .git/, not in the tree. Review it before relaunching.`,
+      PAUSED,
+    );
+  }
+
+  const remoteRefChanges = changedRemoteRefs(remoteRefsBefore);
+
+  if (remoteRefChanges.length > 0) {
+    reporter.stop(
+      `the implementer pushed: ${remoteRefChanges.join(', ')} moved. Only the gate may publish. Review it before relaunching.`,
       PAUSED,
     );
   }

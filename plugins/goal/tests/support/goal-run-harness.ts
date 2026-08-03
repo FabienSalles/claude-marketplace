@@ -117,6 +117,10 @@ fi
 # behind it, or a resumed iteration reads as "the implementer wrote nothing".
 [ -n "$FAKE_CLAUDE_WRITES" ] && printf 'written %s\\n' "$$-$RANDOM" >> "$FAKE_CLAUDE_WRITES"
 [ -n "$FAKE_CLAUDE_COMMITS" ] && git add -A >/dev/null 2>&1 && git commit -qm "implementer commit"
+# Opt-in, symmetric to FAKE_CLAUDE_COMMITS: bash's tests never set it, so the shared fake claude
+# stays untouched for them. Pushes HEAD to origin's current branch, which is what moves the local
+# remote-tracking ref this guard watches.
+[ -n "$FAKE_CLAUDE_PUSHES" ] && git push -q origin "HEAD:$(git rev-parse --abbrev-ref HEAD)" 2>/dev/null
 [ -n "$FAKE_CLAUDE_SLEEPS" ] && sleep "$FAKE_CLAUDE_SLEEPS"
 # Only when the caller passed --output-format stream-json does the fixture answer in stream-json:
 # the bash runner never asks for it and keeps grepping this same fixture's plain prose for a
