@@ -114,10 +114,10 @@ own frontmatter concedes the classifier is unproven, two halts being its whole e
 `run/close.ts`, never fired) and `agents/goal-session-auditor.md`. Treat them as proposals with
 code attached.
 
-The test suite selects its runner with `GOAL_RUN_IMPL` and defaults to bash
-(`tests/support/goal-run-harness.ts`); CI calls `bash plugins/goal/tests/run.sh` once, without
-that variable. **The current runner is not exercised in CI** — run it with `GOAL_RUN_IMPL=node`
-yourself before trusting a green build.
+The test suite selects its runner with `GOAL_RUN_IMPL`, and `tests/run.sh` now runs it once per
+runner in its list — bash, then node — refusing a nonzero `skipped` line exactly as it refuses a
+failure. **CI exercises both runners on every invocation of `bash plugins/goal/tests/run.sh`**, and
+currently halts on both: the two runners are not yet proven equal (`docs/workflow-parity.md`).
 
 ## What the plugin ships
 
@@ -138,7 +138,7 @@ yourself before trusting a green build.
 | [`product:vertical-slice`](../product/skills/vertical-slice/SKILL.md) · [`product:delivery`](../product/skills/delivery/SKILL.md) | *(plugin `product`)* | Loaded by `/goal:run-issue` Phase 3 — how the spec splits, and how each slice ships alone |
 | `issue-execution-log.sh` Stop hook | `hooks/` | Regenerates the execution log at every Stop, only when all three hold: a `feature/<work-id>-…` branch, a matching `<work-id>-spec.md`, and a `/goal` command in the transcript. Silent no-op otherwise |
 | `extract-execution-log.py` | `scripts/` | Parses a session JSONL into a readable summary keyed by `<work-id>`. Run it as `python3 <plugin>/scripts/extract-execution-log.py <work-id>` |
-| `tests/run.sh` | `tests/` | The suite for the gate, both runners, the legacy workflow, the launcher and the guards. Wraps `node --test`, which exits 0 on a glob matching nothing, and additionally requires at least one pass and no failure |
+| `tests/run.sh` | `tests/` | The suite for the gate, both runners, the legacy workflow, the launcher and the guards. Wraps `node --test` once per runner in its list, and additionally requires at least one pass, no failure and no skip — `node --test` alone exits 0 on a glob matching nothing, and a skip is an unknown result refused exactly as a failure |
 | `done-criteria.template` · `goal-handoff.template` · `post-merge.template` | `templates/` | The DoD baseline, the `/goal` handoff `/goal:next` fills, and what a merged run leaves behind — printed, never executed |
 
 The **work-id** generalizes the old issue number: `issue-<N>` for a GitHub issue, the lowercased
