@@ -10,7 +10,7 @@ import { basename } from 'node:path';
 import { ceiling } from '../gate/bounded.ts';
 import { iterationSection } from '../gate/plan.ts';
 import { brief } from './brief.ts';
-import { changedGitDirPaths, changedRemoteRefs, snapshotGitDir, snapshotRemoteRefs } from './gitwatch.ts';
+import { changedGitDirPaths, changedRefs, snapshotGitDir, snapshotRefs } from './gitwatch.ts';
 import { narrate } from './narrate.ts';
 import { REFUSED } from './preflight.ts';
 import type { Reporter } from './report.ts';
@@ -49,7 +49,7 @@ export const runIteration = (
 
   // Brackets the implementer only: the runner itself pushes in publish.ts under `commit+pr`,
   // outside this call, so lifting the snapshot into a wider loop would catch its own push.
-  const remoteRefsBefore = snapshotRemoteRefs();
+  const refsBefore = snapshotRefs();
 
   // A quota window is not a failure, so it is not diagnosed like one: it is detected from the
   // shape of a failed call, slept through, and retried against the same iteration — bounded, so
@@ -131,11 +131,21 @@ export const runIteration = (
     );
   }
 
-  const remoteRefChanges = changedRemoteRefs(remoteRefsBefore);
+  const refChanges = changedRefs(refsBefore);
+  const remoteRefChanges = refChanges.filter((ref) => ref.startsWith('refs/remotes/'));
 
   if (remoteRefChanges.length > 0) {
     reporter.stop(
       `the implementer pushed: ${remoteRefChanges.join(', ')} moved. Only the gate may publish. Review it before relaunching.`,
+      PAUSED,
+    );
+  }
+
+  const otherRefChanges = refChanges.filter((ref) => !ref.startsWith('refs/remotes/'));
+
+  if (otherRefChanges.length > 0) {
+    reporter.stop(
+      `the implementer moved ${otherRefChanges.join(', ')}. \`git status\` will not show this: review it before relaunching.`,
       PAUSED,
     );
   }
