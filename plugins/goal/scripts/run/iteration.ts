@@ -9,6 +9,9 @@ import { basename } from 'node:path';
 
 import { ceiling } from '../gate/bounded.ts';
 import { iterationSection } from '../gate/plan.ts';
+import { brief } from './brief.ts';
+import { changedGitDirPaths, snapshotGitDir } from './gitwatch.ts';
+import { narrate } from './narrate.ts';
 import { REFUSED } from './preflight.ts';
 import type { Reporter } from './report.ts';
 import type { Lock } from './lock.ts';
@@ -20,59 +23,6 @@ export const PAUSED = 3;
 const git = (...args: string[]) => spawnSync('git', args, { encoding: 'utf8' });
 
 const quote = (value: string): string => `'${value.replace(/'/g, `'\\''`)}'`;
-
-type ToolUseBlock = { type: string; name?: string; input?: { file_path?: string; command?: string } };
-type StreamEvent = { type?: string; session_id?: string; message?: { content?: ToolUseBlock[] } };
-
-// The implementer answers in stream-json, so each tool use it performs is rendered as one line
-// as it happens, and the session_id every event carries is handed to the reporter to record
-// beside the run rather than read once at the end.
-const narrate = (stdout: string, reporter: Reporter): void => {
-  for (const line of stdout.split('\n')) {
-    if (line.trim() === '') {
-      continue;
-    }
-
-    let event: StreamEvent;
-
-    try {
-      event = JSON.parse(line) as StreamEvent;
-    } catch {
-      continue;
-    }
-
-    for (const block of event.message?.content ?? []) {
-      if (block.type === 'tool_use' && block.name) {
-        const target = block.input?.file_path ?? block.input?.command;
-        reporter.say(`RUN implementer: ${block.name}${target ? ` ${target}` : ''}`);
-      }
-    }
-
-    if (event.session_id) {
-      reporter.session?.(event.session_id);
-    }
-  }
-};
-
-const brief = (iteration: string, cwd: string, branch: string, section: string): string => `Implement iteration ${iteration} of a plan somebody else locked.
-
-You are working in ${cwd}, on branch ${branch}. Every path
-you read or write lives inside that tree.
-
-The iteration, verbatim from the plan. Its goal, the files to touch, the business rules it
-covers, every decision bullet and its gate block.
-
---- iteration ---
-${section}
---- end ---
-
-Work test-first, and show the RED: the gate sets your implementation aside and requires gate1 to
-fail without it, so a test that passes either way halts the slice.
-
-Load the project convention skills before writing anything.
-
-You do not commit, do not push, do not stage, do not tick a checkbox and do not edit the plan.
-The gate does all of that, after it has verified.`;
 
 export const runIteration = (
   plan: string,
@@ -97,6 +47,11 @@ export const runIteration = (
 
   const branch = git('rev-parse', '--abbrev-ref', 'HEAD').stdout.trim();
   const headBefore = git('rev-parse', 'HEAD').stdout.trim();
+
+  // Taken once, before the retry loop, beside headBefore: a tamper on attempt 1 must still show
+  // up after a quota failure sends the same iteration to attempt 2, so a fresh snapshot per
+  // attempt (which would use attempt 1's tamper as its own baseline) is not an option.
+  const gitDirBefore = snapshotGitDir();
 
   // A quota window is not a failure, so it is not diagnosed like one: it is detected from the
   // shape of a failed call, slept through, and retried against the same iteration — bounded, so
@@ -162,6 +117,18 @@ export const runIteration = (
   if (headAfter !== headBefore) {
     reporter.stop(
       `the implementer committed on its own, which only the gate may do. HEAD moved from ${headBefore} to ${headAfter}. Nothing was gate-verified: review that commit before relaunching.`,
+      PAUSED,
+    );
+  }
+
+  // Checked before the empty-tree case below: an implementer that writes only into `.git/`
+  // leaves `git status` empty, so this has to run first or the diagnosis reads as "wrote
+  // nothing" rather than naming the git directory itself as the artifact.
+  const gitDirChanges = changedGitDirPaths(gitDirBefore);
+
+  if (gitDirChanges.length > 0) {
+    reporter.stop(
+      `the implementer changed the git directory: ${gitDirChanges.join(', ')}. \`git status\` will not show this: the artifact is still in .git/, not in the tree. Review it before relaunching.`,
       PAUSED,
     );
   }
