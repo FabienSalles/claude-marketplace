@@ -5,7 +5,7 @@ import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync,
 import { createHash } from 'node:crypto';
 import { dirname, join } from 'node:path';
 
-import { bounded } from './bounded.ts';
+import { bounded, spawnOptions } from './bounded.ts';
 import { git, halt, heldLocks } from './halt.ts';
 import { covers } from './plan.ts';
 
@@ -87,7 +87,7 @@ export const biteCheck = (declared: Map<string, string>, iteration: string, chan
     }
   }
 
-  const run = spawnSync(bounded(declared.get('gate1') ?? ''), { shell: true, encoding: 'utf8' });
+  const run = spawnSync(bounded(declared.get('gate1') ?? ''), spawnOptions());
 
   for (const { path, present } of implementation) {
     if (present) {

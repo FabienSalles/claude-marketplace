@@ -4,10 +4,17 @@
 // EPERM. The gate is a descendant of its own bounded commands (a swept `run.sh` spawns the gate,
 // which bounds again), so the ceiling is emitted only when it would genuinely lower what was
 // inherited; nested calls are no-ops and the outermost one binds them all.
+//
+// Alongside the process ceiling, `spawnOptions()` puts a wall clock on the command itself: a test
+// waiting on a port or a prompt nobody answers otherwise blocks an unattended run until the
+// machine is switched off. `timeout` kills only the direct child `spawnSync` started — a
+// grandchild the command forked and detached from it is not in that process group and survives
+// the clock. That gap is scope, not a bug to gate on.
 
-import { spawnSync } from 'node:child_process';
+import { spawnSync, type SpawnSyncOptions } from 'node:child_process';
 
 const HEADROOM = Number(process.env.GOAL_PROC_HEADROOM ?? '400');
+const TIMEOUT_SECONDS = Number(process.env.GOAL_CMD_TIMEOUT ?? '900');
 
 // `ulimit -u` is a bash extension. `spawnSync({ shell: true })` runs `/bin/sh`, which is bash in
 // POSIX mode on macOS and dash on Debian and Ubuntu — where the option does not exist and the
@@ -63,3 +70,13 @@ export const bounded = (command: string): string => {
 
   return limit === '' ? command : `${limit}\n${command}`;
 };
+
+// The wall clock every call site runs a declared command under. `killSignal: 'SIGKILL'` is
+// required alongside `timeout`: the default `SIGTERM` is exactly the signal a hung process is
+// already ignoring.
+export const spawnOptions = (): SpawnSyncOptions & { encoding: 'utf8' } => ({
+  shell: true,
+  encoding: 'utf8',
+  timeout: TIMEOUT_SECONDS * 1000,
+  killSignal: 'SIGKILL',
+});

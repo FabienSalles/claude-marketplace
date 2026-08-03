@@ -4,7 +4,7 @@
 
 import { spawnSync } from 'node:child_process';
 
-import { bounded } from '../gate/bounded.ts';
+import { bounded, spawnOptions } from '../gate/bounded.ts';
 import type { Reporter } from './report.ts';
 
 export const REFUSED = 2;
@@ -50,7 +50,7 @@ export const sweep = (source: string, reporter: Reporter): void => {
   const distinct = [...new Set(declared)];
 
   for (const cmd of distinct) {
-    const result = spawnSync(bounded(cmd), { shell: true, encoding: 'utf8' });
+    const result = spawnSync(bounded(cmd), spawnOptions());
 
     if (result.status !== 0) {
       reporter.stop(
