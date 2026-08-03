@@ -19,6 +19,20 @@ test('a declared command is either prefixed with a ceiling or already under one'
   assert.match(bounded('true'), /^(ulimit -u [0-9]+ \|\| exit 1\n)?true$/);
 });
 
+// `ulimit -u` is a bash extension and `shell: true` runs `/bin/sh`, which is dash on Debian and
+// Ubuntu. Emitting the prefix there attaches `Illegal option -u` to every declared command, which is
+// what turned CI red on two commits while the same code was green on macOS. This assertion is
+// vacuous on a shell that supports the option and load-bearing on one that does not — which is to
+// say it does its work on the runner, not here.
+test('no ceiling is emitted where the shell cannot express one', () => {
+  const supported = spawnSync('/bin/sh', ['-c', 'ulimit -u'], { encoding: 'utf8' }).status === 0;
+
+  assert.ok(
+    supported || bounded('true') === 'true',
+    'a ceiling was emitted for a shell whose ulimit has no -u, so every declared command would fail on it',
+  );
+});
+
 // The regression that took the whole suite red on 2026-08-03, 35 failures for one cause:
 // `ulimit -u` lowers the hard limit as well as the soft one, so a command already running under a
 // ceiling cannot set another — EPERM — and the `|| exit 1` turned every nested gate command into a
