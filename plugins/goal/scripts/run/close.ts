@@ -37,12 +37,14 @@ export const close = (
   remote: string,
   publisher: Publisher,
   landed: string[],
-  elapsed: string,
+  jsonl: string,
   reporter: Reporter,
 ): number => {
+  const dodStart = Date.now();
   const dod = spawnSync(`${gate} dod ${quote(plan)} ${quote(hash)}`, { shell: true, encoding: 'utf8' });
   const dodOut = `${dod.stdout}${dod.stderr}`;
   const dodExit = dod.status ?? 1;
+  reporter.say(`RUN stage=dod duration_ms=${Date.now() - dodStart} exit=${dodExit}`);
 
   // The plan on disk, re-read here rather than trusted from before this run started: every box
   // the gate ticked, this run's own or an earlier run's, is on it now.
@@ -54,7 +56,9 @@ export const close = (
     const last = landed[landed.length - 1];
 
     if (last !== undefined) {
+      const pushStart = Date.now();
       publisher.publish(last);
+      reporter.say(`RUN stage=push duration_ms=${Date.now() - pushStart} exit=${publisher.state.blocked ? 1 : 0}`);
     }
 
     reporter.say('RUN the global Definition of Done passed');
@@ -63,8 +67,10 @@ export const close = (
 
     if (publish.publishes && publish.prOpen && !publish.blocked) {
       const branch = git('branch', '--show-current').stdout.trim();
+      const readyStart = Date.now();
       const ready = spawnSync('gh', ['pr', 'ready', '--repo', repo, branch], { encoding: 'utf8' });
       const readyOut = `${ready.stdout}${ready.stderr}`;
+      reporter.say(`RUN stage=pull-request-update duration_ms=${Date.now() - readyStart} exit=${ready.status ?? 1}`);
 
       if ((ready.status ?? 1) === 0) {
         reporter.say('RUN the pull request was marked ready');
@@ -82,8 +88,10 @@ and this project's own conventions — the reading a gate is not built to give.
 Post the review with \`gh\`. Never request changes: nothing you post can block a pull request that
 already shipped, so leave a comment only.`;
 
+        const reviewStart = Date.now();
         const review = spawnSync('claude', ['-p', '--agent', 'goal:goal-run-reviewer', '--permission-mode', 'auto', reviewBrief], { encoding: 'utf8' });
         reporter.record(`${review.stdout}${review.stderr}`);
+        reporter.say(`RUN stage=reviewer duration_ms=${Date.now() - reviewStart} exit=${review.status ?? 1}`);
 
         if ((review.status ?? 1) === 0) {
           reporter.say('RUN the reviewer finished, its answer is in the run log');
@@ -109,8 +117,10 @@ each iteration and the commits on this branch; change nothing.
 Answer with a verdict of one sentence per finding and a path:line anchor. Nothing you say blocks
 this run: it is advisory only.`;
 
+    const lensStart = Date.now();
     const lens = spawnSync('claude', ['-p', '--agent', 'goal:goal-run-lens', '--permission-mode', 'auto', lensBrief], { encoding: 'utf8' });
     reporter.record(`${lens.stdout}${lens.stderr}`);
+    reporter.say(`RUN stage=lens duration_ms=${Date.now() - lensStart} exit=${lens.status ?? 1}`);
     reporter.say('RUN lens findings recorded, advisory only');
   }
 
@@ -119,14 +129,17 @@ this run: it is advisory only.`;
   const auditBrief = `Audit the run that just ended on plan ${basename(plan)} and write its report to
 .claude/goal-runs/${sha}.md.
 
-Elapsed seconds per iteration entered:
-${elapsed}
+Every stage this run timed is recorded as a JSON event in ${jsonl}: read it for what happened and
+what each stage cost, per iteration.
+
 Read the reports already in .claude/goal-runs/ and say which failures recur across runs rather
 than describing this one twice. Do not edit a single line of code, do not stage anything, and do
 not judge whether the work was correct — the gate already did that.`;
 
+  const auditStart = Date.now();
   const audit = spawnSync('claude', ['-p', '--agent', 'goal:goal-run-auditor', '--permission-mode', 'auto', auditBrief], { encoding: 'utf8' });
   reporter.record(`${audit.stdout}${audit.stderr}`);
+  reporter.say(`RUN stage=auditor duration_ms=${Date.now() - auditStart} exit=${audit.status ?? 1}`);
   reporter.say('RUN audit recorded');
 
   if (dodExit !== 0) {

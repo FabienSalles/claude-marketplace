@@ -27,7 +27,7 @@ export const regressionWall = (source: string, iteration: string, declared: Map<
     }
   }
 
-  runGates(replay, iteration, origin);
+  runGates(replay, iteration, origin, true);
 };
 
 export const inHead = (path: string): boolean => git('cat-file', '-e', `HEAD:${path}`).status === 0;

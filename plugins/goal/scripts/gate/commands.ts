@@ -1,9 +1,26 @@
 // Running the commands a gate block declares, and requiring gate1 to hold across replays.
 
 import { spawnSync } from 'node:child_process';
+import { appendFileSync } from 'node:fs';
 
 import { bounded, spawnOptions } from './bounded.ts';
 import { halt } from './halt.ts';
+
+// The runner's own event stream, appended to only when GOAL_RUN_JSONL names one: a gate run
+// outside the runner — the sanctioned RED check among them — writes nothing here, so every
+// standalone use is untouched.
+export const emitCommand = (key: string, command: string, durationMs: number, exit: number | null): void => {
+  const jsonl = process.env.GOAL_RUN_JSONL;
+
+  if (!jsonl) {
+    return;
+  }
+
+  appendFileSync(
+    jsonl,
+    `${JSON.stringify({ v: 1, ts: new Date().toISOString(), event: 'gate-command', key, command, duration_ms: durationMs, exit })}\n`,
+  );
+};
 
 export const gateCommands = (declared: Map<string, string>): [string, string][] =>
   [...declared.entries()]
@@ -14,11 +31,15 @@ export const runGates = (
   declared: Map<string, string>,
   iteration: string,
   origin?: Map<string, string>,
+  wall = false,
 ): number => {
   const commands = gateCommands(declared);
 
   for (const [key, command] of commands) {
+    const start = Date.now();
     const run = spawnSync(bounded(command), spawnOptions());
+
+    emitCommand(wall ? `wall:${key}` : key, command, Date.now() - start, run.status);
 
     if (run.status !== 0) {
       const detail = `Command: ${command}\nExit code: ${run.status}\n\nOutput:\n${`${run.stdout}${run.stderr}`.slice(-4000)}`;
@@ -46,7 +67,10 @@ export const determinismCheck = (declared: Map<string, string>, iteration: strin
   const command = declared.get('gate1') ?? '';
 
   for (let run = 2; run <= DETERMINISM_RUNS; run += 1) {
+    const start = Date.now();
     const result = spawnSync(bounded(command), spawnOptions());
+
+    emitCommand(`determinism${run}`, command, Date.now() - start, result.status);
 
     if (result.status !== 0) {
       halt(

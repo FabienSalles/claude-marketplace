@@ -13,8 +13,8 @@
 //   3 — paused: a clean boundary, relaunch resumes here
 
 import { spawnSync } from 'node:child_process';
-import { existsSync, readFileSync, statSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { existsSync, readFileSync, realpathSync, statSync } from 'node:fs';
+import { relative, resolve } from 'node:path';
 
 import { createReporter, type Reporter } from './run/report.ts';
 import { preflight, REFUSED } from './run/preflight.ts';
@@ -46,7 +46,9 @@ const main = (): void => {
   const gate = process.env.GOAL_GATE ?? `node ${resolve(import.meta.dirname, 'goal-gate.ts')}`;
   const source = readFileSync(plan, 'utf8');
 
+  const preflightStart = Date.now();
   const { policy, remote } = preflight(plan, source, reporter, gate);
+  reporter.say(`RUN stage=preflight duration_ms=${Date.now() - preflightStart} exit=0`);
 
   const iterations = iteration !== undefined ? [iteration] : iterationNumbers(source, false);
 
@@ -95,23 +97,26 @@ const main = (): void => {
   const publisher = createPublisher(plan, source, policy, remote, reporter, gate);
 
   const landed: string[] = [];
-  let elapsed = '';
 
   for (const n of iterations) {
-    const start = Date.now();
     runIteration(plan, source, n, hashes.get(n)!, tickedSets.get(n) ?? '', gate, reporter);
     landed.push(n);
 
     // Every iteration but the last publishes here, as it lands. The last one's push waits for
     // close(), behind the whole-branch Definition of Done.
     if (n !== iterations[iterations.length - 1]) {
+      const pushStart = Date.now();
       publisher.publish(n);
+      reporter.say(`RUN stage=push duration_ms=${Date.now() - pushStart} exit=${publisher.state.blocked ? 1 : 0}`);
     }
-
-    elapsed += `${n}: ${Math.round((Date.now() - start) / 1000)}s\n`;
   }
 
-  const exitCode = close(plan, gate, hashes.get(iterations[iterations.length - 1]!)!, remote, publisher, landed, elapsed, reporter);
+  // Relative to the tree the run stands on, never the plan's own absolute path: the auditor's
+  // brief carries it, and a spawned agent's argv is exactly where that path must not leak.
+  // Resolved through realpath on both sides first, or a `/tmp` symlinked to `/private/tmp` turns
+  // a same-tree path into a string of `../` that never resolves back to it.
+  const jsonl = `${relative(realpathSync(process.cwd()), realpathSync(plan))}.run.jsonl`;
+  const exitCode = close(plan, gate, hashes.get(iterations[iterations.length - 1]!)!, remote, publisher, landed, jsonl, reporter);
 
   if (exitCode === LANDED) {
     reporter.say(`STOP ${iterations.length} iteration(s) landed, gate-verified`);

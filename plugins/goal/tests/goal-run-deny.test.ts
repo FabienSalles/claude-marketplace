@@ -20,7 +20,7 @@ test('goal-deny-setup.sh installs a deny rule covering commit, push and add', ()
 
   assert.equal(result.status, 0, result.stdout + result.stderr);
   const rules: string[] = JSON.parse(readFileSync(denyOf(fixture), 'utf8')).permissions.deny;
-  for (const verb of ['commit', 'push', 'add']) {
+  for (const verb of ['commit', 'push', 'add', 'stash']) {
     assert.ok(rules.some((rule) => rule.includes(`git ${verb}`)), `no rule denies git ${verb}: ${rules}`);
   }
 });

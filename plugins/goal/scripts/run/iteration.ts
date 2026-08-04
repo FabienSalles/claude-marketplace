@@ -13,6 +13,7 @@ import { brief } from './brief.ts';
 import { changedGitDirPaths, changedRefs, snapshotGitDir, snapshotRefs } from './gitwatch.ts';
 import { narrate } from './narrate.ts';
 import { REFUSED } from './preflight.ts';
+import { burstBackoffSeconds, classifyQuotaFailure, sleepInSlices } from './quota.ts';
 import type { Reporter } from './report.ts';
 import { git, quote } from './shell.ts';
 
@@ -60,6 +61,7 @@ export const runIteration = (
   for (;;) {
     reporter.say(`RUN handing iteration ${iteration} to the implementer`);
 
+    const implementerStart = Date.now();
     const implemented = spawnSync(
       '/bin/sh',
       [
@@ -81,14 +83,16 @@ export const runIteration = (
     );
 
     narrate(implemented.stdout, reporter);
+    reporter.say(`RUN stage=implementer duration_ms=${Date.now() - implementerStart} exit=${implemented.status ?? 1}`);
 
     if ((implemented.status ?? 1) === 0) {
       break;
     }
 
     const output = `${implemented.stdout}${implemented.stderr}`;
+    const quotaClass = classifyQuotaFailure(output);
 
-    if (!/usage limit|rate.limit|rate_limit_error/i.test(output)) {
+    if (quotaClass === null) {
       reporter.stop(
         `the implementer exited ${implemented.status}. The tree holds whatever it wrote and no gate has judged it: review it before relaunching.`,
         PAUSED,
@@ -103,8 +107,15 @@ export const runIteration = (
     }
 
     attempt += 1;
-    reporter.say(`RUN the implementer looks quota-exhausted, sleeping ${quotaSleep}s before relaunching iteration ${iteration} (attempt ${attempt} of ${quotaMax})`);
-    spawnSync('sleep', [quotaSleep]);
+
+    if (quotaClass === 'burst') {
+      const seconds = burstBackoffSeconds(attempt - 1);
+      reporter.say(`RUN the implementer hit a burst rate limit, backing off ${seconds}s before relaunching iteration ${iteration} (attempt ${attempt} of ${quotaMax})`);
+      spawnSync('sleep', [String(seconds)]);
+    } else {
+      reporter.say(`RUN the implementer looks quota-exhausted, sleeping ${quotaSleep}s before relaunching iteration ${iteration} (attempt ${attempt} of ${quotaMax})`);
+      sleepInSlices(Number(quotaSleep), (remaining) => reporter.say(`RUN quota sleep continues, ${remaining}s remaining`));
+    }
   }
 
   const headAfter = git('rev-parse', 'HEAD').stdout.trim();
@@ -157,13 +168,16 @@ export const runIteration = (
 
   reporter.say('RUN the tree moved, asking the gate for a verdict');
 
+  const gateStart = Date.now();
   const verdict = spawnSync(`${gate} commit ${quote(plan)} ${quote(iteration)} ${quote(hash)} ${quote(ticked)}`, {
     shell: true,
     encoding: 'utf8',
+    env: { ...process.env, GOAL_RUN_JSONL: `${plan}.run.jsonl` },
   });
   const gateExit = verdict.status ?? 1;
 
   reporter.record(`${verdict.stdout}${verdict.stderr}`);
+  reporter.say(`RUN stage=gate duration_ms=${Date.now() - gateStart} exit=${gateExit}`);
 
   if (gateExit === 0) {
     reporter.say(`RUN iteration ${iteration} landed, gate-verified`);

@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, readFileSync, realpathSync } from 'node:fs';
+import { join, relative } from 'node:path';
 
 import { HASH, PLAN, git, repo, run } from './support/goal-run-harness.ts';
 import { close, LANDED } from '../scripts/run/close.ts';
@@ -66,9 +66,9 @@ test('the advisory lens runs after a landed run and never blocks it', () => {
   assert.match(args, /^goal:goal-run-lens$/m, `the lens was never invoked:\n${args}`);
 });
 
-// R18 — the audit records elapsed seconds per iteration, the one figure a shell script can
-// measure honestly about its own run.
-test('the auditor is invoked with elapsed seconds recorded for every landed iteration', () => {
+// R18 — the audit is handed the run's own JSONL path, not a string it can only skim: every stage
+// this run timed is an event in that file.
+test('the auditor is invoked with the run\'s own JSONL path, not an elapsed string', () => {
   const fixture = repo();
 
   const { code, output } = land(fixture);
@@ -76,8 +76,9 @@ test('the auditor is invoked with elapsed seconds recorded for every landed iter
   assert.equal(code, 0, output);
   const args = readFileSync(fixture.claudeLog, 'utf8');
   assert.match(args, /^goal:goal-run-auditor$/m, `the auditor was never invoked:\n${args}`);
-  assert.match(args, /1: \d+s/, `no elapsed time was recorded for iteration 1:\n${args}`);
-  assert.match(args, /2: \d+s/, `no elapsed time was recorded for iteration 2:\n${args}`);
+  const jsonl = `${relative(realpathSync(fixture.dir), realpathSync(fixture.plan))}.run.jsonl`;
+  assert.ok(args.includes(jsonl), `the auditor was not handed the run's own JSONL path:\n${args}`);
+  assert.ok(!args.includes(fixture.plan), `the plan's absolute path leaked into an agent's argv:\n${args}`);
 });
 
 // R1 — close() reads whether publication blocked straight off the state object the publisher
@@ -112,7 +113,7 @@ test('close skips marking the pull request ready when the publisher\'s own state
       'origin',
       { publish: () => {}, state: { publishes: true, prOpen: true, blocked: true } },
       ['1'],
-      '1: 1s\n',
+      'plan.run.jsonl',
       reporter,
     );
 
@@ -169,7 +170,7 @@ test('the lens is briefed from the plan\'s own ticked iterations, not from the r
       'origin',
       { publish: () => {}, state: { publishes: false, prOpen: false, blocked: false } },
       ['2'],
-      '2: 1s\n',
+      'plan.run.jsonl',
       reporter,
     );
 
@@ -209,13 +210,60 @@ test('the reviewer runs once the pull request is marked ready', () => {
       'origin',
       { publish: () => {}, state: { publishes: true, prOpen: true, blocked: false } },
       ['1'],
-      '1: 1s\n',
+      'plan.run.jsonl',
       reporter,
     );
 
     assert.equal(code, LANDED);
     const args = readFileSync(fixture.claudeLog, 'utf8');
     assert.match(args, /^goal:goal-run-reviewer$/m, `the reviewer was never invoked:\n${args}`);
+  } finally {
+    process.chdir(originalCwd);
+    process.env.PATH = originalPath;
+  }
+});
+
+// R18 — every stage close() runs writes its own timed event, so a run report reads a real cost
+// per stage instead of one elapsed figure covering the whole close.
+test('close reports a stage=<name> duration_ms=<n> exit=<n> event for every stage it runs', () => {
+  const fixture = repo({ planText: PLAN_PR, remote: true });
+  const originalCwd = process.cwd();
+  const originalPath = process.env.PATH;
+
+  process.chdir(fixture.dir);
+  process.env.PATH = `${fixture.bin}:${originalPath ?? ''}`;
+
+  try {
+    const messages: string[] = [];
+    const reporter: Reporter = {
+      say: (message) => {
+        messages.push(message);
+      },
+      stop: () => {
+        throw new Error('unexpected stop');
+      },
+      record: () => {},
+      setLog: () => {},
+    };
+
+    const code = close(
+      fixture.plan,
+      join(fixture.bin, 'fake-gate'),
+      HASH,
+      'origin',
+      { publish: () => {}, state: { publishes: true, prOpen: true, blocked: false } },
+      ['1'],
+      'plan.run.jsonl',
+      reporter,
+    );
+
+    assert.equal(code, LANDED);
+    const stage = (name: string) =>
+      new RegExp(`^RUN stage=${name} duration_ms=\\d+ exit=\\d+$`, 'm');
+
+    for (const name of ['push', 'dod', 'pull-request-update', 'reviewer', 'lens', 'auditor']) {
+      assert.match(messages.join('\n'), stage(name), `no stage=${name} event was reported:\n${messages.join('\n')}`);
+    }
   } finally {
     process.chdir(originalCwd);
     process.env.PATH = originalPath;
@@ -250,7 +298,7 @@ test('the reviewer never runs when marking the pull request ready fails', () => 
       'origin',
       { publish: () => {}, state: { publishes: true, prOpen: true, blocked: false } },
       ['1'],
-      '1: 1s\n',
+      'plan.run.jsonl',
       reporter,
     );
 
@@ -291,7 +339,7 @@ test('the reviewer never runs when the publisher\'s own state says blocked', () 
       'origin',
       { publish: () => {}, state: { publishes: true, prOpen: true, blocked: true } },
       ['1'],
-      '1: 1s\n',
+      'plan.run.jsonl',
       reporter,
     );
 
