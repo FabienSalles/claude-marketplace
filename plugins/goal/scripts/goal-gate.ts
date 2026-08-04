@@ -6,6 +6,7 @@
 // its own module under `gate/`, one per group of business rules, matching the test files.
 //
 // Usage: node goal-gate.ts check|verify|commit <plan> <iteration> [plan_hash]
+//        node goal-gate.ts bite <plan> <iteration>
 //        node goal-gate.ts dod <plan> [plan_hash]
 //        node goal-gate.ts scan
 //        node goal-gate.ts lock|unlock <plan>
@@ -23,9 +24,9 @@ import { dodCheck, secretScan } from './gate/ship.ts';
 import { monotonicityCheck, tickedSet } from './gate/ticked.ts';
 
 const USAGE =
-  'usage: goal-gate.ts check|verify|commit <plan> <iteration> [plan_hash] [ticked]\n       goal-gate.ts dod <plan> [plan_hash]\n       goal-gate.ts scan\n       goal-gate.ts lock|unlock <plan>';
+  'usage: goal-gate.ts check|verify|commit <plan> <iteration> [plan_hash] [ticked]\n       goal-gate.ts bite <plan> <iteration>\n       goal-gate.ts dod <plan> [plan_hash]\n       goal-gate.ts scan\n       goal-gate.ts lock|unlock <plan>';
 
-const SUBCOMMANDS = ['check', 'verify', 'commit', 'dod', 'lock', 'unlock'];
+const SUBCOMMANDS = ['check', 'verify', 'commit', 'bite', 'dod', 'lock', 'unlock'];
 
 const ALLOWED_KEY = /^(test_files|impl_files|max_diff|commit_msg|gate[1-9][0-9]*)$/;
 const REQUIRED_KEYS = ['gate1', 'impl_files', 'commit_msg'] as const;
@@ -117,6 +118,19 @@ const main = (): void => {
   const declared = blockOf(source, iteration);
 
   keysAreLegal(declared, iteration);
+
+  // The sanctioned RED check: sets impl_files aside, reruns gate1, requires it to fail, restores
+  // by overwrite — the same mechanism `verify` runs last, invocable on demand so an implementer
+  // proves RED without paying for the whole pipeline, and without reaching for `git stash`.
+  if (subcommand === 'bite') {
+    const paths = declaredPaths(declared);
+    const incidental = incidentalPaths(source);
+    const changed = scopeCheck(paths, iteration, incidental);
+
+    biteCheck(declared, iteration, changed);
+
+    return;
+  }
 
   if (subcommand === 'check') {
     const commands = [...declared.keys()].filter((key) => key.startsWith('gate')).length;
