@@ -13,10 +13,10 @@
 //   3 — paused: a clean boundary, relaunch resumes here
 
 import { spawnSync } from 'node:child_process';
-import { existsSync, readFileSync, realpathSync, statSync } from 'node:fs';
-import { relative, resolve } from 'node:path';
+import { existsSync, readFileSync, statSync } from 'node:fs';
+import { basename, resolve } from 'node:path';
 
-import { createReporter, type Reporter } from './run/report.ts';
+import { createReporter, runDir, type Reporter } from './run/report.ts';
 import { preflight, REFUSED } from './run/preflight.ts';
 import { createLock } from './run/lock.ts';
 import { runIteration } from './run/iteration.ts';
@@ -24,6 +24,23 @@ import { createPublisher } from './run/publish.ts';
 import { close, LANDED } from './run/close.ts';
 import { quote } from './run/shell.ts';
 import { iterationNumbers } from './gate/plan.ts';
+
+// Mirrors preflight.ts's own derivation of a plan's work-id from its filename, needed here
+// before preflight runs: the run's own log directory has to exist first, or none of preflight's
+// own checks are narrated anywhere but stdout.
+const workIdOf = (plan: string): string => {
+  const base = basename(plan);
+
+  if (base.endsWith('-cleanup-spec.md')) {
+    return base.slice(0, -'-cleanup-spec.md'.length);
+  }
+
+  if (base.endsWith('-spec.md')) {
+    return base.slice(0, -'-spec.md'.length);
+  }
+
+  return base.replace(/\.md$/, '');
+};
 
 const main = (): void => {
   const [plan, iteration] = process.argv.slice(2);
@@ -41,7 +58,9 @@ const main = (): void => {
     reporter.stop(`the iteration must be a number, got: ${iteration}`, REFUSED);
   }
 
-  reporter.setLog(`${plan}.run.log`);
+  const dir = runDir(workIdOf(plan));
+  reporter.setLog(dir);
+  reporter.say(`RUN writing this run's records to ${dir}`);
 
   const gate = process.env.GOAL_GATE ?? `node ${resolve(import.meta.dirname, 'goal-gate.ts')}`;
   const source = readFileSync(plan, 'utf8');
@@ -99,7 +118,7 @@ const main = (): void => {
   const landed: string[] = [];
 
   for (const n of iterations) {
-    runIteration(plan, source, n, hashes.get(n)!, tickedSets.get(n) ?? '', gate, reporter);
+    runIteration(plan, source, n, hashes.get(n)!, tickedSets.get(n) ?? '', gate, dir, reporter);
     landed.push(n);
 
     // Every iteration but the last publishes here, as it lands. The last one's push waits for
@@ -111,12 +130,7 @@ const main = (): void => {
     }
   }
 
-  // Relative to the tree the run stands on, never the plan's own absolute path: the auditor's
-  // brief carries it, and a spawned agent's argv is exactly where that path must not leak.
-  // Resolved through realpath on both sides first, or a `/tmp` symlinked to `/private/tmp` turns
-  // a same-tree path into a string of `../` that never resolves back to it.
-  const jsonl = `${relative(realpathSync(process.cwd()), realpathSync(plan))}.run.jsonl`;
-  const exitCode = close(plan, gate, hashes.get(iterations[iterations.length - 1]!)!, remote, publisher, landed, jsonl, reporter);
+  const exitCode = close(plan, gate, hashes.get(iterations[iterations.length - 1]!)!, remote, publisher, landed, dir, reporter);
 
   if (exitCode === LANDED) {
     reporter.say(`STOP ${iterations.length} iteration(s) landed, gate-verified`);

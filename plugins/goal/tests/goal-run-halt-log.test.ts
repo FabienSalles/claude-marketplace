@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { chmodSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { HASH, repo, run } from './support/goal-run-harness.ts';
+import { HASH, logOf, repo, run } from './support/goal-run-harness.ts';
 
 // goal-run.ts's own exit code for a gate refusal (see its header comment), distinct from PAUSED.
 const HALTED = 1;
@@ -49,7 +49,7 @@ test('a gate refusal records the verdict in the run log and the STOP line names 
 
   assert.equal(code, HALTED, output);
 
-  const logPath = `${fixture.plan}.run.log`;
+  const logPath = logOf(fixture);
 
   assert.match(output, new RegExp(logPath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), output);
   assert.doesNotMatch(output, /REASON: the gate refused it/, output);
@@ -75,7 +75,7 @@ test('a gate refusal is recorded exactly once in the log', () => {
     GOAL_GATE: gate,
   });
 
-  const log = readFileSync(`${fixture.plan}.run.log`, 'utf8');
+  const log = readFileSync(logOf(fixture), 'utf8');
   const occurrences = log.split('REASON: the gate refused it').length - 1;
 
   assert.equal(occurrences, 1, log);
@@ -94,7 +94,7 @@ test('a gate pass also records the verdict in the run log', () => {
   assert.equal(code, 0, output);
   assert.doesNotMatch(output, /REASON: the gate refused it/, output);
 
-  const log = readFileSync(`${fixture.plan}.run.log`, 'utf8');
+  const log = readFileSync(logOf(fixture), 'utf8');
 
   assert.match(log, /REASON: the gate refused it/, log);
   assert.match(log, /DETAIL: from stderr/, log);

@@ -1,19 +1,33 @@
 // The account every invocation of goal-run.ts leaves behind: every line declares whether the run
-// is advancing or stopped, on stdout and, once a plan is known, mirrored to a log file beside it.
+// is advancing or stopped, on stdout and, once a run directory is known, mirrored to a log file
+// inside it.
 
-import { appendFileSync } from 'node:fs';
+import { appendFileSync, mkdirSync } from 'node:fs';
+import { join } from 'node:path';
 
 export type Reporter = {
   say: (message: string) => void;
   record: (text: string) => void;
   stop: (message: string, code: number) => never;
-  setLog: (path: string) => void;
+  setLog: (dir: string) => void;
   session?: (id: string) => void;
+};
+
+// One directory per launch, `.claude/goal-runs/<work-id>/<run-id>/`, created before anything is
+// written into it. The run-id is the launch timestamp, so two launches of the same plan never
+// collide, and pruning a finished work-id is one `rm -rf .claude/goal-runs/<work-id>/` rather than
+// a search through `.claude/plans/` for whatever a run left beside the spec.
+export const runDir = (workId: string): string => {
+  const dir = join(process.cwd(), '.claude', 'goal-runs', workId, new Date().toISOString().replace(/[:.]/g, '-'));
+  mkdirSync(dir, { recursive: true });
+
+  return dir;
 };
 
 export const createReporter = (): Reporter => {
   let log = '';
   let jsonl = '';
+  let sessionPath = '';
 
   // The ingestible twin of the prose log: one versioned JSON line per call, alongside whatever
   // that call already rendered.
@@ -53,17 +67,18 @@ export const createReporter = (): Reporter => {
     process.exit(code);
   };
 
-  const setLog = (path: string): void => {
-    log = path;
-    jsonl = path.replace(/\.log$/, '.jsonl');
+  const setLog = (dir: string): void => {
+    log = join(dir, '.run.log');
+    jsonl = join(dir, '.run.jsonl');
+    sessionPath = join(dir, '.run.session');
   };
 
-  // Recorded beside the run's own log (`<plan>.run.log` -> `<plan>.run.session`), so a
-  // transcript already written to `~/.claude/projects/<encoded-path>/<session-id>.jsonl` can be
-  // found later without correlating timestamps.
+  // Recorded beside the run's own log (`.run.log` -> `.run.session`, both in the run directory),
+  // so a transcript already written to `~/.claude/projects/<encoded-path>/<session-id>.jsonl` can
+  // be found later without correlating timestamps.
   const session = (id: string): void => {
-    if (log) {
-      appendFileSync(log.replace(/\.log$/, '.session'), `${id}\n`);
+    if (sessionPath) {
+      appendFileSync(sessionPath, `${id}\n`);
       emit('session', { payload: id });
     }
   };

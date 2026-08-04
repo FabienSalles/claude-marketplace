@@ -4,7 +4,7 @@
 // neither able to undo work the gate already verified and shipped.
 
 import { spawnSync } from 'node:child_process';
-import { basename } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 
 import { iterationNumbers, readPlan } from '../gate/plan.ts';
 import type { Publisher } from './publish.ts';
@@ -37,9 +37,10 @@ export const close = (
   remote: string,
   publisher: Publisher,
   landed: string[],
-  jsonl: string,
+  dir: string,
   reporter: Reporter,
 ): number => {
+  const jsonl = join(dir, '.run.jsonl');
   const dodStart = Date.now();
   const dod = spawnSync(`${gate} dod ${quote(plan)} ${quote(hash)}`, { shell: true, encoding: 'utf8' });
   const dodOut = `${dod.stdout}${dod.stderr}`;
@@ -124,17 +125,15 @@ this run: it is advisory only.`;
     reporter.say('RUN lens findings recorded, advisory only');
   }
 
-  const sha = git('rev-parse', '--short', 'HEAD').stdout.trim() || 'unknown';
-
   const auditBrief = `Audit the run that just ended on plan ${basename(plan)} and write its report to
-.claude/goal-runs/${sha}.md.
+${join(dir, 'report.md')}.
 
 Every stage this run timed is recorded as a JSON event in ${jsonl}: read it for what happened and
 what each stage cost, per iteration.
 
-Read the reports already in .claude/goal-runs/ and say which failures recur across runs rather
-than describing this one twice. Do not edit a single line of code, do not stage anything, and do
-not judge whether the work was correct — the gate already did that.`;
+Read the other reports already under ${dirname(dir)}/ and say which failures recur across runs
+rather than describing this one twice. Do not edit a single line of code, do not stage anything,
+and do not judge whether the work was correct — the gate already did that.`;
 
   const auditStart = Date.now();
   const audit = spawnSync('claude', ['-p', '--agent', 'goal:goal-run-auditor', '--permission-mode', 'auto', auditBrief], { encoding: 'utf8' });

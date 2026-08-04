@@ -5,7 +5,7 @@
 // apart from one that wrote nothing, and only a moved tree is handed to the gate for a verdict.
 
 import { spawnSync } from 'node:child_process';
-import { basename } from 'node:path';
+import { basename, join } from 'node:path';
 
 import { ceiling } from '../gate/bounded.ts';
 import { iterationSection } from '../gate/plan.ts';
@@ -28,6 +28,7 @@ export const runIteration = (
   hash: string,
   ticked: string,
   gate: string,
+  dir: string,
   reporter: Reporter,
 ): void => {
   reporter.say(`RUN iteration ${iteration} of ${basename(plan)}, in ${process.cwd()}`);
@@ -172,7 +173,7 @@ export const runIteration = (
   const verdict = spawnSync(`${gate} commit ${quote(plan)} ${quote(iteration)} ${quote(hash)} ${quote(ticked)}`, {
     shell: true,
     encoding: 'utf8',
-    env: { ...process.env, GOAL_RUN_JSONL: `${plan}.run.jsonl` },
+    env: { ...process.env, GOAL_RUN_JSONL: join(dir, '.run.jsonl') },
   });
   const gateExit = verdict.status ?? 1;
 
@@ -190,6 +191,6 @@ export const runIteration = (
     process.exit(PAUSED);
   }
 
-  reporter.say(`STOP iteration ${iteration} was refused by the gate. Nothing was committed, and the gate's reasoning is in ${plan}.run.log. The tree is left exactly as the implementer left it.`);
+  reporter.say(`STOP iteration ${iteration} was refused by the gate. Nothing was committed, and the gate's reasoning is in ${join(dir, '.run.log')}. The tree is left exactly as the implementer left it.`);
   process.exit(HALTED);
 };
