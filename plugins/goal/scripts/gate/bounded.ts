@@ -71,6 +71,13 @@ export const bounded = (command: string): string => {
   return limit === '' ? command : `${limit}\n${command}`;
 };
 
+// A run's state reaches its gate through GOAL_RUN_* environment — the JSONL path today, the
+// ticked set until it moved to argv. None of it is addressed to the commands the gate runs: the
+// suite a plan declares spawns gates of its own, and each leaked variable has put tests red on
+// the first run that carried it. The whole prefix stops at this boundary, not one name at a time.
+const commandEnv = (): NodeJS.ProcessEnv =>
+  Object.fromEntries(Object.entries(process.env).filter(([name]) => !name.startsWith('GOAL_RUN_')));
+
 // The wall clock every call site runs a declared command under. `killSignal: 'SIGKILL'` is
 // required alongside `timeout`: the default `SIGTERM` is exactly the signal a hung process is
 // already ignoring.
@@ -79,4 +86,5 @@ export const spawnOptions = (): SpawnSyncOptions & { encoding: 'utf8' } => ({
   encoding: 'utf8',
   timeout: TIMEOUT_SECONDS * 1000,
   killSignal: 'SIGKILL',
+  env: commandEnv(),
 });

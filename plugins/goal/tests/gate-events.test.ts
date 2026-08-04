@@ -69,6 +69,22 @@ const events = (path: string): Array<{ event: string; key?: string; command?: st
         .map((line) => JSON.parse(line))
     : [];
 
+// The stream is the runner's bookkeeping, never the verdict's hostage: a GOAL_RUN_JSONL whose
+// directory does not exist (a leaked or stale path) must not crash the gate — the ENOENT that
+// killed nested gates inside the suite on 2026-08-04, first run under the instrumented runner.
+test('a gate handed an unwritable GOAL_RUN_JSONL still judges instead of crashing', () => {
+  const { repo, plan } = fixture([{ ticked: false, lines: GATE_BLOCK }]);
+  touchDeclared(repo);
+
+  const run = spawnSync('node', [GATE, 'commit', plan, '1'], {
+    cwd: repo,
+    encoding: 'utf8',
+    env: { ...process.env, GOAL_RUN_JSONL: join('missing-dir', 'nowhere', 'run.jsonl') },
+  });
+
+  assert.equal(run.status ?? -1, 0, `${run.stdout}${run.stderr}`);
+});
+
 // R — the gate appends one event per executed command to GOAL_RUN_JSONL when the runner names
 // one: gate1, each of the DETERMINISM_RUNS, and the bite check.
 test('a commit run with GOAL_RUN_JSONL set appends an event for gate1, each determinism run, and the bite check', () => {
