@@ -79,11 +79,10 @@ const verify = (source: string, iteration: string, declared: Map<string, string>
 };
 
 const main = (): void => {
-  const [subcommand, plan, iteration, locked, tickedArg] = process.argv.slice(2);
-  // The frozen bash runner never carries this, and the node one cannot hand it through the
-  // implementer's own `gate commit` call it does not touch (run/iteration.ts) except by the
-  // environment that call inherits — same channel goal-run.ts already uses for the quota knobs.
-  const ticked = tickedArg ?? process.env.GOAL_RUN_TICKED;
+  // The ticked set travels by argument only. It used to fall back to GOAL_RUN_TICKED, and a
+  // declared command that spawns gates of its own — the suite does — read the outer run's lock
+  // as its own: three tests red on the first run that ever locked with a non-empty set.
+  const [subcommand, plan, iteration, locked, ticked] = process.argv.slice(2);
 
   if (subcommand === 'scan') {
     return secretScan();
