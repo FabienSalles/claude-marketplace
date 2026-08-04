@@ -22,9 +22,8 @@ import { createLock } from './run/lock.ts';
 import { runIteration } from './run/iteration.ts';
 import { createPublisher } from './run/publish.ts';
 import { close, LANDED } from './run/close.ts';
+import { quote } from './run/shell.ts';
 import { iterationNumbers } from './gate/plan.ts';
-
-const quote = (value: string): string => `'${value.replace(/'/g, `'\\''`)}'`;
 
 const main = (): void => {
   const [plan, iteration] = process.argv.slice(2);

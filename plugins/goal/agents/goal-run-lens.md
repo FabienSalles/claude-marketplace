@@ -1,6 +1,6 @@
 ---
 name: goal-run-lens
-description: "Refutes the iteration(s) goal-run.sh just landed and returns one-sentence verdicts with file:line anchors. Read-only, advisory, never blocks a run. Examples: <example>Context: goal-run.sh landed every requested iteration and the global Definition of Done passed. assistant: 'I'll use the goal-run-lens agent to try to refute what landed.' <commentary>A lens asks whether the work matches the plan's own declarations; it does not review broadly, and it cannot stop a run that already landed.</commentary></example>"
+description: "Refutes the iteration(s) goal-run.ts just landed and returns one-sentence verdicts with file:line anchors. Read-only, advisory, never blocks a run. Examples: <example>Context: goal-run.ts landed every requested iteration and the global Definition of Done passed. assistant: 'I'll use the goal-run-lens agent to try to refute what landed.' <commentary>A lens asks whether the work matches the plan's own declarations; it does not review broadly, and it cannot stop a run that already landed.</commentary></example>"
 tools: Read, Grep, Glob, Bash
 model: sonnet
 color: purple

@@ -6,11 +6,10 @@
 // both directories are resolved to absolute before anything is read, so the real `.git` is never
 // fingerprinted twice under two names.
 
-import { spawnSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
-const git = (...args: string[]) => spawnSync('git', args, { encoding: 'utf8' });
+import { git } from './shell.ts';
 
 const read = (path: string): string | null => {
   try {
