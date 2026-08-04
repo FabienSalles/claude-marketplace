@@ -123,6 +123,25 @@ test('emptying an iteration\'s test_files is refused', () => {
   assert.match(output, /HALT/);
 });
 
+// A gate fence quoted in prose — an example, not a real iteration's own block — has no
+// iteration section to belong to and must stay unreachable, the way `run/sweep.ts` already
+// reads only the blocks `gate/plan.ts` resolves rather than every ```gate fence in the file.
+test('a gate fence quoted in prose outside any iteration section does not move the hash', () => {
+  const withExample = PLAN.replace(
+    '### Iteration 1',
+    ['## Notes', '', 'Example acceptance block:', '', '```gate', 'gate1=echo example', '```', '', '### Iteration 1'].join('\n'),
+  );
+  const plan = writePlan(withExample);
+  const hash = runGuard([plan]).output.trim().slice('guard_hash='.length);
+
+  writeFileSync(plan, withExample.replace('gate1=echo example', 'gate1=echo changed'));
+
+  const { code, output } = runGuard([plan, hash]);
+
+  assert.equal(code, 0, output);
+  assert.match(output, /^OK/);
+});
+
 test('an unreadable plan is a misuse, not a crash', () => {
   const { code, output } = runGuard(['/nonexistent/path/spec.md']);
 

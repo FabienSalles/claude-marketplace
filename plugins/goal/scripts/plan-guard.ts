@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// Hashes every `gateN=` and `dodN=` line a plan declares, plus — per gate block — whether
-// test_files is empty, and refuses when that hash moved.
+// Hashes every `gateN=` and `dodN=` line the blocks `gate/plan.ts` resolves declare, plus —
+// per resolved block — whether test_files is empty, and refuses when that hash moved.
 //
 // A prompt told never to weaken a gate is a sentence. This is the mechanism: the acceptance
 // commands of every iteration and of the global Definition of Done, hashed together with each
@@ -17,43 +17,59 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 
 import { halt, misuse } from './gate/halt.ts';
+import { iterationNumbers, iterationSection } from './gate/plan.ts';
 
 const GUARDED_LINE = /^(gate[1-9][0-9]*|dod[1-9][0-9]*)=.*$/;
 
-export const guardedLines = (source: string): string[] =>
-  source.split('\n').filter((line) => GUARDED_LINE.test(line.trim()));
+// The same fence `gate/plan.ts`'s `gateBlock` looks for, tolerant of a section carrying none.
+const fenceIn = (section: string[]): string[] | undefined => {
+  const open = section.findIndex((line) => line.trim() === '```gate');
+  const body = section.slice(open + 1);
+  const close = body.findIndex((line) => line.trim() === '```');
 
-// Per gate block, whether test_files is empty — not the paths it names, so a supervisor
-// repairing a mistyped path still passes, but one emptying the field moves the hash.
-export const testFilesEmptyFlags = (source: string): string[] => {
-  const flags: string[] = [];
-  let inBlock = false;
-  let empty = true;
+  return open === -1 || close === -1 ? undefined : body.slice(0, close);
+};
 
-  for (const line of source.split('\n')) {
-    const trimmed = line.trim();
+// The same "## Definition of Done" heading and section boundary `gate/ship.ts:17` locates.
+const doneSection = (source: string): string[] => {
+  const lines = source.split('\n');
+  const start = lines.findIndex((line) => /^## Definition of Done\b/.test(line));
 
-    if (trimmed === '```gate') {
-      inBlock = true;
-      empty = true;
-      continue;
-    }
-
-    if (trimmed === '```' && inBlock) {
-      inBlock = false;
-      flags.push(String(empty));
-      continue;
-    }
-
-    const match = inBlock ? /^test_files=(.*)$/.exec(trimmed) : null;
-
-    if (match !== null) {
-      empty = match[1]!.trim() === '';
-    }
+  if (start === -1) {
+    return [];
   }
 
-  return flags;
+  const next = lines.slice(start + 1).findIndex((line) => /^#{2,3} /.test(line));
+
+  return lines.slice(start + 1, next === -1 ? lines.length : start + 1 + next);
 };
+
+const resolvedBlocks = (source: string): string[][] => {
+  const numbers = [...new Set([...iterationNumbers(source, true), ...iterationNumbers(source, false)])];
+  const sections = [...numbers.map((n) => iterationSection(source, n)), doneSection(source)];
+
+  return sections.map(fenceIn).filter((block): block is string[] => block !== undefined);
+};
+
+export const guardedLines = (source: string): string[] =>
+  resolvedBlocks(source).flatMap((block) => block.filter((line) => GUARDED_LINE.test(line.trim())));
+
+// Per resolved block, whether test_files is empty — not the paths it names, so a supervisor
+// repairing a mistyped path still passes, but one emptying the field moves the hash.
+export const testFilesEmptyFlags = (source: string): string[] =>
+  resolvedBlocks(source).map((block) => {
+    let empty = true;
+
+    for (const line of block) {
+      const match = /^test_files=(.*)$/.exec(line.trim());
+
+      if (match !== null) {
+        empty = match[1]!.trim() === '';
+      }
+    }
+
+    return String(empty);
+  });
 
 export const guardHash = (source: string): string =>
   createHash('sha256')

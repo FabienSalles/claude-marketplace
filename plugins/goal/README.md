@@ -95,8 +95,7 @@ guarantee that is narrower than its slogan.
   iteration declares no `test_files`, which skips the check. `plan-guard.ts` hashes `gateN=` and
   `dodN=` lines, plus — per iteration — whether `test_files` is empty, so a repair emptying it
   moves the hash even though repairing a mistyped path in it does not.
-- **The plan is hashed** (`gate/plan.ts`) — the hash normalizes ticks away, which also means
-  unticking a box drops that iteration out of the regression wall without moving the hash.
+- **The plan is hashed** (`gate/plan.ts`) — the hash normalizes ticks away.
 - **Every claim is a command that ran** — except the gate's own refusal: `run/iteration.ts` exits
   on a refusal without copying the gate's `HALT` block into the run log. The log names the halt;
   the reason is only on the terminal.
