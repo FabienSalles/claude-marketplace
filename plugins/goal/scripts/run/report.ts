@@ -13,12 +13,22 @@ export type Reporter = {
 
 export const createReporter = (): Reporter => {
   let log = '';
+  let jsonl = '';
+
+  // The ingestible twin of the prose log: one versioned JSON line per call, alongside whatever
+  // that call already rendered.
+  const emit = (event: string, fields: Record<string, unknown>): void => {
+    if (jsonl) {
+      appendFileSync(jsonl, `${JSON.stringify({ v: 1, ts: new Date().toISOString(), event, ...fields })}\n`);
+    }
+  };
 
   const say = (message: string): void => {
     process.stdout.write(`${message}\n`);
 
     if (log) {
       appendFileSync(log, `${message}\n`);
+      emit('say', { message });
     }
   };
 
@@ -27,16 +37,25 @@ export const createReporter = (): Reporter => {
   const record = (text: string): void => {
     if (log && text.trim() !== '') {
       appendFileSync(log, `${text}\n`);
+      emit('record', { payload: text });
     }
   };
 
   const stop = (message: string, code: number): never => {
-    say(`STOP ${message}`);
+    const line = `STOP ${message}`;
+    process.stdout.write(`${line}\n`);
+
+    if (log) {
+      appendFileSync(log, `${line}\n`);
+      emit('stop', { message: line, exit: code });
+    }
+
     process.exit(code);
   };
 
   const setLog = (path: string): void => {
     log = path;
+    jsonl = path.replace(/\.log$/, '.jsonl');
   };
 
   // Recorded beside the run's own log (`<plan>.run.log` -> `<plan>.run.session`), so a
@@ -45,6 +64,7 @@ export const createReporter = (): Reporter => {
   const session = (id: string): void => {
     if (log) {
       appendFileSync(log.replace(/\.log$/, '.session'), `${id}\n`);
+      emit('session', { payload: id });
     }
   };
 
