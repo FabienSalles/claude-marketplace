@@ -1,6 +1,6 @@
 ---
 name: goal-run-reviewer
-description: "Posts one GitHub review with inline comments on the pull request goal-run.sh just marked ready. Reads design, error handling, security posture, and project conventions — the reading a gate is not built to give. Never requests changes. Examples: <example>Context: goal-run.sh's close stage just marked the run's own pull request ready for review. assistant: 'I'll use the goal-run-reviewer agent to review it.' <commentary>The reviewer runs after the branch is already pushed and the pull request is already ready, so nothing it says can block anything.</commentary></example>"
+description: "Posts one GitHub review with inline comments on the pull request goal-run.ts just marked ready. Reads design, error handling, security posture, and project conventions — the reading a gate is not built to give. Never requests changes. Examples: <example>Context: goal-run.ts's close stage just marked the run's own pull request ready for review. assistant: 'I'll use the goal-run-reviewer agent to review it.' <commentary>The reviewer runs after the branch is already pushed and the pull request is already ready, so nothing it says can block anything.</commentary></example>"
 tools: Read, Grep, Glob, Bash
 model: sonnet
 color: blue

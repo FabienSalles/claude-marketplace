@@ -275,7 +275,7 @@ Ask (this controls what an execution session is allowed to do, and how big a sli
 >   remote). It is opened as a **draft at the first commit** and every later
 >   iteration updates that same PR, so you can watch the work land instead of
 >   waiting for the end. It goes ready for review at the last iteration. This
->   is what `/goal:auto` needs.
+>   is what `/goal:supervise` needs.
 
 WAIT for the answer. Then **write it into the spec's `Policy:` header line**, and use the
 same value as `<policy>` in the handoff verbatim.
@@ -283,7 +283,7 @@ same value as `<policy>` in the handoff verbatim.
 The spec is what makes it durable. `/goal:next` reads the policy from the plan and falls
 back to `manual` when it cannot find it, so a policy that lives only in the pasted handoff
 is lost to a fresh session or a compaction, and the run silently degrades to manual.
-`/goal:auto` has the same need, and reads it before it will start at all.
+`/goal:supervise` has the same need, and reads it before it will start at all.
 
 ### D — The remote it pushes to
 
@@ -301,7 +301,7 @@ Run `git remote -v` first and show what exists, then ask:
 >   upstream yourself, once the work convinces you.
 
 WAIT for the answer, then **write it into the spec's `Remote:` header line**. There is no
-default and none is inferred: `/goal:auto` refuses a plan whose header does not carry it,
+default and none is inferred: `/goal:supervise` refuses a plan whose header does not carry it,
 which is the point — the cost of a wrong guess is borne by whoever owns the repository the
 guess lands on.
 
@@ -328,7 +328,7 @@ them, and let the plan show the result.
 What this command owns, and the skill does not, is everything below: the plan's file
 format, the cleanup carve-out, and persistence.
 
-**A plan is one sequence, and `/goal:auto` runs one plan.** The workflow has no parallel
+**A plan is one sequence, and `/goal:supervise` runs one plan.** The workflow has no parallel
 mode: it works in the directory it was launched from and knows nothing of worktrees. So a
 plan is a flat list of iterations, with no parallel section inside it.
 
@@ -358,14 +358,14 @@ merge, discovered after both runs have paid for themselves.
 
 One file per part, named `.claude/plans/<work-id>-<suffix>-spec.md`, where the suffix says
 what the part delivers — `astro`, `marketing`, `foundation`. Each is an ordinary plan and is
-run the ordinary way: `/goal:auto .claude/plans/<work-id>-<suffix>-spec.md`.
+run the ordinary way: `/goal:supervise .claude/plans/<work-id>-<suffix>-spec.md`.
 
 **Every one carries the full header**, copied rather than inherited: `Policy:`,
 `Delivery mode:`, `Cleanup:` and `Remote:`. Nothing inherits anything, because each file is
 read alone by its own run — and a plan whose header lacks `Remote:` is refused at preflight
 rather than defaulted. "Self-sufficient" is literal here, not a figure of speech.
 
-Then one index, `.claude/plans/<work-id>-plans.md`. **Not `-spec.md`**: `/goal:auto` with no
+Then one index, `.claude/plans/<work-id>-plans.md`. **Not `-spec.md`**: `/goal:supervise` with no
 argument resolves the most recently modified `*-spec.md`, and the index is written last, so
 naming it `-spec.md` would make it the file a bare launch picks up and tries to run.
 
@@ -388,10 +388,10 @@ itself, and its own `Trigger:` line is what a run reads.
 ## Launch
 
 ```bash
-/goal:auto .claude/plans/<work-id>-foundation-spec.md
+/goal:supervise .claude/plans/<work-id>-foundation-spec.md
 # once its pull request is merged, then in separate sessions:
-/goal:auto .claude/plans/<work-id>-astro-spec.md
-/goal:auto .claude/plans/<work-id>-marketing-spec.md
+/goal:supervise .claude/plans/<work-id>-astro-spec.md
+/goal:supervise .claude/plans/<work-id>-marketing-spec.md
 ```
 ````
 
@@ -430,8 +430,8 @@ A single-plan spec writes no index and carries no such line — there is nothing
 of, and a checklist with one entry is ceremony.
 
 **Under `commit` or `commit+pr`, every iteration carries a `gate` block, and that block is
-what runs.** The acceptance criteria used to be prose, and `/goal:auto` translated them into
-gate commands at run time: a model reading "the project test command exits 0" and deciding,
+what runs.** The acceptance criteria used to be prose, translated into gate commands at run
+time: a model reading "the project test command exits 0" and deciding,
 alone and unattended, which command that is. The block removes the translation. It is written
 here, while the developer is present to read it, in the exact `key=value` form `goal-gate.ts`
 already consumes, so it is copied verbatim rather than interpreted.
@@ -446,7 +446,7 @@ rather than faking it.
 
 **A slice proving the absence of more than one obsolete form writes one `gate1`, not several.**
 The bite check only ever sets aside the implementation and re-runs `gate1`; `gate2..N` are never
-replayed against the pre-implementation tree, by the bite check or by `/goal:auto`'s own
+replayed against the pre-implementation tree, by the bite check or by `/goal:supervise`'s own
 preflight, which excludes `gate1` alone from its base-must-already-be-green sweep. A second
 absence assertion placed in `gate2` is invisible to both: nothing proves it ever failed before
 the fix, and a preflight run right after the plan is written halts on a base the sweep reads as
@@ -460,7 +460,7 @@ the gate script checks scope leak and parasitic artifacts structurally, so such 
 gate that always exits 0. A criterion no command can express does not go in the block either
 — put it under **Not machine-verifiable**, where it stays visible instead of vanishing from
 the gate. **A slice whose core deliverable lands there cannot be verified unattended**: say
-so now, because `/goal:auto` halts on an iteration with no `gate1`.
+so now, because `/goal:supervise` halts on an iteration with no `gate1`.
 
 Use the project's real commands, dockerized where the project is, and check each one runs
 today. A command that does not exist yet is a halt at iteration 1, not at review time.
@@ -479,7 +479,7 @@ are not the slice's work. Never put a secret-bearing or vendored path there: `.e
 `node_modules/`, private keys and keystores are refused whatever any declaration says.
 
 **When the plan builds the project itself, say which iteration does it, on the `Bootstrap:`
-line.** `/goal:auto` refuses to start against a base whose own commands are already failing, and
+line.** `/goal:supervise` refuses to start against a base whose own commands are already failing, and
 on an empty repository they all are: there is no manifest yet, so the test runner exits before it
 looks for a test. That is not a defect the run would inherit, it is the absence the plan exists to
 fill — but the check cannot tell the two apart, and left to itself it makes a bootstrap plan
