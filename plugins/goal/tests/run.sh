@@ -4,8 +4,7 @@
 # `node --test` exits 0 on a glob that matches nothing — verified. A barrier that
 # passes on an empty suite is the exact failure this harness exists to remove, so
 # this wrapper additionally requires at least one passing test, no failure, and no
-# skipped test: a silent skip is how the Node runner went uncovered while the frozen
-# bash one stayed green.
+# skipped test.
 #
 # Usage: bash plugins/goal/tests/run.sh
 # Fixture usage: GOAL_TESTS_ROOT=<dir of *.test.ts> bash plugins/goal/tests/run.sh
@@ -43,9 +42,9 @@ else
   GLOB='plugins/goal/tests/*.test.ts'
 fi
 
-# Iterating a list, rather than running the default once, is what turns "delete the frozen bash
-# reference" into removing one entry, later, instead of rewriting this wrapper.
-RUNNERS="bash node"
+# Iterating a list, rather than running the default once, is what keeps this wrapper unchanged
+# if another runner is ever added.
+RUNNERS="node"
 
 total_pass=0
 
@@ -54,7 +53,7 @@ for impl in $RUNNERS; do
   # which the anchored sed below stops matching. NODE_TEST_CONTEXT is unset for this child alone:
   # the guard above already stops the real glob recursing, so node's own nested-run protection is
   # redundant here — and, left set, is what made an honoured fixture print no summary at all.
-  out=$(env -u NODE_TEST_CONTEXT FORCE_COLOR=0 NO_COLOR=1 GOAL_RUN_IMPL="$impl" node --test "$GLOB" 2>&1)
+  out=$(env -u NODE_TEST_CONTEXT FORCE_COLOR=0 NO_COLOR=1 node --test "$GLOB" 2>&1)
   rc=$?
 
   printf '%s\n' "$out"
@@ -64,17 +63,17 @@ for impl in $RUNNERS; do
   skipped=$(printf '%s' "$out" | sed -n 's/^ℹ skipped \([0-9]*\)$/\1/p' | tail -1)
 
   if [ "$rc" -ne 0 ]; then
-    printf '\nHALT: the suite exited %s under GOAL_RUN_IMPL=%s.\n' "$rc" "$impl" >&2
+    printf '\nHALT: the suite exited %s under runner %s.\n' "$rc" "$impl" >&2
     exit 1
   fi
 
   if [ -z "$pass" ] || [ -z "$fail" ] || [ -z "$skipped" ]; then
-    printf '\nHALT: the suite printed no pass/fail/skipped summary under GOAL_RUN_IMPL=%s, so its result is unknown.\n' "$impl" >&2
+    printf '\nHALT: the suite printed no pass/fail/skipped summary under runner %s, so its result is unknown.\n' "$impl" >&2
     exit 1
   fi
 
   if [ "$fail" -ne 0 ]; then
-    printf '\nHALT: %s test(s) failed under GOAL_RUN_IMPL=%s.\n' "$fail" "$impl" >&2
+    printf '\nHALT: %s test(s) failed under runner %s.\n' "$fail" "$impl" >&2
     exit 1
   fi
 
@@ -85,12 +84,12 @@ for impl in $RUNNERS; do
   undeclared=$(printf '%s' "$out" | grep -c '^﹣ .* # SKIP$')
 
   if [ "$undeclared" -ne 0 ]; then
-    printf '\nHALT: %s test(s) skipped under GOAL_RUN_IMPL=%s with no reason declared. A skip is an unknown result unless it says why.\n' "$undeclared" "$impl" >&2
+    printf '\nHALT: %s test(s) skipped under runner %s with no reason declared. A skip is an unknown result unless it says why.\n' "$undeclared" "$impl" >&2
     exit 1
   fi
 
   if [ "$pass" -eq 0 ]; then
-    printf '\nHALT: the suite ran no test under GOAL_RUN_IMPL=%s. An empty glob exits 0, which would pass on nothing.\n' "$impl" >&2
+    printf '\nHALT: the suite ran no test under runner %s. An empty glob exits 0, which would pass on nothing.\n' "$impl" >&2
     exit 1
   fi
 

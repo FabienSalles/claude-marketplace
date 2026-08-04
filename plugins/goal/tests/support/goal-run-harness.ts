@@ -4,25 +4,19 @@ import { join, resolve } from 'node:path';
 
 import { tmpDir } from './tmp.ts';
 
-export const RUN = resolve(import.meta.dirname, '..', '..', 'scripts', 'goal-run.sh');
 export const RUN_NODE = resolve(import.meta.dirname, '..', '..', 'scripts', 'goal-run.ts');
 export const DENY_SETUP = resolve(import.meta.dirname, '..', '..', 'scripts', 'goal-deny-setup.sh');
-
-// GOAL_RUN_IMPL selects which runner `run()` below spawns: 'bash' (the default) drives
-// goal-run.sh, 'node' drives goal-run.ts. Read once, at import time, since the suite that flips
-// it does so by re-invoking `node --test` with the variable set, never mid-process.
-const IMPL = process.env.GOAL_RUN_IMPL === 'node' ? 'node' : 'bash';
 
 export const git = (cwd: string, ...args: string[]) => spawnSync('git', args, { cwd, encoding: 'utf8' });
 
 export const HASH = 'a'.repeat(64);
 
-// goal-run.sh's own exit codes (see its header comment): a paused run is a clean boundary a
+// goal-run.ts's own exit codes (see its header comment): a paused run is a clean boundary a
 // relaunch resumes, distinct from a gate halt.
 export const PAUSED = 3;
 
 // Owner/repo the fake remote resolves to: its bare repo lives two path segments deep
-// (`<root>/acme/demo.git`), which is exactly what `repoOf` in goal-run.sh strips a remote URL
+// (`<root>/acme/demo.git`), which is exactly what `repoOf` in run/close.ts strips a remote URL
 // down to. Fixed here so a test can assert against it without re-deriving the sed.
 export const FAKE_REPO = 'acme/demo';
 
@@ -277,8 +271,7 @@ exit 0
 };
 
 export const run = (fixture: Fixture, args: string[], env: Record<string, string> = {}) => {
-  const [command, script] = IMPL === 'node' ? ['node', RUN_NODE] : ['bash', RUN];
-  const result = spawnSync(command, [script, ...args], {
+  const result = spawnSync('node', [RUN_NODE, ...args], {
     cwd: fixture.dir,
     encoding: 'utf8',
     env: {

@@ -7,21 +7,11 @@ import { join } from 'node:path';
 import { DENY_SETUP, denyOf, repo, run } from './support/goal-run-harness.ts';
 
 // R9 — `git commit`, `git push` and `git add` are denied to the implementer by a settings rule,
-// installed by goal-deny-setup.sh, and goal-run.sh's preflight refuses to start when that rule
-// is absent.
-//
-// The refusal is the frozen reference's alone. goal-run.ts dropped that check: it was a substring
-// match over raw JSON, it was installed project-wide so it restrained the developer's own session
-// too, and permissions are read at session start so it never described the running one. The two
-// tests below therefore carry the mirror of the harness's NODE_ONLY guard, which is what keeps the
-// divergence readable line by line rather than hidden in a fixture.
-const BASH_ONLY =
-  process.env.GOAL_RUN_IMPL === 'node'
-    ? 'goal-run.ts dropped preflight check 10; goal-run.sh is frozen and keeps it'
-    : false;
-
-const NODE_ONLY =
-  process.env.GOAL_RUN_IMPL !== 'node' ? 'goal-run.sh is frozen and still refuses without the rule' : false;
+// installed by goal-deny-setup.sh. goal-run.ts does not gate on it: the check it once carried was
+// a substring match over raw JSON, so a file whose permissions.allow granted `Bash(git commit:*)`
+// satisfied it while granting the opposite; it was installed project-wide, so it also restrained
+// the interactive session where the developer reads every diff; and permissions are read at
+// session start, so it described a future session and never the running one.
 
 test('goal-deny-setup.sh installs a deny rule covering commit, push and add', () => {
   const fixture = repo({ deny: false });
@@ -57,27 +47,7 @@ test('goal-deny-setup.sh preserves whatever permissions.deny already held', () =
   assert.ok(rules.includes('Read(**/.env)'), `an existing rule was dropped: ${rules}`);
 });
 
-test('goal-run.sh refuses to start when the deny rule is absent', { skip: BASH_ONLY }, () => {
-  const fixture = repo({ deny: false });
-
-  const { code, output } = run(fixture, [fixture.plan, '1']);
-
-  assert.notEqual(code, 0);
-  assert.match(output, /STOP the implementer is not denied git commit push add\. Run: .*goal-deny-setup\.sh/, output);
-  assert.ok(!existsSync(fixture.claudeLog), 'an implementer was spawned though the deny rule is absent');
-});
-
-test('goal-run.sh refuses when the deny rule covers only some of commit, push and add', { skip: BASH_ONLY }, () => {
-  const fixture = repo({ deny: 'partial' });
-
-  const { code, output } = run(fixture, [fixture.plan, '1']);
-
-  assert.notEqual(code, 0);
-  assert.match(output, /STOP the implementer is not denied git push add\. Run: .*goal-deny-setup\.sh/, output);
-  assert.ok(!existsSync(fixture.claudeLog), 'an implementer was spawned with an incomplete deny rule');
-});
-
-test('goal-run.sh proceeds once goal-deny-setup.sh has installed the rule', () => {
+test('a run proceeds once goal-deny-setup.sh has installed the rule', () => {
   const fixture = repo({ deny: false });
   spawnSync('bash', [DENY_SETUP, fixture.dir], { encoding: 'utf8' });
 
@@ -89,7 +59,7 @@ test('goal-run.sh proceeds once goal-deny-setup.sh has installed the rule', () =
   assert.ok(existsSync(fixture.claudeLog), `the run never reached the implementer:\n${output}`);
 });
 
-test('goal-run.ts starts with no settings file at all, and says nothing about a deny rule', { skip: NODE_ONLY }, () => {
+test('a run starts with no settings file at all, and says nothing about a deny rule', () => {
   const fixture = repo({ deny: false });
 
   const { code, output } = run(fixture, [fixture.plan, '1'], {

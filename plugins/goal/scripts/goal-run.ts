@@ -1,8 +1,4 @@
 #!/usr/bin/env node
-// Node port of goal-run.sh — the seam that lets the suite prove the two runners interchangeable
-// one behaviour at a time. GOAL_RUN_IMPL selects which one a caller of the test harness spawns;
-// this file only has to honour what has already landed here.
-//
 // With no iteration named, the plan's unchecked boxes are surveyed and every one of them proven
 // runnable before any is implemented, so a plan that would fail on its third iteration never
 // spends the first two.

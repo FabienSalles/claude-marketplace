@@ -26,7 +26,7 @@ const repoOf = (remote: string): string =>
 
 // What close() reads instead of asking `gh` for the pull request's own state: whether this run's
 // policy publishes at all, whether this run opened or found one, and whether publication ever
-// blocked — the shape of goal-run.sh:544, threaded from run/publish.ts's own bookkeeping.
+// blocked — threaded from run/publish.ts's own bookkeeping.
 export type PublishState = {
   publishes: boolean;
   prOpen: boolean;

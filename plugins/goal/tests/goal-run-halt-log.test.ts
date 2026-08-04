@@ -8,10 +8,6 @@ import { HASH, repo, run } from './support/goal-run-harness.ts';
 // goal-run.ts's own exit code for a gate refusal (see its header comment), distinct from PAUSED.
 const HALTED = 1;
 
-// Recording the gate's verdict to a run log lives in goal-run.ts only; goal-run.sh is frozen and
-// prints the verdict instead. Skipped rather than failed when the suite falls back to bash.
-const NODE_ONLY = process.env.GOAL_RUN_IMPL !== 'node' ? 'this behaviour ported to goal-run.ts only, not goal-run.sh yet' : false;
-
 // A gate that answers `check`/`lock`/`unlock` the way the fixture's own fake-gate does, but
 // splits its `commit` verdict across stdout and stderr, the shape `iteration.ts` has to
 // concatenate back together before it reaches the log.
@@ -42,7 +38,7 @@ exit 2
 
 // R7 (I5) — the gate's verdict on a refusal is recorded in the run log rather than printed, and
 // the STOP line names the log so the evidence stays findable.
-test('a gate refusal records the verdict in the run log and the STOP line names it', { skip: NODE_ONLY }, () => {
+test('a gate refusal records the verdict in the run log and the STOP line names it', () => {
   const fixture = repo();
   const gate = customGate(fixture, 1);
 
@@ -70,7 +66,7 @@ test('a gate refusal records the verdict in the run log and the STOP line names 
 
 // R7 (I5) — recorded once, not duplicated: the failure path used to log the verdict on write and
 // print it again on the failure branch.
-test('a gate refusal is recorded exactly once in the log', { skip: NODE_ONLY }, () => {
+test('a gate refusal is recorded exactly once in the log', () => {
   const fixture = repo();
   const gate = customGate(fixture, 1);
 
