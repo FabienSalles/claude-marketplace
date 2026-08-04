@@ -34,22 +34,22 @@ test('a fixture with one pass and one skip is refused, not silently accepted', (
   assert.match(output, /skipped/i, output);
 });
 
-// R1 — the suite must run once per runner in the list, not once with the default: a fixture test
-// that records `GOAL_RUN_IMPL` proves both runners actually ran by reading the record back.
-test('the suite runs once per runner, both recorded', () => {
+// R1 — the suite must run once per runner in the list: a fixture test that records a marker
+// proves the runner actually ran by reading the record back.
+test('the suite runs once per runner, recorded', () => {
   const root = tmpDir('goal-suite-wrapper-runners-');
   const record = join(tmpDir('goal-suite-wrapper-record-'), 'runners.txt');
   writeFileSync(record, '');
   fixture(
     root,
-    `import { test } from 'node:test';\nimport { appendFileSync } from 'node:fs';\ntest('records its runner', () => {\n  appendFileSync(${JSON.stringify(record)}, (process.env.GOAL_RUN_IMPL ?? 'bash') + '\\n');\n});`,
+    `import { test } from 'node:test';\nimport { appendFileSync } from 'node:fs';\ntest('records its run', () => {\n  appendFileSync(${JSON.stringify(record)}, 'ran\\n');\n});`,
   );
 
   const { code, output } = runWith({ GOAL_TESTS_ROOT: root });
 
   assert.equal(code, 0, output);
   const runners = readFileSync(record, 'utf8').trim().split('\n');
-  assert.deepEqual(runners.sort(), ['bash', 'node'], `both runners were not exercised:\n${output}`);
+  assert.deepEqual(runners, ['ran'], `the runner was not exercised:\n${output}`);
 });
 
 // The read of GOAL_TESTS_ROOT only relaxes the re-entry guard for a root that actually holds a

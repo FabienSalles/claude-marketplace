@@ -23,8 +23,7 @@ export const createReporter = (): Reporter => {
   };
 
   // An advisory agent's own words, kept out of stdout so the account there stays one state per
-  // line, and out of nowhere at all — goal-run.sh appended them (`:568`) and the port dropped it,
-  // so a lens finding existed only for as long as the process that asked for it.
+  // line, and into the run log, so a lens finding outlives the process that asked for it.
   const record = (text: string): void => {
     if (log && text.trim() !== '') {
       appendFileSync(log, `${text}\n`);

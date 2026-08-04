@@ -3,14 +3,10 @@ import assert from 'node:assert/strict';
 
 import { PAUSED, repo, run } from './support/goal-run-harness.ts';
 
-// The push-detection check lives in goal-run.ts only; goal-run.sh is frozen and never gained it.
-// Skipped rather than failed when the suite falls back to bash.
-const NODE_ONLY = process.env.GOAL_RUN_IMPL !== 'node' ? 'this check ported to goal-run.ts only, not goal-run.sh yet' : false;
-
 // R6 (I2) — a push from this checkout moves the local remote-tracking ref, which is exactly the
 // side effect `git for-each-ref refs/remotes` catches. Only the gate may publish, so the run has
 // to halt and name the ref rather than let a self-published implementer through unnoticed.
-test('the implementer pushing halts the run, naming the moved ref', { skip: NODE_ONLY }, () => {
+test('the implementer pushing halts the run, naming the moved ref', () => {
   const fixture = repo({ remote: true });
 
   const { code, output } = run(fixture, [fixture.plan, '1'], {
@@ -26,7 +22,7 @@ test('the implementer pushing halts the run, naming the moved ref', { skip: NODE
 // guard: a push on attempt 1 must still be caught after a quota failure sends the same iteration
 // to attempt 2, so a fresh snapshot per attempt (which would use attempt 1's push as its own
 // baseline) is not an option.
-test('a push on the first attempt survives a quota failure and retry', { skip: NODE_ONLY }, () => {
+test('a push on the first attempt survives a quota failure and retry', () => {
   const fixture = repo({ remote: true });
 
   const { code, output } = run(fixture, [fixture.plan, '1'], {

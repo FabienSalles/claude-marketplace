@@ -7,10 +7,6 @@ import { HASH, PLAN, git, repo, run } from './support/goal-run-harness.ts';
 import { close, LANDED } from '../scripts/run/close.ts';
 import type { Reporter } from '../scripts/run/report.ts';
 
-// The lock-once and publish-behind-the-DoD reordering lives in goal-run.ts only; goal-run.sh is
-// frozen and keeps its own bash ordering, so its own run of this suite skips both.
-const NODE_ONLY = process.env.GOAL_RUN_IMPL !== 'node' ? 'this reordering ported to goal-run.ts only, not goal-run.sh' : false;
-
 const PLAN_PR = PLAN.replace('Policy: commit\n', 'Policy: commit+pr\n');
 
 const land = (fixture: ReturnType<typeof repo>, env: Record<string, string> = {}) =>
@@ -310,7 +306,7 @@ test('the reviewer never runs when the publisher\'s own state says blocked', () 
 // R5 — the lock is acquired once, before the first iteration, and released only when the process
 // exits: two iterations landing in the same run must not show up as two lock/unlock pairs in the
 // gate's own log.
-test('the lock is acquired once for the whole run, not once per iteration', { skip: NODE_ONLY }, () => {
+test('the lock is acquired once for the whole run, not once per iteration', () => {
   const fixture = repo();
 
   const { code, output } = land(fixture);
@@ -324,7 +320,7 @@ test('the lock is acquired once for the whole run, not once per iteration', { sk
 // R6 — the final iteration's push moves into close(), behind the global Definition of Done: a
 // refusal there halts with that last commit landed locally but never reaching the remote, while
 // every iteration before it already published as it landed.
-test('a Definition of Done refusal leaves the last iteration\'s commit local, never pushed', { skip: NODE_ONLY }, () => {
+test('a Definition of Done refusal leaves the last iteration\'s commit local, never pushed', () => {
   const fixture = repo({ planText: PLAN_PR, remote: true });
 
   const { code, output } = land(fixture, { FAKE_GATE_DOD_EXIT: '1' });
@@ -336,7 +332,7 @@ test('a Definition of Done refusal leaves the last iteration\'s commit local, ne
 
 // R6 — the pull request the earlier iterations opened is still there, showing what did land,
 // even though the last iteration's own push never went out.
-test('a Definition of Done refusal still leaves the draft pull request open from the iterations that already landed', { skip: NODE_ONLY }, () => {
+test('a Definition of Done refusal still leaves the draft pull request open from the iterations that already landed', () => {
   const fixture = repo({ planText: PLAN_PR, remote: true });
 
   const { code, output } = land(fixture, { FAKE_GATE_DOD_EXIT: '1' });

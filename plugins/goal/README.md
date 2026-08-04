@@ -101,12 +101,11 @@ guarantee that is narrower than its slogan.
   on a refusal without copying the gate's `HALT` block into the run log. The log names the halt;
   the reason is only on the terminal.
 
-## Three generations live in this tree
+## Two generations live in this tree
 
 | Generation | Status |
 |---|---|
 | `workflows/goal-auto.js` (941 lines), `/goal:auto`, `scripts/goal-launch.sh`, and the six `goal-*` agents | **Legacy.** Still invocable, still documented in `commands/auto.md`, no longer the path anything is built against. `goal-launch.sh` creates a worktree and a tmux session, and launches `/goal:auto` inside it |
-| `scripts/goal-run.sh` (594 lines) | **Frozen**, kept as the A/B reference the suite proves the Node runner interchangeable with, one behaviour at a time |
 | `scripts/goal-run.ts` + `scripts/run/*.ts` (938 lines over 8 modules) | **Current.** What `/goal:supervise` launches and what the barriers above describe |
 
 Five shipped artifacts have never been exercised by a real run: `commands/supervise.md` (whose
@@ -115,10 +114,9 @@ own frontmatter concedes the classifier is unproven, two halts being its whole e
 `run/close.ts`, never fired) and `agents/goal-session-auditor.md`. Treat them as proposals with
 code attached.
 
-The test suite selects its runner with `GOAL_RUN_IMPL`, and `tests/run.sh` now runs it once per
-runner in its list — bash, then node — refusing a nonzero `skipped` line exactly as it refuses a
-failure. **CI exercises both runners on every invocation of `bash plugins/goal/tests/run.sh`**, and
-currently halts on both: the two runners are not yet proven equal (`docs/workflow-parity.md`).
+`tests/run.sh` runs the suite once per runner in its list, refusing a nonzero `skipped` line
+exactly as it refuses a failure. **CI exercises it on every invocation of
+`bash plugins/goal/tests/run.sh`**.
 
 ## What the plugin ships
 
@@ -130,7 +128,7 @@ currently halts on both: the two runners are not yet proven equal (`docs/workflo
 | [`/goal:next`](commands/next.md) | `commands/next.md` | Manual-loop checkpoint: verify the DoD, reconcile plan against code, emit the next `/goal` handoff |
 | `goal-run.ts` + `run/*.ts` | `scripts/` | The runner: preflight, sweep, lock, iteration, publish, close, report |
 | `goal-gate.ts` + `gate/*.ts` | `scripts/` | The judge, and the only committer. Exit 0 runnable · 1 `HALT` with a reason · 2 misuse. TypeScript run natively by node — no build, no dependency |
-| `goal-deny-setup.sh` | `scripts/` | Unions the three deny rules into the tree's `.claude/settings.local.json`. Additive and idempotent; needs `jq`. Required by `goal-run.sh` alone — the current runner dropped that precondition |
+| `goal-deny-setup.sh` | `scripts/` | Unions the three deny rules into the tree's `.claude/settings.local.json`. Additive and idempotent; needs `jq`. Not a precondition of the runner, which never checks for it |
 | `plan-guard.ts` | `scripts/` | Hashes every `gateN=`/`dodN=` line so a repair can prove it moved none. Used only by `/goal:supervise`. **Never run** |
 | `transcripts.ts` | `scripts/` | Resolves a run's transcripts from its recorded session ids. Used only by `goal-session-auditor`. **Never run** |
 | `goal-run-implementer`, `goal-run-lens`, `goal-run-auditor` | `agents/` | Spawned by the runner: one implementer per iteration, then an advisory lens and an auditor at close — neither able to undo what shipped |
@@ -167,7 +165,6 @@ behavior when they are absent.
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| Exit 2, "the implementer is not denied git…" | `goal-run.sh` only — the frozen reference keeps that precondition | `bash <plugin>/scripts/goal-deny-setup.sh`, or use the current runner, which dropped it |
 | Exit 2, "the plan's directory is visible to git" | `.claude/` is tracked | Ignore it, untracking any spec already committed |
 | Exit 2, "Policy is manual" | the runner has nowhere to put the work | Change the `Policy:` line, or run the manual loop with `/goal` and `/goal:next` |
 | Exit 2, "the plan declares no Remote line" | never defaulted to `origin` | Write the remote on the plan. Guessing here pushes a fork's work to its parent |

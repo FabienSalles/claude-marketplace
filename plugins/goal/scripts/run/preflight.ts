@@ -1,15 +1,15 @@
-// The nine refusals a run judges before writing a byte, worded exactly as goal-run.sh words
-// them: policy, remote, branch, clean tree, ignored plan directory, cleanup iteration inside a
-// feature plan, existing lock, base sweep (with the Bootstrap carve-out), and branch behind its
-// base. Every one is a refusal, never a warning, and every one runs before the lock is taken:
-// a run that starts wrong is worse than one that never starts.
+// The nine refusals a run judges before writing a byte: policy, remote, branch, clean tree,
+// ignored plan directory, cleanup iteration inside a feature plan, existing lock, base sweep
+// (with the Bootstrap carve-out), and branch behind its base. Every one is a refusal, never a
+// warning, and every one runs before the lock is taken: a run that starts wrong is worse than
+// one that never starts.
 //
-// goal-run.sh has a tenth, reading `.claude/settings.local.json` for a deny rule. This runner
-// dropped it: the check was a substring match over raw JSON, so a file whose permissions.allow
-// granted `Bash(git commit:*)` satisfied it while granting the opposite; it was installed
-// project-wide, so it also restrained the interactive session where the developer reads every
-// diff; and permissions are read at session start, so it described a future session and never
-// the running one. What replaces it is detection in run/iteration.ts, which is executed.
+// A `.claude/settings.local.json` deny rule is not among them: an earlier check reading it was a
+// substring match over raw JSON, so a file whose permissions.allow granted `Bash(git commit:*)`
+// satisfied it while granting the opposite; it was installed project-wide, so it also restrained
+// the interactive session where the developer reads every diff; and permissions are read at
+// session start, so it described a future session and never the running one. What replaces it is
+// detection in run/iteration.ts, which is executed.
 
 import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';

@@ -5,15 +5,9 @@ import { join } from 'node:path';
 
 import { PLAN, git, lockOf, repo, run } from './support/goal-run-harness.ts';
 
-// The sweep dedup and the pass narration below are Node-only: goal-run.sh is not among this
-// iteration's files to touch, so `run()` under its default (bash) selection would replay every
-// declaration and stay silent, same as before. Skipped rather than failed when the suite falls
-// back to bash, exactly as gate1 forces node to prove it in isolation.
-const NODE_ONLY = process.env.GOAL_RUN_IMPL !== 'node' ? 'this behaviour ported to goal-run.ts only, not goal-run.sh yet' : false;
-
 // R8 — the twelve preflight conditions run before the lock is taken, as refusals rather than
-// warnings, and word for word the same message goal-run.sh would give. A run that would have
-// burned a night on a red base, a stale branch or an absent remote refuses in seconds instead.
+// warnings. A run that would have burned a night on a red base, a stale branch or an absent
+// remote refuses in seconds instead.
 
 test('it refuses when the plan declares no Policy line', () => {
   const fixture = repo({ planText: PLAN.replace('Policy: commit\n', '') });
@@ -183,7 +177,7 @@ test('it refuses when the branch is behind the base it forked from', () => {
 // origin/HEAD: a `PR base:` header names it directly, or a `Remote:` header naming a fork falls
 // back to that fork's own default branch, before either falls back to origin/HEAD.
 
-test('it refuses against the plan\'s PR base:, even while origin/HEAD stays green', { skip: NODE_ONLY }, () => {
+test('it refuses against the plan\'s PR base:, even while origin/HEAD stays green', () => {
   const fixture = repo({ remote: true, prBase: 'release' });
 
   // origin/main tracks this checkout exactly, so origin/HEAD stays green; origin/release, only
@@ -206,7 +200,7 @@ test('it refuses against the plan\'s PR base:, even while origin/HEAD stays gree
   assert.ok(!existsSync(fixture.claudeLog), 'an implementer was spawned on a refusal');
 });
 
-test('it refuses against <remote>/HEAD when the plan declares no PR base, so a fork is checked against itself', { skip: NODE_ONLY }, () => {
+test('it refuses against <remote>/HEAD when the plan declares no PR base, so a fork is checked against itself', () => {
   const planText = PLAN.replace('Remote: origin\n', 'Remote: fork\n');
   const fixture = repo({ planText, staleBase: { remote: 'fork', branch: 'main' } });
 
@@ -220,7 +214,7 @@ test('it refuses against <remote>/HEAD when the plan declares no PR base, so a f
 // R2 — the base sweep runs each distinct declared command once, however many times the plan
 // repeats it across iterations, instead of replaying every occurrence.
 
-test('a command declared identically by two iterations runs once, not once per declaration', { skip: NODE_ONLY }, () => {
+test('a command declared identically by two iterations runs once, not once per declaration', () => {
   const planText = PLAN.replace('gate1=true\n', 'gate1=true\ngate2=printf x >> sweep-count.txt\n').replace(
     '- **Goal:** write b.txt\n',
     [
@@ -252,7 +246,7 @@ test('a command declared identically by two iterations runs once, not once per d
 // and every one of the nine preflight checks narrates on stdout once it passes, so the run reads
 // as a sequence rather than silence.
 
-test('the sweep announces the reduction from declared commands to the distinct ones it ran', { skip: NODE_ONLY }, () => {
+test('the sweep announces the reduction from declared commands to the distinct ones it ran', () => {
   const planText = PLAN.replace('gate1=true\n', 'gate1=true\ngate2=printf x >> sweep-count.txt\n').replace(
     '- **Goal:** write b.txt\n',
     [
@@ -276,7 +270,7 @@ test('the sweep announces the reduction from declared commands to the distinct o
   assert.match(output, /RUN base sweep: 1 distinct command run, 2 declared/, output);
 });
 
-test('every preflight check narrates on stdout once it passes', { skip: NODE_ONLY }, () => {
+test('every preflight check narrates on stdout once it passes', () => {
   const fixture = repo();
 
   const { code, output } = run(fixture, [fixture.plan, '1'], { FAKE_CLAUDE_WRITES: join(fixture.dir, 'a.txt') });

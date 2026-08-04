@@ -4,13 +4,7 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { HASH, RUN, lockOf, repo, run, sessionOf } from './support/goal-run-harness.ts';
-
-// The streamed narration and the session pointer are Node-only: goal-run.sh is not among this
-// iteration's files to touch, so it never asks the fixture for stream-json and `run()` under its
-// default (bash) selection would see the old plain output. Skipped rather than failed when the
-// suite falls back to bash, exactly as gate1 forces node to prove it in isolation.
-const NODE_ONLY = process.env.GOAL_RUN_IMPL !== 'node' ? 'this behaviour ported to goal-run.ts only, not goal-run.sh yet' : false;
+import { HASH, RUN_NODE, lockOf, repo, run, sessionOf } from './support/goal-run-harness.ts';
 
 // R4 — the plan lives in a gitignored directory outside the run's tree, and handing its path to
 // the implementer is what made a real run write its whole iteration into another checkout. The
@@ -44,7 +38,7 @@ test('it pins the implementer to its own agent, in a mode that never prompts', (
 
 // R4 — the implementer is invoked in a streamed, verbose account of its own actions, which is
 // what makes each of its tool uses renderable as it happens rather than buried in a wall of prose.
-test('it asks the implementer for a streamed, verbose account of its own actions', { skip: NODE_ONLY }, () => {
+test('it asks the implementer for a streamed, verbose account of its own actions', () => {
   const fixture = repo();
 
   run(fixture, [fixture.plan, '1'], { FAKE_CLAUDE_WRITES: join(fixture.dir, 'a.txt') });
@@ -57,7 +51,7 @@ test('it asks the implementer for a streamed, verbose account of its own actions
 
 // R4 — each tool use the implementer performs is rendered as one line, so watching a run means
 // reading a handful of `RUN implementer: <tool> <target>` lines rather than its prose.
-test('it renders each of the implementer tool uses as one line', { skip: NODE_ONLY }, () => {
+test('it renders each of the implementer tool uses as one line', () => {
   const fixture = repo();
 
   const { output } = run(fixture, [fixture.plan, '1'], {
@@ -71,7 +65,7 @@ test('it renders each of the implementer tool uses as one line', { skip: NODE_ON
 
 // R5 — the session_id the stream reports is recorded beside the run, so the full transcript
 // Claude Code already wrote can be found later without correlating timestamps.
-test('it records the implementer session id beside the run', { skip: NODE_ONLY }, () => {
+test('it records the implementer session id beside the run', () => {
   const fixture = repo();
 
   run(fixture, [fixture.plan, '1'], {
@@ -173,7 +167,7 @@ test('it releases the lock when the run is killed mid-implementation', () => {
 
   spawnSync(
     'bash',
-    ['-c', `"${RUN}" "${fixture.plan}" 1 & pid=$!; sleep 1; kill -TERM $pid; wait $pid`],
+    ['-c', `node "${RUN_NODE}" "${fixture.plan}" 1 & pid=$!; sleep 1; kill -TERM $pid; wait $pid`],
     {
       cwd: fixture.dir,
       encoding: 'utf8',
