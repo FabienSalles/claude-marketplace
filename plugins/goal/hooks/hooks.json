@@ -1,16 +1,4 @@
 {
-  "description": "Stop hook that regenerates the per-work-item execution log when on a `feature/<work-id>-…` branch (work-id = issue-<N>, a Jira key, or a slug) with a matching spec file. Silent no-op elsewhere — zero overhead on regular sessions.",
-  "hooks": {
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/issue-execution-log.sh",
-            "timeout": 15
-          }
-        ]
-      }
-    ]
-  }
+  "description": "No hooks registered.",
+  "hooks": {}
 }

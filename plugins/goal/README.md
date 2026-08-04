@@ -101,12 +101,10 @@ guarantee that is narrower than its slogan.
   on a refusal without copying the gate's `HALT` block into the run log. The log names the halt;
   the reason is only on the terminal.
 
-## Two generations live in this tree
+## One generation left in this tree
 
-| Generation | Status |
-|---|---|
-| `workflows/goal-auto.js` (941 lines), `/goal:auto`, `scripts/goal-launch.sh`, and the six `goal-*` agents | **Legacy.** Still invocable, still documented in `commands/auto.md`, no longer the path anything is built against. `goal-launch.sh` creates a worktree and a tmux session, and launches `/goal:auto` inside it |
-| `scripts/goal-run.ts` + `scripts/run/*.ts` (938 lines over 8 modules) | **Current.** What `/goal:supervise` launches and what the barriers above describe |
+`scripts/goal-run.ts` + `scripts/run/*.ts` (938 lines over 8 modules) is what `/goal:supervise`
+launches and what the barriers above describe.
 
 Five shipped artifacts have never been exercised by a real run: `commands/supervise.md` (whose
 own frontmatter concedes the classifier is unproven, two halts being its whole evidence),
@@ -135,9 +133,7 @@ exactly as it refuses a failure. **CI exercises it on every invocation of
 | `goal-run-reviewer`, `goal-session-auditor` | `agents/` | Post-publication review and transcript audit. **Never run** |
 | [`grill-adversarial`](skills/grill-adversarial/SKILL.md) | `skills/` | Opt-in, loaded during `/goal:run-issue`'s grill |
 | [`product:vertical-slice`](../product/skills/vertical-slice/SKILL.md) · [`product:delivery`](../product/skills/delivery/SKILL.md) | *(plugin `product`)* | Loaded by `/goal:run-issue` Phase 3 — how the spec splits, and how each slice ships alone |
-| `issue-execution-log.sh` Stop hook | `hooks/` | Regenerates the execution log at every Stop, only when all three hold: a `feature/<work-id>-…` branch, a matching `<work-id>-spec.md`, and a `/goal` command in the transcript. Silent no-op otherwise |
-| `extract-execution-log.py` | `scripts/` | Parses a session JSONL into a readable summary keyed by `<work-id>`. Run it as `python3 <plugin>/scripts/extract-execution-log.py <work-id>` |
-| `tests/run.sh` | `tests/` | The suite for the gate, both runners, the legacy workflow, the launcher and the guards. Wraps `node --test` once per runner in its list, and additionally requires at least one pass, no failure and no skip — `node --test` alone exits 0 on a glob matching nothing, and a skip is an unknown result refused exactly as a failure |
+| `tests/run.sh` | `tests/` | The suite for the gate, both runners, and the guards. Wraps `node --test` once per runner in its list, and additionally requires at least one pass, no failure and no skip — `node --test` alone exits 0 on a glob matching nothing, and a skip is an unknown result refused exactly as a failure |
 | `done-criteria.template` · `goal-handoff.template` · `post-merge.template` | `templates/` | The DoD baseline, the `/goal` handoff `/goal:next` fills, and what a merged run leaves behind — printed, never executed |
 
 The **work-id** generalizes the old issue number: `issue-<N>` for a GitHub issue, the lowercased
@@ -153,7 +149,6 @@ regenerated audit.
 | `jq` | `goal-deny-setup.sh` | |
 | A git-ignored `.claude/` | every run | Preflight refuses a plan directory git can see: the spec, the ticked box and the run log would read as an undeclared scope leak |
 | `gh` authenticated | `Policy: commit+pr`, or a GitHub source | `gh auth login` |
-| `python3` | the Stop hook and `extract-execution-log.py` | |
 | Atlassian MCP | a Jira source | Or paste with `inline` |
 
 Optional plugins enhance and never gate: `pocock` (`grill-me` / `grill-with-docs`, composed by
@@ -173,7 +168,6 @@ behavior when they are absent.
 | Exit 1, an iteration was refused | the gate halted | The log names the iteration but not the reason. Reproduce it from the repo root: `node <plugin>/scripts/goal-gate.ts verify <plan> <n>` |
 | Exit 3, paused | quota exhausted, or the implementer wrote nothing | Relaunch: the checkboxes are the whole state, so it resumes at the first unticked box |
 | The gate halts on files you considered in scope | the iteration's declared paths do not match reality | The declared list is the contract. Fix it in the spec, or keep the change out of this iteration |
-| Execution log not regenerating | one of the hook's three preconditions failed | Check the branch, the spec file, and that `/goal` was actually used. Or regenerate manually |
 
 ## Cost
 
