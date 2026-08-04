@@ -44,6 +44,13 @@ Write the failing test first and show its failure. This is not a style preferenc
 your implementation aside, re-runs `gate1`, and **requires it to fail**. A test that passes with
 your code out of the tree asserts nothing about this slice and halts it.
 
+Prove that RED yourself, before you write the implementation, with `goal-gate.ts bite <plan>
+<iteration>`: it runs that same set-aside-and-rerun on demand, tells you whether `gate1` failed,
+and restores the tree by overwrite either way. **Never `git stash`** to get the same effect — a
+stash cannot tell a tracked implementation from an intent-to-add test file, and a conflicted pop
+leaves the tree in a state neither you nor the gate can reconcile. `goal-gate.ts bite` is the one
+sanctioned way to check RED.
+
 Every business rule the iteration names must have a covering assertion. Load the project's
 convention skills before writing anything, and match the surrounding code's style — its naming,
 its idiom, its comment density — rather than your own preference.

@@ -177,7 +177,7 @@ const fakeClaude = (plan: string): string =>
 
 // R3/R4 — the runner carries the ticked set the way it carries the hash: a real run refuses to
 // commit an iteration once an earlier, already-landed one was unticked while it ran.
-test('a run refuses to commit once an earlier landed iteration was unticked while it ran', { skip: process.env.GOAL_RUN_IMPL !== 'node' ? 'the monotonicity check is carried by goal-run.ts only, not the frozen goal-run.sh' : false }, () => {
+test('a run refuses to commit once an earlier landed iteration was unticked while it ran', () => {
   const fixture = repo({ planText: RUN_PLAN_TWO });
   writeFileSync(join(fixture.bin, 'claude'), fakeClaude(fixture.plan));
   chmodSync(join(fixture.bin, 'claude'), 0o755);
@@ -186,14 +186,4 @@ test('a run refuses to commit once an earlier landed iteration was unticked whil
 
   assert.notEqual(code, 0);
   assert.match(readFileSync(`${fixture.plan}.run.log`, 'utf8'), /ticked than this run locked/);
-});
-
-test('the frozen bash runner still lands an iteration after an earlier one was unticked while it ran', { skip: process.env.GOAL_RUN_IMPL === 'node' ? 'asserts goal-run.sh, which this iteration never touches' : false }, () => {
-  const fixture = repo({ planText: RUN_PLAN_TWO });
-  writeFileSync(join(fixture.bin, 'claude'), fakeClaude(fixture.plan));
-  chmodSync(join(fixture.bin, 'claude'), 0o755);
-
-  const { code, output } = run(fixture, [fixture.plan, '2'], { GOAL_GATE: `node ${GATE}` });
-
-  assert.equal(code, 0, output);
 });

@@ -37,6 +37,46 @@ test('createPublisher exposes its own publish state directly on the object it re
 const publish = (fixture: ReturnType<typeof repo>, args: string[], env: Record<string, string> = {}) =>
   run(fixture, args, { FAKE_GATE_COMMITS: '1', ...env });
 
+// A `gh` stub that answers `pr view` with the given JSON body and swallows every other call, so
+// a test can drive `createPublisher` straight through a chosen `gh pr view` response instead of
+// the shared harness's fixture, which never carries a `state`.
+const publishAgainstPrView = (
+  fixture: ReturnType<typeof repo>,
+  prView: string,
+  iteration: string,
+): { calls: string; publisher: ReturnType<typeof createPublisher> } => {
+  const ghBin = tmpDir('goal-run-stub-gh-');
+  const ghLog = join(ghBin, 'gh-calls.txt');
+
+  writeFileSync(
+    join(ghBin, 'gh'),
+    `#!/bin/sh
+printf -- '--- call ---\\n%s\\n' "$*" >> ${ghLog}
+case "$1 $2" in
+  "pr view")   printf '%s\\n' '${prView}'; exit 0 ;;
+  *)           exit 0 ;;
+esac
+`,
+  );
+  chmodSync(join(ghBin, 'gh'), 0o755);
+
+  const originalCwd = process.cwd();
+  const originalPath = process.env.PATH;
+  process.chdir(fixture.dir);
+  process.env.PATH = `${ghBin}:${fixture.bin}:${originalPath ?? ''}`;
+
+  try {
+    const publisher = createPublisher(fixture.plan, fixture.plan, 'commit+pr', 'origin', silentReporter, 'true');
+
+    publisher.publish(iteration);
+
+    return { calls: readFileSync(ghLog, 'utf8'), publisher };
+  } finally {
+    process.chdir(originalCwd);
+    process.env.PATH = originalPath;
+  }
+};
+
 // R10 — under commit+pr, a landed iteration is scanned for secrets before it is pushed. A
 // scanner refusal blocks the push rather than publishing whatever the branch carries.
 test('a secret scanner refusal blocks the push, and no pull request is attempted', () => {
@@ -140,16 +180,11 @@ test('a second landing rewrites the pull request body instead of creating a seco
 // after a first invocation stays idempotent.
 test('resuming a single iteration when the pull request already exists edits it, and never recreates it', () => {
   const fixture = repo({ planText: PLAN_PR, remote: true });
+  const { calls } = publishAgainstPrView(fixture, '{"number":1,"state":"OPEN"}', '2');
 
-  const { code, output } = publish(fixture, [fixture.plan, '2'], {
-    FAKE_CLAUDE_WRITES: join(fixture.dir, 'b.txt'),
-    FAKE_GH_PR_EXISTS: '1',
-  });
-
-  assert.equal(code, 0, output);
-  const calls = readFileSync(fixture.ghLog, 'utf8');
-  assert.match(calls, /pr\nedit/, `the existing pull request was not edited:\n${calls}`);
-  assert.ok(!calls.includes('pr\ncreate'), `a second pull request was created though one already existed:\n${calls}`);
+  assert.match(calls, /pr view/, `the existing pull request was never looked up:\n${calls}`);
+  assert.match(calls, /pr edit/, `the existing pull request was not edited:\n${calls}`);
+  assert.ok(!calls.includes('pr create'), `a second pull request was created though one already existed:\n${calls}`);
 });
 
 // R7 — a pull request `gh` still resolves by branch name after it was merged or closed is not
@@ -190,6 +225,18 @@ esac
     process.chdir(originalCwd);
     process.env.PATH = originalPath;
   }
+});
+
+// R7 — a pull request `gh` reports under a state this code does not recognize (a future value
+// neither MERGED, CLOSED nor OPEN) is not treated as this run's open one: only OPEN keeps it
+// that way, everything else opens a new one instead of editing.
+test('a pull request under an unrecognized future state is not treated as open', () => {
+  const fixture = repo({ planText: PLAN_PR, remote: true });
+  const { calls } = publishAgainstPrView(fixture, '{"number":28,"state":"MERGE_QUEUE"}', '1');
+
+  assert.match(calls, /pr view/, `the pull request was never looked up:\n${calls}`);
+  assert.match(calls, /pr create/, `an unrecognized state was treated as open instead of opening a new one:\n${calls}`);
+  assert.ok(!calls.includes('pr edit'), `an unrecognized state was edited as though it were still open:\n${calls}`);
 });
 
 // Under Policy: commit (no `+pr`), nothing is pushed and no pull request is opened — the plan

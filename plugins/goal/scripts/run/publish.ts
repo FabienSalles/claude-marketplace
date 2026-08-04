@@ -128,12 +128,17 @@ export const createPublisher = (
     if (!state.prOpen) {
       const view = spawnSync('gh', ['pr', 'view', branch, '--repo', repo, '--json', 'number,state'], { encoding: 'utf8' });
 
-      // A merged or closed pull request still resolves by branch name, so its state is read
-      // too: only one still open is edited, or this run's iterations land where a reviewer
-      // already stopped looking.
-      if ((view.status ?? 1) === 0 && /"number":\d+/.test(view.stdout) && !/"state":"(MERGED|CLOSED)"/.test(view.stdout)) {
-        state.prOpen = true;
-      }
+      // A merged, closed, or otherwise-not-open pull request still resolves by branch name, so
+      // its state is read too: only one reported as OPEN is edited, or this run's iterations
+      // land where a reviewer already stopped looking. Allowlisted rather than denylisted, so a
+      // `gh` state this code does not yet know reads as not-open instead of open.
+      try {
+        const parsed = JSON.parse(view.stdout) as { number?: unknown; state?: unknown };
+
+        if ((view.status ?? 1) === 0 && typeof parsed.number === 'number' && parsed.state === 'OPEN') {
+          state.prOpen = true;
+        }
+      } catch {}
     }
 
     const gh = state.prOpen

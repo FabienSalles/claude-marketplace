@@ -1,7 +1,7 @@
 // Reduces a session JSONL to one line per tool call — the same rendering `run/narrate.ts` does
-// live and `extract-execution-log.py` does offline, moved to a file the auditor reads instead of
-// the raw transcript. Carries the result's `is_error` flag beside the call, and the JSONL line
-// number the tool_use itself sits on, so a finding can be anchored back to it.
+// live, moved to a file the auditor reads instead of the raw transcript. Carries the result's
+// `is_error` flag beside the call, and the JSONL line number the tool_use itself sits on, so a
+// finding can be anchored back to it.
 
 import { readFileSync } from 'node:fs';
 
