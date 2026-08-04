@@ -143,21 +143,21 @@ per-iteration prompt anyway makes them drive a loop they asked to be driven for 
 
 Read `Policy:` from the spec header, then check the **remaining unchecked** iterations for
 any that cannot be gated: a missing `gate` block, a block with no `gate1`, or a **Not
-machine-verifiable** line carrying the slice's core deliverable. `/goal:auto` halts on the
+machine-verifiable** line carrying the slice's core deliverable. `/goal:supervise` halts on the
 first of these rather than run, so naming them now saves a run that would stop at iteration
 one.
 
 | `Policy:` | Remaining iterations | Emit |
 |---|---|---|
-| `manual` | any | the per-iteration handoff **only** — `/goal:auto` refuses `manual` |
-| `commit` / `commit+pr` | all gateable | **`/goal:auto <plan path>` first**, per-iteration handoff below it as the fallback |
+| `manual` | any | the per-iteration handoff **only** — `/goal:supervise` refuses `manual` |
+| `commit` / `commit+pr` | all gateable | **`/goal:supervise <plan path>` first**, per-iteration handoff below it as the fallback |
 | `commit` / `commit+pr` | one or more not gateable | the per-iteration handoff first, and name the iterations that block a clean autonomous run |
 
-**Always pass the plan path explicitly** in the `/goal:auto` line. Bare `/goal:auto`
+**Always pass the plan path explicitly** in the `/goal:supervise` line. Bare `/goal:supervise`
 resolves the most recently modified `*-spec.md`, which is whichever plan was last touched —
 a follow-up tracks plan, a plan for another work-id. The path removes the guess.
 
-When you offer `/goal:auto`, state in one line what it will do: how many iterations remain,
+When you offer `/goal:supervise`, state in one line what it will do: how many iterations remain,
 that it halts hard on the first failing gate without attempting the rest, and — under
 `commit+pr` — that the first green iteration already pushes and opens a draft PR the rest
 keep updating, so a halt is still reviewable. The developer is choosing to walk away; they
@@ -199,7 +199,7 @@ place the leftovers can be named before the context is gone.
 Then close with two or three lines: the finished iteration is **verified** (name it),
 the plan is **reconciled** (list the edits you made), the tree is **safe**
 (clean / staged — say which), and the next iteration is **cold-start ready** — clear
-and paste the block above (or run the `/goal:auto` line, when you offered one).
+and paste the block above (or run the `/goal:supervise` line, when you offered one).
 
 ## Rules for THIS command
 

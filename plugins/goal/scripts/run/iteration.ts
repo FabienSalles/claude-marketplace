@@ -14,14 +14,11 @@ import { changedGitDirPaths, changedRefs, snapshotGitDir, snapshotRefs } from '.
 import { narrate } from './narrate.ts';
 import { REFUSED } from './preflight.ts';
 import type { Reporter } from './report.ts';
+import { git, quote } from './shell.ts';
 
 export const LANDED = 0;
 export const HALTED = 1;
 export const PAUSED = 3;
-
-const git = (...args: string[]) => spawnSync('git', args, { encoding: 'utf8' });
-
-const quote = (value: string): string => `'${value.replace(/'/g, `'\\''`)}'`;
 
 export const runIteration = (
   plan: string,

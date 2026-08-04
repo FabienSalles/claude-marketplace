@@ -11,17 +11,15 @@
 // session start, so it described a future session and never the running one. What replaces it is
 // detection in run/iteration.ts, which is executed.
 
-import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { basename, dirname, resolve } from 'node:path';
 
 import { header, iterationNumbers } from '../gate/plan.ts';
 import type { Reporter } from './report.ts';
+import { git } from './shell.ts';
 import { REFUSED, sweep } from './sweep.ts';
 
 export { REFUSED } from './sweep.ts';
-
-const git = (...args: string[]) => spawnSync('git', args, { encoding: 'utf8' });
 
 export type PreflightResult = {
   policy: string;
