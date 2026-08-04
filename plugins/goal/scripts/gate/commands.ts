@@ -16,10 +16,16 @@ export const emitCommand = (key: string, command: string, durationMs: number, ex
     return;
   }
 
-  appendFileSync(
-    jsonl,
-    `${JSON.stringify({ v: 1, ts: new Date().toISOString(), event: 'gate-command', key, command, duration_ms: durationMs, exit })}\n`,
-  );
+  // Bookkeeping, never the verdict's hostage: a stale or unwritable path loses the event, not
+  // the judgement.
+  try {
+    appendFileSync(
+      jsonl,
+      `${JSON.stringify({ v: 1, ts: new Date().toISOString(), event: 'gate-command', key, command, duration_ms: durationMs, exit })}\n`,
+    );
+  } catch {
+    // the stream is the runner's concern
+  }
 };
 
 export const gateCommands = (declared: Map<string, string>): [string, string][] =>

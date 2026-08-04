@@ -70,6 +70,24 @@ test('a command keeps its own shape under the ceiling', () => {
   );
 });
 
+// A run's state reaches its gate through GOAL_RUN_* environment — the JSONL path today, the
+// ticked set until #32 moved it to argv. None of it is addressed to the commands the gate runs:
+// the suite a plan declares spawns gates of its own, and each leaked variable has put tests red
+// on the first run that carried it (ticked on 2026-08-04 morning, jsonl the same afternoon).
+test('a declared command inherits no GOAL_RUN_* state from the run', () => {
+  process.env.GOAL_RUN_JSONL = '/nowhere/run.jsonl';
+  process.env.GOAL_RUN_FUTURE_STATE = 'x';
+
+  try {
+    const run = spawnSync('echo "leak=${GOAL_RUN_JSONL:-none}-${GOAL_RUN_FUTURE_STATE:-none}"', spawnOptions());
+
+    assert.equal(String(run.stdout).trim(), 'leak=none-none', 'run state reached a declared command');
+  } finally {
+    delete process.env.GOAL_RUN_JSONL;
+    delete process.env.GOAL_RUN_FUTURE_STATE;
+  }
+});
+
 test('a command that cannot be run still fails rather than escaping the ceiling', () => {
   assert.notEqual(spawnSync(bounded('exit 7'), { shell: true }).status, 0);
   assert.equal(spawnSync(bounded('exit 7'), { shell: true }).status, 7, 'the exit code was not the command own');
