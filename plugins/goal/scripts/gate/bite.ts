@@ -6,6 +6,7 @@ import { createHash } from 'node:crypto';
 import { dirname, join } from 'node:path';
 
 import { bounded, spawnOptions } from './bounded.ts';
+import { emitCommand } from './commands.ts';
 import { git, halt, heldLocks } from './halt.ts';
 import { covers } from './plan.ts';
 
@@ -87,7 +88,11 @@ export const biteCheck = (declared: Map<string, string>, iteration: string, chan
     }
   }
 
-  const run = spawnSync(bounded(declared.get('gate1') ?? ''), spawnOptions());
+  const command = declared.get('gate1') ?? '';
+  const start = Date.now();
+  const run = spawnSync(bounded(command), spawnOptions());
+
+  emitCommand('bite', command, Date.now() - start, run.status);
 
   for (const { path, present } of implementation) {
     if (present) {

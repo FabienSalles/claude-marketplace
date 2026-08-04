@@ -163,6 +163,7 @@ export const runIteration = (
   const verdict = spawnSync(`${gate} commit ${quote(plan)} ${quote(iteration)} ${quote(hash)} ${quote(ticked)}`, {
     shell: true,
     encoding: 'utf8',
+    env: { ...process.env, GOAL_RUN_JSONL: `${plan}.run.jsonl` },
   });
   const gateExit = verdict.status ?? 1;
 
