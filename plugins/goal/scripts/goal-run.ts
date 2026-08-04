@@ -100,12 +100,7 @@ const main = (): void => {
 
   for (const n of iterations) {
     const start = Date.now();
-    // run/iteration.ts spawns the gate's `commit` call itself, and is not this iteration's to
-    // touch: the environment it inherits by default from this process is the one channel left to
-    // carry the locked ticked set into that call, the way GOAL_RUN_QUOTA_SLEEP already carries
-    // its own knob across the same boundary.
-    process.env.GOAL_RUN_TICKED = tickedSets.get(n) ?? '';
-    runIteration(plan, source, n, hashes.get(n)!, gate, reporter);
+    runIteration(plan, source, n, hashes.get(n)!, tickedSets.get(n) ?? '', gate, reporter);
     landed.push(n);
 
     // Every iteration but the last publishes here, as it lands. The last one's push waits for
