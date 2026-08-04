@@ -6,6 +6,7 @@ import { join, resolve } from 'node:path';
 
 import { createReporter } from '../scripts/run/report.ts';
 import { tmpDir } from './support/tmp.ts';
+import { repo, run } from './support/goal-run-harness.ts';
 
 const plan = (): string => join(tmpDir('goal-run-events-'), 'plan-spec.md');
 
@@ -102,4 +103,27 @@ test('before setLog, say renders to stdout only and writes no jsonl file at all'
 
   assert.throws(() => readFileSync(`${target}.run.log`, 'utf8'));
   assert.throws(() => readFileSync(`${target}.run.jsonl`, 'utf8'));
+});
+
+// R19 — every stage the runner times — preflight, the implementer session, the gate verdict
+// call, and the push — writes a `stage=<name> duration_ms=<n> exit=<n>` event into the run's own
+// jsonl, so the next run report has a real column per stage instead of one elapsed figure.
+test('a landed run records a stage event with duration_ms and exit for preflight, implementer, gate and push', () => {
+  const fixture = repo();
+
+  const { code, output } = run(fixture, [fixture.plan], {
+    FAKE_GATE_COMMITS: '1',
+    FAKE_CLAUDE_WRITES: join(fixture.dir, 'a.txt'),
+  });
+
+  assert.equal(code, 0, output);
+
+  const lines = readFileSync(`${fixture.plan}.run.jsonl`, 'utf8').trim().split('\n');
+  const messages = lines.map((line) => (JSON.parse(line) as { event: string; message?: string }).message ?? '').join('\n');
+
+  const stage = (name: string) => new RegExp(`^RUN stage=${name} duration_ms=\\d+ exit=\\d+$`, 'm');
+
+  for (const name of ['preflight', 'implementer', 'gate', 'push']) {
+    assert.match(messages, stage(name), `no stage=${name} event was recorded:\n${messages}`);
+  }
 });

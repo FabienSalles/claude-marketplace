@@ -60,6 +60,7 @@ export const runIteration = (
   for (;;) {
     reporter.say(`RUN handing iteration ${iteration} to the implementer`);
 
+    const implementerStart = Date.now();
     const implemented = spawnSync(
       '/bin/sh',
       [
@@ -81,6 +82,7 @@ export const runIteration = (
     );
 
     narrate(implemented.stdout, reporter);
+    reporter.say(`RUN stage=implementer duration_ms=${Date.now() - implementerStart} exit=${implemented.status ?? 1}`);
 
     if ((implemented.status ?? 1) === 0) {
       break;
@@ -157,6 +159,7 @@ export const runIteration = (
 
   reporter.say('RUN the tree moved, asking the gate for a verdict');
 
+  const gateStart = Date.now();
   const verdict = spawnSync(`${gate} commit ${quote(plan)} ${quote(iteration)} ${quote(hash)} ${quote(ticked)}`, {
     shell: true,
     encoding: 'utf8',
@@ -164,6 +167,7 @@ export const runIteration = (
   const gateExit = verdict.status ?? 1;
 
   reporter.record(`${verdict.stdout}${verdict.stderr}`);
+  reporter.say(`RUN stage=gate duration_ms=${Date.now() - gateStart} exit=${gateExit}`);
 
   if (gateExit === 0) {
     reporter.say(`RUN iteration ${iteration} landed, gate-verified`);
