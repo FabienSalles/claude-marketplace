@@ -20,6 +20,7 @@ const repoOf = (remote: string): string =>
 
 export type Publisher = {
   publish: (iteration: string) => void;
+  foldReport?: (text: string) => void;
   state: PublishState;
 };
 
@@ -162,5 +163,24 @@ export const createPublisher = (
     reporter.say(`RUN ${blocked}`);
   };
 
-  return { publish, state };
+  // The auditor's report, folded into the same body-rewrite path as every other landing: no
+  // comment, no separate channel, and a rerun on the same pull request replaces the section
+  // rather than stacking another one beside it, since the whole body is recomputed every time.
+  const foldReport = (text: string): void => {
+    if (!state.publishes || !state.prOpen) {
+      return;
+    }
+
+    const repo = repoOf(remote);
+    const branch = git('branch', '--show-current').stdout.trim();
+    const gh = spawnSync('gh', ['pr', 'edit', branch, '--repo', repo, '--body', `${prBody()}\n## Run report\n\n${text}\n`], { encoding: 'utf8' });
+
+    if ((gh.status ?? 1) === 0) {
+      reporter.say('RUN folded the run report into the pull request body');
+    } else {
+      reporter.say(`RUN failed to fold the run report into the pull request body: ${gh.stdout}${gh.stderr}`);
+    }
+  };
+
+  return { publish, foldReport, state };
 };

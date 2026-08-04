@@ -3,9 +3,10 @@ import assert from 'node:assert/strict';
 import { chmodSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { FAKE_REPO, PLAN, git, repo, run } from './support/goal-run-harness.ts';
+import { FAKE_REPO, HASH, PLAN, git, repo, run } from './support/goal-run-harness.ts';
 import { tmpDir } from './support/tmp.ts';
 import { createPublisher } from '../scripts/run/publish.ts';
+import { close, LANDED } from '../scripts/run/close.ts';
 import type { Reporter } from '../scripts/run/report.ts';
 
 const PLAN_PR = PLAN.replace('Policy: commit\n', 'Policy: commit+pr\n');
@@ -237,6 +238,72 @@ test('a pull request under an unrecognized future state is not treated as open',
   assert.match(calls, /pr view/, `the pull request was never looked up:\n${calls}`);
   assert.match(calls, /pr create/, `an unrecognized state was treated as open instead of opening a new one:\n${calls}`);
   assert.ok(!calls.includes('pr edit'), `an unrecognized state was edited as though it were still open:\n${calls}`);
+});
+
+// PR body carries the report at close — close() folds the auditor's own report into the pull
+// request body through publish.ts's existing body-rewrite path, never as a comment.
+test('close folds the auditor\'s report into the pull request body, not as a comment', () => {
+  const fixture = repo({ planText: PLAN_PR, remote: true });
+  const dir = tmpDir('goal-run-report-');
+  writeFileSync(join(dir, 'report.md'), '# Report\n\nCosts: 3 iterations, $1.20.\n');
+
+  const originalCwd = process.cwd();
+  const originalPath = process.env.PATH;
+  process.chdir(fixture.dir);
+  process.env.PATH = `${fixture.bin}:${originalPath ?? ''}`;
+
+  try {
+    const publisher = createPublisher(fixture.plan, fixture.plan, 'commit+pr', 'origin', silentReporter, 'true');
+    publisher.state.prOpen = true;
+
+    const code = close(fixture.plan, join(fixture.bin, 'fake-gate'), HASH, 'origin', publisher, ['1'], dir, silentReporter);
+
+    assert.equal(code, LANDED);
+    const calls = readFileSync(fixture.ghLog, 'utf8').split('--- call ---\n').filter((call) => call.trim() !== '');
+    const edits = calls.filter((call) => call.startsWith('pr\nedit'));
+
+    assert.ok(edits.length > 0, `no pull request edit carried the run report:\n${calls.join('\n===\n')}`);
+    assert.match(edits[edits.length - 1]!, /## Run report/, `no "## Run report" section was folded into the pull request body:\n${edits.join('\n===\n')}`);
+    assert.match(edits[edits.length - 1]!, /Costs: 3 iterations, \$1\.20\./, `the auditor's own report text was not carried into the pull request body:\n${edits.join('\n===\n')}`);
+    assert.ok(!calls.some((call) => call.startsWith('pr\ncomment')), `the report was posted as a comment rather than folded into the pull request body:\n${calls.join('\n===\n')}`);
+  } finally {
+    process.chdir(originalCwd);
+    process.env.PATH = originalPath;
+  }
+});
+
+// PR body carries the report at close — a second close() on the same pull request replaces the
+// report section rather than appending another one beside it.
+test('a second close() replaces the run report section instead of appending to it', () => {
+  const fixture = repo({ planText: PLAN_PR, remote: true });
+  const dir = tmpDir('goal-run-report-rerun-');
+  const reportPath = join(dir, 'report.md');
+
+  const originalCwd = process.cwd();
+  const originalPath = process.env.PATH;
+  process.chdir(fixture.dir);
+  process.env.PATH = `${fixture.bin}:${originalPath ?? ''}`;
+
+  try {
+    const publisher = createPublisher(fixture.plan, fixture.plan, 'commit+pr', 'origin', silentReporter, 'true');
+    publisher.state.prOpen = true;
+
+    writeFileSync(reportPath, 'First run: nothing recurring.\n');
+    close(fixture.plan, join(fixture.bin, 'fake-gate'), HASH, 'origin', publisher, ['1'], dir, silentReporter);
+
+    writeFileSync(reportPath, 'Second run: same halt as before.\n');
+    close(fixture.plan, join(fixture.bin, 'fake-gate'), HASH, 'origin', publisher, ['2'], dir, silentReporter);
+
+    const calls = readFileSync(fixture.ghLog, 'utf8').split('--- call ---\n').filter((call) => call.trim() !== '');
+    const edits = calls.filter((call) => call.startsWith('pr\nedit'));
+    const last = edits[edits.length - 1]!;
+
+    assert.match(last, /Second run: same halt as before\./, `the second report never reached the pull request body:\n${last}`);
+    assert.ok(!last.includes('First run: nothing recurring.'), `the first run's report was still there instead of replaced:\n${last}`);
+  } finally {
+    process.chdir(originalCwd);
+    process.env.PATH = originalPath;
+  }
 });
 
 // Under Policy: commit (no `+pr`), nothing is pushed and no pull request is opened — the plan

@@ -4,6 +4,7 @@
 // neither able to undo work the gate already verified and shipped.
 
 import { spawnSync } from 'node:child_process';
+import { existsSync, readFileSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
 
 import { iterationNumbers, readPlan } from '../gate/plan.ts';
@@ -125,8 +126,9 @@ this run: it is advisory only.`;
     reporter.say('RUN lens findings recorded, advisory only');
   }
 
+  const reportPath = join(dir, 'report.md');
   const auditBrief = `Audit the run that just ended on plan ${basename(plan)} and write its report to
-${join(dir, 'report.md')}.
+${reportPath}.
 
 Every stage this run timed is recorded as a JSON event in ${jsonl}: read it for what happened and
 what each stage cost, per iteration.
@@ -140,6 +142,12 @@ and do not judge whether the work was correct — the gate already did that.`;
   reporter.record(`${audit.stdout}${audit.stderr}`);
   reporter.say(`RUN stage=auditor duration_ms=${Date.now() - auditStart} exit=${audit.status ?? 1}`);
   reporter.say('RUN audit recorded');
+
+  // Folded into the pull request body the auditor's report has just been written to, never as a
+  // comment: the reviewer reads costs, halts and recurrences on the pull request itself.
+  if (existsSync(reportPath)) {
+    publisher.foldReport?.(readFileSync(reportPath, 'utf8'));
+  }
 
   if (dodExit !== 0) {
     reporter.say('STOP the global Definition of Done refused this run:');
