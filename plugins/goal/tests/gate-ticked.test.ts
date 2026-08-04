@@ -133,6 +133,27 @@ test('commit is unaffected by an untick when it is handed no ticked set', () => 
   assert.equal(code, 0, output);
 });
 
+// The ticked set travels by argument only. It used to fall back to GOAL_RUN_TICKED, and a
+// declared command that spawns gates of its own — the suite does — read the outer run's lock as
+// its own: three tests red on the first run that ever locked with a non-empty set (2026-08-04).
+test('commit ignores a ticked set parked in the environment', () => {
+  const { repo, plan } = fixture([
+    { ticked: true, lines: GATE_BLOCK },
+    { ticked: false, lines: GATE_BLOCK },
+  ]);
+  const hash = hashOf(repo, plan, '2');
+  touchDeclared(repo);
+  writeFileSync(plan, readFileSync(plan, 'utf8').replace('- [x]', '- [ ]'));
+
+  const result = spawnSync('node', [GATE, 'commit', plan, '2', hash], {
+    cwd: repo,
+    encoding: 'utf8',
+    env: { ...process.env, GOAL_RUN_TICKED: '1' },
+  });
+
+  assert.equal(result.status ?? -1, 0, `${result.stdout}${result.stderr}`);
+});
+
 // A plan with iteration 1 already landed and iteration 2 next up, used by both runners: `claude`
 // is faked to write iteration 2's declared file, then untick iteration 1's box — the plan lives
 // in a gitignored directory, so rewriting it never shows up as a scope leak.

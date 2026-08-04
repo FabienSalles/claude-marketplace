@@ -28,6 +28,7 @@ export const runIteration = (
   source: string,
   iteration: string,
   hash: string,
+  ticked: string,
   gate: string,
   reporter: Reporter,
 ): void => {
@@ -159,7 +160,7 @@ export const runIteration = (
 
   reporter.say('RUN the tree moved, asking the gate for a verdict');
 
-  const verdict = spawnSync(`${gate} commit ${quote(plan)} ${quote(iteration)} ${quote(hash)}`, {
+  const verdict = spawnSync(`${gate} commit ${quote(plan)} ${quote(iteration)} ${quote(hash)} ${quote(ticked)}`, {
     shell: true,
     encoding: 'utf8',
   });
