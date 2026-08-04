@@ -5,7 +5,7 @@
 
 import { spawnSync } from 'node:child_process';
 
-const quote = (value: string): string => `'${value.replace(/'/g, `'\\''`)}'`;
+import { quote } from './shell.ts';
 
 const gateCall = (gate: string, subcommand: string, plan: string): number =>
   spawnSync(`${gate} ${subcommand} ${quote(plan)}`, { shell: true, stdio: 'ignore' }).status ?? 1;

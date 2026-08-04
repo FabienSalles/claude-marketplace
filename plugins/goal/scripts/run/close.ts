@@ -9,13 +9,10 @@ import { basename } from 'node:path';
 import { iterationNumbers, readPlan } from '../gate/plan.ts';
 import type { Publisher } from './publish.ts';
 import type { Reporter } from './report.ts';
+import { git, quote } from './shell.ts';
 
 export const LANDED = 0;
 export const HALTED = 1;
-
-const git = (...args: string[]) => spawnSync('git', args, { encoding: 'utf8' });
-
-const quote = (value: string): string => `'${value.replace(/'/g, `'\\''`)}'`;
 
 // `gh` needs owner/name, git gives a URL: SSH, HTTPS, with or without the `.git` suffix.
 const repoOf = (remote: string): string =>

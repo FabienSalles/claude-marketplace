@@ -9,8 +9,7 @@ import { basename } from 'node:path';
 import { header, iterationHeading } from '../gate/plan.ts';
 import type { Reporter } from './report.ts';
 import type { PublishState } from './close.ts';
-
-const git = (...args: string[]) => spawnSync('git', args, { encoding: 'utf8' });
+import { git } from './shell.ts';
 
 // `gh` needs owner/name, git gives a URL: SSH, HTTPS, with or without the `.git` suffix.
 const repoOf = (remote: string): string =>
