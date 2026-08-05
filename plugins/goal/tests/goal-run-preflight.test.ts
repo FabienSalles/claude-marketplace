@@ -4,6 +4,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { PLAN, git, lockOf, repo, run } from './support/goal-run-harness.ts';
+import { tmpDir } from './support/tmp.ts';
 
 // R8 — the twelve preflight conditions run before the lock is taken, as refusals rather than
 // warnings. A run that would have burned a night on a red base, a stale branch or an absent
@@ -268,6 +269,80 @@ test('the sweep announces the reduction from declared commands to the distinct o
 
   assert.equal(code, 0, output);
   assert.match(output, /RUN base sweep: 1 distinct command run, 2 declared/, output);
+});
+
+// R10 — a settings.json that neither disables the auto-updater nor pins autoUpdatesChannel to
+// stable is a warning, not a refusal: the run continues, the implementer is spawned, and the
+// warning names the risk once on stdout.
+
+test('it warns but continues when settings.json neither disables the auto-updater nor pins a stable channel', () => {
+  const fixture = repo();
+  const settingsPath = join(tmpDir('goal-run-settings-'), 'settings.json');
+  writeFileSync(settingsPath, JSON.stringify({ autoUpdatesChannel: 'latest' }));
+
+  const { code, output } = run(fixture, [fixture.plan, '1'], {
+    FAKE_CLAUDE_WRITES: join(fixture.dir, 'a.txt'),
+    GOAL_RUN_SETTINGS_PATH: settingsPath,
+  });
+
+  assert.equal(code, 0, output);
+  assert.match(output, /RUN preflight: warning — this machine's auto-updater can replace the Claude Code binary mid-run and kill it/, output);
+  assert.ok(existsSync(fixture.claudeLog), 'the warning stopped the run reaching the implementer');
+});
+
+test('it does not warn when env.DISABLE_AUTOUPDATER is set', () => {
+  const fixture = repo();
+  const settingsPath = join(tmpDir('goal-run-settings-'), 'settings.json');
+  writeFileSync(settingsPath, JSON.stringify({ env: { DISABLE_AUTOUPDATER: '1' } }));
+
+  const { code, output } = run(fixture, [fixture.plan, '1'], {
+    FAKE_CLAUDE_WRITES: join(fixture.dir, 'a.txt'),
+    GOAL_RUN_SETTINGS_PATH: settingsPath,
+  });
+
+  assert.equal(code, 0, output);
+  assert.ok(!output.includes('RUN preflight: warning'), output);
+});
+
+test('it does not warn when autoUpdatesChannel is stable', () => {
+  const fixture = repo();
+  const settingsPath = join(tmpDir('goal-run-settings-'), 'settings.json');
+  writeFileSync(settingsPath, JSON.stringify({ autoUpdatesChannel: 'stable' }));
+
+  const { code, output } = run(fixture, [fixture.plan, '1'], {
+    FAKE_CLAUDE_WRITES: join(fixture.dir, 'a.txt'),
+    GOAL_RUN_SETTINGS_PATH: settingsPath,
+  });
+
+  assert.equal(code, 0, output);
+  assert.ok(!output.includes('RUN preflight: warning'), output);
+});
+
+test('a missing settings.json produces no warning and no crash', () => {
+  const fixture = repo();
+  const settingsPath = join(tmpDir('goal-run-settings-'), 'nonexistent-settings.json');
+
+  const { code, output } = run(fixture, [fixture.plan, '1'], {
+    FAKE_CLAUDE_WRITES: join(fixture.dir, 'a.txt'),
+    GOAL_RUN_SETTINGS_PATH: settingsPath,
+  });
+
+  assert.equal(code, 0, output);
+  assert.ok(!output.includes('RUN preflight: warning'), output);
+});
+
+test('an unparseable settings.json produces no warning and no crash', () => {
+  const fixture = repo();
+  const settingsPath = join(tmpDir('goal-run-settings-'), 'invalid-settings.json');
+  writeFileSync(settingsPath, 'not json');
+
+  const { code, output } = run(fixture, [fixture.plan, '1'], {
+    FAKE_CLAUDE_WRITES: join(fixture.dir, 'a.txt'),
+    GOAL_RUN_SETTINGS_PATH: settingsPath,
+  });
+
+  assert.equal(code, 0, output);
+  assert.ok(!output.includes('RUN preflight: warning'), output);
 });
 
 test('every preflight check narrates on stdout once it passes', () => {
