@@ -1,9 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync, realpathSync } from 'node:fs';
-import { join, relative } from 'node:path';
+import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
-import { HASH, PLAN, git, repo, run } from './support/goal-run-harness.ts';
+import { HASH, PLAN, git, jsonlOf, repo, run, runDirOf } from './support/goal-run-harness.ts';
 import { close, LANDED } from '../scripts/run/close.ts';
 import type { Reporter } from '../scripts/run/report.ts';
 
@@ -76,8 +76,8 @@ test('the auditor is invoked with the run\'s own JSONL path, not an elapsed stri
   assert.equal(code, 0, output);
   const args = readFileSync(fixture.claudeLog, 'utf8');
   assert.match(args, /^goal:goal-run-auditor$/m, `the auditor was never invoked:\n${args}`);
-  const jsonl = `${relative(realpathSync(fixture.dir), realpathSync(fixture.plan))}.run.jsonl`;
-  assert.ok(args.includes(jsonl), `the auditor was not handed the run's own JSONL path:\n${args}`);
+  assert.ok(args.includes(jsonlOf(fixture)), `the auditor was not handed the run's own JSONL path:\n${args}`);
+  assert.ok(args.includes(runDirOf(fixture)), `the auditor was not told to write into the run's own directory:\n${args}`);
   assert.ok(!args.includes(fixture.plan), `the plan's absolute path leaked into an agent's argv:\n${args}`);
 });
 
@@ -113,7 +113,7 @@ test('close skips marking the pull request ready when the publisher\'s own state
       'origin',
       { publish: () => {}, state: { publishes: true, prOpen: true, blocked: true } },
       ['1'],
-      'plan.run.jsonl',
+      'run-dir',
       reporter,
     );
 
@@ -170,7 +170,7 @@ test('the lens is briefed from the plan\'s own ticked iterations, not from the r
       'origin',
       { publish: () => {}, state: { publishes: false, prOpen: false, blocked: false } },
       ['2'],
-      'plan.run.jsonl',
+      'run-dir',
       reporter,
     );
 
@@ -210,7 +210,7 @@ test('the reviewer runs once the pull request is marked ready', () => {
       'origin',
       { publish: () => {}, state: { publishes: true, prOpen: true, blocked: false } },
       ['1'],
-      'plan.run.jsonl',
+      'run-dir',
       reporter,
     );
 
@@ -253,7 +253,7 @@ test('close reports a stage=<name> duration_ms=<n> exit=<n> event for every stag
       'origin',
       { publish: () => {}, state: { publishes: true, prOpen: true, blocked: false } },
       ['1'],
-      'plan.run.jsonl',
+      'run-dir',
       reporter,
     );
 
@@ -298,7 +298,7 @@ test('the reviewer never runs when marking the pull request ready fails', () => 
       'origin',
       { publish: () => {}, state: { publishes: true, prOpen: true, blocked: false } },
       ['1'],
-      'plan.run.jsonl',
+      'run-dir',
       reporter,
     );
 
@@ -339,7 +339,7 @@ test('the reviewer never runs when the publisher\'s own state says blocked', () 
       'origin',
       { publish: () => {}, state: { publishes: true, prOpen: true, blocked: true } },
       ['1'],
-      'plan.run.jsonl',
+      'run-dir',
       reporter,
     );
 

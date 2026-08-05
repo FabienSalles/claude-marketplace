@@ -15,10 +15,9 @@ splits becomes several plan files, and the developer launches one run per file.
 **What a run is, as of today.** A run is one `node goal-run.ts <plan>` process
 (`scripts/goal-run.ts` plus `scripts/run/*.ts`), which is what `/goal:supervise` launches
 (`commands/supervise.md:31`). It surveys the plan's unchecked boxes, then implements them one at a
-time in a single `for` loop (`goal-run.ts:92-98`). The harness that carried tracks,
-`workflows/goal-auto.js`, is still checked in and still reachable through `/goal:auto`
-(`commands/auto.md:220`) and through `scripts/goal-launch.sh:133` — it orchestrates nothing that
-ships, and the sections below describe it in the past tense on purpose.
+time in a single `for` loop (`goal-run.ts:92-98`). The harness that carried tracks is the
+abandoned Workflow runtime this loop used to run on — still checked in, orchestrating nothing
+that ships — and the sections below describe it in the past tense on purpose.
 
 ---
 
@@ -55,9 +54,9 @@ This used to be an argument about the `Workflow` runtime's per-workflow concurre
 invocations got five caps, so nothing was surrendered by moving the parallelism up. There is no
 runtime to appeal to now. A run is an ordinary Node process that spawns one `claude -p` per
 iteration (`run/iteration.ts:111`), and nothing inside it bounds concurrency, tokens or
-wall-clock — the 80k floor at `goal-auto.js:53` was the only cost ceiling any generation ever
-had, it was inert unless a directive armed a budget (`:664`), and neither runner since has
-carried anything in its place.
+wall-clock — the 80k floor the Workflow used to declare was the only cost ceiling any generation
+ever had, it was inert unless a directive armed a budget, and neither runner since has carried
+anything in its place.
 
 Which makes the conclusion cheaper rather than weaker. What actually limits five concurrent runs
 is the subscription and the machine, and that limit is the same whether the parallelism lives
@@ -68,9 +67,9 @@ the parallelism to the launch site surrenders nothing.
 
 ## 2. The design defect, and its three symptoms
 
-`goal-auto.js` served two execution modes in one code path, and **the mode was inferred from
-an absence**: `DIR === undefined` meant sequential. Nine sites branched on it, by the count taken
-when they were removed.
+The abandoned Workflow served two execution modes in one code path, and **the mode was inferred
+from an absence**: `DIR === undefined` meant sequential. Nine sites branched on it, by the count
+taken when they were removed.
 
 That inference is the whole problem. A site that never asks the question gets sequential
 behaviour **by default** — which is exactly wrong in track mode. So forgetting a branch does
@@ -94,8 +93,8 @@ The result was non-deterministic: **two tracks of four wrote into the main check
 their gates judged an untouched worktree and correctly refused. The gate was right; the work
 was in the wrong tree.
 
-**This survived the removal of tracks, and it took a real launch to show it.** The
-`goal-auto-remediation` plan added the tree's path and branch to the brief, which was necessary
+**This survived the removal of tracks, and it took a real launch to show it.** The remediation
+plan that followed added the tree's path and branch to the brief, which was necessary
 and not sufficient: the brief still opened on the plan's absolute path, and the plan lives
 outside the run's tree because its directory is gitignored. On 2026-07-29 the first end-to-end
 run read the plan there, took its parent as the repository root, and wrote its whole iteration
@@ -173,12 +172,11 @@ state" design rests on.
 **A run gets a session it does not share.** The reason is narrower than it was once written here.
 Backgrounding does not kill a run: the case observed was a **permission prompt nobody answered**,
 which leaves a session looking alive in `Needs input` while no iteration advances, and what fixes
-it is `--permission-mode auto`, not a session of its own (`scripts/goal-launch.sh:129-132` states
-the diagnosis where the flag is passed). What a dedicated session does buy is outliving the
-terminal that opened it and a stable name to reattach to; once it is born inside a worktree,
-isolation is free and the harness needs no worktree code at all. `goal-launch.sh` is the one
-gesture that sets that up — and its last line still opens `/goal:auto` (`:133`), so the documented
-launcher reaches the abandoned harness rather than `goal-run.ts`.
+it is `--permission-mode auto`, not a session of its own. What a dedicated session does buy is
+outliving the terminal that opened it and a stable name to reattach to; once it is born inside a
+worktree, isolation is free and the harness needs no worktree code at all. The earlier launcher
+that set that up opened the abandoned Workflow rather than `goal-run.ts`, and nothing on the
+current path replaced it.
 
 ---
 
@@ -202,7 +200,7 @@ discovered after both runs have already paid for themselves.
 
 ## What this argument does not cover
 
-**The numbers are the old harness's.** Both runs in §1 were `goal-auto.js` runs, in July. The
+**The numbers are the old harness's.** Both runs in §1 were runs of the abandoned Workflow, in July. The
 runner that replaced it has since driven a plan end to end — seven iterations landed, global
 Definition of Done green, pull request marked ready, lens and audit recorded, all of it in
 `.claude/plans/goal-run-improvements-spec.md.run.log`. Nobody has remeasured the cost of an

@@ -63,9 +63,9 @@ untrusted content but holds no tools, while the *privileged* model holds the too
 sees the content.[^camel][^dual]
 
 The principle is right and it survives every generation of the harness. What did not survive is
-the mechanism. `agents/goal-reader.md` still exists, holds `tools: Bash` and nothing else, and has
-exactly one caller in the repository: `workflows/goal-auto.js:446`, in the abandoned workflow.
-Nothing in the current runner invokes it.
+the mechanism. `agents/goal-reader.md` still exists, holds `tools: Bash` and nothing else, and its
+only caller was the abandoned Workflow runtime this loop used to run on — still checked in,
+invoked by nothing. Nothing in the current runner invokes it.
 
 **And the shipped path inverts the separation.** `run/close.ts:71-81` briefs
 `goal:goal-run-reviewer` to read a pull request — third-party text — *and* to post its review
@@ -107,11 +107,10 @@ No text written by anyone else is ever read. The attacker cannot edit this comme
 access, and someone with write access to your repository can already push code. This is the answer
 to "steer with comments and writing": you write, but what crosses the boundary is bits, not prose.
 
-Built once, in `workflows/goal-auto.js` (`CONTROLS` at `:406`, the panel body at `:408-420`), with
-three verbs — `stop`, `no-ship`, `skip-lenses`. `retry-current` was rejected there for a reason
-that still holds: the loop it would live in had no retry, and a remote verb whose only job is to
-contradict the halt rule is the first place that rule would leak. None of it was carried into
-`goal-run.sh` or into `goal-run.ts`.
+Built once, in the abandoned Workflow runtime this loop used to run on, with three verbs —
+`stop`, `no-ship`, `skip-lenses`. `retry-current` was rejected there for a reason that still
+holds: the loop it would live in had no retry, and a remote verb whose only job is to contradict
+the halt rule is the first place that rule would leak. None of it was carried into `goal-run.ts`.
 
 ### Tier 2 — A fenced command block in a new comment
 
@@ -167,8 +166,8 @@ check that enforces the bar can be switched off beside it, proves less than its 
 
 ## The capability restriction there used to be, and what replaced it
 
-`goal-run.sh` refuses to start unless `.claude/settings.local.json` mentions `git commit`,
-`git push` and `git add`. That was the one capability restriction the harness enforced, and the
+The earlier bash runner refused to start unless `.claude/settings.local.json` mentions
+`git commit`, `git push` and `git add`. That was the one capability restriction the harness enforced, and the
 current runner dropped it for three reasons: the check was a `String.includes` over raw JSON, so an
 `allow` entry naming the same verbs passed it; it was installed as a project rule, so it restrained
 the interactive session where the developer reads every diff, every day, for a protection that only

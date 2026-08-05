@@ -46,7 +46,7 @@ preflight check that `.claude/settings.local.json` contained those three strings
 match an ALLOW list satisfied exactly as well as a DENY one. The current runner dropped that
 check: it was also installed project-wide, so it restrained the developer's own session, and
 permissions are read at session start, so it described a future session and never the running one.
-`goal-run.sh` is frozen and keeps it.
+The earlier bash runner enforced it and has since been deleted.
 
 What holds the anchor now is detection rather than denial. `run/iteration.ts` snapshots HEAD around
 the implementer and halts when it moved, which catches the case the rule was written for. The two
@@ -62,37 +62,36 @@ Four forms of the loop were tried. Each is named here by what it made impossible
 (`commands/run-issue.md:731`), and skipping it means a green iteration is only ever
 self-certified. Everything below is an answer to that one hole.
 
-**A dynamic Workflow (`workflows/goal-auto.js`).** It takes a subagent to run `git status`. The
+**A dynamic Workflow, the abandoned generation.** It takes a subagent to run `git status`. The
 proof is checked into the repository: `agents/goal-runner.md` exists, and its whole trade is
 that it "runs exactly one command and reports its exit code. […] Never interprets, never fixes,
 never retries", because "a verdict must cross back as an exit code, not as a reading of the
 output". An agent whose profession is to be a shell. Every `sed`, every `git status` costs a model call,
 a latency and a notification. The abstraction fights the task: orchestrating *is* sequencing
 deterministically, and a workflow turns every deterministic step non-deterministic. The defect
-that shape produced: `goal-auto.js:671` initialises `shipping.pr` to `false`, so on a branch
-that already carries an open pull request the run retries `gh pr create` at every iteration,
-never rewrites the body and never marks it ready — it lands all of the work and silently
-publishes none of it.
+that shape produced: it initialised its own tracking of a published pull request to `false`, so on
+a branch that already carries an open pull request the run retries `gh pr create` at every
+iteration, never rewrites the body and never marks it ready — it lands all of the work and
+silently publishes none of it.
 
 The prose version of the same loop ended in seventeen prohibitions (*never tick before the
-gate*, *a halt is final*, *never touch the index*), and the workflow reduced them to four
-(`commands/auto.md:362`). One writes those sentences only about things that are possible, so
-that reduction was real. It was not worth its price.
+gate*, *a halt is final*, *never touch the index*), and the workflow reduced them to four. One
+writes those sentences only about things that are possible, so that reduction was real. It was
+not worth its price.
 
-**A bash script (`scripts/goal-run.sh`).** The right instinct, stated in its own header: a
-workflow has no shell, so there every `sed` and every `git status` crosses through a subagent —
-"here a command is a command" (`goal-run.sh:8-10`). Wrong material. 594 lines in one file cannot
-follow the convention the plugin holds itself to, one module per group of business rules, which
-is what `gate/` does across nine of them. The defect found on the first real use: `pr_body`
-builds a regex alternation from `landed`, which accumulates from an empty string
-(`goal-run.sh:235`); the leading space becomes an empty alternative, BSD `grep` refuses it, and
-the pull request body stayed empty for six iterations.
+**A bash script, since deleted.** The right instinct, stated in its own header: a workflow has no
+shell, so there every `sed` and every `git status` crosses through a subagent — "here a command is
+a command". Wrong material. 594 lines in one file cannot follow the convention the plugin holds
+itself to, one module per group of business rules, which is what `gate/` does across nine of them.
+The defect found on the first real use: `pr_body` built a regex alternation from `landed`, which
+accumulated from an empty string; the leading space became an empty alternative, BSD `grep`
+refused it, and the pull request body stayed empty for six iterations.
 
 **A command that launches a node script that launches `claude -p`.** What each part buys:
 
 - **the script**, against the workflow: `git status` is a system call, not a model call.
-- **node**, against bash: 938 lines across 8 modules — the same total as `goal-auto.js`, but
-  each with its own test file and the largest under 200 lines — and whole classes of bug
+- **node**, against bash: 938 lines across 8 modules — the same total as the abandoned Workflow,
+  but each with its own test file and the largest under 200 lines — and whole classes of bug
   disappear structurally, since `landed: string[]` (`run/publish.ts:44`) cannot produce bash's
   empty alternative.
 - **`claude -p`**, against a subagent: one fresh, bounded session per iteration, no context
@@ -219,8 +218,9 @@ plan against itself. Automating it would move the one judgment with no fallback 
 with the weakest guarantees.
 
 Not everything outside the runner is there by choice, though. The cleanup plan and the
-post-merge checklist exist only as prose in the abandoned command (`commands/auto.md:315-358`),
-and no runner carries them. That is a gap, not a decision.
+post-merge checklist that once lived as prose in the abandoned command are now
+`templates/post-merge.template`, printed rather than executed, and no runner carries them further
+than that.
 
 ---
 

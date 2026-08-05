@@ -6,23 +6,23 @@ import { join, resolve } from 'node:path';
 
 import { createReporter } from '../scripts/run/report.ts';
 import { tmpDir } from './support/tmp.ts';
-import { repo, run } from './support/goal-run-harness.ts';
+import { jsonlOf, repo, run } from './support/goal-run-harness.ts';
 
-const plan = (): string => join(tmpDir('goal-run-events-'), 'plan-spec.md');
+const dir = (): string => tmpDir('goal-run-events-');
 
 // R1 — every call into report.ts writes one JSON line, versioned, alongside the prose the run
 // log has always carried.
-test('say writes a versioned JSON line to <plan>.run.jsonl next to the prose in <plan>.run.log', () => {
-  const target = plan();
+test('say writes a versioned JSON line to .run.jsonl next to the prose in .run.log', () => {
+  const target = dir();
   const reporter = createReporter();
-  reporter.setLog(`${target}.run.log`);
+  reporter.setLog(target);
 
   reporter.say('RUN a message');
 
-  const log = readFileSync(`${target}.run.log`, 'utf8');
+  const log = readFileSync(join(target, '.run.log'), 'utf8');
   assert.equal(log, 'RUN a message\n');
 
-  const lines = readFileSync(`${target}.run.jsonl`, 'utf8').trim().split('\n');
+  const lines = readFileSync(join(target, '.run.jsonl'), 'utf8').trim().split('\n');
   assert.equal(lines.length, 1);
 
   const event = JSON.parse(lines[0] ?? '');
@@ -35,16 +35,16 @@ test('say writes a versioned JSON line to <plan>.run.jsonl next to the prose in 
 // R1 — record() carries the agent's own output as an event payload, not as a prose line: it
 // never reaches stdout, exactly as today.
 test('record writes a JSON line carrying the text as payload, and no prose reaches stdout', () => {
-  const target = plan();
+  const target = dir();
   const reporter = createReporter();
-  reporter.setLog(`${target}.run.log`);
+  reporter.setLog(target);
 
   reporter.record('the agent said something');
 
-  const log = readFileSync(`${target}.run.log`, 'utf8');
+  const log = readFileSync(join(target, '.run.log'), 'utf8');
   assert.equal(log, 'the agent said something\n');
 
-  const lines = readFileSync(`${target}.run.jsonl`, 'utf8').trim().split('\n');
+  const lines = readFileSync(join(target, '.run.jsonl'), 'utf8').trim().split('\n');
   assert.equal(lines.length, 1);
 
   const event = JSON.parse(lines[0] ?? '');
@@ -55,25 +55,25 @@ test('record writes a JSON line carrying the text as payload, and no prose reach
 // R1 — record() called with blank text writes neither a prose line nor a JSON line, exactly as
 // today's guard on `text.trim() !== ''`.
 test('record ignores blank text on both artifacts', () => {
-  const target = plan();
+  const target = dir();
   const reporter = createReporter();
-  reporter.setLog(`${target}.run.log`);
+  reporter.setLog(target);
 
   reporter.record('   ');
 
-  assert.throws(() => readFileSync(`${target}.run.log`, 'utf8'));
-  assert.throws(() => readFileSync(`${target}.run.jsonl`, 'utf8'));
+  assert.throws(() => readFileSync(join(target, '.run.log'), 'utf8'));
+  assert.throws(() => readFileSync(join(target, '.run.jsonl'), 'utf8'));
 });
 
 // R1 — stop() renders the one prose line it always has, and records that same call as a single
 // JSON line carrying the exit code.
 test('stop writes one JSON line carrying the exit code, and exits with it', () => {
-  const target = plan();
+  const target = dir();
   const modulePath = resolve(import.meta.dirname, '..', 'scripts', 'run', 'report.ts');
   const script = `
     import { createReporter } from ${JSON.stringify(modulePath)};
     const reporter = createReporter();
-    reporter.setLog(${JSON.stringify(`${target}.run.log`)});
+    reporter.setLog(${JSON.stringify(target)});
     reporter.stop('a refusal', 7);
   `;
 
@@ -81,10 +81,10 @@ test('stop writes one JSON line carrying the exit code, and exits with it', () =
 
   assert.equal(child.status, 7, child.stderr);
 
-  const log = readFileSync(`${target}.run.log`, 'utf8');
+  const log = readFileSync(join(target, '.run.log'), 'utf8');
   assert.equal(log, 'STOP a refusal\n');
 
-  const lines = readFileSync(`${target}.run.jsonl`, 'utf8').trim().split('\n');
+  const lines = readFileSync(join(target, '.run.jsonl'), 'utf8').trim().split('\n');
   assert.equal(lines.length, 1, lines.join('\n'));
 
   const event = JSON.parse(lines[0] ?? '');
@@ -96,13 +96,13 @@ test('stop writes one JSON line carrying the exit code, and exits with it', () =
 // R1 — nothing writes either artifact before a plan is known: `setLog` is what turns the
 // reporter on, and until then `say` still renders to stdout alone, unchanged.
 test('before setLog, say renders to stdout only and writes no jsonl file at all', () => {
-  const target = plan();
+  const target = dir();
   const reporter = createReporter();
 
   reporter.say('RUN before any plan is known');
 
-  assert.throws(() => readFileSync(`${target}.run.log`, 'utf8'));
-  assert.throws(() => readFileSync(`${target}.run.jsonl`, 'utf8'));
+  assert.throws(() => readFileSync(join(target, '.run.log'), 'utf8'));
+  assert.throws(() => readFileSync(join(target, '.run.jsonl'), 'utf8'));
 });
 
 // R19 — every stage the runner times — preflight, the implementer session, the gate verdict
@@ -118,7 +118,7 @@ test('a landed run records a stage event with duration_ms and exit for preflight
 
   assert.equal(code, 0, output);
 
-  const lines = readFileSync(`${fixture.plan}.run.jsonl`, 'utf8').trim().split('\n');
+  const lines = readFileSync(jsonlOf(fixture), 'utf8').trim().split('\n');
   const messages = lines.map((line) => (JSON.parse(line) as { event: string; message?: string }).message ?? '').join('\n');
 
   const stage = (name: string) => new RegExp(`^RUN stage=${name} duration_ms=\\d+ exit=\\d+$`, 'm');

@@ -5,7 +5,7 @@ import { chmodSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
 import { tmpDir } from './support/tmp.ts';
-import { repo, run } from './support/goal-run-harness.ts';
+import { logOf, repo, run } from './support/goal-run-harness.ts';
 
 const GATE = resolve(import.meta.dirname, '..', 'scripts', 'goal-gate.ts');
 
@@ -206,5 +206,5 @@ test('a run refuses to commit once an earlier landed iteration was unticked whil
   const { code } = run(fixture, [fixture.plan, '2'], { GOAL_GATE: `node ${GATE}` });
 
   assert.notEqual(code, 0);
-  assert.match(readFileSync(`${fixture.plan}.run.log`, 'utf8'), /ticked than this run locked/);
+  assert.match(readFileSync(logOf(fixture), 'utf8'), /ticked than this run locked/);
 });

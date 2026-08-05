@@ -102,11 +102,11 @@ chain with an `allow / reject / ask / delegate` verdict, `delegate` handing the 
 external program that answers by exit code.
 
 The audit found precisely the failure Amp predicted. `goal-deny-setup.sh` installs three prefix
-rules — `Bash(git commit:*)`, `Bash(git push:*)`, `Bash(git add:*)`. `goal-run.sh` verifies they are
-present with a `String.includes` over the raw text of `.claude/settings.local.json`, so an *allow*
-entry naming the same verbs satisfies it. The rule does not apply retroactively to a session already
-running. The current runner dropped that check rather than repair it — a verdict a permission chain
-would have delegated to a program, where this one delegated it to a substring. Nothing reads the
+rules — `Bash(git commit:*)`, `Bash(git push:*)`, `Bash(git add:*)`. The earlier preflight verified
+they were present with a `String.includes` over the raw text of `.claude/settings.local.json`, so an
+*allow* entry naming the same verbs satisfies it. The rule does not apply retroactively to a session
+already running. The current runner dropped that check rather than repair it — a verdict a
+permission chain would have delegated to a program, where this one delegated it to a substring. Nothing reads the
 remote refs, so a push would go unnoticed. And a write into `.git/` is invisible to
 `git status --porcelain -uall`, which is what the gate reads.
 
@@ -218,13 +218,11 @@ instinct, same vindication.
 
 A third, still unmeasured here: putting an LLM in the coordination loop costs roughly 40% of total
 tokens in coordination overhead rather than code, which is why one close cousin replaced its LLM
-orchestrator with a plain scheduler.[^scheduler] That is the argument for the move from
-`workflows/goal-auto.js` to `goal-run.ts`. The move was made; the measurement was not. And no
-project in the panel kept both orchestrators alive — they renamed or replaced. Three generations
-coexist here (`goal-auto.js` at 941 lines, `goal-run.sh` at 594, `goal-run.ts` plus `run/*.ts` at
-938 across eight modules) for an A/B that measures nothing, while CI runs the suite once, in the
-harness's default `bash` mode: 188 pass and 6 silently skipped, none of them exercising the
-current runner.
+orchestrator with a plain scheduler.[^scheduler] That is the argument for the move away from the
+Workflow runtime that used to hold this loop, onto `goal-run.ts`. The move was made; the
+measurement was not. And no project in the panel kept both orchestrators alive — they renamed or
+replaced. Two prior generations preceded the one that runs today, and neither is checked in any
+more.
 
 ## Where this leaves the positioning
 

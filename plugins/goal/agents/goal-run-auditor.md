@@ -22,9 +22,10 @@ Someone reads this instead of a transcript. Three questions, in this order:
 2. **What it cost.** Read the stage events from the JSONL path you were given, and build the cost
    table from `duration_ms` and `exit`, per stage. Name the slowest one and say whether its time
    matches its size — read the commit it produced if you need to.
-3. **What recurs.** Read the other reports in `.claude/goal-runs/` and say which of today's
-   failures already happened. A failure appearing for the third time is a design problem, not
-   an incident, and that sentence is the most valuable one in the file.
+3. **What recurs.** Read the other reports under this work-id's own directory, one per earlier
+   run, and say which of today's failures already happened. A failure appearing for the third
+   time is a design problem, not an incident, and that sentence is the most valuable one in the
+   file.
 
 Write it as markdown, at the exact path you were given. Keep it short enough to read at
 breakfast.
@@ -44,6 +45,6 @@ breakfast.
 
 ## Where the file goes
 
-`.claude/goal-runs/<sha>.md`, the path is given to you. The report is local evidence and never
-a diff — which is why it can be blunt. Never commit it, and never stage it, whatever the
-repository ignores.
+The run's own directory, `.claude/goal-runs/<work-id>/<run-id>/report.md`, the path is given to
+you. The report is local evidence and never a diff — which is why it can be blunt. Never commit
+it, and never stage it, whatever the repository ignores.

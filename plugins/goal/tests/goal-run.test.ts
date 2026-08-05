@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { HASH, RUN_NODE, lockOf, repo, run, sessionOf } from './support/goal-run-harness.ts';
+import { HASH, RUN_NODE, lockOf, logOf, repo, run, sessionOf } from './support/goal-run-harness.ts';
 
 // R4 — the plan lives in a gitignored directory outside the run's tree, and handing its path to
 // the implementer is what made a real run write its whole iteration into another checkout. The
@@ -208,7 +208,7 @@ test('it writes the same account to a log file beside the plan', () => {
 
   run(fixture, [fixture.plan, '1'], { FAKE_CLAUDE_WRITES: join(fixture.dir, 'a.txt') });
 
-  const log = `${fixture.plan}.run.log`;
+  const log = logOf(fixture);
   assert.ok(existsSync(log), 'no log file was written');
   assert.match(readFileSync(log, 'utf8'), /^STOP /m);
 });

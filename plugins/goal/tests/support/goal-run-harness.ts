@@ -1,6 +1,6 @@
 import { spawnSync } from 'node:child_process';
-import { chmodSync, mkdirSync, writeFileSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { chmodSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs';
+import { basename, join, resolve } from 'node:path';
 
 import { tmpDir } from './tmp.ts';
 
@@ -193,11 +193,10 @@ exit 0
   // The plan's directory is gitignored, which the real preflight requires and this fixture has
   // to honour: visible to git, the spec and the run's own log show up in `git status`, the tree
   // is never clean, and "the implementer wrote nothing" could never be observed. `trackPlan`
-  // deliberately breaks that, to exercise the check that catches it.
-  writeFileSync(
-    join(dir, '.gitignore'),
-    options.trackPlan ? 'fake-bin/\n*-args.txt\n' : '.claude/\nfake-bin/\n*-args.txt\n',
-  );
+  // deliberately breaks that for the plan's own directory, to exercise the check that catches it
+  // — `.claude/` stays ignored either way, since that is where a run's own records land now,
+  // never inside the plan's directory.
+  writeFileSync(join(dir, '.gitignore'), '.claude/\nfake-bin/\n*-args.txt\n');
 
   git(dir, 'add', '-A');
   git(dir, 'commit', '-qm', 'init');
@@ -287,6 +286,33 @@ export const run = (fixture: Fixture, args: string[], env: Record<string, string
 
 export const lockOf = (fixture: Fixture) => `${fixture.plan}.run.lock`;
 
-export const sessionOf = (fixture: Fixture) => `${fixture.plan}.run.session`;
+// Mirrors preflight.ts's own derivation of a plan's work-id from its filename.
+export const workIdOf = (plan: string): string => {
+  const base = basename(plan);
+
+  if (base.endsWith('-cleanup-spec.md')) {
+    return base.slice(0, -'-cleanup-spec.md'.length);
+  }
+
+  if (base.endsWith('-spec.md')) {
+    return base.slice(0, -'-spec.md'.length);
+  }
+
+  return base.replace(/\.md$/, '');
+};
+
+// The one run directory a fixture's single launch wrote under `.claude/goal-runs/<work-id>/`.
+export const runDirOf = (fixture: Fixture): string => {
+  const root = join(fixture.dir, '.claude', 'goal-runs', workIdOf(fixture.plan));
+  const [runId] = readdirSync(root);
+
+  return join(root, runId!);
+};
+
+export const logOf = (fixture: Fixture) => join(runDirOf(fixture), '.run.log');
+
+export const jsonlOf = (fixture: Fixture) => join(runDirOf(fixture), '.run.jsonl');
+
+export const sessionOf = (fixture: Fixture) => join(runDirOf(fixture), '.run.session');
 
 export const denyOf = (fixture: Fixture) => join(fixture.dir, '.claude', 'settings.local.json');

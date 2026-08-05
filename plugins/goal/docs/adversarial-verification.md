@@ -45,9 +45,9 @@ Majority voting is deliberately **not** used here. Its purpose is to suppress fa
 positives before an expensive decision, and no decision downstream of these verifiers is
 expensive — see the next section. One verifier per lens.
 
-All five are still the design. Only the last one lost its enforcement. The Workflow constrained
-the answer with a JSON schema — `refuted`, `verdict` and `anchor`, all three required
-(`workflows/goal-auto.js:300-309`) — so a verdict without an anchor could not be returned at
+All five are still the design. Only the last one lost its enforcement. The abandoned Workflow
+constrained the answer with a JSON schema — `refuted`, `verdict` and `anchor`, all three
+required — so a verdict without an anchor could not be returned at
 all. `run/close.ts:107` spawns a plain `claude -p` and records whatever text comes back, and
 the anchor rule now lives only in the lens's own brief (`agents/goal-run-lens.md`). Nothing
 rejects an unanchored finding any more. That is a prompt where there used to be a schema, and
@@ -84,9 +84,9 @@ signal produced at 3am and deposited in an ignored file beside the plan is a sig
 reader is whoever thinks to open it.
 
 Worth recording how that came about, because it is the failure mode of a port rather than a
-design decision: `goal-run.sh` appended an advisory agent's own words to the log, the port to
-node dropped the append outright, and a lens finding existed only for as long as the process
-that asked for it. `record()` exists because that was noticed and put back — its own comment
+design decision: the earlier bash runner appended an advisory agent's own words to the log, the
+port to node dropped the append outright, and a lens finding existed only for as long as the
+process that asked for it. `record()` exists because that was noticed and put back — its own comment
 says so. The layer was silently worthless for the length of one generation.
 
 ## Promotion principle
@@ -200,7 +200,7 @@ parsing that read it back.
 ## When a lens runs at all
 
 There is nothing left to decide at 3am, and nothing left to switch off either. The `args.lenses`
-flag and the remote `skip-lenses` control belonged to `workflows/goal-auto.js`; the current
+flag and the remote `skip-lenses` control belonged to the abandoned Workflow; the current
 runner exposes no flag, no environment variable and no remote channel. The lens is asked
 whenever the global DoD passes, and not otherwise.
 

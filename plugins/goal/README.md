@@ -52,9 +52,11 @@ node <plugin>/scripts/goal-run.ts .claude/plans/<work-id>-spec.md
 the marketplace checkout's real path. Exit `0` landed · `1` the gate refused an iteration · `2`
 refused before anything was attempted · `3` paused at a clean boundary, relaunch resumes there.
 
-The run writes beside the plan, inside the git-ignored `.claude/plans/`: `<plan>.run.log` (the
-same lines it prints), `<plan>.run.session` (the implementer session ids, so a transcript can be
-found later) and `<plan>.run.lock` while it holds the plan.
+The run writes its records under `.claude/goal-runs/<work-id>/<run-id>/`: `.run.log` (the same
+lines it prints), `.run.jsonl` (the same events, one versioned JSON line each), `.run.session`
+(the implementer session ids, so a transcript can be found later) and the auditor's own
+`report.md`. Only `<plan>.run.lock`, held while a run has the plan, stays beside the plan itself
+in `.claude/plans/`.
 
 ## Why it is built this way
 
@@ -174,9 +176,10 @@ Everything runs on your **Claude Code subscription** — the runner spawns `clau
 surcharge, and the 5-hour rate-limit window applies normally. A quota-exhausted implementer is
 slept through and retried against the same iteration, bounded, then paused rather than spun.
 
-Every run has its auditor write a report to `.claude/goal-runs/<sha>.md`: elapsed seconds per
-iteration, what halted it, and which failures recur across earlier reports. Local evidence, never
-committed.
+Every run has its auditor write a report to `.claude/goal-runs/<work-id>/<run-id>/report.md`:
+elapsed seconds per iteration, what halted it, and which failures recur across earlier reports.
+At close, that report is folded into the pull request body under `## Run report`, replaced whole
+on every rerun of the same PR.
 
 ## See also
 

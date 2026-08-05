@@ -42,9 +42,9 @@ Eleven mechanical, two advisory, one frozen input and one that only half holds. 
 the design.
 
 One line left the table rather than moving: the **token budget floor**. It shed optional work
-when a run got close to a ceiling, it lived in `workflows/goal-auto.js`, and the runner that
-replaced it has no token accounting at all. Nothing in the current loop stops a run on what it
-spends. Say that plainly rather than keep a row for it.
+when a run got close to a ceiling, it lived in the abandoned Workflow runtime this loop used to
+run on, and the runner that replaced it has no token accounting at all. Nothing in the current
+loop stops a run on what it spends. Say that plainly rather than keep a row for it.
 
 Two rows arrived with the runner rather than with the gate, and neither is where a reader
 would look for it.
@@ -173,8 +173,9 @@ rule in `.claude/settings.local.json`, checked by three `String.includes` on the
 file.~~ **Resolved for the current runner**, which dropped the check
 rather than repair it: an `allow` list naming those same three commands satisfied it, the rule was
 installed project-wide so it also restrained the developer's own session, and it was read once
-before the loop, so it bound a session started after it and not one already running. `goal-run.sh`
-is frozen and keeps it. The claim now rests on the HEAD snapshot in `run/iteration.ts`, which is
+before the loop, so it bound a session started after it and not one already running. The earlier
+bash runner enforced it and has since been deleted. The claim now rests on the HEAD snapshot in
+`run/iteration.ts`, which is
 executed. Nothing surveys remote refs across the implementer, and a
 `git push` moves neither HEAD nor the working tree, so it passes both post-implementer checks
 (`run/iteration.ts:154-162`). And what the implementer writes inside the git directory is
@@ -235,8 +236,8 @@ invoked by the current runner:
 Three roles this table used to carry have lost their caller. The **runner** is gone because the
 script runs its own commands (`run/iteration.ts:173`); the **reporter** is gone because
 publication calls `gh` directly (`run/publish.ts`); the **reader** is gone because nothing
-remote is read at all. Their definitions are still in `agents/`, invoked only by
-`workflows/goal-auto.js`.
+remote is read at all. Their definitions are still in `agents/`, invoked only by the abandoned
+Workflow runtime this loop used to run on.
 
 And the restriction the run actually stands behind is not the `tools:` field. All four are
 launched as separate `claude -p` processes under `--permission-mode auto`, so what takes git
@@ -251,9 +252,9 @@ This section used to argue for the Workflow against the published anti-pattern. 
 was abandoned, twice over, and the half of the argument that survived is worth keeping straight
 from the half that did not.
 
-Three generations live in the tree: `workflows/goal-auto.js` (941 lines, still invocable by
-`/goal:auto`), `scripts/goal-run.sh` (594 lines, frozen as the A/B reference for the test
-suite), and `scripts/goal-run.ts` + `scripts/run/*.ts`, which is what runs.
+Two earlier generations preceded the one that runs today — a Workflow (941 lines, abandoned and
+unreachable from any command) and a bash script (594 lines, since deleted) — and
+`scripts/goal-run.ts` + `scripts/run/*.ts` is what runs now.
 
 **What survived.** The published guidance warns against Claude generating an orchestration
 script on the fly, per run — genuinely wasteful for a repeatable task, since you pay a model to
@@ -263,10 +264,11 @@ invoke it by path, and that is still exactly what happens: `commands/supervise.m
 and it outlived the runtime it was first written for.
 
 **What did not.** The Workflow's own constraint was sold as load-bearing: no disk, no shell,
-only `agent()`. That is precisely what the two generations after it rejected. `goal-run.sh:8-11`
-states the counter-argument in one line — a workflow has no shell, so every `sed` and every
-`git status` crosses through a subagent, which is simultaneously the run's latency and its
-notification flood. The current runner has a disk and a shell, by choice.
+only `agent()`. That is precisely what the two generations after it rejected. The bash runner
+that followed it stated the counter-argument in its own header, in one line — a workflow has no
+shell, so every `sed` and every `git status` crosses through a subagent, which is simultaneously
+the run's latency and its notification flood. The current runner has a disk and a shell, by
+choice.
 
 **What still holds against agent teams.** Teams put a model in charge of what runs next. Here,
 what runs next is the plan.
@@ -285,7 +287,7 @@ So one model call per iteration, plus three for the whole run, plus no orchestra
 all: the thing that sequences is a node process, not a session.
 
 The comparison is a shape and not a number. The often-quoted **23 agents and 82 438 tokens** is
-the `goal-auto.js` run of 2026-07-26 over four iterations (`workflow-parity.md`), and it has
+the abandoned Workflow's run of 2026-07-26 over four iterations, and it has
 never been remeasured against the Node runner. Worse, it cannot be remeasured from inside:
 the runner keeps no token accounting of any kind, so there is no ceiling and nothing to shed.
 "Leave the lenses off under a budget" is no longer advice the loop can act on, because the loop

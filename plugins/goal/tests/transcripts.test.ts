@@ -54,16 +54,19 @@ test('runTranscripts returns nothing when the project dir does not exist', () =>
 // reading a transcript's content, and a transcript found both ways is returned once.
 test('runTranscripts unions the recorded session ids with the content scan, without duplicates', () => {
   const root = projectRoot();
-  const dir = join(root, '-Users-dev-my-repo');
-  const plans = tmpDir('transcripts-plan-');
-  const plan = join(plans, 'my-plan-spec.md');
+  const repoDir = tmpDir('transcripts-repo-');
+  const dir = join(root, repoDir.replace(/[/.]/g, '-'));
+  const plan = join(repoDir, '.claude', 'plans', 'my-plan-spec.md');
   mkdirSync(dir, { recursive: true });
 
   writeFileSync(join(dir, 'implementer.jsonl'), 'Implement iteration 3 of my-plan-spec.md\n');
   writeFileSync(join(dir, 'silent.jsonl'), 'a session that never names the plan\n');
-  writeFileSync(`${plan}.run.session`, 'implementer\nsilent\nvanished\n');
 
-  const found = runTranscripts('/Users/dev/my-repo', plan, root);
+  const runDir = join(repoDir, '.claude', 'goal-runs', 'my-plan', 'run-1');
+  mkdirSync(runDir, { recursive: true });
+  writeFileSync(join(runDir, '.run.session'), 'implementer\nsilent\nvanished\n');
+
+  const found = runTranscripts(repoDir, plan, root);
 
   assert.deepEqual(found.sort(), [join(dir, 'implementer.jsonl'), join(dir, 'silent.jsonl')].sort());
 });
