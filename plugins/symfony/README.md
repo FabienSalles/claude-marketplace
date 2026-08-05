@@ -10,13 +10,14 @@ Personal Symfony conventions extracted from the original monolithic `php` plugin
 
 Or `./setup.sh --pack symfony` (dev mode).
 
-## Skills (3)
+## Skills (4)
 
 | Skill | Purpose |
 |---|---|
 | [`symfony-form`](skills/symfony-form/SKILL.md) | FormType design — `data_class` as single source of truth (no data in options), `DataTransformer` placement (not in controllers), `property_path` for collection mapping. |
 | [`twig-conventions`](skills/twig-conventions/SKILL.md) | Twig template + Twig component conventions — `trans_default_domain` isolation (1 translation → inline `domain:`, 2+ → hoist `trans_default_domain`), `ClockInterface` for dates in templates, decision rules for "should I create a Twig component vs use direct HTML". |
 | [`prg-pattern`](skills/prg-pattern/SKILL.md) | Post/Redirect/Get pattern for HTML form controllers — POST success → redirect (302), POST error → re-render with errors and submitted data, flash messages after redirect. _Examples use Symfony classes (`RedirectResponse`, `UrlGeneratorInterface`, `getFlashBag()`, `#[Route]`); the pattern itself applies to any PHP web framework._ |
+| [`symfony-test-conventions`](skills/symfony-test-conventions/SKILL.md) | Testing anything that boots a Symfony kernel — picking the cheapest base class, built-in `WebTestCase` assertions over hand-rolled crawler reads (`assertSelectorTextContains`, `assertResponseRedirects`, `assertCheckboxChecked`…), one-dataset-one-test for HTML pages, full-JSON assertion for API endpoints, `TypeTestCase` for FormTypes, and container-double traps (`disableReboot`, one `set()` per service). |
 
 ## Distinct from `symfony@atournayre-claude-plugin-marketplace`
 

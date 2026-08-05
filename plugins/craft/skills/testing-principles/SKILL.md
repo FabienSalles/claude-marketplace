@@ -8,6 +8,7 @@ version: "1.0"
 
 > The **rules** below are language-agnostic. Tool-specific examples (Prophecy, `vi.fn()`, `vi.spyOn()`, PHPUnit data providers, `it.each()`, NestJS `Test.createTestingModule`) live in:
 > - `phpunit:php-test-conventions`
+> - `symfony:symfony-test-conventions` (anything booting a Symfony kernel — `WebTestCase`, crawler, container doubles)
 > - `vitest:vitest-test-conventions`
 
 ## 1. Test Types

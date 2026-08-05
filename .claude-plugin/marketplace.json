@@ -31,12 +31,12 @@
     {
       "name": "symfony",
       "source": "./plugins/symfony",
-      "description": "Personal Symfony conventions overlay — FormType data ownership, Twig component translation domain isolation, Post/Redirect/Get for HTML controllers. Distinct from atournayre/symfony (broader toolkit).",
-      "version": "1.0.0",
+      "description": "Personal Symfony conventions overlay — FormType data ownership, Twig component translation domain isolation, Post/Redirect/Get for HTML controllers, Symfony-kernel test conventions (WebTestCase built-in assertions, container doubles). Distinct from atournayre/symfony (broader toolkit).",
+      "version": "1.1.0",
       "author": { "name": "FabienSalles" },
       "category": "development",
       "license": "MIT",
-      "keywords": ["php", "symfony", "form", "twig", "prg"]
+      "keywords": ["php", "symfony", "form", "twig", "prg", "testing"]
     },
     {
       "name": "typescript",

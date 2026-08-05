@@ -15,7 +15,7 @@ Or `./setup.sh --pack phpunit` (dev mode).
 | Skill | Purpose |
 |---|---|
 | [`php-tdd-workflow`](skills/php-tdd-workflow/SKILL.md) | TDD workflow for PHP / Symfony — iteration examples, end-of-GREEN checklist (template ? services.yaml ? `bin/console debug:router` ?), data providers refactor, Prophecy mocking pitfalls, PHPUnit commands (`make php/tests`, `docker compose exec php ./vendor/bin/phpunit`). |
-| [`php-test-conventions`](skills/php-test-conventions/SKILL.md) | Test writing conventions — naming, Prophecy, factories, data providers, serialization tests. |
+| [`php-test-conventions`](skills/php-test-conventions/SKILL.md) | Test writing conventions — naming, Prophecy, doubles, factories, data providers, serialization tests. Framework-agnostic: anything needing a Symfony kernel lives in [`symfony:symfony-test-conventions`](../symfony/skills/symfony-test-conventions/SKILL.md). |
 
 ## Layering
 
