@@ -86,7 +86,7 @@ startable — and that is fine.
 trigger holds, which may be days after the last feature slice. Doing it in the same
 sitting as the flip is premature: the flag is your rollback and you just used it.
 
-**Auto mode** (`/goal:auto`) — cleanup does **not** belong in the autonomous run at all,
+**Auto mode** (an agent runs the plan unattended) — cleanup does **not** belong in the autonomous run at all,
 except when the flag was never enabled in production (a pure in-repo migration, or a
 change that never shipped). Otherwise the trigger depends on production evidence the
 agent cannot observe, and an unattended run would delete the rollback path of a change

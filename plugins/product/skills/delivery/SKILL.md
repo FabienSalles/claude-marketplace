@@ -126,15 +126,15 @@ that cannot work.
 **Manual mode** (you review each iteration): flip the flag yourself when the diff and
 the metrics convince you. Cleanup can be a quick follow-up you do by hand.
 
-**Auto mode** (`/goal:auto` — an agent runs the plan unattended): three rules keep an
+**Auto mode** (an agent runs the plan unattended): three rules keep an
 autonomous run from causing production damage.
 
 - **The flag defaults to off, and the agent never flips it.** Activation is a product
   decision that needs eyes on production. An agent that ships code cannot judge that.
 - **Adding and removing never share a slice, and cleanup never shares a plan** (§4). The
-  agent must be able to halt after the additive slice and leave a coherent system. In the
-  `goal` workflow that carve-out is automatic, and `/goal:auto` refuses to start on a
-  feature plan that still contains a cleanup iteration.
+  agent must be able to halt after the additive slice and leave a coherent system. A
+  gated runner worth the name refuses to start on a feature plan that still contains a
+  cleanup iteration.
 - **Every slice keeps the existing test suite green.** That is what proves the additive
   change did not disturb what already works, and it is the only regression signal an
   unattended run has.

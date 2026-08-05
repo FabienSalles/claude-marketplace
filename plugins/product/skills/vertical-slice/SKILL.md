@@ -1,6 +1,6 @@
 ---
 name: vertical-slice
-description: "ACTIVATE whenever a functional spec, user story, Jira US, GitHub issue or feature request has to be broken into iterations, slices, tickets or steps — including inside /goal:run-issue Phase 3, /spec-first-dev, and any planning where you are about to write a list of iterations. ACTIVATE for 'découper', 'split this story', 'too big', 'vertical slicing', 'horizontal slicing', 'INVEST', 'SPIDR', 'iterations', 'MVP first', 'what do we build first', 'this story cannot be split'. Provides 17 splitting techniques, a selection procedure that picks and combines them from the feature's real axis of complexity, the technical constraints and the execution mode (human review vs autonomous agent), plus the anti-patterns that produce fake slices. DO NOT use for: sequencing work inside one already-thin slice (that is TDD — see craft:tdd-workflow-principles), or for how to ship a slice safely (see product:delivery)."
+description: "ACTIVATE whenever a functional spec, user story, Jira US, GitHub issue or feature request has to be broken into iterations, slices, tickets or steps — including any planning where you are about to write a list of iterations. ACTIVATE for 'découper', 'split this story', 'too big', 'vertical slicing', 'horizontal slicing', 'INVEST', 'SPIDR', 'iterations', 'MVP first', 'what do we build first', 'this story cannot be split'. Provides 17 splitting techniques, a selection procedure that picks and combines them from the feature's real axis of complexity, the technical constraints and the execution mode (human review vs autonomous agent), plus the anti-patterns that produce fake slices. DO NOT use for: sequencing work inside one already-thin slice (that is TDD — see craft:tdd-workflow-principles), or for how to ship a slice safely (see product:delivery)."
 version: "1.0"
 ---
 
@@ -96,32 +96,42 @@ freezing anything, and let them **reorder or merge** slices:
 ### 4. Adapt the granularity to the execution mode
 
 Same feature, same techniques, different slice **size and ordering** depending on who
-executes. This is the step that makes a plan actually run.
+executes. This is the step that makes a plan actually run. The direction: **manual
+reviews fine slices; a gated run affords fat ones.**
 
-**Manual mode — you review each iteration** (`/goal` + `/goal:next`, or plain dev):
+**Manual mode — a human reviews each iteration**:
 
-- Size a slice to **one reviewable diff in one sitting**: roughly one coherent commit,
-  the amount you can hold in your head while reading it.
+- Size a slice **fine — one reviewable diff in one sitting**: roughly one coherent
+  commit, the amount you can hold in your head while reading it. The human review is
+  the verification here, and its capacity is the ceiling.
 - Put the **risky or uncertain** slice early. Human review is your correction loop, so
   spend it where drift is most likely.
 - A slice may end on a judgement call ("does this feel right in the UI?") — you are there
   to make it.
 
-**Auto mode — an agent runs the whole plan unattended** (`/goal:auto`):
+**Auto mode — a gated runner executes the plan unattended**:
 
 - Every slice must be **machine-verifiable**: its acceptance criteria are commands that
   exit 0/1. A slice whose proof is "looks right" cannot gate an autonomous loop — either
   give it an assertable test, or keep it out of the auto run.
-- Prefer slices with **disjoint file sets**. Disjoint groups become parallel tracks with
-  their own PRs; overlapping ones silently conflict at merge.
+- **Fatter slices are allowed, and usually right.** The reviewer of record is the
+  machine gate plus the end-of-run review, not a human reading each diff, and every
+  iteration costs a full fresh implementer session — so more code per slice is
+  acceptable where the same outcome would be three reviews in manual mode. Two bounds
+  hold whatever the size: one functional outcome per slice, and gate coverage that
+  **widens with the diff** — a slice earns a fatter diff budget only if every rule it
+  carries has a command that proves it.
+- Prefer slices with **disjoint file sets**. Disjoint groups can become separate plans,
+  one run each; overlapping ones silently conflict at merge.
 - **Front-load the contract-defining slices** (interfaces, schemas, types). An agent that
   discovers the shape in slice 5 rewrites slices 1–4, and each rewrite is a full run.
 - **No slice depends on production feedback** — an unattended run cannot wait for a beta
   panel's opinion. Park those slices in a follow-up plan.
 - Keep the **cleanup slice separate and last** (flag removal, dropping the old column).
   Additive-then-remove in one slice gives an agent no safe stopping point.
-- Slightly **smaller** than you would size for yourself: a failed gate halts the run, and
-  a small halted slice is cheap to diagnose.
+- The counterweight, kept: a failed gate halts the run, and a fat halted slice is slower
+  to diagnose. So keep the **risky or uncertain** slice fine even here, and spend the
+  fat ones on mechanical, well-understood ground.
 
 ### 5. Choose between candidate splits, then verify
 
@@ -205,8 +215,8 @@ that point costs more than it wins. Slice what you control.
 
 ## Output — writing the slices down
 
-When the caller is a planning workflow (`/goal:run-issue`, `/goal:draft-issue`,
-spec-first-dev), emit the slices in **that workflow's format** — do not invent one.
+When the caller is a planning workflow, emit the slices in **that workflow's
+format** — do not invent one.
 Whatever the format, each slice carries:
 
 - **Goal** — the user-visible or behavioural outcome, in domain vocabulary

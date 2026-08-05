@@ -25,7 +25,7 @@ point — a **selection procedure**:
 3. apply the **technical constraints** (migrations, contracts, legacy seams, deploy
    coupling) — they reorder and merge slices
 4. adapt granularity to the **execution mode** — reviewing each diff yourself vs
-   `/goal:auto` running unattended are not the same slice size, ordering or acceptance
+   a gated agent running unattended are not the same slice size, ordering or acceptance
 5. choose between candidate splits (80/20 test, comparable sizes, earliest feedback) and
    verify against INVEST
 
@@ -54,17 +54,7 @@ Separating **deploy** from **release**, then the four moves that make it real:
   never flips it, additive and removal never share a slice, and cleanup moves to a
   follow-up plan because its trigger depends on production evidence no agent can observe.
 
-## Wiring with `goal`
-
-`/goal:run-issue` loads both skills in Phase 3: `vertical-slice` to decompose, `delivery`
-to give each iteration a strategy, which lands in the spec as a `## Delivery strategy`
-section and a per-iteration **Delivery** line. `/goal:next` re-checks that the finished
-iteration honoured it, and the `/goal` handoff carries it into every execution session —
-manual or autonomous.
-
-See [`plugins/goal/README.md`](../goal/README.md).
-
-## Also useful outside `goal`
+## Typical uses
 
 - refining a Jira US in a grooming session
 - deciding whether a change needs a flag before opening the PR
