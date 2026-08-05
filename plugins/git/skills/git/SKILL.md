@@ -1,6 +1,6 @@
 ---
 name: git
-description: ACTIVATE for any git or PR operation — create/choose a branch, open or update a PR, "est-ce mergé ?", choose a base, rebase/merge, commit, push, force-push, worktree, cherry-pick, fork. ACTIVATE on 'branche', 'PR', 'merge', 'rebase', 'squash', 'fixup', 'historique', 'base main', 'fork', 'gh pr', 'commit', 'push', 'mets à jour', 'est-ce mergé'. Covers Fabien's transverse git conventions — fetch before reasoning on remote state, never ask what a command answers, branch/commit discipline, English conventional commits without AI trailer, history shape (reshape before the first push, fixup over fix-on-fix, ask before pushing a branch that repairs itself, reshape unasked under a non-manual policy), PR (English title and body unless the repository's CLAUDE.md asks otherwise; ultra-succinct body, draft for WIP, fork targets parent), force-push and worktree guardrails, manual index mode. DO NOT use for Eres-specific fork conventions (see Eres marketplace).
+description: ACTIVATE for any git or PR operation — create/choose a branch, open or update a PR, "est-ce mergé ?", choose a base, rebase/merge, commit, push, force-push, worktree, cherry-pick, fork. ACTIVATE on 'branche', 'PR', 'merge', 'rebase', 'squash', 'fixup', 'historique', 'base main', 'fork', 'gh pr', 'commit', 'push', 'mets à jour', 'est-ce mergé'. Covers Fabien's transverse git conventions — fetch before reasoning on remote state, never ask what a command answers, branch/commit discipline, English conventional commits without AI trailer, history shape (reshape before the first push, fixup over fix-on-fix, ask before pushing a branch that repairs itself, reshape unasked under a non-manual policy), PR (English title and body unless the repository's CLAUDE.md asks otherwise; ticket link first, own-PR description only and NEVER a comment or review reply without explicit per-time consent, ultra-succinct body kept to what a reviewer cannot read off the diff, decision log mined from the plan, terse lower-case register, screenshots for anything that renders, one branch one PR, draft for WIP, fork targets parent), force-push and worktree guardrails, manual index mode. DO NOT use for Eres-specific fork conventions (see Eres marketplace).
 version: 1.0.0
 ---
 
@@ -114,10 +114,9 @@ loses as much as leaving eleven repairs strewn across the log.
   caution — it is handing back a command you were already meant to type**, and it ships a
   pull request whose diff misleads the reviewer in the meantime.
 
-- **Title and body in English**, conventional prefix kept, concise, no ticket ref unless
-  requested. Another language only when the repository's own `CLAUDE.md` (or
-  `.claude/CLAUDE.md`) asks for one — that file is the single override point, and its
-  absence means English.
+- **Title and body in English**, conventional prefix kept, concise. Another language only
+  when the repository's own `CLAUDE.md` (or `.claude/CLAUDE.md`) asks for one — that file
+  is the single override point, and its absence means English.
 
   Asking in French does not make the artifact French. The audience of a pull request is
   whoever reads the repository, and English is the default because it is the language
@@ -131,12 +130,88 @@ loses as much as leaving eleven repairs strewn across the log.
   The second form needs a `CLAUDE.md` declaring French. Commit messages are English
   regardless (§D) — the override reaches the PR title and body, nothing else.
 
-- **Ultra-succinct description**: only the **non-guessable** (decisions,
-  per-case behavior, deliberate out-of-scope). A few bullets max. No spec dump,
-  no exhaustive "Why / Rules / To review" sections. No em dash `—` mid-sentence
+- **The ticket link is the first line** when the work comes from one: bare, alone, no
+  label wrapped around it. One click gives the reviewer the whole context; buried in a
+  sentence or omitted, they go looking for it.
+
+- **Ultra-succinct description**: only the **non-guessable**. A few bullets max. No spec
+  dump, no exhaustive "Why / Rules / To review" sections. No em dash `—` mid-sentence
   (an AI tell).
+
+  Test every candidate line with **"can a reviewer read this off the diff?"** — if yes,
+  cut it. That one question removes file lists, test commands, restated function names and
+  section headings, which is most of what a first draft is made of.
+
+  What survives the test falls in four families:
+  - a **decision** taken between two defensible options — which one was taken, under the
+    same compression as below
+  - **behaviour per case** that the code applies but never announces
+  - a **deviation from the ticket** — done though never asked, or refused though implied.
+    Densest line in any body. State the deviation, **not the case for it**: an anchor of a
+    few words earns its place ("comme sur swisslife", "as the other providers do"), a
+    sentence of rationale does not. The argument belongs to the plan; a reviewer who
+    disagrees asks
+  - **deliberate out-of-scope**, so nobody files it as a gap
+
+  Excluded even when they pass the test: **the test suite, tooling, internal hygiene**.
+  Deleting a test is a genuine decision with a rationale nobody can guess, and it still does
+  not go here — the body carries **product behaviour**, and the reviewer sees the deletion in
+  the diff anyway. Say it in your reply instead.
+
+- **Mine the plan, not only the diff.** When the work came from a spec, a plan or a grill,
+  its decision log already holds the non-guessable: those arbitrations were settled during
+  planning and evaporate unless the PR carries them. Read it before writing the body — the
+  diff alone cannot give you those lines. Take **which** decision was made, never the
+  reasoning that produced it; that stays in the plan, which is where anyone reopening it
+  will look.
+
+- **Register**: short bullets, lower case, no closing punctuation, no marketing. A single
+  `PS :` at the end for what spills beyond this PR — a dependency on another repo's PR, the
+  iterations still to come on a multi-iteration branch, a known follow-up.
+
+- **A visible change needs visible proof.** Screenshots for anything that renders, one per
+  state the change introduces, each under a short line naming the case — `Exemple cas de
+  base`, `Exemple cas avec la date`. They go after the `PS :`, at the very end. When you
+  cannot produce them, name in your reply the states that are missing and why, rather than
+  ship a UI PR whose reviewer has to run the app to see the point. Never a silent gap.
+
+- **One branch, one PR.** `gh pr view --json number` on the branch before creating: if it
+  finds one, push and update that body instead. A second PR on the same branch leaves two
+  that every later push moves at once.
+
 - **Always `--body-file <file>`**: `gh`'s `--body -` does not read stdin and
   writes a literal "-".
+
+- **Writing to a PR: the body, never a conversation.** Two different acts, and only one of them is
+  ever covered by a policy:
+
+  - **The description** of a PR **the developer authored** — allowed under `commit+pr`, it is part of
+    shipping the work. Never touch the description of anyone else's PR, and never one the developer
+    did not open.
+  - **Any comment, review, reply in a thread, or `gh pr review`** — **ASK EVERY TIME, and wait for a
+    clear yes.** No exception, no "it is only a follow-up", no "the reviewer is waiting". The single
+    alternative to asking is the developer telling you explicitly to answer — "réponds-lui",
+    "laisse une review". A `commit+pr` policy authorises the body and **nothing else**: it says how
+    the work ships, not that you may speak to a colleague under the developer's name.
+
+  These posts carry the developer's identity to a real person who answers them. Getting it wrong is
+  not a bad diff, it is words the developer never wrote, in a conversation they did not choose to
+  have. When a review comment calls for an answer, put the answer **in your reply to the developer**
+  and let them decide whether it goes out.
+
+- **Never re-push a body from a local draft — §A applies to PR bodies too.** `gh pr edit
+  --body-file` **replaces** the body, it does not merge. The developer edits the description
+  on GitHub: they trim a line, they attach the screenshots you could not produce. A scratchpad
+  file written before that is stale state, and pushing it destroys their work silently — no
+  conflict, no warning, and the images are the part nobody can rewrite from memory. Before
+  every edit:
+
+  ```bash
+  gh pr view <n> --json body --jq .body > body.md   # the remote is the source of truth
+  ```
+
+  Amend **that** file, then push it back. Their wording wins over your draft: a line they
+  shortened was shortened on purpose.
 - **Fork**: the PR targets the **parent**, base `main`:
 
   ```bash
@@ -171,6 +246,15 @@ stage and review themselves.
 - ❌ Read `origin/main` without fetching → conclude "retrieve not merged" (false)
   → ask the developer a wrong question.
   ✅ `git fetch` first → the commit `024ef9a … (#158)` is visible → act.
+
+- ❌ Answer a reviewer in a PR thread because their comment called for an answer. The post goes out
+  under the developer's name, to a colleague who will reply to it, and nobody authorised it.
+  ✅ Put the answer in the reply to the developer, say the thread is waiting, and ASK before posting.
+
+- ❌ Keep the PR body in a scratchpad file and re-push it with `gh pr edit --body-file` at
+  every iteration. The developer had trimmed a bullet and attached two screenshots in the
+  meantime; the push wipes both without a word.
+  ✅ `gh pr view <n> --json body --jq .body` first, amend that, push it back.
 
 - ❌ `git branch -r --contains <sha>` alone for "is it merged?": misses
   squash-merges.
