@@ -12,6 +12,7 @@ import { iterationSection } from '../gate/plan.ts';
 import { brief } from './brief.ts';
 import { changedGitDirPaths, changedRefs, snapshotGitDir, snapshotRefs } from './gitwatch.ts';
 import { narrate } from './narrate.ts';
+import { claudeBinaryMtime, claudeBinaryPath, postmortem } from './postmortem.ts';
 import { REFUSED } from './preflight.ts';
 import { burstBackoffSeconds, classifyFailure, SHUTDOWN_BACKOFF_SECONDS, shutdownMaxRetries, sleepInSlices } from './quota.ts';
 import type { Reporter } from './report.ts';
@@ -62,6 +63,7 @@ export const runIteration = (
   for (;;) {
     reporter.say(`RUN handing iteration ${iteration} to the implementer`);
 
+    const binaryBefore = claudeBinaryMtime(claudeBinaryPath());
     const implementerStart = Date.now();
     const implemented = spawnSync(
       '/bin/sh',
@@ -91,6 +93,7 @@ export const runIteration = (
     }
 
     const output = `${implemented.stdout}${implemented.stderr}`;
+    postmortem(reporter, dir, attempt, process.cwd(), implemented.status ?? 1, implemented.stdout, implemented.stderr, binaryBefore);
     const quotaClass = classifyFailure(implemented.status ?? 1, output);
 
     if (quotaClass === null) {
@@ -127,10 +130,7 @@ export const runIteration = (
   const touched = git('status', '--porcelain').stdout;
 
   if (headAfter !== headBefore) {
-    reporter.stop(
-      `the implementer committed on its own, which only the gate may do. HEAD moved from ${headBefore} to ${headAfter}. Nothing was gate-verified: review that commit before relaunching.`,
-      PAUSED,
-    );
+    reporter.stop(`the implementer committed on its own, which only the gate may do. HEAD moved from ${headBefore} to ${headAfter}. Nothing was gate-verified: review that commit before relaunching.`, PAUSED);
   }
 
   // Checked before the empty-tree case below: an implementer that writes only into `.git/`
