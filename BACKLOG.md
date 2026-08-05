@@ -172,7 +172,7 @@ Design lives in [`plugins/goal/docs/autonomous-architecture.md`](plugins/goal/do
 - **Why:** a gate failing because Docker, PHP or Node moved under you is a different problem from a gate failing because the code is wrong, and at 7am the halt output looks identical in both cases. Capturing the versions the gates depend on at lock time and again on halt makes the difference visible immediately.
 - **Effort:** ~45 min.
 - **Trigger:** the first halt that turns out to be a toolchain upgrade.
-- **Path:** `plugins/goal/commands/run-issue.md` (record at lock), workflow halt comment (record at halt).
+- **Path:** `plugins/goal/commands/plan.md` (record at lock), workflow halt comment (record at halt).
 
 ### Archive the workflow journal on the PR
 - **Why:** every run writes a `journal.jsonl` holding each agent's real return value. It is the only artefact that explains *why* a run behaved as it did, and it currently lives in a session directory that disappears. Attaching it to the PR makes a run auditable after the fact.
@@ -188,9 +188,9 @@ Design lives in [`plugins/goal/docs/autonomous-architecture.md`](plugins/goal/do
 
 ### Smoke-test the gate commands at lock time
 - **Why:** a gate command that already fails on the untouched tree is a typo, and it currently surfaces as a halt on iteration 1 hours later. Running each one once while the plan is being frozen catches it while the developer is still there. Done manually on `issue-3-spec.md` and it caught real problems.
-- **Effort:** ~30 min, mostly prose in `/goal:run-issue` Phase 3.
+- **Effort:** ~30 min, mostly prose in `/goal:plan` Phase 3.
 - **Trigger:** next time a plan is locked.
-- **Path:** `plugins/goal/commands/run-issue.md`.
+- **Path:** `plugins/goal/commands/plan.md`.
 
 ### Canary iteration
 - **Why:** a plan that is wrong systematically is wrong from iteration 1. Running the first slice alone, stopping and notifying costs one iteration instead of ten to find out.
@@ -211,16 +211,23 @@ Design lives in [`plugins/goal/docs/autonomous-architecture.md`](plugins/goal/do
 - **Path:** Claude Code settings, not this repo. See <https://opentelemetry.io/blog/2026/genai-observability/>.
 
 ### Cost per iteration in the PR body
-- **Why:** `budget.spent()` deltas around each iteration make slice sizing empirical instead of intuitive. Over a few plans it tells you which shapes of iteration are expensive, which is exactly what `/goal:run-issue` Phase 3 currently guesses at.
+- **Why:** `budget.spent()` deltas around each iteration make slice sizing empirical instead of intuitive. Over a few plans it tells you which shapes of iteration are expensive, which is exactly what `/goal:plan` Phase 3 currently guesses at.
 - **Effort:** ~30 min.
 - **Trigger:** after three or four workflow runs, when there is data worth reading.
 - **Path:** `plugins/goal/workflows/goal-auto.js`.
 
 ### Promote the sensitivity lens to a command
 - **Why:** the evaluation literature is clear that the mitigation which actually moves judge accuracy is executing code, not refining prompts. "Would this test fail if the rule broke?" is mechanisable: revert the implementation hunk, run the slice's test, require RED, restore. That turns an advisory opinion into an exit code, which means it can halt.
-- **Effort:** ~1 h for the script, plus wiring it into the iteration `gate` blocks that `/goal:run-issue` produces.
+- **Effort:** ~1 h for the script, plus wiring it into the iteration `gate` blocks that `/goal:plan` produces.
 - **Trigger:** after the lens layer has run on a few iterations and you trust the shape.
 - **Path:** `plugins/goal/scripts/`, then `docs/adversarial-verification.md` §Promotion principle.
+
+### Rename leftovers inside the frozen runner zone
+- **Why:** the upstream commands were renamed (`/goal:draft-issue` → `/goal:spec`, `/goal:run-issue` → `/goal:plan`) without touching the orchestrated zone under active work. Four strings still print or assert the old names: `scripts/run/preflight.ts:116` (halt message "Move it out with /goal:run-issue"), its assertion in `tests/goal-run-preflight.test.ts:93`, `commands/supervise.md:26` ("Run `/goal:run-issue` first"), and the comment at `workflows/goal-auto.js:159`. Purely cosmetic, but the first three are user-facing and point at a command that no longer exists.
+- **Also:** the bare `commit` policy was removed upstream (`/goal:plan` now offers `manual` | `commit+pr` only), but the runner and goal-auto still tolerate it: preflight refuses only `manual`, and `run/publish.ts:35` / `goal-auto.js:601` treat any non-`commit+pr` policy as "commit, publish nothing". Decide then whether that tolerance stays (old plans on disk) or a preflight refusal joins it.
+- **Effort:** ~5 min + `bash plugins/goal/tests/run.sh`.
+- **Trigger:** the next session that touches the runner, supervise or goal-auto anyway.
+- **Path:** the lines above.
 
 ## 🗂️ How to add to this list
 

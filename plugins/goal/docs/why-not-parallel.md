@@ -156,7 +156,7 @@ mode inside one script".
 ## 4. What the replacement buys, beyond removing the defect
 
 **The disjointness proof moves to planning time.** It used to run at launch, where discovering
-a bad split cost the whole run. `/goal:run-issue` now proves it once, while a human is reading
+a bad split cost the whole run. `/goal:plan` now proves it once, while a human is reading
 the file lists, and a mistake costs an edit.
 
 **Every plan resumes correctly, alone.** With one shared file, each run must be told its scope
@@ -189,7 +189,7 @@ parallelism lives. Reach for several runs when the work genuinely splits:
 - and only when the union of one part's `test_files` + `impl_files` shares **no path** with
   another's. One shared file and the two runs conflict at merge, whatever the story says.
 
-`/goal:run-issue` writes that as N self-sufficient plans plus an ordering index
+`/goal:plan` writes that as N self-sufficient plans plus an ordering index
 (`<work-id>-plans.md`), each plan carrying its full header — nothing inherits, because each
 file is read alone by its own run. Launch one per file, in its own session.
 

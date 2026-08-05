@@ -3,7 +3,7 @@
 How a locked plan is run without supervision: what enforces what, and why each guarantee sits in
 the layer it sits in.
 
-The chain is `/goal:draft-issue` → `/goal:run-issue` → `node goal-run.ts <plan>` →
+The chain is `/goal:spec` → `/goal:plan` → `node goal-run.ts <plan>` →
 `goal-gate.ts` → advisory agents → `/goal:supervise`. Only the middle of it is unattended.
 
 The rule that shapes everything: **a guarantee belongs to the lowest layer that can hold it.**
@@ -59,7 +59,7 @@ Four forms of the loop were tried. Each is named here by what it made impossible
 
 **`/goal` on its own.** There is no judge: the model decides when the work is done. That is why
 `/goal:next` exists — it is "the only step that replays the acceptance commands independently"
-(`commands/run-issue.md:731`), and skipping it means a green iteration is only ever
+(`commands/plan.md:731`), and skipping it means a green iteration is only ever
 self-certified. Everything below is an answer to that one hole.
 
 **A dynamic Workflow, the abandoned generation.** It takes a subagent to run `git status`. The
@@ -185,7 +185,7 @@ So:
 - **The loop never reads issue or PR text.** The one thing it reads back from GitHub is a
   number — `gh pr view --json number` (`run/publish.ts:129`) — and it reads it only to decide
   whether to create a pull request or edit the one that exists. Reading a source happens once,
-  in `/goal:draft-issue`, under a human's eyes, and its output is the local plan.
+  in `/goal:spec`, under a human's eyes, and its output is the local plan.
 - **The plan is the only instruction source**, it is gitignored — a plan directory visible to
   git is a refusal, not a warning (`run/preflight.ts:93`) — and its hash is checked at every
   iteration. An instruction that is not in the plan is not an instruction.
@@ -211,8 +211,8 @@ text authored by anyone else ever crosses.
 
 ## What is deliberately not a program
 
-The grill is. `/goal:run-issue` asks one question at a time and a human answers
-(`commands/run-issue.md:94`), and that is the step that decides what is being built. Nothing
+The grill is. `/goal:spec` and `/goal:plan` ask one question at a time and a human answers
+(`commands/spec.md:96`, `commands/plan.md:110`), and that is the step that decides what is being built. Nothing
 downstream can recover from a plan that is wrong, because every mechanism below it checks the
 plan against itself. Automating it would move the one judgment with no fallback into the layer
 with the weakest guarantees.

@@ -176,7 +176,7 @@ that survived that cut were lost to the port instead, which is a different and w
 | **Invariant** | the sequence test `grill-adversarial` assigns to an owning iteration, which lands in that iteration's `gate1` |
 | **Accumulation** | the regression wall, which replays the gate commands of every ticked iteration |
 | **Reversibility** | the existing suite staying green, as `dod1` — but see below |
-| **Blast radius** | nothing: it was specified here and never implemented. The blast radius is established at planning time by `/goal:run-issue`, with a human reading the consumer list |
+| **Blast radius** | nothing: it was specified here and never implemented. The blast radius is established at planning time by `/goal:plan`, with a human reading the consumer list |
 | **Ripple** | nothing, and by accident. It asked whether iteration N left N+1 doable exactly as written, and the runner has no per-iteration advisory stage left to carry it |
 | **Completeness** | nothing, and by accident. It asked what the plan's Business intent implied that no iteration covered — a question the surviving conformance lens explicitly does not ask, since it judges against declarations rather than past them |
 

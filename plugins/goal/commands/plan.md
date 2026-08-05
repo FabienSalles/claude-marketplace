@@ -1,20 +1,23 @@
 ---
-description: Session 1 of the goal workflow — read any source (Jira US, GitHub issue, spec file, inline), lift ambiguities and fill functional gaps, build the missing Definition of Done, decompose into functional iterations, persist a validated plan on a feature branch, then echo the per-iteration /goal handoff for Session 2
+description: Executable contract of the goal workflow (Session 1) — from a functional contract built by /goal:spec, or any source whose functional level is already settled, surface the technical consequences, map every business rule to a command-line check, decide delivery mode / commit policy / remote, decompose into gate-blocked iterations, persist the locked plan on a feature branch, then echo the per-iteration /goal handoff for Session 2. Never re-opens a functional question — a functional hole is a spec fault and goes back through /goal:spec.
 argument-hint: A source — Jira key (CT-1234), GitHub issue number (42), a spec path (.claude/plans/x-spec.md), or 'inline'
 ---
 
-# /goal:run-issue — Source → Plan → Branch (Session 1 of the goal workflow)
+# /goal:plan — Spec → locked plan → branch (Session 1 of the goal workflow)
 
 You are helping the developer prepare an **autonomous `/goal` execution** that
 delivers working code. THIS session is purely interactive — lift every
-ambiguity and fabricate the missing Definition of Done NOW, because once
-`/goal` starts in Session 2 it cannot ask the developer anything.
+technical ambiguity and lock the executable Definition of Done NOW, because
+once `/goal` starts in Session 2 it cannot ask the developer anything.
 
-The source is **not necessarily a GitHub issue**. It is frequently a **Jira
-US** that has functional holes, undocumented technical consequences, and **no
-Definition of Done at all** — building that DoD here is the whole point.
+The levels are split. **What** must become true — business rules, each with an
+observable acceptance criterion — is `/goal:spec`'s contract. THIS session owns
+**how**: the technical consequences, the command each rule is proven by, the
+delivery decisions, the iterations, the lock. A raw source (a Jira US straight
+from the sprint) is welcome here — Phase 1 rules on whether its functional
+level is settled, and runs `/goal:spec` first when it is not.
 
-> Companion docs: this plugin's `README.md` (full workflow), `templates/done-criteria.template` (acceptance-criteria baseline), `templates/goal-handoff.template` (the canonical `/goal` handoff both `/goal:run-issue` and `/goal:next` emit).
+> Companion docs: this plugin's `README.md` (full workflow), `templates/done-criteria.template` (acceptance-criteria baseline), `templates/goal-handoff.template` (the canonical `/goal` handoff both `/goal:plan` and `/goal:next` emit).
 >
 > **Decomposition skills:** Phase 3 loads `product:vertical-slice` (how to split) and
 > `product:delivery` (how each slice ships without blocking). They are the difference
@@ -32,14 +35,14 @@ Source: `$ARGUMENTS`
 
 Resolve it to a **work item** and a stable **work-id**:
 
-**Draft-first — check the local artifact BEFORE any external I/O.** For a Jira
+**Spec-first — check the local artifact BEFORE any external I/O.** For a Jira
 key or an issue number, the work-id is derivable from the argument alone (no
 network): `CT-5856` → `ct-5856`, `42` → `issue-42`. So **first** look for
 `.claude/plans/<work-id>-spec.md`:
-- **It exists** → `/goal:draft-issue` already ran and captured the source
-  (Jira/issue content, gaps, decisions) into that draft. It is the **primary
+- **It exists** → `/goal:spec` already ran and captured the source (Jira/issue
+  content, business rules, decisions) into that contract. It is the **primary
   source** — read it, do NOT re-fetch Jira/gh to rebuild what it already holds.
-  Only call the Atlassian MCP / `gh` to fill a **specific gap the draft
+  Only call the Atlassian MCP / `gh` to fill a **specific gap the contract
   explicitly flags** (e.g. an unread screenshot). This skips a pointless OAuth
   round-trip and guarantees a fresh session picks up the right element.
 - **It does not exist** → fall through to the external resolution table below.
@@ -67,55 +70,59 @@ branch `feature/<work-id>-<slug>`, log at `.claude/plans/<work-id>-execution-log
 Verify in one round:
 - `git rev-parse --show-toplevel` succeeds (we're in a repo)
 - The current branch is clean; if dirty, ask the developer to stash/commit first
-- **Only if the source is a GitHub issue AND no local draft covers it:** `gh auth status` succeeds
-- **Only if the source is Jira AND no local draft covers it:** the Atlassian MCP resolves (`getAccessibleAtlassianResources` returns a resource). When the draft-first check found `.claude/plans/<work-id>-spec.md`, skip this — no MCP/OAuth needed.
+- **Only if the source is a GitHub issue AND no local spec covers it:** `gh auth status` succeeds
+- **Only if the source is Jira AND no local spec covers it:** the Atlassian MCP resolves (`getAccessibleAtlassianResources` returns a resource). When the spec-first check found `.claude/plans/<work-id>-spec.md`, skip this — no MCP/OAuth needed.
 
 Do **not** require `gh` for a Jira/file/inline source. If a needed check fails,
 STOP and tell the developer what to fix.
 
 Optional pointer (do not block on it): if the source is **not** a GitHub issue
 and the developer might want one for tracking, mention once: _"No GitHub issue
-backs this source — run `/goal:draft-issue <source>` first if you want one mirrored.
+backs this source — run `/goal:spec <source>` first if you want one mirrored.
 Otherwise I continue local-only."_ Default: continue local-only.
 
-## Phase 1 — Read the source
+## Phase 1 — Read the source, and rule on the functional level
 
 Summarize the source in 5–10 lines:
-- What the developer appears to want (the business need)
-- What's clearly stated vs implied vs **missing**
+- What the developer wants (the business need), and what is already settled
 - Which files/modules you suspect are involved
-- **Functional gaps** you already spot (unspecified rules, undefined edge cases)
 - **Technical consequences** the source doesn't mention (migrations, cross-service
   couplings, contract changes)
-- Whether a Definition of Done exists (for a Jira US: almost always **no** → you'll build it)
+- Whether the functional level is settled
 
-Ask: **"Is my reading correct? Anything to add before I start grilling?"** WAIT.
+Then rule, explicitly, before any question:
 
-## Phase 2 — Grill (one question at a time)
+- **The artifact came through `/goal:spec`** (`Status: spec`, business rules with
+  observable criteria) → the functional level is settled. Its `## Flags for
+  /goal:plan` and `## Deferred decisions` sections are this session's inbox.
+- **Raw source, and no functional question is needed** — the happy path, the
+  business rules and the scope are all extractable without inventing anything →
+  normalize them into the spec sections yourself (mechanical extraction, zero
+  invention) and say you did.
+- **Raw source, and at least one functional question exists** → **invoke the
+  `goal:spec` skill now** and run it to its handoff in this session, then resume
+  here. The functional grill lives there and only there — this command never
+  improvises its own, because a functional answer that lives only in this
+  conversation is lost to the next session, while one in the contract is not.
 
-Goal of the grill: **close every functional gap and surface every technical
-consequence** so the plan is executable without further human input. Pick the
-best available interview approach, in order:
+Ask: **"Is my reading correct? Anything to add before the technical grill?"** WAIT.
+
+## Phase 2 — Technical grill (one question at a time)
+
+Goal of the grill: **surface every technical consequence and map every business
+rule to a command-line check**, so the plan is executable without further human
+input. Pick the best available interview approach, in order:
 
 1. **`pocock:grill-with-docs`** if installed AND `CONTEXT.md`/`docs/adr/` exist.
 2. **`pocock:grill-me`** if installed.
-3. **`common:spec-first-dev` Phase 1 questions** if `common` is installed.
-4. **Inlined baseline** (below) — always works.
+3. **Inlined baseline** (below) — always works.
 
 ### Inlined baseline questions (fallback)
 
 Ask one at a time, each with your recommended answer. Skip anything the source
 already answers.
 
-**Round 1 — the need (fill functional gaps):**
-- Who triggers this? (end user / admin / batch / external system)
-- Precise end-to-end happy path, step by step?
-- Which **business rules** apply? (validations, computations, conditions, limits)
-- Vocabulary: project-specific terms to align with? Where do they live?
-- Business edge cases (not technical — real domain cases)?
-- What is explicitly **out of scope** for this delivery?
-
-**Round 2 — the system (surface technical consequences):**
+**Round 1 — the system (surface technical consequences):**
 - Mockups / Figma / design docs referenced?
 - Cross-project couplings? (API client here, endpoint elsewhere — scan another repo?)
 - Where does data come from? (new API, existing DB, hard-coded, external)
@@ -123,8 +130,8 @@ already answers.
 - Constraints not derivable from the code? (deadlines, legal, team decisions)
 - Anything else invisible in the code I should know?
 
-**Round 3 — verifiability + Definition of Done (always ask):**
-- For **each business rule** from Round 1: what command-line check proves it holds?
+**Round 2 — verifiability + Definition of Done (always ask):**
+- For **each business rule** in the functional contract: what command-line check proves it holds?
   (a test command, a lint rule, a build output) — this is how the DoD gets teeth. Take
   the command they can run, not the name of a test: a name is proof of nothing once it
   is renamed, and only the command is replayed later.
@@ -135,42 +142,62 @@ already answers.
 
 ### Stop condition
 
-Stop grilling when: every functional gap is closed, every business rule maps to
-a command-line check, and no "it depends" remains. Typical: 5–15 questions for a
-small US, more for a feature. **One question per message** — batch questionnaires
+Stop grilling when: every technical consequence is on the table, every business
+rule maps to a command-line check, and no "it depends" remains. Typical: 5–15
+questions for a small US, more for a feature. **One question per message** — batch questionnaires
 reduce signal.
 
-## Phase 2b — Adversarial grill (opt-in, before freezing iterations)
+## Phase 2b — Functional holes found here go back, not forward
 
-The baseline grill resolves what is **raised**. It does not enumerate the
-interaction state space, so broken invariants and broken execution schemas
-(interface / usage incoherence) slip through and become rework. Close that gap here,
-**before** decomposition:
+The adversarial grill (states, invariants, transition matrix) is `/goal:spec`'s,
+and by now it already ran or was explicitly skipped — the contract's
+`Adversarial grill:` line says which. Do not re-open it here.
 
-1. Read the spec's **`## Adversarial grill`** line (set by `/goal:draft-issue` Phase 3b).
-   - **`requested`** → load and run the **`goal:grill-adversarial`** skill on the
-     whole plan.
-   - **`not requested`** → skip, unless step 2 applies.
-2. If the line is **absent** (spec didn't come through `/goal:draft-issue`) OR the feature
-   is **front / interactive** and Phase 2 flagged functional gaps → **ask now**
-   (`AskUserQuestion`, recommending **yes** for front/interactive): run the
-   adversarial grill? If yes → load `goal:grill-adversarial`.
+When this session surfaces a functional hole anyway — a business rule nobody
+wrote, a transition nobody resolved — that is a **spec fault**: stop, fix the
+functional contract first (through `goal:spec`, or by hand for a one-line
+amendment the developer dictates), then resume planning. Deciding it inline "to
+keep moving" is how a plan diverges from the contract it claims to execute.
 
-`grill-adversarial` composes the Pocock grills and adds the coverage discipline:
-enumerate states, extract invariants (front-only ⇒ the front owns them), build the
-`(state × action)` transition matrix, hunt execution-schema breaks, and turn every
-hole into an **owned + sequence-tested** rule. Fold its output into the **Business
-rules** and iterations below — each new invariant becomes a business rule with a
-**sequence test** (drive the action series, assert the invariant holds throughout),
-assigned to an iteration or marked **transverse** (re-verified at each iteration's
-DoD). Do not freeze iterations until every `(state, action)` cell is resolved.
+When the contract carries `## States, invariants & transitions`, every invariant
+becomes a **sequence test** in the decomposition below (drive the action series,
+assert the invariant holds throughout) — assigned to an owning iteration or
+marked **transverse** (re-verified at each iteration's DoD). Do not freeze
+iterations while an invariant has no owner.
 
-## Phase 2c — The two decisions that shape the plan
+## Phase 2c — The decisions that shape the plan
 
-Both are asked **before** decomposing, because both change the plan itself and not just
+All are asked **before** decomposing, because they change the plan itself and not just
 what happens to it afterwards. `product:vertical-slice` sizes and orders slices from the
 execution mode, and `product:delivery` picks a strategy from what the change may break.
 Decomposing first and asking after produces a plan built for the wrong mode.
+
+**B is asked first, because `manual` switches the git questions off.** A developer who
+keeps the default reviews, stages and commits everything themselves, so nothing in this
+session may then ask them about pushes, pull requests or remotes: C resolves to `later`
+unasked, and D is skipped entirely.
+
+### B — Commit / PR policy
+
+Ask (this controls what an execution session is allowed to do, and how big a slice should be):
+
+> **How should the execution sessions handle commits and the PR?**
+> - **manual** (default) — I never commit, push, or open a PR. After each
+>   iteration I stop with a synthesis; you review and commit yourself.
+> - **commit+pr** — I commit each iteration myself (conventional message, no
+>   `Co-Authored-By` trailer), push, and keep a PR (requires a GitHub remote).
+>   It is opened as a **draft at the first commit** and every later iteration
+>   updates that same PR, so you can watch the work land instead of waiting
+>   for the end. It goes ready for review at the last iteration. This is what
+>   `/goal:supervise` needs.
+
+WAIT for the answer. Then **write it into the spec's `Policy:` header line**, and use the
+same value as `<policy>` in the handoff verbatim.
+
+The spec is what makes it durable. `/goal:next` reads the policy from the plan and falls
+back to `manual` when it cannot find it, so a policy that lives only in the pasted handoff
+is lost to a fresh session or a compaction, and the run silently degrades to manual.
+`/goal:supervise` has the same need, and reads it before it will start at all.
 
 ### A — Delivery mode: name what can break, then let the developer choose
 
@@ -236,10 +263,12 @@ of what to deploy together.
   **Breaks:** line naming the consumers from the blast radius, so the reviewer sees the
   contract change without reconstructing it. Skip section C.
 
-### C — When does the cleanup happen? (only under `no-bc-break`)
+### C — When does the cleanup happen? (only under `no-bc-break` + `commit+pr`)
 
 Ask only if the plan will actually introduce a flag or a compat path. No flag, no cleanup,
-no question.
+no question. Under `manual`, do not ask either: record `later` — the follow-up plan is
+written at lock time all the same, and the developer runs it when its trigger holds. The
+`now` branch below is PR machinery, and manual has none.
 
 > The flag and the old path have to go eventually. When should the cleanup be **written**?
 > Either way you decide when it **merges** — the rollback window is never given up.
@@ -262,34 +291,15 @@ as a draft on top of the feature PR. Merging the feature does not merge it. You 
 full rollback window and merge the cleanup when production has convinced you."_ The point
 of the second PR is exactly that separation, so do not describe it as skipping the soak.
 
-### B — Commit / PR policy
-
-Ask (this controls what an execution session is allowed to do, and how big a slice should be):
-
-> **How should the execution sessions handle commits and the PR?**
-> - **manual** (default) — I never commit, push, or open a PR. After each
->   iteration I stop with a synthesis; you review and commit yourself.
-> - **commit** — I commit each iteration myself (conventional message, no
->   `Co-Authored-By` trailer), but never push or open a PR.
-> - **commit+pr** — like commit, plus I push and keep a PR (requires a GitHub
->   remote). It is opened as a **draft at the first commit** and every later
->   iteration updates that same PR, so you can watch the work land instead of
->   waiting for the end. It goes ready for review at the last iteration. This
->   is what `/goal:supervise` needs.
-
-WAIT for the answer. Then **write it into the spec's `Policy:` header line**, and use the
-same value as `<policy>` in the handoff verbatim.
-
-The spec is what makes it durable. `/goal:next` reads the policy from the plan and falls
-back to `manual` when it cannot find it, so a policy that lives only in the pasted handoff
-is lost to a fresh session or a compaction, and the run silently degrades to manual.
-`/goal:supervise` has the same need, and reads it before it will start at all.
-
-### D — The remote it pushes to
+### D — The remote it pushes to (only under `commit+pr`)
 
 Ask this **here**, while the developer is in front of you, because an execution session runs
 without them: a command that stops at 3am to ask which remote to push to does not ask, it
 blocks — or worse, it guesses.
+
+Under `manual` nothing pushes and nothing opens a pull request: skip this question and
+write **no `Remote:` line at all**. A later switch to `commit+pr` hits `/goal:supervise`'s
+refusal of a plan without one, which is exactly the moment to add it.
 
 Run `git remote -v` first and show what exists, then ask:
 
@@ -321,8 +331,10 @@ Say so once and continue with the guidance below — but the split will be weake
 
 Run the skill's five steps against this spec, with the two decisions from Phase 2c in
 hand: `Delivery mode:` constrains what a slice may change, and `Policy:` sets the
-granularity (the skill's step 4 sizes differently for a diff you review yourself and for
-one an unattended agent must gate on a command). Do not restate its rules here — apply
+granularity — step 4's direction: under `manual`, fine slices, one reviewable diff per
+sitting; under `commit+pr`, fatter slices are allowed, because the gate and the
+close review carry the verification and every iteration costs a fresh session — provided
+the gate commands widen with the diff. Do not restate its rules here — apply
 them, and let the plan show the result.
 
 What this command owns, and the skill does not, is everything below: the plan's file
@@ -375,7 +387,7 @@ The index carries three things and nothing else — the set, the order, and the 
 # Plans: <title>
 
 Work-id: <work-id>
-Written by /goal:run-issue on <date>. Ordering only — each plan is authoritative about
+Written by /goal:plan on <date>. Ordering only — each plan is authoritative about
 itself, and its own `Trigger:` line is what a run reads.
 
 ## Order
@@ -429,7 +441,7 @@ the cheapest possible reminder and the whole point of the line.
 A single-plan spec writes no index and carries no such line — there is nothing to lose track
 of, and a checklist with one entry is ceremony.
 
-**Under `commit` or `commit+pr`, every iteration carries a `gate` block, and that block is
+**Under `commit+pr`, every iteration carries a `gate` block, and that block is
 what runs.** The acceptance criteria used to be prose, translated into gate commands at run
 time: a model reading "the project test command exits 0" and deciding,
 alone and unattended, which command that is. The block removes the translation. It is written
@@ -441,8 +453,9 @@ Four things the block's shape asks of you, all mechanical downstream. `test_file
 without it: a slice whose test passes either way is refused. `gate1` is therefore the one
 acceptance criterion — it is bitten, and it must pass three times in a row — where `gate2..N`
 are supporting lints. `max_diff` is the line ceiling you set while awake, enforced while you
-are not. And a slice with nothing to test declares `test_files=` empty, which skips the bite
-rather than faking it.
+are not — and where the granularity from `Policy:` lands as a number: fine under `manual`,
+fatter under `commit+pr`, never past one functional outcome. And a slice with
+nothing to test declares `test_files=` empty, which skips the bite rather than faking it.
 
 **A slice proving the absence of more than one obsolete form writes one `gate1`, not several.**
 The bite check only ever sets aside the implementation and re-runs `gate1`; `gate2..N` are never
@@ -522,20 +535,20 @@ Persist at `.claude/plans/<work-id>-spec.md`:
 
 Source: <Jira CT-1234 | gh issue #42 URL | spec file path | inline>
 Work-id: <work-id>
-Policy: <manual | commit | commit+pr — filled in Phase 2c>
+Policy: <manual | commit+pr — filled in Phase 2c>
 Delivery mode: <no-bc-break | allow-bc-break — filled in Phase 2c>
 Cleanup: <later | now | none — none when allow-bc-break or no flag was introduced>
-Remote: <the git remote a run pushes to, and the repo its PR opens on — filled in Phase 2c D>
-PR base: <branch the pull request targets — omit entirely when it is the repository's default>
+Remote: <the git remote a run pushes to, and the repo its PR opens on — filled in Phase 2c D. Omit the line entirely under manual>
+PR base: <branch the pull request targets — omit entirely when it is the repository's default, and always under manual>
 Incidental: <generated tooling every slice may touch — a lockfile, a tsconfig, a CLI's own config. Omit when the project generates none>
 Bootstrap: <the iteration that creates the toolchain the acceptance commands need. Omit when the project already builds and tests today>
 
 ## Business intent
 
-<Carry the four need fields forward **verbatim** when `/goal:draft-issue` produced them —
-Problem, Objective, Success signal, Affected. When the source came straight here without a
-draft, build them now: they are what the whole plan is measured against, and no later phase
-can reconstruct them.>
+<Carry the four need fields forward **verbatim** when `/goal:spec` produced them —
+Problem, Objective, Success signal, Affected. When the source came straight here without
+passing `/goal:spec`, build them now: they are what the whole plan is measured against, and
+no later phase can reconstruct them.>
 
 **Problem.** <what fails today, with the evidence — an incident, a measurement, a file and line>
 
@@ -723,9 +736,21 @@ copy-paste block. The
 developer pastes it once per iteration — it always picks the **next unchecked**
 iteration, so the same text works every round.
 
+**Under `manual`, offer the clipboard before printing.** The counter file already holds
+the exact block, so ask with `AskUserQuestion`: _"Copy the `/goal` handoff to the
+clipboard?"_
+
+- **yes** (recommended) → `pbcopy < <file>` (macOS; `xclip -selection clipboard` or
+  `wl-copy` where `pbcopy` does not exist). The block is in the clipboard, so do **not**
+  print it again — the one exception to the in-full rule above. Close with one line:
+  the handoff is in the clipboard, to paste after `/clear`, and the counter file is the
+  recovery copy if the clipboard is overwritten first.
+- **no** → print the block in full in the final message, as one copy-paste block.
+
 Then tell the developer:
 
-> Run `/goal` above. When it stops, read the synthesis, review the diff, and
+> Run the `/goal` handoff — printed above, or from your clipboard when you chose the
+> copy. When it stops, read the synthesis, review the diff, and
 > (in **manual** mode) commit the iteration yourself. Then run **`/goal:next`**
 > before anything else: `/goal` verified itself, and `/goal:next` is the only step
 > that replays the acceptance commands independently. Skipping it means a passing
@@ -741,10 +766,16 @@ Then tell the developer:
 - **Do not write production code.** Every phase is clarification + contract only.
 - **GitHub is optional.** Never call `gh` unless the source is a GitHub issue or
   the developer opted into a PR (commit+pr policy).
+- **No git question under `manual`.** B is asked first; on `manual`, C resolves to
+  `later` unasked, D never fires, and no `Remote:` line is written.
 - **Lift, don't assume.** If tempted to "infer" an answer the executor will need,
   ASK instead. A Jira US's silence is a question, not a default.
-- **Build the DoD.** The source rarely ships one — every business rule must land
-  as a command-line check.
+- **Map the DoD.** The functional contract says what must be observable; every
+  business rule leaves here with the command that proves it. A rule without a
+  command is not planned.
+- **Never re-open a functional question.** A functional hole surfacing here is a
+  spec fault: amend the functional contract first (Phase 2b), then keep
+  planning. The grill here is technical only.
 - **Every iteration is a vertical slice with a delivery strategy.** If you cannot
   say what is shippable after it, and how it reaches production while the rest is
   unfinished, it is a task — go back to `product:vertical-slice` step 2.

@@ -195,7 +195,7 @@ Two limits of that guarantee outlived it, and neither is covered:
 
 The injection surface does not disappear, it **moves**, and moving it is the whole design.
 
-`/goal:draft-issue` reads Jira tickets, GitHub issues, PRDs, whatever the source is. That is
+`/goal:spec` reads Jira tickets, GitHub issues, PRDs, whatever the source is. That is
 genuinely untrusted text, and it is read by a model. What makes it acceptable is that its
 only output is a plan the developer reads and validates before anything is frozen, and that
 the plan — not the source — is what the autonomous run obeys, hash-checked at every
@@ -204,7 +204,7 @@ iteration.
 So the rule for the whole workflow is: **all untrusted input is concentrated at the one point
 where a human is looking.** Everything downstream consumes only what that human approved.
 
-Which puts a real obligation on `/goal:draft-issue`: a long source document is exactly where
+Which puts a real obligation on `/goal:spec`: a long source document is exactly where
 an instruction hides from a tired reader. Read the produced plan, not the source's summary of
 itself — and, per the sweep above, read every fence in it as a command that will run.
 

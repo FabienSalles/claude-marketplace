@@ -24,7 +24,7 @@ Spec-driven development harness. Inspired by Harness Engineering (Fowler), Conte
 **When to use `goal` instead**:
 - You want to iterate across fresh sessions, hand off, and keep an audit log
 - The source is a tracked issue (Jira / GitHub) and you may commit / open a PR
-- `goal:run-issue` runs this same spec-building grill, then executes autonomously slice by slice
+- the `goal` pipeline (`/goal:spec` → `/goal:plan`) runs this same spec-building grill, then executes autonomously slice by slice
 
 This workflow is the **single-session, no-branch** path; `goal` is the iterated pipeline. See [`docs/workflows-decision-guide.md`](../../../docs/workflows-decision-guide.md) for the full map.
 
@@ -231,12 +231,12 @@ each step so the user SEES it go red, then green.
 If the `goal` plugin is installed and you want to drive the implementation
 autonomously via `/goal` instead of implementing in this session, the spec
 from Phase 3 (`.claude/plans/<feature>-spec.md`) is already in the shape
-`goal:/draft-issue` expects.
+`/goal:spec` expects.
 
 ```text
-> /draft-issue .claude/plans/<feature>-spec.md
+> /goal:spec .claude/plans/<feature>-spec.md
 # → creates the GitHub issue
-> /run-issue <N>
+> /goal:plan <N>
 # → Session 1 of the autonomous workflow
 ```
 

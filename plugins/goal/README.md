@@ -15,16 +15,18 @@ contract, one reviewable slice at a time.
 
 | Step | You run | What happens |
 |---|---|---|
-| 0 · optional | `/goal:draft-issue <source>` | Normalizes any source into `.claude/plans/<work-id>-spec.md`, flags the gaps, offers to mirror it as a GitHub issue |
-| 1 | `/goal:run-issue <source>` | The grill: closes functional gaps, maps every business rule to a command, decomposes into iterations, asks the commit policy and the remote, locks the plan on `feature/<work-id>-<slug>` |
-| 2 | `node scripts/goal-run.ts <plan>` | The runner: ten preflight refusals, a base sweep, one `claude -p` implementer per iteration, a gate verdict on each, publication, close |
-| 2 · watched | `/goal:supervise [plan]` | Launches the same runner in the background, classifies a halt (plan at fault / implementation at fault / unknown), repairs or discards **once**, then stops |
+| 0 · chantier only | `/goal:tickets <chantier>` | Cuts an initiative carrying several outcomes into an ordered backlog of tickets, elaborated just-in-time — ticket 1 armed, the rest deliberately one-liners |
+| 1 · optional | `/goal:spec <source>` | The functional contract: normalizes any source into `.claude/plans/<work-id>-spec.md`, grills the functional gaps closed, builds the functional DoD (an observable criterion per business rule), offers to mirror it as a GitHub issue |
+| 2 | `/goal:plan <source>` | The executable contract: the technical grill, every business rule mapped to a command, decomposition into iterations, the commit policy and the remote, the locked plan on `feature/<work-id>-<slug>` — runs `/goal:spec` itself when a raw source still has functional holes |
+| 3 | `node scripts/goal-run.ts <plan>` | The runner: ten preflight refusals, a base sweep, one `claude -p` implementer per iteration, a gate verdict on each, publication, close |
+| 3 · watched | `/goal:supervise [plan]` | Launches the same runner in the background, classifies a halt (plan at fault / implementation at fault / unknown), repairs or discards **once**, then stops |
 | — | `scripts/goal-gate.ts` | Judges each iteration and commits it. Nothing else in the system commits |
-| 2 · manual | `/goal` (native) + `/goal:next` | The alternative under `Policy: manual` — the runner refuses that policy outright, since nothing may be committed |
+| 3 · manual | `/goal` (native) + `/goal:next` | The alternative under `Policy: manual` — the runner refuses that policy outright, since nothing may be committed |
 
-**Step 1 is deliberately not automated.** The ambiguity a source leaves cannot be lifted from
-inside a run: an unattended implementer resolves it by guessing, and the guess surfaces thirty
-turns later as work to throw away. The grill is the one place a human is load-bearing.
+**Steps 1–2 are deliberately not automated.** The ambiguity a source leaves cannot be lifted
+from inside a run: an unattended implementer resolves it by guessing, and the guess surfaces
+thirty turns later as work to throw away. The grill — functional in `/goal:spec`, technical in
+`/goal:plan` — is the one place a human is load-bearing.
 
 ## Quick start
 
@@ -32,8 +34,8 @@ turns later as work to throw away. The grill is the one place a human is load-be
 cd ~/projects/<repo>
 
 claude
-> /goal:draft-issue CT-1234        # optional — Jira via MCP, a spec path, or 'inline'
-> /goal:run-issue CT-1234          # the grill, then the locked plan on a feature branch
+> /goal:spec CT-1234               # optional — the functional contract; Jira via MCP, a spec path, or 'inline'
+> /goal:plan CT-1234               # the technical grill, then the locked plan on a feature branch
 ```
 
 Then, from the branch the plan locked, either let a session watch the run:
@@ -121,8 +123,9 @@ exactly as it refuses a failure. **CI exercises it on every invocation of
 
 | Component | Path | Role |
 |---|---|---|
-| [`/goal:draft-issue`](commands/draft-issue.md) | `commands/draft-issue.md` | Any source → normalized spec; opt-in GitHub issue; asks whether to run the adversarial grill |
-| [`/goal:run-issue`](commands/run-issue.md) | `commands/run-issue.md` | The grill → DoD + iterations + policy + remote → the locked plan on a feature branch |
+| [`/goal:tickets`](commands/tickets.md) | `commands/tickets.md` | A chantier → an ordered backlog of outcome-sized tickets, elaborated just-in-time; opt-in GitHub milestone + issues |
+| [`/goal:spec`](commands/spec.md) | `commands/spec.md` | Any source → the functional contract: functional grill, an observable criterion per business rule, opt-in adversarial grill and GitHub issue |
+| [`/goal:plan`](commands/plan.md) | `commands/plan.md` | The technical grill → command-mapped DoD + iterations + policy + remote → the locked plan on a feature branch |
 | [`/goal:supervise`](commands/supervise.md) | `commands/supervise.md` | Launches the runner, classifies a halt, repairs or discards once. **Never run** |
 | [`/goal:next`](commands/next.md) | `commands/next.md` | Manual-loop checkpoint: verify the DoD, reconcile plan against code, emit the next `/goal` handoff |
 | `goal-run.ts` + `run/*.ts` | `scripts/` | The runner: preflight, sweep, lock, iteration, publish, close, report |
@@ -132,8 +135,8 @@ exactly as it refuses a failure. **CI exercises it on every invocation of
 | `transcripts.ts` | `scripts/` | Resolves a run's transcripts from its recorded session ids. Used only by `goal-session-auditor`. **Never run** |
 | `goal-run-implementer`, `goal-run-lens`, `goal-run-auditor` | `agents/` | Spawned by the runner: one implementer per iteration, then an advisory lens and an auditor at close — neither able to undo what shipped |
 | `goal-run-reviewer`, `goal-session-auditor` | `agents/` | Post-publication review and transcript audit. **Never run** |
-| [`grill-adversarial`](skills/grill-adversarial/SKILL.md) | `skills/` | Opt-in, loaded during `/goal:run-issue`'s grill |
-| [`product:vertical-slice`](../product/skills/vertical-slice/SKILL.md) · [`product:delivery`](../product/skills/delivery/SKILL.md) | *(plugin `product`)* | Loaded by `/goal:run-issue` Phase 3 — how the spec splits, and how each slice ships alone |
+| [`grill-adversarial`](skills/grill-adversarial/SKILL.md) | `skills/` | Opt-in, loaded during `/goal:spec`'s grill |
+| [`product:vertical-slice`](../product/skills/vertical-slice/SKILL.md) · [`product:delivery`](../product/skills/delivery/SKILL.md) | *(plugin `product`)* | Loaded by `/goal:plan` Phase 3 (split + per-slice delivery), by `/goal:tickets` (cut + order), and `vertical-slice` alone by `/goal:spec` on a disputed size verdict |
 | `tests/run.sh` | `tests/` | The suite for the gate, both runners, and the guards. Wraps `node --test` once per runner in its list, and additionally requires at least one pass, no failure and no skip — `node --test` alone exits 0 on a glob matching nothing, and a skip is an unknown result refused exactly as a failure |
 | `done-criteria.template` · `goal-handoff.template` · `post-merge.template` | `templates/` | The DoD baseline, the `/goal` handoff `/goal:next` fills, and what a merged run leaves behind — printed, never executed |
 
