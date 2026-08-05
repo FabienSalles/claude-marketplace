@@ -26,7 +26,7 @@ Plan: `$ARGUMENTS`
 - A path → use it.
 - Empty → find it: the `.claude/plans/*-spec.md` most recently modified, or the one
   referenced by the active goal. Ambiguous (several candidates) → list them and ASK.
-  None → STOP: _"No plan found — run `/goal:run-issue` first."_
+  None → STOP: _"No plan found — run `/goal:plan` first."_
 
 Read the plan and locate:
 - **the finished iteration** = the last `[x]` before the first `[ ]`.
@@ -41,6 +41,11 @@ Read the plan and locate:
 
 Run the **finished iteration's own acceptance commands** from the plan (its test
 command, lint/QA) and show the **real output**. Never trust the `[x]` or memory.
+
+Open the verification with the iteration's **intent**: one line restating its *Goal* —
+what it was meant to make true, and for whom — and, for each command you replay, the
+business rule it proves (the plan already maps rule → command; read the mapping back,
+never invent it). A green command only means something attached to the rule it covers.
 
 If anything fails → **restore `[ ]` on that iteration in the plan, then STOP**. Report
 what failed: the iteration is not done, so there is nothing to hand off. The un-tick
@@ -93,7 +98,7 @@ the plan**. This iteration's work must not be lost — but **how** the tree is m
 safe depends on the commit policy, and in **manual** mode staging is the
 **developer's** job, not yours.
 
-- If the iteration was **committed** (policy commit / commit+pr) → verify the tree is
+- If the iteration was **committed** (policy `commit+pr`) → verify the tree is
   clean. If it is not, the commit is incomplete: report it, don't paper over it.
 - Otherwise (**manual** — the default, nothing committed) → **do NOT stage. Never run
   `git add`, `git reset`, or otherwise touch the index on your own initiative.**
@@ -138,7 +143,7 @@ emitting the handoff; if it needs a human decision, say so and ASK.
 ## Phase 5 — Pick the continuation, then emit it
 
 The plan's `Policy:` decides how the rest of the work runs, and this is the moment to say
-so — a developer who chose `commit` or `commit+pr` chose autonomy, and handing them a
+so — a developer who chose `commit+pr` chose autonomy, and handing them a
 per-iteration prompt anyway makes them drive a loop they asked to be driven for them.
 
 Read `Policy:` from the spec header, then check the **remaining unchecked** iterations for
@@ -150,8 +155,8 @@ one.
 | `Policy:` | Remaining iterations | Emit |
 |---|---|---|
 | `manual` | any | the per-iteration handoff **only** — `/goal:supervise` refuses `manual` |
-| `commit` / `commit+pr` | all gateable | **`/goal:supervise <plan path>` first**, per-iteration handoff below it as the fallback |
-| `commit` / `commit+pr` | one or more not gateable | the per-iteration handoff first, and name the iterations that block a clean autonomous run |
+| `commit+pr` | all gateable | **`/goal:supervise <plan path>` first**, per-iteration handoff below it as the fallback |
+| `commit+pr` | one or more not gateable | the per-iteration handoff first, and name the iterations that block a clean autonomous run |
 
 **Always pass the plan path explicitly** in the `/goal:supervise` line. Bare `/goal:supervise`
 resolves the most recently modified `*-spec.md`, which is whichever plan was last touched —
@@ -175,8 +180,18 @@ exceeds 4000, and print the count with the block. **That file is only a counter*
 goes to the model and not reliably to the developer. The filled block goes **in full into
 your final message**, as one copy-paste block.
 
-Prepend the context-hygiene reminder (you cannot run these — the developer does),
-then the filled template as **one copy-paste block**:
+**Under `manual`, offer the clipboard before printing.** The counter file already holds
+the exact block, so ask with `AskUserQuestion`: _"Copy the `/goal` handoff to the
+clipboard?"_
+
+- **yes** (recommended) → `pbcopy < <file>` (macOS; `xclip -selection clipboard` or
+  `wl-copy` where `pbcopy` does not exist). The block is in the clipboard, so do **not**
+  print it again: emit the context-hygiene reminder alone — run `/context`, `/clear` if
+  usage is non-trivial, then paste from the clipboard — and name the counter file, the
+  recovery copy if the clipboard is overwritten before the paste.
+- **no**, or the policy is not `manual` → print it: prepend the context-hygiene reminder
+  (you cannot run these — the developer does), then the filled template as **one
+  copy-paste block**:
 
 ```text
 # In THIS session first: run /context; if usage is non-trivial, run /clear.
@@ -186,7 +201,8 @@ then the filled template as **one copy-paste block**:
 ```
 
 Expand the placeholder: what you print is the filled text itself, never a reference to it
-nor a path to the file you measured.
+nor a path to the file you measured. The clipboard branch is the one exception: there the
+paste buffer carries the block, and the file is named only for recovery.
 
 **When no unchecked iteration remains**, there is no handoff to emit and the plan is done.
 Emit the checklist from `templates/post-merge.template` instead, filled per that file's
@@ -196,21 +212,28 @@ that merge will leave behind; under `manual` the same leftovers exist minus the 
 branch. This is the only moment the workflow reaches the end of a plan, so it is the only
 place the leftovers can be named before the context is gone.
 
-Then close with two or three lines: the finished iteration is **verified** (name it),
-the plan is **reconciled** (list the edits you made), the tree is **safe**
+Then close, métier first: one line on what the finished iteration **made true** for the
+domain (its *Goal*, the business rules it covered), one on what the next iteration
+**will make true**. Only then the bookkeeping: the finished iteration is **verified**
+(name it), the plan is **reconciled** (list the edits you made), the tree is **safe**
 (clean / staged — say which), and the next iteration is **cold-start ready** — clear
-and paste the block above (or run the `/goal:supervise` line, when you offered one).
+and paste the block above or from the clipboard (or run the `/goal:supervise` line,
+when you offered one).
 
 ## Rules for THIS command
 
 - **No production code.** This is a checkpoint, not an implementation step.
+- **Lead with the business intent.** Every synthesis this command prints opens with
+  what the iteration makes true for the domain — its *Goal*, the rules it serves —
+  before any command output or tree state. A close that says only "commands green,
+  tree clean" has buried the point.
 - **Never trust the checkbox** — re-run the finished iteration's acceptance commands
   and show the output.
 - **The plan must equal reality** before you emit the handoff: every claim true,
   every changed file accounted for, ripple propagated to later iterations.
 - **In manual mode, never stage** — `/goal:next` only **verifies and reports** the working
   tree; `git add`/`git reset`/committing is the developer's review job. A clean tree
-  is expected only under commit / commit+pr (where the iteration was committed). Never
+  is expected only under `commit+pr` (where the iteration was committed). Never
   auto-stage to "make it safe": safety in manual mode is work-on-disk + plan-on-disk.
 - **You cannot self-clear or self-launch** — the final output is a prompt the
   developer runs in a fresh session; do not pretend to have cleared or continued.

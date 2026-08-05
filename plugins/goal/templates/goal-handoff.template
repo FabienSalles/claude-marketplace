@@ -1,6 +1,6 @@
 # /goal handoff — canonical instruction
 
-The exact `/goal` prompt an iteration runs on. Both `/run-issue` (first handoff, at
+The exact `/goal` prompt an iteration runs on. Both `/goal:plan` (first handoff, at
 the end of the planning session) and `/next` (between-iteration handoff) emit THIS
 text, filled from the plan. `/goal:auto` builds its subagent brief from it too, minus
 the `[x]` step and the policy block. Single source of truth — edit here, all three follow.
@@ -11,7 +11,7 @@ the `[x]` step and the policy block. Single source of truth — edit here, all t
 - « Done » line 1 = the iteration's acceptance **test** command (use whatever the
   plan says — PHP/JS/other, dockerized where the plan is).
 - « Done » line 2 = the project **lint / QA** command.
-- `<policy>` = the plan's commit/PR policy verbatim (`manual` | `commit` | `commit+pr`).
+- `<policy>` = the plan's commit/PR policy verbatim (`manual` | `commit+pr`).
 - `<delivery-mode>` = the plan's `Delivery mode:` line (`no-bc-break` | `allow-bc-break`).
 
 ## Hard limit — ≤ 4000 characters
@@ -28,7 +28,7 @@ wc -m < <file>
 ```
 
 If the count exceeds 4000, compress and re-count — drop redundant phrasing, fold
-the `manual`/`commit`/`commit+pr` branches to the single active `<policy>`, fold
+the `manual`/`commit+pr` branches to the single active `<policy>`, fold
 the two delivery-mode branches to the single active `<delivery-mode>`, shorten the
 Done/synthesis wording. Never truncate mid-sentence. Print the count alongside the
 block so the developer sees the margin.
@@ -37,7 +37,9 @@ block so the developer sees the margin.
 tool call is not showing it: tool output reaches the model, not reliably the human. The
 filled block MUST be reproduced **in full, in the final assistant message, as one
 copy-paste block** — a reply that prints only the context-hygiene header, a summary, or a
-path to the file leaves the developer with nothing to paste.
+path to the file leaves the developer with nothing to paste. One exception: when the
+developer accepted the emitters' clipboard offer, the paste buffer carries the block, the
+block is not reprinted, and the counter file is named as the recovery copy.
 
 Fold both branch blocks by default, not only when you overflow: the emitted text is
 an instruction to one executor in one mode, and the branch it is not in is noise it
@@ -88,7 +90,7 @@ Politique commit/PR : <policy>
                 de contenu NI `git reset`/`git restore` sur l'index (le hook `git-add-empty`
                 pose déjà les intent-to-add ; y toucher casse la review du dev). Laisse le
                 dev stager et reviewer lui-même.
-- commit      → commite CETTE itération dans cet ordre :
+- commit+pr   → commite CETTE itération dans cet ordre :
                 1. `git add` UNIQUEMENT les fichiers listés en « Files to touch ».
                    Jamais `git add -A`, `git add .`, ni `git commit -a`.
                 2. `git commit -m "<message conventionnel>"` (SANS trailer Co-Authored-By).
@@ -96,8 +98,8 @@ Politique commit/PR : <policy>
                    à la liste déclarée : STOP et signale-le, ne commite pas par-dessus.
                 Le hook `git-add-empty` pose les fichiers neufs en intent-to-add (` A`), ce
                 qui ressemble à « stagé » sans l'être : sans l'étape 1 leur contenu reste
-                hors du commit et la PR part incomplète. Sans push ni PR.
-- commit+pr   → idem, puis push et PR. La PR existe dès le PREMIER commit, en draft :
+                hors du commit et la PR part incomplète.
+                Puis push et PR. La PR existe dès le PREMIER commit, en draft :
                 `gh pr view --json number` ne trouve rien pour cette branche → push puis
                 `gh pr create --draft` ; elle en trouve une → push seul, et mets à jour le
                 corps de la PR existante avec l'itération que tu viens de livrer. Jamais
