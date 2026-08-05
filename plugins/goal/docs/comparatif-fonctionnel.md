@@ -1,10 +1,8 @@
 # Comparatif fonctionnel — Hermes, et le reste du panel
 
-Lecture non technique de deux documents qui existent déjà et qui restent les sources :
-[`prior-art.md`](prior-art.md) (le panel des harnesses de delivery) et
-[`unattended-run-spec.md` §10](unattended-run-spec.md#10-three-layers-and-where-the-external-tools-actually-sit)
-(Orca et Hermes). Ici, aucun chemin de fichier, aucun numéro de ligne. Quatre questions posées à
-chaque concurrent, toujours les mêmes :
+Lecture non technique d'un document qui existe déjà et qui reste la source :
+[`prior-art.md`](prior-art.md) (le panel des harnesses de delivery). Ici, aucun chemin de fichier,
+aucun numéro de ligne. Quatre questions posées à chaque concurrent, toujours les mêmes :
 
 1. qu'est-ce qui diffère, sur le fond ;
 2. qu'est-ce qu'il ne fait pas et que je fais ;
@@ -333,7 +331,6 @@ une fois par changement.
 | Pour | Lire |
 |---|---|
 | le panel, avec l'ancrage code et les réserves complètes | [`prior-art.md`](prior-art.md) |
-| Hermes et Orca en détail, et les trois couches | [`unattended-run-spec.md` §10](unattended-run-spec.md) |
 | ce qui tient quoi, et pourquoi à cet étage | [`autonomous-architecture.md`](autonomous-architecture.md) |
 | la forme sûre d'un canal de pilotage distant | [`steering-and-injection.md`](steering-and-injection.md) |
 | la CI rouge et les autres boucles ouvertes | [`loops.md`](loops.md) |

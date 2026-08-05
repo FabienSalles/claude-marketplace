@@ -17,8 +17,8 @@ a keystroke", where backgrounding kills nothing and the real cause was a permiss
 answered. That correction stands. What changed since is bigger than the correction. The chain that
 runs today has no isolation layer: `/goal:supervise` starts the runner as a plain background shell
 (`commands/supervise.md`, Phase 1), in the developer's own checkout, with no worktree and no named
-session to reattach to. `scripts/goal-launch.sh:133` still opens tmux — but it launches
-`/goal:auto`, the abandoned generation.
+session to reattach to. The earlier launcher that opened tmux for a run has since been deleted; it
+launched the abandoned generation.
 
 So the table of candidates below never had a row for what is actually in use, and the layer was
 not replaced by a better one. It was dropped along the way.
@@ -30,7 +30,7 @@ and the worktree is what the current chain gave up with it, silently.
 | Option | Buys | Costs |
 |---|---|---|
 | Background shell under `/goal:supervise` (today) | the supervising session reads the exit code and can act on it, which is the whole of §8 | tied to the session that launched it, untested against that session ending; runs in the developer's own tree, so a halt leaves that tree dirty |
-| tmux + worktree (`goal-launch.sh`) | terminal-independent, stable name, a tree of its own | invisible while detached, and only reachable through `/goal:auto` |
+| tmux + worktree (the deleted launcher) | terminal-independent, stable name, a tree of its own | invisible while detached, and only reachable through the abandoned generation |
 | Claude Code on the web (claude.ai/code) | the run lives in the cloud; the machine may sleep | never tested against a full run |
 | Native backgrounding (`/bg`, `claude agents`) | integrates with notifications and Remote Control, so question 2 mostly dissolves | believed not to survive the terminal closing — **unverified** |
 
@@ -46,7 +46,7 @@ repair path has to reason about that tree.
 working. Nothing reaches the developer.
 
 **The gap is wider than this question first stated it.** *"The workflow already posts a halt report
-to the GitHub issue when one exists"* was true of `workflows/goal-auto.js` and of nothing else. The
+to the GitHub issue when one exists"* was true of the abandoned Workflow and of nothing else. The
 current runner's only GitHub calls are `pr view`, `pr edit`, `pr create` (`scripts/run/publish.ts`)
 and `pr ready` (`scripts/run/close.ts`). It never comments on an issue, and on a halt it never
 reaches the closing stage at all (§15). Its entire account of itself is `<plan>.run.log` and an
@@ -86,8 +86,9 @@ than an occasional false block. Wants a deliberate pass, not a quick regex edit.
 
 ## 4. Preflight 11 asks the developer what the session already knows
 
-**Observed.** A run launched by `goal-launch.sh` — which always passes `--permission-mode auto` —
-still stopped at preflight 11 to ask the developer which permission mode the session was in. It
+**Observed.** A run launched by the earlier launcher — which always passed `--permission-mode
+auto` — still stopped at preflight 11 to ask the developer which permission mode the session was
+in. It
 read as mistrust: the first reaction was *"why is it asking permission again, do I need to merge
 something?"*, when nothing was wrong at all. The check inspects `permissions.defaultMode` in the
 settings files, which reflects neither a CLI flag nor a `Shift+Tab` override, so it cannot see the
@@ -97,47 +98,40 @@ mode it is running under and falls back to asking.
 one of them inspects a permission mode (`scripts/run/preflight.ts`). The runner states the mode
 instead, at every single agent invocation. A check that *sets* the condition it wanted to verify
 does not need to verify it, and that is strictly better than both candidates this question weighed
-(read a variable the launcher exported, or keep asking). The question survives only in
-`commands/auto.md`, on the abandoned chain.
+(read a variable the launcher exported, or keep asking). The question survived only on the
+abandoned chain, and that chain is gone.
 
 **What stays worth reading.** The framing was the useful part and it generalises: when a check
 cannot observe what it asks about, decide whether it exists to *know* the answer or to make the
 developer *accept* it. Only the second survives being blind — and if the answer is neither, the
 check should be replaced by an assertion of the thing it wanted.
 
-## 5. `/goal:next` offers a command whose preflight always refuses
+## 5. `/goal:next` offers a command whose preflight always refuses — settled by deletion
 
 **Observed.** On 2026-08-01, `/goal:next` closed iteration 1 of `goal-run-script-spec.md` and
-offered `/goal:auto` for the remaining six. `/goal:auto` refused on preflight check 9: a pull
-request was already open on the branch. The developer read the refusal as their own omission —
-*"you told me I could run auto, not that I had to merge the PR first"* — and nothing was omitted.
+offered the abandoned generation's autonomous command for the remaining six, which refused on its
+own preflight: a pull request was already open on the branch, and that command's cleanup logic
+retried `gh pr create` on it forever rather than adopting it. The developer read the refusal as
+their own omission — *"you told me I could run auto, not that I had to merge the PR first"* — and
+nothing was omitted.
 
-**Why it is systematic, not a one-off.** `/goal:next` Phase 5 offers `/goal:auto` whenever
-`Policy:` is `commit` / `commit+pr` and every remaining iteration carries a `gate1`. It never looks
-at whether a pull request exists. Under `commit+pr` one **always** does from iteration 1 onward,
-because that policy opens the draft PR at the first commit. So after any first iteration, the two
-commands contradict each other by construction.
+**Why it was systematic, not a one-off.** `/goal:next` Phase 5 offered that command whenever
+`Policy:` was `commit` / `commit+pr` and every remaining iteration carried a `gate1`, without ever
+checking whether a pull request already existed — and under `commit+pr` one always does from
+iteration 1 onward, since that policy opens the draft PR at the first commit. So after any first
+iteration, the two commands contradicted each other by construction.
 
-**The dangerous half is fixed; the confusing half is not.** The reason check 9 could not simply be
-deleted was that `goal-auto.js:671` initialises `shipping.pr` to `false`, so every later `mirror()`
-retries `gh pr create` on a branch that already has one, and the body is never rewritten — removing
-the check would have traded a clean refusal for a run that lands its work and silently publishes
-none of it. That cause is gone on the current runner: the publisher asks `gh` whether a pull
-request exists before creating one, and adopts it (`scripts/run/publish.ts`, *"Asked, not
-assumed"*). What survives is the contradiction itself. `commands/next.md` still offers
-`/goal:auto <plan path>`, `/goal:auto`'s check 9 still refuses on an open PR
-(`commands/auto.md`), and `next.md` names neither `/goal:supervise` nor the runner it launches.
+**Settled.** The abandoned command is deleted, `scripts/run/publish.ts` asks `gh` whether a pull
+request exists before creating one and adopts it rather than retrying blindly, and
+`commands/next.md` now offers `/goal:supervise` — whose preflight has no such check — instead.
 
-**So the question changed shape: what should `/goal:next` offer at all?** The autonomous entry
-point today is `/goal:supervise`, whose preflight has no PR check, so it would simply work. That
-makes fix 1 (teach `next` the check) and fix 2 (narrow check 9) both bets on `/goal:auto`
-surviving — which is §6's leftover, not this one's. Pointing the checkpoint command at the current
-generation is one line and one decision about which generation the workflow endorses.
+## 6. The orchestrator is bash, and that was never a decision — settled, and closed
 
-## 6. The orchestrator is bash, and that was never a decision
-
-**Settled: the port landed** (*Port `goal-run.sh` to Node/TypeScript*, #24, delivered across three
-runs). Kept here for what it cost and what the A/B showed.
+**Settled: the port landed, then the loser was deleted.** The earlier bash orchestrator was ported
+to Node/TypeScript across three runs, kept for a time as a frozen A/B reference, and has since been
+removed outright. The Workflow it had itself replaced is unreferenced from any command but still
+checked in. `plugins/goal/tests/run.sh` now runs the suite once, under Node; there is nothing left
+to compare it against.
 
 **The argument, unchanged.** Bash was never weighed against Node. The reasoning went "a `Workflow`
 script has no shell, therefore a shell script" — but the missing shell belonged to the *Workflow
@@ -145,53 +139,31 @@ runtime*, not to JavaScript. The decisive column was never the language, it was 
 594-line file with eight functions holding argument parsing, ten preflight checks, the loop,
 publication, the quota wait and the closing stage, against a gate split one module per group of
 business rules, each with its matching test file — a convention `goal-gate.ts` states in its own
-header and that `goal-run.sh` was the one place in the plugin unable to follow.
+header and that the bash script was the one place in the plugin unable to follow.
 
-**What it cost.**
-
-| | Lines | Files | Largest |
-|---|---|---|---|
-| `scripts/goal-run.sh` (frozen) | 594 | 1 | — |
-| `scripts/goal-run.ts` + `scripts/run/` | 938 | 8 | 194 |
-| `scripts/goal-gate.ts` + `scripts/gate/` | 920 | 10 | 175 |
-
-344 lines bought the split. The second defect this question named — the orchestrator re-reading
+**What it cost.** `scripts/goal-run.ts` + `scripts/run/` came out at 938 lines over 8 modules,
+against `scripts/goal-gate.ts` + `scripts/gate/` at 920 lines over 10 — 344 lines bought the split
+over the 594-line original. The second defect this question named — the orchestrator re-reading
 the plan in `sed`/`awk` where `gate/plan.ts` already exported the same accessors — did go, but not
 the way proposed: the runner imports `gate/plan.ts` directly instead of the gate gaining `section`
-and `survey` verbs. Same outcome, one reader, and no extra process boundary. The harness did not
-shrink: `tests/support/goal-run-harness.ts` is 273 lines and still spawns the runner by path,
-which is precisely what keeps the A/B possible.
+and `survey` verbs.
 
-**What the A/B showed, on one run each.** The bash run (PR #24) published a `## Landed` section
-that was empty for all six of its landed iterations: `landed` accumulates from an empty string, so
-it carries a leading space, and `tr ' ' '|'` turns the body's regex into `^### Iteration (|1) `, an
-empty alternative BSD grep refuses outright (`scripts/goal-run.sh:235`). The Node run (PR #26)
-listed all seven of its own, because the body is built from an array of iteration numbers looked up
-through `iterationHeading()` rather than from a string spliced into a grep alternation. One
-observed defect, in the one place where the two languages' handling of a list actually differs,
-found on the first real use of either runner.
-
-**What the A/B could not show, as wired — settled.** `tests/run.sh` now runs the suite once per
-runner in a list and refuses a nonzero `skipped` line exactly as it refuses a failure, replacing the
-bash-only default that used to pass 188/6 in silence: bash is now 201 pass/7 skip, node 206 pass/2
-skip. Neither zero, so CI halts on exactly what it used to hide — the two runners are not proven
-equal.
+**What the one A/B run showed, before the loser was retired.** The bash run published a
+`## Landed` section that was empty for all six of its landed iterations: `landed` accumulated from
+an empty string, carried a leading space, and the resulting regex alternation had an empty branch
+BSD `grep` refuses outright. The Node run listed all seven of its own, because the body is built
+from an array of iteration numbers looked up through `iterationHeading()` rather than from a
+string spliced into a grep alternation. One observed defect, in the one place where the two
+languages' handling of a list actually differed, found on the first real use of either runner.
 
 **Honest reservation, unchanged and still true.** The suite covers the eighteen business rules, not
 every behaviour: exact log wording, argument ordering and the edges of the preflight checks are not
 all asserted. The port was far safer than a bare rewrite, not free of new defects.
 
-**What is not settled: what happens to the loser.** `goal-run.sh` is frozen as the A/B reference,
-and `workflows/goal-auto.js` is 941 lines still reachable from `/goal:auto`. Three generations
-coexist and one is current. Keeping the bash reference costs a suite that must stay green in two
-languages and a doubling of every behavioural change; deleting it ends the A/B and the only
-independent check on the Node runner's behaviour. Nothing decides that yet, and §12 is a reason to
-decide it soon.
-
 ## 7. A run is invisible for minutes at a time, by construction
 
-**Observed.** On the first real run of `goal-run.sh` (2026-08-01, `goal-run-node-port-spec.md`),
-the developer asked twice whether anything was happening. Twice it was. Two distinct silences: a
+**Observed.** On the first real run of the bash orchestrator (2026-08-01,
+`goal-run-node-port-spec.md`), the developer asked twice whether anything was happening. Twice it was. Two distinct silences: a
 preflight that printed nothing at all unless it refused, and an implementer whose output was
 captured by command substitution and therefore could not stream by construction.
 
@@ -407,19 +379,16 @@ becomes who declares it. That is the fork, and nothing has explored either branc
 
 ## 14. The port dropped every quantitative ceiling, and nobody noticed for a generation
 
-**Observed.** `workflows/goal-auto.js` carried two numbers the current runner does not: a token
+**Observed.** The abandoned Workflow carried two numbers the current runner does not: a token
 floor per iteration, below which the run refused to start a slice it could not finish — inert
 unless the run declared a budget, and the legacy said so in its own log — and a per-iteration token
-count written into the run's report. Neither was ported to `goal-run.sh`, and neither was ported to
-`goal-run.ts`. The current runner has no turn cap, no wall-clock timeout on any subprocess, and no
-cost measurement at all. Its single brake is the quota wait — thirty minutes, three times — which
-arms only when the output matches a rate-limit string.
+count written into the run's report. Neither survived either port. The current runner has no turn
+cap, no wall-clock timeout on any subprocess, and no cost measurement at all. Its single brake is
+the quota wait — thirty minutes, three times — which arms only when the output matches a
+rate-limit string.
 
-**Two consequences, and the second is the one that matters here.** An implementer looping on an
-impossible slice runs to quota exhaustion, sleeps, and repeats, with nothing anywhere saying *this
-slice is not converging*. And the A/B of §6 is not decidable on cost: the Node runner measures
-neither tokens nor money per iteration, so the comparison it was kept alive for has no data on the
-axis where the two runners could plausibly differ most.
+**The consequence that matters here.** An implementer looping on an impossible slice runs to quota
+exhaustion, sleeps, and repeats, with nothing anywhere saying *this slice is not converging*.
 
 **Why it is a question and not a plan item.** A turn cap is one flag and would have been written by
 now if the answer were only *add a cap*. The open part is what a ceiling should be a ceiling *on*.
