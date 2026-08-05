@@ -8,6 +8,7 @@ import { close, LANDED } from '../scripts/run/close.ts';
 import type { Reporter } from '../scripts/run/report.ts';
 
 const PLAN_PR = PLAN.replace('Policy: commit\n', 'Policy: commit+pr\n');
+const PLAN_PR_REVIEW = PLAN_PR.replace('Policy: commit+pr\n', 'Policy: commit+pr\nReview: comment\n');
 
 const land = (fixture: ReturnType<typeof repo>, env: Record<string, string> = {}) =>
   run(fixture, [fixture.plan], {
@@ -217,6 +218,89 @@ test('the reviewer runs once the pull request is marked ready', () => {
     assert.equal(code, LANDED);
     const args = readFileSync(fixture.claudeLog, 'utf8');
     assert.match(args, /^goal:goal-run-reviewer$/m, `the reviewer was never invoked:\n${args}`);
+  } finally {
+    process.chdir(originalCwd);
+    process.env.PATH = originalPath;
+  }
+});
+
+// R7 — a plan carrying no `Review: comment` header briefs the reviewer to return its review as
+// text, never to post it: the log is where the review lands by default.
+test('the reviewer is briefed to keep its review in the log when the plan carries no Review header', () => {
+  const fixture = repo({ planText: PLAN_PR, remote: true });
+  const originalCwd = process.cwd();
+  const originalPath = process.env.PATH;
+
+  process.chdir(fixture.dir);
+  process.env.PATH = `${fixture.bin}:${originalPath ?? ''}`;
+
+  try {
+    const reporter: Reporter = {
+      say: () => {},
+      stop: () => {
+        throw new Error('unexpected stop');
+      },
+      record: () => {},
+      setLog: () => {},
+    };
+
+    const code = close(
+      fixture.plan,
+      join(fixture.bin, 'fake-gate'),
+      HASH,
+      'origin',
+      { publish: () => {}, state: { publishes: true, prOpen: true, blocked: false } },
+      ['1'],
+      'run-dir',
+      reporter,
+    );
+
+    assert.equal(code, LANDED);
+    const args = readFileSync(fixture.claudeLog, 'utf8');
+    assert.match(args, /Do not post it to GitHub/, `the reviewer was not told to withhold posting by default:\n${args}`);
+    assert.ok(!args.includes('Post it with `gh`'), `the reviewer was briefed to post though the plan carries no Review header:\n${args}`);
+  } finally {
+    process.chdir(originalCwd);
+    process.env.PATH = originalPath;
+  }
+});
+
+// R7 — a plan carrying `Review: comment` opts into posting, and the brief tells the reviewer to
+// open the posted review with a banner naming it as the goal-run-reviewer AI agent's own output.
+test('a plan carrying a Review: comment header briefs the reviewer to post with an AI banner', () => {
+  const fixture = repo({ planText: PLAN_PR_REVIEW, remote: true });
+  const originalCwd = process.cwd();
+  const originalPath = process.env.PATH;
+
+  process.chdir(fixture.dir);
+  process.env.PATH = `${fixture.bin}:${originalPath ?? ''}`;
+
+  try {
+    const reporter: Reporter = {
+      say: () => {},
+      stop: () => {
+        throw new Error('unexpected stop');
+      },
+      record: () => {},
+      setLog: () => {},
+    };
+
+    const code = close(
+      fixture.plan,
+      join(fixture.bin, 'fake-gate'),
+      HASH,
+      'origin',
+      { publish: () => {}, state: { publishes: true, prOpen: true, blocked: false } },
+      ['1'],
+      'run-dir',
+      reporter,
+    );
+
+    assert.equal(code, LANDED);
+    const args = readFileSync(fixture.claudeLog, 'utf8');
+    assert.match(args, /Post it with `gh`/, `the reviewer was not briefed to post though the plan opts in:\n${args}`);
+    assert.match(args, /banner/i, `the reviewer was not briefed to open with a banner:\n${args}`);
+    assert.match(args, /goal-run-reviewer/, `the banner instruction never names the goal-run-reviewer agent:\n${args}`);
   } finally {
     process.chdir(originalCwd);
     process.env.PATH = originalPath;
