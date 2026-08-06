@@ -9,7 +9,31 @@ Skills, hooks, agents, and slash commands for [Claude Code](https://claude.ai/cl
 /plugin install common@fabien-claude-marketplace
 ```
 
-Then use it — e.g. ask Claude to *"plan this feature with spec-first-dev"* or *"grill me on this design"*. Browse the [catalog](#plugins), install the packs for your stack, and you're set. Other install methods (`setup.sh`, `npx skills`, `skillkit`) are [below](#installation).
+Then use it — e.g. ask Claude to *"plan this feature with spec-first-dev"* or *"research how this library handles retries"*, both shipped by `common`. Browse the [catalog](#plugins), install the packs for your stack, and you're set. Other install methods (`setup.sh`, `npx skills`, `skillkit`) are [below](#installation).
+
+## Start here: `goal`
+
+Most of this marketplace is conventions — prose that shapes how Claude writes code. **One pack is
+not.** [`goal`](plugins/goal/README.md) is 2,865 lines of tested TypeScript that turn a ticket into
+a pull request without you in the loop, under a rule most autonomous loops do not have:
+
+> A slice of work is accepted by a **program** that runs the command the plan declared and reads
+> its exit code — never by a model's opinion of its own output. That program is the only thing
+> allowed to commit. And before it accepts a slice, it removes the implementation and runs the test
+> again: if the test still passes, the slice is refused.
+
+It also declares, per slice, which files may change and how many diff lines may be spent, and
+refuses on either. Six unattended runs, 26 slices, all gate-verified — the reports are on disk.
+
+It ships in **two modes, and you pick one per plan**:
+
+- **`manual`** — Claude never commits. You run one slice, read the diff, correct it, and a
+  checkpoint command re-runs that slice's acceptance commands before handing you the next one. You
+  see the code while correcting it is still cheap.
+- **`commit+pr`** — you hand over the whole feature and leave. The program judges and commits each
+  slice, pushes it, and keeps a draft pull request rewritten as the work lands.
+
+**→ [What it does and why](plugins/goal/README.md) · [every step, with the reason for each](plugins/goal/docs/walkthrough.md) · [why this shape](plugins/goal/docs/adr/0001-shape-of-the-autonomous-loop.md) · [how it compares](plugins/goal/docs/comparison.md)**
 
 ## Design philosophy
 
@@ -34,7 +58,7 @@ Grouped by theme. Each links to the plugin's own README with the full skill cata
 
 | Plugin | What it does |
 |---|---|
-| [**goal**](plugins/goal/README.md) | Source→plan→autonomous `/goal` issue→PR workflow. GitHub, commit, and PR all opt-in — never forced. |
+| [**goal**](plugins/goal/README.md) | Ticket → frozen plan → unattended execution, where a **program** judges each slice by exit code and is the only thing that commits. Per-slice declared paths and diff budget; a slice whose test passes without its implementation is refused. GitHub, commit and PR all opt-in. |
 | [**product**](plugins/product/README.md) | Slicing a spec into thin shippable iterations (`vertical-slice`) and shipping each without blocking — flags, additive change, cleanup (`delivery`). Loaded by `goal`. |
 | [**common**](plugins/common/README.md) | Shared workflow tools — planning, research, context-window, TDD/feature-dev commands, code-review/test hooks, a UI agent. |
 | [**git**](plugins/git/README.md) | Transverse git & PR discipline — fetch-first ref freshness, branch/commit/PR conventions, force-push and worktree guardrails. Merges the former PR-creation skill. |
@@ -47,7 +71,7 @@ These overlap — [**docs/workflows-decision-guide.md**](docs/workflows-decision
 
 | Plugin | What it does |
 |---|---|
-| [**php**](plugins/php/README.md) | PHP 8.2/8.3 conventions — code style, OOP, DDD, refactoring, SQL, Composer. Framework-agnostic. |
+| [**php**](plugins/php/README.md) | PHP 8.0–8.3 conventions — code style, OOP, DDD, refactoring, SQL, Composer. Framework-agnostic. |
 | [**phpunit**](plugins/phpunit/README.md) | PHPUnit TDD workflow + test conventions (DAMP/AAA/Prophecy). Layers on `craft`. |
 | [**symfony**](plugins/symfony/README.md) | Personal Symfony overlay — FormType, Twig components, PRG. Distinct from `atournayre/symfony`. |
 | [**typescript**](plugins/typescript/README.md) | Typing, code style, functional, OOP, DDD events, refactoring. |
