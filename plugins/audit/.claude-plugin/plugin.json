@@ -1,7 +1,7 @@
 {
   "name": "audit",
   "version": "1.0.0",
-  "description": "Audit plugin — personal overrides and conventions on top of upstream audit skills (security, …). Designed as an overlay: pairs with netresearch/security-audit-skill without modifying it.",
+  "description": "Audit hub — personal overrides for upstream audit skills + stack-specific code patterns (security for TS/NestJS, PHP planned). Loads in parallel with netresearch/security-audit.",
   "author": { "name": "FabienSalles" },
   "license": "MIT",
   "keywords": ["audit", "security", "overlay", "owasp"]

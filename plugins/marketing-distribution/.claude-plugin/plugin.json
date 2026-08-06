@@ -1,7 +1,7 @@
 {
   "name": "marketing-distribution",
   "version": "1.0.0",
-  "description": "Distribution channel playbooks — multi-platform social posts, Twitter/X and Reddit threads, email subject lines, newsletter structure & growth.",
+  "description": "Distribution channels — multi-platform social posts (Reddit/Twitter/X/LinkedIn/IG/FB/TikTok), Twitter threads and long Reddit posts, email subject lines, newsletter growth.",
   "author": { "name": "FabienSalles" },
   "license": "MIT",
   "keywords": ["marketing", "distribution", "social-media", "email", "newsletter", "threads"]

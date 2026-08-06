@@ -1,7 +1,7 @@
 {
   "name": "typescript",
   "version": "1.0.0",
-  "description": "TypeScript conventions, typing, DDD events, functional programming, OOP, refactoring, security",
+  "description": "TypeScript conventions, typing, DDD events, functional programming, OOP, refactoring",
   "author": {
     "name": "FabienSalles"
   },

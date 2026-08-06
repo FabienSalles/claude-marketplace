@@ -11,7 +11,7 @@
     {
       "name": "php",
       "source": "./plugins/php",
-      "description": "PHP 8.2/8.3 language conventions — code style, OOP, DDD, refactoring, SQL, Composer. Framework-agnostic. Pair with phpunit for testing and symfony for Symfony-specific FormType/Twig/PRG conventions.",
+      "description": "PHP 8.0–8.3 language conventions — code style, OOP, DDD, refactoring, SQL, Composer. Framework-agnostic. Pair with phpunit for testing and symfony for Symfony-specific FormType/Twig/PRG conventions.",
       "version": "2.0.0",
       "author": { "name": "FabienSalles" },
       "category": "development",
@@ -21,7 +21,7 @@
     {
       "name": "phpunit",
       "source": "./plugins/phpunit",
-      "description": "PHPUnit testing discipline — TDD workflow (red-green-refactor cross-layer iterations), test writing conventions (DAMP, AAA, Prophecy, factories). Layers on craft:tdd-workflow-principles and craft:testing-principles.",
+      "description": "PHPUnit testing discipline for PHP projects — TDD workflow (red-green-refactor with cross-layer iterations), test writing conventions (DAMP, AAA, Prophecy, factories). Layers on craft:tdd-workflow-principles and craft:testing-principles for the cross-language baseline; PHPUnit-specific commands and Prophecy examples live here.",
       "version": "1.0.0",
       "author": { "name": "FabienSalles" },
       "category": "testing",
@@ -31,7 +31,7 @@
     {
       "name": "symfony",
       "source": "./plugins/symfony",
-      "description": "Personal Symfony conventions overlay — FormType data ownership, Twig component translation domain isolation, Post/Redirect/Get for HTML controllers, Symfony-kernel test conventions (WebTestCase built-in assertions, container doubles). Distinct from atournayre/symfony (broader toolkit).",
+      "description": "Personal Symfony conventions — FormType design (data_class as single source of truth, DataTransformer placement), Twig component patterns (trans_default_domain isolation), Post/Redirect/Get for HTML controllers, and testing anything that boots a Symfony kernel (WebTestCase built-in assertions, TypeTestCase, container doubles). Use alongside php (language) and phpunit (framework-agnostic testing). Distinct from atournayre/symfony — these are personal overlays.",
       "version": "1.1.0",
       "author": { "name": "FabienSalles" },
       "category": "development",
@@ -81,7 +81,7 @@
     {
       "name": "jquery",
       "source": "./plugins/jquery",
-      "description": "jQuery code conventions — module structure, js-* selectors, per-block scoping, symmetric toggleClass. Framework-agnostic.",
+      "description": "jQuery code conventions — module structure with exported init function, js-* selector classes, per-block scoping, symmetric toggleClass over imperative show/hide helpers. Framework-agnostic (works with any backend / build system).",
       "version": "1.0.0",
       "author": { "name": "FabienSalles" },
       "category": "development",
@@ -131,7 +131,7 @@
     {
       "name": "craft",
       "source": "./plugins/craft",
-      "description": "Cross-language software craftsmanship principles — abstract rules (refactoring, DDD, OOP, TDD, …) that pair with language-specific example skills",
+      "description": "Cross-language software craftsmanship principles — refactoring, DDD, OOP, TDD, testing, code style — that complement language-specific example skills (php-*, ts-*, etc.)",
       "version": "1.0.0",
       "author": { "name": "FabienSalles" },
       "category": "development",
@@ -194,7 +194,7 @@
     {
       "name": "goal",
       "source": "./plugins/goal",
-      "description": "Chantier→spec→plan→PR workflow for Claude Code /goal: cut an initiative into a just-in-time backlog (/goal:tickets), settle the functional contract (/goal:spec), lock the executable plan (/goal:plan), then drive autonomous implementation against acceptance criteria (native /goal, /goal:supervise) with an automatically-regenerated execution log shipped in the PR diff",
+      "description": "Chantier→spec→plan→unattended run workflow for Claude Code: cut an initiative into an ordered just-in-time backlog (/goal:tickets), settle the functional contract of any source — Jira US (via MCP), GitHub issue, spec file or inline — with a grilled, observable Definition of Done (/goal:spec), lock the executable plan into gate-blocked iterations (/goal:plan), then let the runner execute it unattended, each slice judged by a program (goal-gate.ts) that runs the declared command and is the only thing allowed to commit — watched to the end by /goal:supervise, with /goal:next as the checkpoint between two iterations. GitHub, commit and PR are all opt-in, never forced.",
       "version": "1.0.0",
       "author": { "name": "FabienSalles" },
       "category": "productivity",
@@ -204,7 +204,7 @@
     {
       "name": "superpowers",
       "source": "./plugins/superpowers",
-      "description": "Cherry-picked obra/superpowers — verification-before-completion, systematic-debugging",
+      "description": "Cherry-picked obra/superpowers skills: verification-before-completion (evidence before claims), systematic-debugging (root-cause-first)",
       "version": "5.1.1",
       "author": { "name": "FabienSalles" },
       "category": "productivity",
@@ -214,7 +214,7 @@
     {
       "name": "pocock",
       "source": "./plugins/pocock",
-      "description": "Cherry-picked mattpocock/skills — grill-me, grill-with-docs, zoom-out",
+      "description": "Cherry-picked mattpocock/skills: grill-me (relentless interview before code), grill-with-docs (interview + CONTEXT.md/ADR docs), zoom-out (broader-context request)",
       "version": "1.0.0",
       "author": { "name": "FabienSalles" },
       "category": "productivity",
@@ -224,7 +224,7 @@
     {
       "name": "self-audit",
       "source": "./plugins/self-audit",
-      "description": "Deep comparative audit of external skill packs vs this marketplace, weighted by my Claude usage profile, plus a repo structure + documentation health pass. Versioned gap-analysis backlogs under audits/. Run via /self-audit:compare <target>.",
+      "description": "Deep comparative audit of external Claude skill packs against this marketplace, weighted by my real Claude usage profile, plus a repo structure + documentation health pass. Produces versioned gap-analysis backlogs under audits/. Run via /self-audit:compare <target>.",
       "version": "1.0.0",
       "author": { "name": "FabienSalles" },
       "category": "productivity",
@@ -264,7 +264,7 @@
     {
       "name": "product",
       "source": "./plugins/product",
-      "description": "Product delivery discipline — vertical-slice (17 splitting techniques + a procedure to choose and combine them from the feature's complexity, the technical constraints and the execution mode) and delivery (feature flags sized to the project, additive no-BC-break change, expand/contract, and the cleanup slice). Wired into the goal workflow.",
+      "description": "Product delivery discipline — slice any functional spec into thin vertical iterations (vertical-slice: 17 splitting techniques + a method to choose and combine them per feature, technical constraint and execution mode), and ship each one without blocking (delivery: feature flags sized to the project, additive no-BC-break change, expand/contract, and the cleanup that closes the loop once it's in prod).",
       "version": "1.0.0",
       "author": { "name": "FabienSalles" },
       "category": "development",

@@ -1,7 +1,7 @@
 {
   "name": "goal",
   "version": "1.0.0",
-  "description": "Chantier→spec→plan→autonomous /goal workflow for Claude Code: cut an initiative into an ordered just-in-time backlog (/goal:tickets), settle the functional contract of any source — Jira US (via MCP), GitHub issue, spec file or inline — with a grilled, observable Definition of Done (/goal:spec), lock the executable plan with command-mapped criteria and small functional iterations (/goal:plan), then drive native /goal one iteration at a time with a synthesis at each stop. GitHub, commit and PR are all opt-in, never forced.",
+  "description": "Chantier→spec→plan→unattended run workflow for Claude Code: cut an initiative into an ordered just-in-time backlog (/goal:tickets), settle the functional contract of any source — Jira US (via MCP), GitHub issue, spec file or inline — with a grilled, observable Definition of Done (/goal:spec), lock the executable plan into gate-blocked iterations (/goal:plan), then let the runner execute it unattended, each slice judged by a program (goal-gate.ts) that runs the declared command and is the only thing allowed to commit — watched to the end by /goal:supervise, with /goal:next as the checkpoint between two iterations. GitHub, commit and PR are all opt-in, never forced.",
   "author": { "name": "FabienSalles" },
   "license": "MIT",
   "keywords": ["goal", "autonomous", "github", "issue", "workflow", "pr"]

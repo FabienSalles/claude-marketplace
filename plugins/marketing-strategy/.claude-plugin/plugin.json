@@ -1,7 +1,7 @@
 {
   "name": "marketing-strategy",
   "version": "1.0.0",
-  "description": "Strategic marketing playbooks — ICP definition, persuasion psychology, campaign ideation library, competitor analysis, positioning/GTM, shared product-marketing context file consumed by other marketing skills.",
+  "description": "Strategic marketing — ICP definition, persuasion psychology (70+ mental models), 139 marketing ideas, competitor analysis, positioning/GTM (April Dunford), shared product-marketing context.",
   "author": { "name": "FabienSalles" },
   "license": "MIT",
   "keywords": ["marketing", "strategy", "icp", "positioning", "gtm", "psychology"]

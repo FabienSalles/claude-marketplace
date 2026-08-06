@@ -1,7 +1,7 @@
 {
   "name": "marketing-analytics",
   "version": "1.0.0",
-  "description": "Marketing analytics playbooks — tracking implementation (GA4/GTM/UTM), Google Search Console reporting, Google Analytics Data API reporting.",
+  "description": "Marketing analytics — tracking setup (GA4/GTM/UTM/tracking plan), Google Analytics Data API reporting, Google Search Console reporting.",
   "author": { "name": "FabienSalles" },
   "license": "MIT",
   "keywords": ["marketing", "analytics", "ga4", "gtm", "search-console", "tracking"]

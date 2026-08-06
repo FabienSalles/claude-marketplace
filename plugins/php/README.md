@@ -1,6 +1,6 @@
 # php
 
-PHP 8.2/8.3 **language** conventions — framework-agnostic. Code style, OOP, DDD, refactoring, SQL, Composer.
+PHP 8.0–8.3 **language** conventions — framework-agnostic. Code style, OOP, DDD, refactoring, SQL, Composer.
 
 Pair with [`phpunit`](../phpunit/) for testing discipline and [`symfony`](../symfony/) for Symfony-specific overlays (FormType, Twig component, PRG pattern). All three are independent — a Laravel project takes `php` alone or `php` + `phpunit`, a Symfony project takes the three together.
 
@@ -12,12 +12,14 @@ Pair with [`phpunit`](../phpunit/) for testing discipline and [`symfony`](../sym
 
 Or `./setup.sh --pack php` (dev mode — registers this directory as a local marketplace).
 
-## Skills (8)
+## Skills (10)
 
 ### Language
 
 | Skill | Purpose |
 |---|---|
+| [`php-8-0`](skills/php-8-0/SKILL.md) | Mandatory named arguments from the fourth argument on |
+| [`php-8-1`](skills/php-8-1/SKILL.md) | Mandatory first-class callable syntax `$this->method(...)` over array/string callables |
 | [`php-8-2`](skills/php-8-2/SKILL.md) | Mandatory `readonly` class usage (class-level, not per-property) |
 | [`php-8-3`](skills/php-8-3/SKILL.md) | Mandatory typed class constants |
 
