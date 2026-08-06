@@ -7,7 +7,7 @@ import { dirname, join } from 'node:path';
 
 import { bounded, spawnOptions } from './bounded.ts';
 import { emitCommand } from './commands.ts';
-import { git, halt, heldLocks } from './halt.ts';
+import { git, halt, heldLocks, restorers } from './halt.ts';
 import { covers } from './plan.ts';
 
 export const gitDir = (): string => {
@@ -74,12 +74,33 @@ export const biteCheck = (declared: Map<string, string>, iteration: string, chan
 
   heldLocks.push(backup);
 
-  for (const { path, inHead, present } of implementation) {
+  for (const { path, present } of implementation) {
     if (present) {
       mkdirSync(dirname(join(backup, path)), { recursive: true });
       copyFileSync(path, join(backup, path));
     }
+  }
 
+  let restored = false;
+  const restore = (): void => {
+    if (restored) {
+      return;
+    }
+
+    restored = true;
+
+    for (const { path, present } of implementation) {
+      if (present) {
+        copyFileSync(join(backup, path), path);
+      } else {
+        rmSync(path, { force: true });
+      }
+    }
+  };
+
+  restorers.push(restore);
+
+  for (const { path, inHead } of implementation) {
     if (inHead) {
       mkdirSync(dirname(path), { recursive: true });
       writeFileSync(path, headBlob(path));
@@ -88,20 +109,15 @@ export const biteCheck = (declared: Map<string, string>, iteration: string, chan
     }
   }
 
+  process.stdout.write(`BACKUP: iteration ${iteration}'s implementation is set aside in ${backup}\n`);
+
   const command = declared.get('gate1') ?? '';
   const start = Date.now();
   const run = spawnSync(bounded(command), spawnOptions());
 
   emitCommand('bite', command, Date.now() - start, run.status);
 
-  for (const { path, present } of implementation) {
-    if (present) {
-      copyFileSync(join(backup, path), path);
-    } else {
-      rmSync(path, { force: true });
-    }
-  }
-
+  restore();
   rmSync(backup, { recursive: true, force: true });
 
   if (fingerprint(aside) !== before) {

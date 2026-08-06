@@ -1,5 +1,11 @@
 # Comparatif fonctionnel — Hermes, et le reste du panel
 
+> **Note du 2026-08-06 — document dépassé.** Le comparatif courant et canonique est
+> [`comparison.md`](comparison.md), écrit après celui-ci et vérifié contre le code. Cette page
+> reste pour sa lecture non technique en français ; deux de ses affirmations ont été corrigées
+> sur place à cette date (la narration de l'implémenteur, et la ligne « Fusible » de la synthèse).
+> En cas de désaccord entre les deux documents, `comparison.md` gagne.
+
 Lecture non technique d'un document qui existe déjà et qui reste la source :
 [`prior-art.md`](prior-art.md) (le panel des harnesses de delivery). Ici, aucun chemin de fichier,
 aucun numéro de ligne. Quatre questions posées à chaque concurrent, toujours les mêmes :
@@ -105,10 +111,13 @@ travail avec rien à se mettre de travers.
 
 **J'observe au bon grain.** Hermes regarde une session : combien de temps, combien de tokens. Ce
 n'est pas ma question. Ma question est « est-ce que ça avance », et la réponse est déjà produite
-sans lui : chaque action de l'implémenteur est narrée en direct, la pull request est réécrite à
-chaque tranche posée, les cases se cochent dans le plan, et un journal de run reste sur le disque.
-Brancher Hermes reviendrait à poser un tuyau au-dessus de données qui existent déjà sous une
-meilleure forme.
+sans lui : la pull request est réécrite à chaque tranche posée, les cases se cochent dans le plan,
+et un journal de run reste sur le disque. Une réserve, corrigée le 2026-08-06 : chaque action de
+l'implémenteur est bien narrée, mais **après coup**, pas en direct. La narration lit la sortie du
+processus enfant une fois qu'il a rendu la main, donc une tranche longue reste muette du début à
+la fin, et c'est justement le moment où l'on voudrait savoir si ça avance. Brancher Hermes
+reviendrait quand même à poser un tuyau au-dessus de données qui existent déjà sous une meilleure
+forme, mais la granularité temporelle, elle, n'est pas là.
 
 **Quand ça casse, c'est classé de l'intérieur.** Une panne est classée par une commande qui a
 accès au code de sortie du runner, à l'empreinte du plan, aux transcripts, et à un ensemble fermé
@@ -219,6 +228,16 @@ lui-même un modèle, et conclut par « utilisez toujours un gestionnaire de ver
 revenir en arrière ».[^cursor] Il a arbitré pour la vitesse et traite git comme le seul vrai filet. Ça
 valide mon pari, et ça en nomme le prix : **je suis beaucoup plus lent à poser une tranche.**
 
+Amp, dans le même panel, prend le contre-pied et mérite sa phrase : retirer un outil à un agent
+ne fait que l'envoyer chercher un autre chemin (interdire la lecture d'un fichier, et il le lit
+par une commande shell), donc sa réponse est une chaîne de permissions qui rend un verdict
+*autoriser / refuser / demander / déléguer*, le dernier confiant la décision à un programme
+externe qui répond par un code de sortie.[^amp] C'est exactement l'objection à ma deuxième
+invariante, et elle porte : mes quatre règles d'interdiction sur des verbes git sont un préfixe
+lu une fois, pas une décision déléguée à un programme. Ce qui tient chez moi, c'est ce qui vient
+après : les empreintes prises autour de l'implémenteur, qui constatent le commit, la poussée, la
+remise et le hook planté.
+
 **Rien n'atterrit non vérifié, donc je n'ai pas besoin d'annuler.** Le mode permissif de Cline
 « désactive toutes les vérifications de sécurité » et son filet documenté est git. Roo tient des
 points de restauration dans un dépôt git fantôme, créés *après* la modification, et sa propre
@@ -240,9 +259,13 @@ réparer.
 **Un fusible.** SwarmOps plafonne tout numériquement : tours, reprises, cycles de relecture, un
 délai maximal de trente minutes.[^swarmops] Le plugin `ralph-wiggum` d'Anthropic lui-même dit
 qu'attendre une promesse de fin dans du texte n'est pas fiable et de « toujours s'appuyer sur un
-nombre maximal d'itérations comme mécanisme de sécurité principal ». Chez moi il n'y a **ni limite de tours, ni horloge, ni
-limite d'itérations**. Un implémenteur qui tourne autour d'une tranche impossible tourne jusqu'à
-épuisement du quota. C'est le manque le moins cher à combler et probablement le plus urgent.
+nombre maximal d'itérations comme mécanisme de sécurité principal ». Chez moi l'horloge existe,
+mais du mauvais côté : **toute commande déclarée** (le balayage de base, les commandes
+d'acceptation, la Definition of Done) tourne sous une limite de 900 secondes, réglable, qui tue
+le processus sans lui demander son avis. La **session d'implémentation**, elle, part sans aucune
+limite de temps, et il n'y a **ni limite de tours ni limite d'itérations**. Un implémenteur qui
+tourne autour d'une tranche impossible tourne donc jusqu'à épuisement du quota. Le mécanisme
+existe déjà : il reste à le brancher là où ça compte.
 
 **La détection d'un test affaibli.** Le mode de défaillance a une taxonomie stable en quatre
 signaux : assertions supprimées, tolérances élargies, tests marqués à ignorer, valeurs attendues
@@ -305,7 +328,7 @@ puis s'arrête. Même intuition, même validation.
 | Le plan est opposable | non | non (spec-kit : consultatif) | oui, empreinté |
 | Périmètre et taille du diff bornés | non | non | oui, déclarés par tranche |
 | Rien ne se lit depuis GitHub | non, 20 canaux | variable | oui, invariant dur |
-| Fusible (tours, horloge) | oui | oui (SwarmOps) | **non** |
+| Fusible (tours, horloge) | oui | oui (SwarmOps) | **partiel** : horloge de 900 s sur les commandes déclarées, rien sur la session d'implémentation, pas de limite de tours |
 | Détection d'un test affaibli | non | oui (littérature outillée) | **non** |
 | Preuve exportable et vérifiable | non | oui (Bernstein) | **non** |
 | Critique machine du plan | non | oui (Jules, -9,5 %) | **non** |
@@ -315,7 +338,7 @@ puis s'arrête. Même intuition, même validation.
 | Réagir à une CI rouge | possible | variable | **non**, plus gros trou |
 
 Les cases en gras de ma colonne sont la feuille de route, dans cet ordre : le fusible d'abord
-(le moins cher), la détection d'un test affaibli ensuite (elle protège le seul différenciateur que
+(le moins cher, et à moitié déjà écrit), la détection d'un test affaibli ensuite (elle protège le seul différenciateur que
 personne d'autre n'a), puis la réaction post-run sous la forme sûre décrite plus haut.
 
 Et les deux phrases honnêtes à garder à côté de tout ça. La première : les manques ci-dessus ne
@@ -355,6 +378,7 @@ n'invente pas une URL pour faire joli.
 [^anthropic]: *Building verification loops in Claude Code with skills* — <https://claude.com/blog/building-verification-loops-in-claude-code-with-skills>
 [^issue28489]: <https://github.com/anthropics/claude-code/issues/28489>
 [^cursor]: *Agent security* — <https://cursor.com/docs/agent/security>
+[^amp]: *Permissions* — <https://ampcode.com/notes/permissions>, et <https://ampcode.com/news/tool-level-permissions>
 [^openhands]: *Security* — <https://docs.openhands.dev/sdk/guides/security>
 [^cline]: <https://docs.cline.bot/features/auto-approve>, et <https://roocodeinc.github.io/Roo-Code/features/checkpoints>
 [^speckit]: <https://github.com/github/spec-kit>

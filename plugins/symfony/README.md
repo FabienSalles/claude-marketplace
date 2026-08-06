@@ -10,10 +10,11 @@ Personal Symfony conventions extracted from the original monolithic `php` plugin
 
 Or `./setup.sh --pack symfony` (dev mode).
 
-## Skills (4)
+## Skills (5)
 
 | Skill | Purpose |
 |---|---|
+| [`symfony-frontend`](skills/symfony-frontend/SKILL.md) | Where frontend behaviour lives in a Symfony project — no inline `<script>`/`<style>` in Twig, one WebpackEncore entry per feature, per-page asset loading, SCSS imported by its JS module, `js-*` hooks added at render time. |
 | [`symfony-form`](skills/symfony-form/SKILL.md) | FormType design — `data_class` as single source of truth (no data in options), `DataTransformer` placement (not in controllers), `property_path` for collection mapping. |
 | [`twig-conventions`](skills/twig-conventions/SKILL.md) | Twig template + Twig component conventions — `trans_default_domain` isolation (1 translation → inline `domain:`, 2+ → hoist `trans_default_domain`), `ClockInterface` for dates in templates, decision rules for "should I create a Twig component vs use direct HTML". |
 | [`prg-pattern`](skills/prg-pattern/SKILL.md) | Post/Redirect/Get pattern for HTML form controllers — POST success → redirect (302), POST error → re-render with errors and submitted data, flash messages after redirect. _Examples use Symfony classes (`RedirectResponse`, `UrlGeneratorInterface`, `getFlashBag()`, `#[Route]`); the pattern itself applies to any PHP web framework._ |

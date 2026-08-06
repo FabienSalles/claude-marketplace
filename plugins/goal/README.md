@@ -1,224 +1,284 @@
-# goal — Source → plan → gate-verified execution
+# goal — an agent writes the code, a program decides whether it counts
 
-## What it does
+Most autonomous coding loops stop when the tests pass. That is the problem: **when the only stop
+condition is *the test passes*, editing the test is a valid way to stop.**
 
-Turns any planning source (a Jira US, a GitHub issue, a spec file, a note you paste) into a
-**locked plan**, then delivers it iteration by iteration under a judge that is a program and not
-a prompt: `scripts/goal-gate.ts` decides whether a slice passed, and it is the only thing in the
-system that commits.
+This plugin removes that. You and a model write a plan; each slice of it declares *in advance* the
+exact command that proves it done, the files it may touch, and how many diff lines it may spend.
+The plan is then hashed and frozen. From there a loop runs each slice in a fresh session — and a
+**program**, not a prompt, decides whether the slice passed, by running the declared command and
+reading its exit code. That program is the only thing in the system allowed to commit.
 
-The idea in one line: **don't hand a goal to an agent and walk away.** Lift the ambiguities and
-build a Definition of Done a machine can check, *then* let a runner execute against that
-contract, one reviewable slice at a time.
+Before it accepts a slice, it sets the implementation aside and runs the test again. If the test
+still passes, the slice is refused: it proved nothing.
 
-## The path that runs today
+## Two modes, and you pick one per plan
 
-| Step | You run | What happens |
+This is the first real decision, and it is the one that shapes everything else. You are asked it
+during `/goal:plan`, **before** the work is split — because it changes how the work is split.
+
+### `manual` — you stay in the loop, one slice at a time
+
+Claude never commits, never pushes, never opens a pull request. You run one slice, you read the
+diff, you correct it, and only then do you move on.
+
+- **The plan is cut fine**, so every slice is one diff you can read in a single sitting.
+- You drive it with **`/goal` for a slice, then `/goal:next` between two slices.**
+- `/goal:next` does not trust the checkbox: it **re-runs the finished slice's acceptance commands
+  from scratch** and shows you the output, reconciles the plan against what actually changed in
+  the code, then hands you the next instruction — on your clipboard, so it survives clearing the
+  session.
+- **Nothing is ever staged for you**, deliberately. Staging is your review step; tidying the tree
+  "to make it safe" would remove the very thing you were about to look at.
+
+**Why you would want this:** you see the code as it is produced, and you correct it at the moment
+it is cheap to correct — before the next slice builds on top of it. The blast radius of a bad
+slice is that slice. This is the default, and the right choice on unfamiliar code, on anything
+delicate, and the first few times you use the plugin at all.
+
+### `commit+pr` — you hand over the whole feature and leave
+
+One command takes the plan end to end. The gate commits each verified slice, pushes it, and keeps a
+draft pull request rewritten as the work lands.
+
+- **The plan is cut coarser**, because a slice is now sized to what a machine can verify rather
+  than to what you can read in one sitting.
+- You launch **`node goal-run.ts <plan>`**, or **`/goal:supervise`** to have a session watch it,
+  classify a halt and repair or discard once.
+- Every guarantee in this README is doing its work here — the declared paths, the diff budget, the
+  hashed plan, the test that must have been red — because **you are not there to catch anything.**
+- A run that stops at 3 slices of 15 still leaves a readable pull request, not a local branch.
+
+**Why you would want this:** the feature lands without you, overnight or over lunch. The blast
+radius of a bad *plan*, though, is the whole run — which is exactly why the plan is grilled and
+frozen before anything starts.
+
+|  | `manual` | `commit+pr` |
 |---|---|---|
-| 0 · chantier only | `/goal:tickets <chantier>` | Cuts an initiative carrying several outcomes into an ordered backlog of tickets, elaborated just-in-time — ticket 1 armed, the rest deliberately one-liners |
-| 1 · optional | `/goal:spec <source>` | The functional contract: normalizes any source into `.claude/plans/<work-id>-spec.md`, grills the functional gaps closed, builds the functional DoD (an observable criterion per business rule), offers to mirror it as a GitHub issue |
-| 2 | `/goal:plan <source>` | The executable contract: the technical grill, every business rule mapped to a command, decomposition into iterations, the commit policy and the remote, the locked plan on `feature/<work-id>-<slug>` — runs `/goal:spec` itself when a raw source still has functional holes |
-| 3 | `node scripts/goal-run.ts <plan>` | The runner: ten preflight refusals, a base sweep, one `claude -p` implementer per iteration, a gate verdict on each, publication, close |
-| 3 · watched | `/goal:supervise [plan]` | Launches the same runner in the background, classifies a halt (plan at fault / implementation at fault / unknown), repairs or discards **once**, then stops |
-| — | `scripts/goal-gate.ts` | Judges each iteration and commits it. Nothing else in the system commits |
-| 3 · manual | `/goal` (native) + `/goal:next` | The alternative under `Policy: manual` — the runner refuses that policy outright, since nothing may be committed |
+| Who judges a slice | you, reading the diff | `goal-gate.ts`, by exit code |
+| Who commits | you | the gate, and only the gate |
+| Slice size | fine — one reviewable diff | coarser — one verifiable unit |
+| You run | `/goal` then `/goal:next`, per slice | `goal-run.ts`, or `/goal:supervise`, once |
+| Pushes, opens a PR | never | yes, as it lands |
+| Catch a mistake | at the next slice | at the pull request |
+| Needs a `Remote:` line | no | yes, and it is never guessed |
 
-**Steps 1–2 are deliberately not automated.** The ambiguity a source leaves cannot be lifted
-from inside a run: an unattended implementer resolves it by guessing, and the guess surfaces
-thirty turns later as work to throw away. The grill — functional in `/goal:spec`, technical in
-`/goal:plan` — is the one place a human is load-bearing.
+Switching later means editing the `Policy:` line in the plan. The runner **refuses a `manual` plan
+outright** rather than quietly committing under a policy that says it may not.
+
+## What you get
+
+- **No commit that a program did not verify.** Per slice, this holds absolutely — verify, commit
+  and tick happen inside one process the writing agent cannot reach.
+- **A blast radius that is a number.** Each slice halts if it touches an undeclared file or
+  outgrows its declared diff budget. Not advice — a refusal.
+- **A run you can leave.** It survives a killed process, a quota window, and an auto-updater that
+  shuts down every Claude Code instance on the machine mid-slice. The plan's checkboxes are the
+  entire state, so a relaunch tomorrow resumes at the first unticked box.
+- **Something readable at every stop.** A draft pull request is opened at the first landed slice
+  and rewritten by each one after it, so a run that halts at 3 of 15 still leaves work a human can
+  open — not a local branch nobody can see.
+- **An account of what it cost.** Every stage is timed into a JSON event stream, and an auditor
+  writes a report naming what halted the run and which failures recur across earlier runs.
+
+## Does it actually run?
+
+Yes, and the evidence is on disk rather than in this paragraph. **Six unattended runs over four
+days, 26 slices, all landed gate-verified, 4h55m of measured wall time** — every row in every
+report names a commit that is in this repository's history.
+
+The same record is honest about the rest: one slice was refused twice by the gate before landing
+unchanged on its third attempt, two slices burned a 30-minute sleep on a rate limit that had
+already cleared, and the advisory reviewer has caught a real defect the gate structurally could
+not see. Reports live in `.claude/goal-runs/`.
 
 ## Quick start
+
+Both modes share the same first step — the plan.
 
 ```bash
 cd ~/projects/<repo>
 
 claude
-> /goal:spec CT-1234               # optional — the functional contract; Jira via MCP, a spec path, or 'inline'
-> /goal:plan CT-1234               # the technical grill, then the locked plan on a feature branch
+> /goal:spec CT-1234    # the functional contract — Jira via MCP, a GitHub issue, a file, or 'inline'
+> /goal:plan CT-1234    # the technical grill, the mode, then the locked plan on a feature branch
 ```
 
-Then, from the branch the plan locked, either let a session watch the run:
+Then, from the branch the plan locked:
 
+**Under `manual`** — one slice per session, and you review between them.
+
+```text
+> /goal <paste the handoff /goal:plan just gave you>
+> /goal:next                       # verifies, reconciles, hands you the next one
 ```
+
+**Under `commit+pr`** — the whole plan, once.
+
+```text
 > /goal:supervise .claude/plans/<work-id>-spec.md
 ```
 
-or launch the runner yourself:
+or without a session watching it:
 
 ```bash
 node <plugin>/scripts/goal-run.ts .claude/plans/<work-id>-spec.md
 ```
 
-`/goal:supervise` resolves the plugin path through `${CLAUDE_PLUGIN_ROOT}`; a bare shell needs
-the marketplace checkout's real path. Exit `0` landed · `1` the gate refused an iteration · `2`
-refused before anything was attempted · `3` paused at a clean boundary, relaunch resumes there.
+Exit `0` landed · `1` the gate refused a slice · `2` refused before anything was attempted ·
+`3` paused at a clean boundary, relaunch resumes there.
 
-The run writes its records under `.claude/goal-runs/<work-id>/<run-id>/`: `.run.log` (the same
-lines it prints), `.run.jsonl` (the same events, one versioned JSON line each), `.run.session`
-(the implementer session ids, so a transcript can be found later) and the auditor's own
-`report.md`. Only `<plan>.run.lock`, held while a run has the plan, stays beside the plan itself
-in `.claude/plans/`.
+## The path
 
-## Why it is built this way
+| Step | You run | What happens |
+|---|---|---|
+| 0 · only if it is too big for one spec | `/goal:tickets <chantier>` | An initiative carrying several outcomes becomes an ordered backlog — ticket 1 detailed, the rest deliberately one-liners |
+| 1 · optional | `/goal:spec <source>` | The **functional** contract: any source normalised, functional gaps grilled closed, one observable criterion per business rule, opt-in GitHub issue mirror |
+| 2 | `/goal:plan <source>` | The **executable** contract: technical grill, **the mode**, every rule mapped to a command, delivery decisions, slices, the locked plan on a branch |
+| 3 · `manual` | `/goal` (native) + `/goal:next` | One slice per session; `/goal:next` replays its acceptance commands, reconciles the plan, emits the next handoff. Nothing is staged for you |
+| 3 · `commit+pr` | `node scripts/goal-run.ts <plan>` | The runner: nine preflight refusals, a base sweep, one fresh implementer per slice, a gate verdict on each, publication, close |
+| 3 · `commit+pr`, watched | `/goal:supervise [plan]` | The same runner in the background, plus a halt classifier that repairs or discards **once**, then stops |
 
-- **The judge is a program, not a prompt** (`scripts/goal-gate.ts` + `scripts/gate/*.ts`). A
-  slice lands on an exit code, never on what an agent says about its own work. Scope, diff
-  budget, removals, acceptance commands, determinism, the regression wall over earlier slices,
-  and the bite check are each their own module, each with its own test file.
-- **The implementer is not trusted with git.** It writes only inside the paths its gate block
-  declares, and a `permissions.deny` rule takes `git commit`, `git push` and `git add` away from
-  it. A brief is a sentence; the deny rule is the mechanism.
-- **The plan is the whole state.** Checkboxes are the only progress marker, so a run that halts
-  or pauses resumes at the first unticked box with no memory of the one before it. The plan is
-  hashed, so a run cannot quietly rewrite the contract it is judged by.
-- **One fresh session per iteration.** Each iteration is handed to its own `claude -p`
-  implementer with the plan section as text — never the plan's path, which is how a real run
-  once read the plan in another checkout and wrote the whole iteration into the wrong tree.
-- **Small green slices, and they are real slices.** Decomposition runs on
-  [`product:vertical-slice`](../product/skills/vertical-slice/SKILL.md); each iteration also
-  carries a delivery strategy from [`product:delivery`](../product/skills/delivery/SKILL.md), so
-  it can ship while the rest is unfinished.
-- **The opt-in adversarial grill hunts unknown unknowns.**
-  [`grill-adversarial`](skills/grill-adversarial/SKILL.md) enumerates the interaction's states,
-  extracts the invariants, and builds the `(state × action)` matrix before iterations freeze.
+**Steps 1–2 are deliberately not automated.** The ambiguity a source leaves cannot be lifted from
+inside a run: an unattended implementer resolves it by guessing, and the guess surfaces thirty
+turns later as work to throw away. The grill is the one place a human is load-bearing.
+
+**→ [`docs/walkthrough.md`](docs/walkthrough.md) is every step of all of this, with the concrete
+reason for each one.**
 
 ## What the barriers actually hold
 
 Each of these is a real mechanism with a real edge. Stated here so nobody plans against a
-guarantee that is narrower than its slogan.
+guarantee narrower than its slogan.
 
-- **No commit the gate did not verify** — holds per slice. It is not the last barrier before
-  publication: `goal-run.ts` publishes after every landed iteration and the global Definition of
-  Done replays only at close (`run/close.ts`), so a DoD refusal arrives with the work already
-  pushed.
-- **The implementer is mechanically denied git** — the preflight reads for the deny rule as a
-  substring of the raw settings JSON (`run/preflight.ts`), which an `allow` entry naming the same
-  verb also satisfies. It binds a session started after it, not one already running.
-- **A test that passes without the implementation halts the slice** (`gate/bite.ts`) — unless the
-  iteration declares no `test_files`, which skips the check. `plan-guard.ts` hashes `gateN=` and
-  `dodN=` lines, plus — per iteration — whether `test_files` is empty, so a repair emptying it
-  moves the hash even though repairing a mistyped path in it does not.
-- **The plan is hashed** (`gate/plan.ts`) — the hash normalizes ticks away.
-- **Every claim is a command that ran** — except the gate's own refusal: `run/iteration.ts` exits
-  on a refusal without copying the gate's `HALT` block into the run log. The log names the halt;
-  the reason is only on the terminal.
+- **No commit the gate did not verify** — holds per slice, absolutely. At run level it is
+  narrower: slices publish as they land, so a global Definition-of-Done refusal arrives with the
+  earlier slices already pushed. The **last** slice's push is held behind that barrier, so a
+  single-slice run publishes nothing before it passes.
+- **The implementer cannot commit, push or stash** — what enforces this is *detection*, not
+  denial. Three snapshots bracket each session: the commit pointer, every ref including the stash,
+  and the git directory's configuration and hooks. A permissions rule was tried and removed — it
+  was read as a substring of raw JSON, which an `allow` entry satisfied just as well; it also
+  restrained the developer's own session, and permissions are read at session start, so it
+  described a future session and never the running one. `goal-deny-setup.sh` still installs four
+  deny rules for the developer who wants them, but the runner never checks for it and does not
+  depend on it.
+- **A test that passes without the implementation halts the slice** — unless the slice declares no
+  `test_files`, which skips the check entirely. It proves the *new* test bites; **it does not
+  prove a pre-existing test in the same files was not quietly weakened.**
+- **The plan is hashed** — the hash normalises ticks away, so un-ticking a finished slice would be
+  invisible to it. A separate monotonicity check closes that, refusing a commit when the ticked set
+  has shrunk since the run started.
+- **The declared command is bounded by a 900-second wall clock; the implementer session is not.**
+  There is no turn cap and no iteration ceiling. A session circling an impossible slice circles
+  until the usage allowance runs out.
+- **Nothing is read from GitHub except a pull request number and its state.** The one weak point is
+  named: the reviewer agent holds `Bash`, so nothing mechanically stops it reading the pull request
+  it posts to. There the invariant is prose again.
 
-## One generation left in this tree
+More, including the axes that are entirely empty: [`docs/comparison.md`](docs/comparison.md).
 
-`scripts/goal-run.ts` + `scripts/run/*.ts` (938 lines over 8 modules) is what `/goal:supervise`
-launches and what the barriers above describe.
+## How it compares
 
-Five shipped artifacts have never been exercised by a real run: `commands/supervise.md` (whose
-own frontmatter concedes the classifier is unproven, two halts being its whole evidence),
-`scripts/plan-guard.ts`, `scripts/transcripts.ts`, `agents/goal-run-reviewer.md` (wired in
-`run/close.ts`, never fired) and `agents/goal-session-auditor.md`. Treat them as proposals with
-code attached.
+No single mechanism here is unique any more — a program judging by exit code, a hash-frozen plan,
+a declared-paths allowlist and a test counterfactual each have an independent implementation
+somewhere in the 2026 field. **The conjunction has not turned up anywhere**, and two pieces of it
+in particular: a *numeric* per-slice diff ceiling, and a judge that is also the sole committer.
 
-`tests/run.sh` runs the suite once per runner in its list, refusing a nonzero `skipped` line
-exactly as it refuses a failure. **CI exercises it on every invocation of
-`bash plugins/goal/tests/run.sh`**.
+The full survey — thirteen mechanisms across eight harnesses read in depth, including the rows
+where they win — is [`docs/comparison.md`](docs/comparison.md).
 
 ## What the plugin ships
 
 | Component | Path | Role |
 |---|---|---|
-| [`/goal:tickets`](commands/tickets.md) | `commands/tickets.md` | A chantier → an ordered backlog of outcome-sized tickets, elaborated just-in-time; opt-in GitHub milestone + issues |
-| [`/goal:spec`](commands/spec.md) | `commands/spec.md` | Any source → the functional contract: functional grill, an observable criterion per business rule, opt-in adversarial grill and GitHub issue |
-| [`/goal:plan`](commands/plan.md) | `commands/plan.md` | The technical grill → command-mapped DoD + iterations + policy + remote → the locked plan on a feature branch |
-| [`/goal:supervise`](commands/supervise.md) | `commands/supervise.md` | Launches the runner, classifies a halt, repairs or discards once. **Never run** |
-| [`/goal:next`](commands/next.md) | `commands/next.md` | Manual-loop checkpoint: verify the DoD, reconcile plan against code, emit the next `/goal` handoff |
-| `goal-run.ts` + `run/*.ts` | `scripts/` | The runner: preflight, sweep, lock, iteration, publish, close, report |
-| `goal-gate.ts` + `gate/*.ts` | `scripts/` | The judge, and the only committer. Exit 0 runnable · 1 `HALT` with a reason · 2 misuse. TypeScript run natively by node — no build, no dependency |
-| `goal-deny-setup.sh` | `scripts/` | Unions the three deny rules into the tree's `.claude/settings.local.json`. Additive and idempotent; needs `jq`. Not a precondition of the runner, which never checks for it |
-| `plan-guard.ts` | `scripts/` | Hashes every `gateN=`/`dodN=` line so a repair can prove it moved none. Used only by `/goal:supervise`. **Never run** |
-| `transcripts.ts` | `scripts/` | Resolves a run's transcripts from its recorded session ids. Used only by `goal-session-auditor`. **Never run** |
-| `goal-run-implementer`, `goal-run-lens`, `goal-run-auditor` | `agents/` | Spawned by the runner: one implementer per iteration, then an advisory lens and an auditor at close — neither able to undo what shipped |
-| `goal-run-reviewer`, `goal-session-auditor` | `agents/` | Post-publication review and transcript audit. **Never run** |
+| [`/goal:tickets`](commands/tickets.md) | `commands/` | Chantier → ordered backlog, elaborated just-in-time; opt-in GitHub milestone + issues |
+| [`/goal:spec`](commands/spec.md) | `commands/` | Any source → the functional contract; opt-in adversarial grill and GitHub issue |
+| [`/goal:plan`](commands/plan.md) | `commands/` | The technical grill → command-mapped DoD, slices, policy, remote → the locked plan on a branch |
+| [`/goal:supervise`](commands/supervise.md) | `commands/` | Launches the runner, classifies a halt, repairs or discards once. **Never exercised by a real run** |
+| [`/goal:next`](commands/next.md) | `commands/` | Manual-loop checkpoint: replay the DoD, reconcile plan against code, emit the next handoff |
+| `goal-run.ts` + `run/*.ts` | `scripts/` | The runner — 1,514 lines over 15 modules: preflight, sweep, lock, iteration, publish, close, report |
+| `goal-gate.ts` + `gate/*.ts` | `scripts/` | The judge, and the only committer — 1,134 lines over 12 modules. Exit 0 runnable · 1 `HALT` with a reason · 2 misuse |
+| `transcripts.ts` · `digest.ts` | `scripts/` | Resolve a run's transcripts and compress them to a tool-call digest. `transcripts.ts` runs on every failed implementer attempt |
+| `goal-deny-setup.sh` | `scripts/` | Unions four deny rules into the tree's `.claude/settings.local.json`. Additive, idempotent, needs `jq`. Not a precondition of anything |
+| `plan-guard.ts` | `scripts/` | Hashes every `gateN=`/`dodN=` line, plus whether each iteration's `test_files` is empty, so a supervised repair can prove it disarmed nothing. Nothing under `scripts/` calls it — only `/goal:supervise`'s prose asks a model to. **Never run** |
+| `goal-run-implementer` · `goal-run-lens` · `goal-run-auditor` | `agents/` | Spawned by the runner: one implementer per slice, then an advisory lens and an auditor at close |
+| `goal-run-reviewer` · `goal-session-auditor` | `agents/` | Post-publication review and transcript audit. **Never fired** |
 | [`grill-adversarial`](skills/grill-adversarial/SKILL.md) | `skills/` | Opt-in, loaded during `/goal:spec`'s grill |
-| [`product:vertical-slice`](../product/skills/vertical-slice/SKILL.md) · [`product:delivery`](../product/skills/delivery/SKILL.md) | *(plugin `product`)* | Loaded by `/goal:plan` Phase 3 (split + per-slice delivery), by `/goal:tickets` (cut + order), and `vertical-slice` alone by `/goal:spec` on a disputed size verdict |
-| `tests/run.sh` | `tests/` | The suite for the gate, both runners, and the guards. Wraps `node --test` once per runner in its list, and additionally requires at least one pass, no failure and no skip — `node --test` alone exits 0 on a glob matching nothing, and a skip is an unknown result refused exactly as a failure |
-| `done-criteria.template` · `goal-handoff.template` · `post-merge.template` | `templates/` | The DoD baseline, the `/goal` handoff `/goal:next` fills, and what a merged run leaves behind — printed, never executed |
+| [`product:vertical-slice`](../product/skills/vertical-slice/SKILL.md) · [`product:delivery`](../product/skills/delivery/SKILL.md) | *(plugin `product`)* | Loaded by `/goal:plan` to split the work and give each slice a shipping strategy |
+| `tests/run.sh` | `tests/` | 271 tests in 48s. Wraps `node --test` and additionally refuses a zero-pass run, an undeclared skip, and a missing summary — a bare `node --test` exits 0 on a glob matching nothing |
+| `done-criteria.template` · `goal-handoff.template` · `post-merge.template` | `templates/` | The DoD baseline, the handoff `/goal:next` fills, and the merge-day checklist — printed, never executed |
 
-The **work-id** generalizes the old issue number: `issue-<N>` for a GitHub issue, the lowercased
-key (`ct-1234`) for Jira, a slug for a file or inline source. Two artifacts live in
-`.claude/plans/`: `<work-id>-spec.md`, the contract, and `<work-id>-execution-log.md`, the
-regenerated audit.
+**One generation is still shipped and should not be used.** `workflows/goal-auto.js` (941 lines)
+is the abandoned Workflow generation. It is *not* dead code — Claude Code registers it as the
+invokable skill `goal:goal-auto` — but nothing maintains it, no test covers it, and the runner
+above replaced it. Do not launch it. Removing it is the first item in the roadmap.
+
+The **work-id** generalises the old issue number: `issue-<N>` for a GitHub issue, the lowercased
+key (`ct-1234`) for Jira, a slug for a file or inline source. The plan lives at
+`.claude/plans/<work-id>-spec.md`; a run's records go to
+`.claude/goal-runs/<work-id>/<run-id>/` — `.run.log`, `.run.jsonl`, `.run.session` and the
+auditor's `report.md`. Only `<plan>.run.lock` stays beside the plan.
 
 ## Prerequisites
 
 | Item | Needed for | Note |
 |---|---|---|
 | Node 24 | the runner and the gate | Types are stripped at run time, never checked; `tsc --noEmit` is a CI concern |
-| `jq` | `goal-deny-setup.sh` | |
 | A git-ignored `.claude/` | every run | Preflight refuses a plan directory git can see: the spec, the ticked box and the run log would read as an undeclared scope leak |
+| `betterleaks` or `gitleaks` | any push | The push is refused, not skipped, when neither is installed |
 | `gh` authenticated | `Policy: commit+pr`, or a GitHub source | `gh auth login` |
+| `jq` | `goal-deny-setup.sh` only | |
 | Atlassian MCP | a Jira source | Or paste with `inline` |
 
-Optional plugins enhance and never gate: `pocock` (`grill-me` / `grill-with-docs`, composed by
-the adversarial grill), `superpowers` (`verification-before-completion`,
-`systematic-debugging`), `craft` and the language TDD packs. The commands fall back to inlined
-behavior when they are absent.
+Optional plugins enhance and never gate: `pocock` (grill skills), `superpowers`
+(`verification-before-completion`, `systematic-debugging`), `craft` and the language TDD packs.
+The commands fall back to inlined behaviour when they are absent.
 
 ## Troubleshooting
 
+Every row here has either been hit on a real run or is a refusal the code can still reach today.
+
 | Symptom | Cause | Fix |
 |---|---|---|
+| Exit 2, "the base is not green" | a command the plan holds every slice to already fails on the untouched tree | Fix the base. The sweep runs before a byte is written, so nothing needs undoing. **Hit for real:** one attempt stopped here with 35 of 202 tests failing for a machine-permission reason, and never entered a slice |
 | Exit 2, "the plan's directory is visible to git" | `.claude/` is tracked | Ignore it, untracking any spec already committed |
-| Exit 2, "Policy is manual" | the runner has nowhere to put the work | Change the `Policy:` line, or run the manual loop with `/goal` and `/goal:next` |
+| Exit 2, "Policy is manual" | the runner has nowhere to put the work | That plan is for the manual loop — run it with `/goal` and `/goal:next`, or change the `Policy:` line |
 | Exit 2, "the plan declares no Remote line" | never defaulted to `origin` | Write the remote on the plan. Guessing here pushes a fork's work to its parent |
+| Exit 2, "the branch is behind &lt;base&gt;" | the base moved after the branch was cut | Rebase, then relaunch. A green sweep against a stale base certifies nothing anyone will merge into |
 | Exit 2, "another run holds this plan" | a `<plan>.run.lock` survived a dead run | `node <plugin>/scripts/goal-gate.ts unlock <plan>` once you know the holder is gone |
-| Exit 2, "the base is not green" | a command the plan will hold every iteration to already fails | Fix the base. The sweep runs before a byte is written, so nothing needs undoing |
-| Exit 1, an iteration was refused | the gate halted | The log names the iteration but not the reason. Reproduce it from the repo root: `node <plugin>/scripts/goal-gate.ts verify <plan> <n>` |
-| Exit 3, paused | quota exhausted, or the implementer wrote nothing | Relaunch: the checkboxes are the whole state, so it resumes at the first unticked box |
-| The gate halts on files you considered in scope | the iteration's declared paths do not match reality | The declared list is the contract. Fix it in the spec, or keep the change out of this iteration |
+| Exit 1, a slice was refused | the gate halted | The reason is in the run log and on the terminal. Reproduce it from the repo root: `node <plugin>/scripts/goal-gate.ts verify <plan> <n>` |
+| Exit 3, "the quota still looks exhausted" | the usage window did not reopen within the retries | Relaunch when it has. Checkboxes are the whole state, so it resumes at the first unticked box. **Hit on five slices across two runs** |
+| Exit 3, "the implementer wrote nothing in this tree" | the work went somewhere else | Look for it in another checkout before assuming it does not exist — this is what a wrong working directory looks like from here |
+| The gate halts on files you considered in scope | the slice's declared paths do not match reality | The declared list is the contract. Fix it in the plan, or keep the change out of this slice |
+| The run finishes but the review is not on the pull request | a safety hook refuses to post under your GitHub identity without explicit consent | Expected, and not a failure — the review text is in the run log. **Seen on three runs**; posting is opt-in via a `Review: comment` header |
 
 ## Cost
 
 Everything runs on your **Claude Code subscription** — the runner spawns `claude -p`, so no API
 surcharge, and the 5-hour rate-limit window applies normally. A quota-exhausted implementer is
-slept through and retried against the same iteration, bounded, then paused rather than spun.
-
-Every run has its auditor write a report to `.claude/goal-runs/<work-id>/<run-id>/report.md`:
-elapsed seconds per iteration, what halted it, and which failures recur across earlier reports.
-At close, that report is folded into the pull request body under `## Run report`, replaced whole
-on every rerun of the same PR.
+slept through and retried against the same slice, bounded, then paused rather than spun. A burst
+rate limit gets seconds of backoff instead, after a measured incident where a 30-minute sleep fired
+at 4% of the session's usage.
 
 ## Long runs and the auto-updater
 
-**Observed, 2026-08-05:** installing an update to Claude Code shuts down every running instance
-on the machine, including a `claude -p` implementer mid-iteration. A run left unattended for
-hours is exactly the shape an update lands under.
-
-What the runner now absorbs by itself:
-
-- **Shutdown retries.** Exit 143 (SIGTERM) is classified as a shutdown, not quota exhaustion
-  (`run/quota.ts`): `run/iteration.ts` backs off a fixed 5s and relaunches the same iteration, up
-  to `GOAL_RUN_SHUTDOWN_MAX_RETRIES` (default 5) attempts — never the multi-minute quota sleep,
-  which would wait out a window that has already reopened.
-- **Spawn hygiene.** Every implementer is spawned with `DISABLE_AUTOUPDATER: '1'` in its own
-  environment (`run/iteration.ts`), so the process the runner controls cannot trigger the
-  shutdown against itself.
-- **Preflight advisory.** Preflight reads the machine's own `~/.claude/settings.json` and prints
-  a warning — never a refusal — when neither `env.DISABLE_AUTOUPDATER` nor
-  `"autoUpdatesChannel": "stable"` is set there (`run/advisory.ts`).
-
-What stays the developer's own choice: the plugin cannot write to a settings file it does not
-own, and would not decide for you when it could. Setting `env.DISABLE_AUTOUPDATER: "1"` or
-`autoUpdatesChannel: "stable"` in your own `~/.claude/settings.json` stops the auto-updater from
-shutting down *other* Claude Code instances on the same machine — a terminal you're using,
-another run — while this one is in flight. The advisory names both remedies; picking one, or
-neither, is yours.
+**Observed, 2026-08-05:** installing an update to Claude Code shuts down every running instance on
+the machine, including a `claude -p` implementer mid-slice. A run left unattended for hours is
+exactly the shape an update lands under. The runner absorbs this: exit 143 is classified as a
+shutdown rather than quota exhaustion and retried after a fixed 5s backoff, up to 5 attempts; every
+implementer is spawned with `DISABLE_AUTOUPDATER=1`; and preflight *warns* — never refuses — when
+your own `~/.claude/settings.json` sets neither `env.DISABLE_AUTOUPDATER` nor
+`"autoUpdatesChannel": "stable"`. Setting one of those stops the updater shutting down *other*
+instances while a run is in flight. That file is yours; the plugin will not write to it.
 
 ## See also
 
-- [`docs/workflows-decision-guide.md`](../../docs/workflows-decision-guide.md) — `goal` vs
-  [`/spec-first-dev`](../common/commands/spec-first-dev.md) vs
-  [`crispi-planning`](../common/skills/crispi-planning/SKILL.md)
-- [`docs/autonomous-architecture.md`](docs/autonomous-architecture.md) — which layer holds which
-  guarantee, and why
+- [`docs/walkthrough.md`](docs/walkthrough.md) — every step, and the concrete reason for it
+- [`docs/adr/0001-shape-of-the-autonomous-loop.md`](docs/adr/0001-shape-of-the-autonomous-loop.md) — why a command over a runner over `claude -p`, and the three shapes built and deleted before it
+- [`docs/comparison.md`](docs/comparison.md) — the field, the table, and where this loses
+- [`docs/autonomous-architecture.md`](docs/autonomous-architecture.md) — which layer holds which guarantee
 - [`docs/target-harness.md`](docs/target-harness.md) — the properties an unattended loop must hold
-- [`docs/why-not-parallel.md`](docs/why-not-parallel.md) — parallel tracks were built, measured
-  and removed
-- [`docs/open-questions.md`](docs/open-questions.md) — what is still undecided, with what would
-  have to be measured
+- [`docs/why-not-parallel.md`](docs/why-not-parallel.md) — parallel tracks were built, measured, removed
+- [`docs/open-questions.md`](docs/open-questions.md) — what is still undecided, and what would settle it
+- [`../../docs/workflows-decision-guide.md`](../../docs/workflows-decision-guide.md) — `goal` vs the lighter workflows

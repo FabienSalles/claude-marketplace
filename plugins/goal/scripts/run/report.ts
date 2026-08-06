@@ -29,11 +29,21 @@ export const createReporter = (): Reporter => {
   let jsonl = '';
   let sessionPath = '';
 
+  // Bookkeeping, never the verdict's hostage: an unguarded throw out of say() exits 1, the code a
+  // supervisor reads as a gate refusal and answers by discarding the implementer's tree.
+  const append = (path: string, text: string): void => {
+    try {
+      appendFileSync(path, text);
+    } catch {
+      // a lost line is not a lost run
+    }
+  };
+
   // The ingestible twin of the prose log: one versioned JSON line per call, alongside whatever
   // that call already rendered.
   const emit = (event: string, fields: Record<string, unknown>): void => {
     if (jsonl) {
-      appendFileSync(jsonl, `${JSON.stringify({ v: 1, ts: new Date().toISOString(), event, ...fields })}\n`);
+      append(jsonl, `${JSON.stringify({ v: 1, ts: new Date().toISOString(), event, ...fields })}\n`);
     }
   };
 
@@ -41,7 +51,7 @@ export const createReporter = (): Reporter => {
     process.stdout.write(`${message}\n`);
 
     if (log) {
-      appendFileSync(log, `${message}\n`);
+      append(log, `${message}\n`);
       emit('say', { message });
     }
   };
@@ -50,7 +60,7 @@ export const createReporter = (): Reporter => {
   // line, and into the run log, so a lens finding outlives the process that asked for it.
   const record = (text: string): void => {
     if (log && text.trim() !== '') {
-      appendFileSync(log, `${text}\n`);
+      append(log, `${text}\n`);
       emit('record', { payload: text });
     }
   };
@@ -60,7 +70,7 @@ export const createReporter = (): Reporter => {
     process.stdout.write(`${line}\n`);
 
     if (log) {
-      appendFileSync(log, `${line}\n`);
+      append(log, `${line}\n`);
       emit('stop', { message: line, exit: code });
     }
 
@@ -78,7 +88,7 @@ export const createReporter = (): Reporter => {
   // be found later without correlating timestamps.
   const session = (id: string): void => {
     if (sessionPath) {
-      appendFileSync(sessionPath, `${id}\n`);
+      append(sessionPath, `${id}\n`);
       emit('session', { payload: id });
     }
   };

@@ -68,7 +68,8 @@ mutate_name_uppercase() {
 
 mutate_readme_count_off() {
   local tmp="$1"
-  echo '| **git** | 999 |' >> "$tmp/README.md"
+  local readme="$tmp/plugins/git/README.md"
+  sed -i.bak 's/^## Skills (1)$/## Skills (999)/' "$readme" && rm "$readme.bak"
 }
 
 mutate_dead_pointer() {

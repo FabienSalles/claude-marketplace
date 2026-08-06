@@ -110,21 +110,21 @@ echo "Validated $total skills, $errors errors so far"
 # ─────────────────────────────────────────────
 # 2. README skill counts match actual files
 # ─────────────────────────────────────────────
-while IFS='|' read -r _ pack count _; do
-  pack=$(echo "$pack" | sed 's/[* ]//g')
-  count=$(echo "$count" | tr -d ' ')
-  # Skip non-numeric (common pack uses —)
-  if ! echo "$count" | grep -qE '^[0-9]+$'; then
+for readme in plugins/*/README.md; do
+  pack=$(basename "$(dirname "$readme")")
+  count=$(grep -m1 -oE '^## Skills \([0-9]+\)' "$readme" | grep -oE '[0-9]+')
+  # Skip READMEs whose "## Skills" heading declares no count
+  if [[ -z "$count" ]]; then
     continue
   fi
-  actual=$(find "plugins/$pack" -name "SKILL.md" 2>/dev/null | wc -l)
+  actual=$(ls plugins/"$pack"/skills/*/SKILL.md 2>/dev/null | wc -l | tr -d ' ')
   if [[ "$actual" -ne "$count" ]]; then
     echo "✗ README says $pack has $count skills, but found $actual"
     errors=$((errors + 1))
   else
     echo "✓ $pack: $count skills (matches)"
   fi
-done < <(grep -E '^\| \*\*' README.md)
+done
 
 echo ""
 if [[ $errors -gt 0 ]]; then

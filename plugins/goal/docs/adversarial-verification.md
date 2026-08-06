@@ -71,17 +71,18 @@ The gate halts, because an exit code cannot be wrong. A verifier is a model: it 
 false positives. A false positive that kills a provably-green run at 3am costs more than
 the finding is worth.
 
-Findings are **advisory**, and the code is built so they cannot be anything else: by the time
-the lens is asked, every slice is committed and — under `commit+pr` — already pushed and
-carried by an open pull request. Nothing about its answer changes what the run does next.
+Findings are **advisory**, and the code is built so they cannot be anything else: the lens is
+asked inside `close()`, after the global Definition of Done has passed and after the last
+iteration's held-back push has fired (`run/close.ts:58-67`), so under `commit+pr` every slice is
+committed, pushed and carried by an open pull request by then. Nothing about its answer changes
+what the run does next.
 
 Which makes the whole layer dependent on a place to deposit a non-blocking signal, and that is
-the weakest part of it. The findings go to `<plan>.run.log`, through `reporter.record()`
-(`run/report.ts`), in a directory the preflight *requires* to be gitignored
-(`run/preflight.ts:93`). Not the pull request body — that is built from iteration headings
-alone (`run/publish.ts:47-55`). Not an issue comment — nothing in the runner writes one. A
-signal produced at 3am and deposited in an ignored file beside the plan is a signal whose only
-reader is whoever thinks to open it.
+the weakest part of it. The findings go to the run's own log, through `reporter.record()` into
+`.claude/goal-runs/<work-id>/<run-id>/.run.log` (`run/report.ts:20-25`, `:80-84`). Not the pull
+request body — that is built from iteration headings alone (`run/publish.ts:47-55`). Not an issue
+comment — nothing in the runner writes one. A signal produced at 3am and deposited in a per-run
+log file under `.claude/` is a signal whose only reader is whoever thinks to open it.
 
 Worth recording how that came about, because it is the failure mode of a port rather than a
 design decision: the earlier bash runner appended an advisory agent's own words to the log, the
@@ -180,18 +181,22 @@ that survived that cut were lost to the port instead, which is a different and w
 | **Ripple** | nothing, and by accident. It asked whether iteration N left N+1 doable exactly as written, and the runner has no per-iteration advisory stage left to carry it |
 | **Completeness** | nothing, and by accident. It asked what the plan's Business intent implied that no iteration covered — a question the surviving conformance lens explicitly does not ask, since it judges against declarations rather than past them |
 
-Two of those rows have shrunk since they were written, and both shrank the same way — the
-answering mechanism turned out to run less often than the lens would have.
+One of those rows has shrunk since it was written — the answering mechanism turned out to run
+less often than the lens would have.
 
-The bite check **skips** an iteration that declares no `test_files` (`gate/bite.ts:52-57`), and
-`plan-guard.ts:18` hashes only `gateN=` and `dodN=` lines, so emptying `test_files` is an edit
-a supervised repair may legally make and the guard will certify. The promotion from opinion to
-exit code has an unguarded exit.
+The bite check **skips** an iteration that declares no `test_files` (`gate/bite.ts:54-56`), and
+that exit is guarded only as far as prose goes: `plan-guard.ts` hashes each resolved block's
+`test_files` emptiness beside its `gateN=` and `dodN=` lines (`:59-76`), so a supervised repair
+that empties the field would move the hash — but nothing the machine runs calls that script. Its
+only callers are steps in `commands/supervise.md` (`:86-90`) a model is asked to follow, alongside
+`supervise.md:74-76` forbidding the edit in words. The refusal is real when it runs, and what
+makes it run is an instruction.
 
 The Definition of Done runs **once, at close** (`run/close.ts:47`), after every iteration has
-already been committed and, under `commit+pr`, pushed (`goal-run.ts:92-98`). So "the existing
-suite is still green" is answered after publication rather than per slice, which is a weaker
-answer than the retired lens gave.
+already been committed and, under `commit+pr`, after every iteration but the last has been pushed
+(`goal-run.ts:120-131`). So "the existing suite is still green" is answered per branch rather than
+per slice, which is a weaker answer than the retired lens gave — and on a multi-iteration run it
+is answered after the earlier slices are already published.
 
 Removing the retired lenses also removed the per-iteration fact extraction that only they
 consumed — the `Delivery:`, invariant-count and `test_files` probe, and the tab-positional

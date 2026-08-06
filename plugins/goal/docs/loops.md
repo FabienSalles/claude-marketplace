@@ -22,15 +22,19 @@ would only be a way to keep going after a refusal, which is the one thing the de
 
 Two properties of the loop body are easy to read backwards, so state them plainly:
 
-- **Publication is inside the loop.** `publisher.publish(n)` pushes and rewrites the pull
-  request on every landed iteration (`run/publish.ts:100`, `:139`). A run that halts at 3 of 15
-  has already put three iterations on the remote.
-- **The global Definition of Done runs after the loop, not inside it.** `goal-run.ts:100` calls
-  `close()`, and `run/close.ts:47` is where `gate dod` finally replays the whole suite against
-  the whole branch. `gate/ship.ts:11` describes that check as *"the barrier replayed once before
-  anything ships"*. It is not a barrier: everything shipped N iterations earlier. The order is a
-  real decision — a halt leaves something readable rather than an invisible branch — but it is
-  not the order the barrier's own words claim, and nothing else in the run reconciles the two.
+- **Publication is inside the loop, for every iteration but the last.**
+  `goal-run.ts:120-131` calls `publisher.publish(n)` as each iteration lands, and skips it on the
+  final one. The skip is keyed to `iterations[iterations.length - 1]`, the last of the *requested*
+  list, never to whichever iteration a halt lands on: every iteration that lands publishes in the
+  same loop body, immediately. On a 15-iteration run refused at iteration 4, the three that landed
+  are all on the remote.
+- **The global Definition of Done runs after the loop, and the last push waits behind it.**
+  `goal-run.ts` calls `close()`, `run/close.ts:47` replays `gate dod` against the whole branch,
+  and only on a green verdict does `run/close.ts:58-67` publish the iteration held back.
+  `gate/ship.ts:11` describes that check as *"the barrier replayed once before anything ships"*.
+  On a one-iteration plan that is literally true. On a longer one it is a barrier in front of the
+  last slice and behind all the others, which is a real decision — a halt leaves something
+  readable rather than an invisible branch — but not the one the barrier's own words claim.
 
 ## The loop that proves the work first — `goal-run.ts:64-83`
 
@@ -42,9 +46,11 @@ work list to reject it before consuming it, which is the same instinct as the ba
 (`run/preflight.ts:130-141`) applied to the plan's structure rather than to the tree.
 
 It is also where the run's contract is captured — one `plan_hash` per iteration, carried into
-`runIteration` and into `close`. Worth knowing what that hash does not cover: `gate/plan.ts:29-30`
-normalizes every `- [x]` back to `- [ ]` before hashing, so **unticking a box removes an
-iteration from this loop's list without moving the hash it locks**.
+`runIteration` and into `close`, and beside it the ticked set. The hash alone does not cover ticks:
+`gate/plan.ts:29-30` normalizes every `- [x]` back to `- [ ]` before hashing, so an untick moves
+nothing in it. **That is why the ticked set travels separately** — `gate/ticked.ts:13-27` compares
+what `check` published against what is on disk at `commit` and halts on any iteration that
+disappeared (`goal-gate.ts:154`), for the length of this run.
 
 ## The loop that waits — `run/iteration.ts:104-152`
 
@@ -85,11 +91,13 @@ It has never been executed. Neither has anything it is the sole caller of: `scri
 `scripts/transcripts.ts` and `agents/goal-session-auditor.md` are referenced by `supervise.md` and
 by their own tests, and by nothing else.
 
-And the classifier reads evidence that is not there. `supervise.md:63-65` says to read the gate's
-own `HALT` block back from the run log. `run/iteration.ts:186-193` exits on a gate refusal without
-ever reading `verdict.stdout` — the block is printed by the gate into a captured buffer and
-dropped. **The one loop that reacts to a halt is told to classify from output the run never
-writes.**
+The evidence it classifies from is written. `supervise.md:63-65` says to read the gate's own
+`HALT` block back from the run log, and on a gate refusal `run/iteration.ts:184` passes
+`verdict.stdout` and `verdict.stderr`, concatenated, to `reporter.record()`, which appends them
+to the run's own log, `.claude/goal-runs/<work-id>/<run-id>/.run.log` (`run/report.ts:20-25`,
+`:80-84`). `tests/goal-run-halt-log.test.ts` asserts the block
+reaches the log even when the gate splits it across both streams. **What is untested is the
+classification itself, not its input.**
 
 ---
 
@@ -118,8 +126,8 @@ budget, then re-verify.[^selfheal]
 | Signal | Class | Recovery | Built? |
 |---|---|---|---|
 | implementer call reports a usage limit | the model is unavailable | sleep, retry the same iteration | yes, budget 3 (`run/iteration.ts:135-151`) |
-| gate exits anything but 0 or 1 | **no verdict exists** | none — pause, tree untouched | yes (`run/iteration.ts:186-189`) |
-| gate exits exactly 1 | the code or the contract is wrong | none — halt | yes (`run/iteration.ts:191-193`) |
+| gate exits anything but 0 or 1 | **no verdict exists** | none — pause, tree untouched | yes (`run/iteration.ts:193-195`) |
+| gate exits exactly 1 | the code or the contract is wrong | none — halt, verdict already in the log | yes (`run/iteration.ts:184`, `:198-199`) |
 | `git push` rejected, `gh` non-zero | transient infrastructure | retry the command | no — publication blocks stickily (`run/publish.ts:100-108`) |
 | gate output matches a known flaky signature | suspected flakiness | re-run **for information only**, verdict unchanged | no |
 

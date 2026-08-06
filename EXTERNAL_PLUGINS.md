@@ -23,7 +23,6 @@ In Claude Code:
 /plugin install feature-dev@claude-plugins-official
 /plugin install figma@claude-plugins-official
 /plugin install frontend-design@claude-plugins-official
-/plugin install github@claude-plugins-official
 /plugin install hookify@claude-plugins-official
 /plugin install php-lsp@claude-plugins-official
 /plugin install plugin-dev@claude-plugins-official
@@ -31,6 +30,8 @@ In Claude Code:
 /plugin install skill-creator@claude-plugins-official
 /plugin install typescript-lsp@claude-plugins-official
 ```
+
+> `github@claude-plugins-official` is deliberately **not** installed: the only thing it ships is a GitHub Copilot MCP pointing at `api.githubcopilot.com/mcp/`, which never connects without a Copilot subscription. See the Done section of [`BACKLOG.md`](BACKLOG.md).
 
 ### Marketplace: `atournayre-claude-plugin-marketplace`
 
