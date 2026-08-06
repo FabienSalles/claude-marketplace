@@ -13,7 +13,7 @@
 # neither reads local tracking refs, so no staleness can change what they do. `gh`
 # queries the API, and on a push it is the remote that arbitrates — a stale local ref
 # alters neither what is sent nor what is rejected. Guarding them cost real failures:
-# an unattended /goal:auto run landed and pushed its branch, then had its pull request
+# an unattended /goal:supervise run landed and pushed its branch, then had its pull request
 # refused here and stopped without one. FETCH_HEAD is per-worktree, so the tree a run
 # stands in has never fetched however fresh the main checkout is — the block was
 # certain, not occasional.

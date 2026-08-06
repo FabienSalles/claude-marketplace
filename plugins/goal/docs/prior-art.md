@@ -239,11 +239,12 @@ tokens in coordination overhead rather than code, which is why one close cousin 
 orchestrator with a plain scheduler.[^scheduler] That is the argument for the move away from the
 Workflow runtime that used to hold this loop, onto `goal-run.ts`. The move was made; the
 measurement was not. And no project in the panel kept both orchestrators alive — they renamed or
-replaced. This one did not replace either: `workflows/goal-auto.js` is still checked in at 941
-lines, and Claude Code still registers it as the invokable skill `goal:goal-auto`. Nothing in
-`scripts/` calls it, none of the six agent types it dispatches to exists as a file any more, its
-own `whenToUse` points at a deleted command — and it can still be typed by name. That is the
-panel's own lesson going unlearned here.
+replaced. This one kept both alive for a while and has now replaced: the Workflow generation stayed
+checked in at 941 lines long after `goal-run.ts` superseded it, and because Claude Code registers a
+plugin's `workflows/*.js` as invokable skills, it remained typeable by name the whole time —
+calling nothing in `scripts/`, dispatching to six agent types that no longer existed as files, and
+advertising a command that had been deleted. It was removed on 2026-08-06. The lesson the panel
+teaches is that the old orchestrator has to go, not merely stop being called.
 
 ## Where this leaves the positioning
 

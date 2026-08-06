@@ -209,11 +209,6 @@ where they win — is [`docs/comparison.md`](docs/comparison.md).
 | `tests/run.sh` | `tests/` | 271 tests in 48s. Wraps `node --test` and additionally refuses a zero-pass run, an undeclared skip, and a missing summary — a bare `node --test` exits 0 on a glob matching nothing |
 | `done-criteria.template` · `goal-handoff.template` · `post-merge.template` | `templates/` | The DoD baseline, the handoff `/goal:next` fills, and the merge-day checklist — printed, never executed |
 
-**One generation is still shipped and should not be used.** `workflows/goal-auto.js` (941 lines)
-is the abandoned Workflow generation. It is *not* dead code — Claude Code registers it as the
-invokable skill `goal:goal-auto` — but nothing maintains it, no test covers it, and the runner
-above replaced it. Do not launch it. Removing it is the first item in the roadmap.
-
 The **work-id** generalises the old issue number: `issue-<N>` for a GitHub issue, the lowercased
 key (`ct-1234`) for Jira, a slug for a file or inline source. The plan lives at
 `.claude/plans/<work-id>-spec.md`; a run's records go to
