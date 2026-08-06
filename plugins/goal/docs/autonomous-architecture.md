@@ -16,8 +16,8 @@ moving.
 | # | Layer | Medium | Holds |
 |---|---|---|---|
 | 0 | The plan | markdown, gitignored, hashed | what to build, and the exact commands that prove it |
-| 1 | Verification | TypeScript run natively by node (`goal-gate.ts`, nine modules under `gate/`) | did this iteration pass — the only authority, and the only thing that commits |
-| 2 | Orchestration | a node process (`goal-run.ts`, seven modules under `run/`) | preflight, order, halt, quota wait, publication |
+| 1 | Verification | TypeScript run natively by node (`goal-gate.ts`, eleven modules under `gate/`) | did this iteration pass — the only authority, and the only thing that commits |
+| 2 | Orchestration | a node process (`goal-run.ts`, fourteen modules under `run/`) | preflight, order, halt, quota wait, publication |
 | 3 | Advisory quality | agents (reviewer, lens, auditor) | what the gate structurally cannot see |
 | 4 | Session lifecycle | a command (`/goal:supervise`) | classify a halt, repair or discard, relaunch once |
 | 5 | Remote surface | a draft pull request on the plan's declared remote | where a human sees it |
@@ -41,19 +41,29 @@ The orchestrator does not commit. It calls a script that commits only after it h
 so an orchestrator that misreads a result cannot produce a bad commit.
 
 The boundary of that anchor is worth naming. *Only the gate commits* used to lean on an
-implementer denied `git commit`, `git push` and `git add` by a Claude Code settings rule, and on a
-preflight check that `.claude/settings.local.json` contained those three strings — a substring
-match an ALLOW list satisfied exactly as well as a DENY one. The current runner dropped that
+implementer denied `git commit`, `git push`, `git add` and `git stash` by a Claude Code settings
+rule (`scripts/goal-deny-setup.sh:34`), and on a preflight check that
+`.claude/settings.local.json` contained those strings — a substring match an ALLOW list satisfied
+exactly as well as a DENY one. The current runner dropped that
 check: it was also installed project-wide, so it restrained the developer's own session, and
 permissions are read at session start, so it described a future session and never the running one.
 The earlier bash runner enforced it and has since been deleted.
 
-What holds the anchor now is detection rather than denial. `run/iteration.ts` snapshots HEAD around
-the implementer and halts when it moved, which catches the case the rule was written for. The two
-gaps that remain — a push, and a write into `.git/` — are named in `docs/open-questions.md` and are
-what the visibility plan closes.
+What holds the anchor now is detection rather than denial, and it is wider than HEAD.
+`run/iteration.ts:132-165` snapshots three things around the implementer and halts on any of
+them: HEAD, which catches the case the rule was written for; the git directory's executable
+surface — `config`, `config.worktree`, `info/exclude` and every file under `hooks/` — via
+`run/gitwatch.ts`; and every ref, read with `for-each-ref`, so a `refs/remotes/` move is named as
+a push and any other ref move, a stash included, is named as a ref move. None of the last two is
+visible to `git status`, which is why they are read separately, and the git-directory check runs
+before the empty-tree case so an implementer that wrote only into `.git/` is diagnosed as such
+rather than as having written nothing.
 
 ## Why layer 2 is a program, and this one
+
+> The decision itself, with the alternatives and their consequences stated in full, is
+> [`adr/0001-shape-of-the-autonomous-loop.md`](adr/0001-shape-of-the-autonomous-loop.md). What
+> follows is the same material read as architecture rather than as a decision record.
 
 Four forms of the loop were tried. Each is named here by what it made impossible.
 
@@ -63,10 +73,12 @@ Four forms of the loop were tried. Each is named here by what it made impossible
 self-certified. Everything below is an answer to that one hole.
 
 **A dynamic Workflow, the abandoned generation.** It takes a subagent to run `git status`. The
-proof is checked into the repository: `agents/goal-runner.md` exists, and its whole trade is
-that it "runs exactly one command and reports its exit code. […] Never interprets, never fixes,
-never retries", because "a verdict must cross back as an exit code, not as a reading of the
-output". An agent whose profession is to be a shell. Every `sed`, every `git status` costs a model call,
+proof is checked into the repository: `workflows/goal-auto.js:67-81` defines a `runner` helper
+whose entire prompt is *"Run exactly this command, once, from the repository root […] Do not fix
+anything, do not retry, do not run any other command, and do not interpret what you read"*,
+dispatched to a `goal:goal-runner` agent type. An agent whose profession is to be a shell — and
+the agent file it names is not in the repository, so the workflow could not run today even if
+something invoked it. Every `sed`, every `git status` costs a model call,
 a latency and a notification. The abstraction fights the task: orchestrating *is* sequencing
 deterministically, and a workflow turns every deterministic step non-deterministic. The defect
 that shape produced: it initialised its own tracking of a published pull request to `false`, so on
@@ -82,7 +94,7 @@ not worth its price.
 **A bash script, since deleted.** The right instinct, stated in its own header: a workflow has no
 shell, so there every `sed` and every `git status` crosses through a subagent — "here a command is
 a command". Wrong material. 594 lines in one file cannot follow the convention the plugin holds
-itself to, one module per group of business rules, which is what `gate/` does across nine of them.
+itself to, one module per group of business rules, which is what `gate/` does across eleven of them.
 The defect found on the first real use: `pr_body` built a regex alternation from `landed`, which
 accumulated from an empty string; the leading space became an empty alternative, BSD `grep`
 refused it, and the pull request body stayed empty for six iterations.
@@ -90,10 +102,10 @@ refused it, and the pull request body stayed empty for six iterations.
 **A command that launches a node script that launches `claude -p`.** What each part buys:
 
 - **the script**, against the workflow: `git status` is a system call, not a model call.
-- **node**, against bash: 938 lines across 8 modules — the same total as the abandoned Workflow,
-  but each with its own test file and the largest under 200 lines — and whole classes of bug
-  disappear structurally, since `landed: string[]` (`run/publish.ts:44`) cannot produce bash's
-  empty alternative.
+- **node**, against bash: `goal-run.ts` plus fourteen modules under `run/`, 1514 lines measured
+  today, none of them over 200 — where the bash original was 594 in one file and the abandoned
+  Workflow 941 — and whole classes of bug disappear structurally, since `landed: string[]`
+  (`run/publish.ts:44`) cannot produce bash's empty alternative.
 - **`claude -p`**, against a subagent: one fresh, bounded session per iteration, no context
   leaking from one slice into the next, each one persisted separately — which is what makes a
   session auditor possible at all.
@@ -118,8 +130,9 @@ hypothetical.[^overcorrect]
 
 The three agents are invoked at the close, after everything is committed and pushed, which makes
 that rule structural rather than a promise: none of them can undo what the gate already
-verified. Their answers land in `<plan>.run.log` (`run/close.ts:108`) and, for the auditor, in
-`.claude/goal-runs/<sha>.md`. The developer adjudicates them awake.
+verified. Their answers land in the run's own log,
+`.claude/goal-runs/<work-id>/<run-id>/.run.log` (`run/close.ts:108`) and, for the auditor, in
+`.claude/goal-runs/<work-id>/<run-id>/report.md`. The developer adjudicates them awake.
 
 ## Layer 4 — what survives the process
 
@@ -140,10 +153,13 @@ implementation was. The runner's four exit codes exist for that call and no othe
 (`goal-run.ts:13-17`), and `/goal:supervise` makes it. It says so itself: the rule was written
 from two halts, and it is a hypothesis rather than a proven procedure.
 
-It is also where the layering leaks today. On a gate refusal the runner exits without ever
-writing the gate's own output to the log (`run/iteration.ts:186-193`), and that HALT block is
-the only evidence the classifier has to read. A layer whose entire job is to classify is being
-fed by a layer that throws the evidence away.
+The evidence that call runs on is on disk. On a gate refusal the runner concatenates the gate's
+stdout and stderr and hands them to `reporter.record()` (`run/iteration.ts:184`), which appends
+them to the run's own log, `.claude/goal-runs/<work-id>/<run-id>/.run.log`
+(`run/report.ts:20-25`, `:80-84`), before exiting. The HALT block the classifier
+is told to read is therefore in the log the classifier reads, and
+`tests/goal-run-halt-log.test.ts` asserts it — including the case where the gate splits the block
+across both streams.
 
 **Never rely on auto-compaction inside a run.** Compaction is lossy and it fires when it
 fires. When the context is genuinely spent, the correct move is the one `/goal:next` already
@@ -156,12 +172,15 @@ is entirely on disk.
 The run maps onto GitHub as a single object: **a draft pull request, opened at the first landed
 iteration and its body rewritten by every one after it** (`run/publish.ts:57-60`), so a run that
 halts at 3 of 15 still leaves something a human can read instead of a local branch nobody can
-see. At the close, if the global Definition of Done passes, that pull request is marked ready
-and reviewed (`run/close.ts:59-80`). Nothing is ever written to an issue.
+see. The last iteration is the exception — it lands locally and is published only inside
+`close()`, behind a green global Definition of Done — after which that pull request is marked
+ready and reviewed (`run/close.ts:57-80`). Nothing is ever written to an issue.
 
-Pushing is no longer something that happens *on* a halt: it has already happened, at every
-landed iteration (`run/publish.ts:100`). The old rule that nothing is pushed on failure was
-first reversed, and then made moot.
+Pushing is no longer something that happens *on* a halt: it has already happened, at every landed
+iteration but the last (`goal-run.ts:120-131`). The final one's push is held inside `close()`
+until the global Definition of Done comes back green (`run/close.ts:58-67`), so a one-iteration
+run still publishes nothing until the whole-branch barrier passes. The old rule that nothing is
+pushed on failure was first reversed, then narrowed to that one case.
 
 That ordering costs one guarantee, and it is the sharpest layering fault on this page.
 `gate/ship.ts:11` describes the global Definition of Done as the barrier replayed once before

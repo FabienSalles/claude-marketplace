@@ -54,17 +54,20 @@ free: before a byte is written, every distinct command the plan declares is run 
 the untouched tree (`run/sweep.ts`, called from `run/preflight.ts:140`). A plan whose commands
 were already red never spends an implementer on iteration 1 to discover it. `gate1` is
 excluded on purpose — it is the bitten criterion, and it is *supposed* to fail without the
-implementation. The hole is in what the sweep counts as declared: it follows every gate fence
-in the file, whether or not that fence belongs to an iteration or to the Definition of Done,
-and it runs before the plan hash of invariant 4 below has been derived — so it is the one place
-the harness executes a line of the plan that nothing validated first.
+implementation. What the sweep counts as declared is scoped: it resolves the block of each
+`### Iteration N` section and of the `## Definition of Done` section (`run/sweep.ts:55-62`), so a
+fence quoted in prose outside any of them has no section to belong to and never runs. The
+residual is timing, not scope — the sweep fires before the plan hash of invariant 4 below has
+been derived, so it is the one place the harness executes a line of the plan that nothing
+validated first.
 
 **`plan-guard.ts`** is what makes "gate commands frozen in the plan" survive an edit between
 two runs. `/goal:supervise` may repair a plan after a halt; the guard hashes every `gateN=` and
-`dodN=` line so the repair can be proved not to have moved a bar. Two things keep its row above
-at *partial*. It guards those lines and nothing else — see invariant 3. And nothing calls it
-but the prompt it exists to constrain: `commands/supervise.md` runs it, `goal-run.ts` and
-`goal-gate.ts` never do.
+`dodN=` line, plus whether each block's `test_files` is empty, so the repair can be proved not to
+have moved a bar nor switched the bite check off. Two things keep its row above at *partial*. It
+guards those and nothing else — an `impl_files` entry, `max_diff` and the prose are all inside
+the closed repair set and outside the hash. And nothing calls it but the prompt it exists to
+constrain: `commands/supervise.md` runs it, `goal-run.ts` and `goal-gate.ts` never do.
 
 ## The four new mechanisms
 
@@ -124,7 +127,9 @@ iteration that caused it, which is the only moment where the halt is cheap and t
 obvious.
 
 The wall reads the plan's ticked boxes to know which iterations are prior. That is the correct
-source and it is also the wall's dependency: whatever can untick a box can shrink the wall.
+source and it is also the wall's dependency, which is why the ticked set is locked at `check` and
+re-compared at `commit` (`gate/ticked.ts:13-27`): inside a run, nothing can untick a box and
+shrink the wall. Between two runs it can — the next run locks whatever it finds.
 
 ### C. The diff budget
 
@@ -160,61 +165,73 @@ no document.
 **1. No commit exists that a gate did not verify.** Holds per slice, and holds well:
 `goal-gate.ts` is the only thing in the system that stages, commits and ticks
 (`gate/scope.ts:136-152`), and the implementer's brief forbids all three (`run/iteration.ts:73`).
-It does not hold as a *run* barrier. `gate/ship.ts:11-13` calls the global Definition of Done
-"the barrier replayed once before anything ships", and its halt text says "Nothing has been
-pushed" (`ship.ts:54`) — but the loop pushes and opens the pull request after every landed
-iteration (`goal-run.ts:92-98`), and the DoD replays only afterwards, in `close()`
-(`goal-run.ts:100` → `run/close.ts:47`). When the DoD refuses, the branch is already public and
-the pull request body already claims every commit was verified. The invariant is true of every
-commit and false of the sentence the run publishes about them.
+As a *run* barrier it holds at one end only, and the end depends on how many iterations there
+are. `gate/ship.ts:12-14` calls the global Definition of Done "the barrier replayed once before
+anything ships", and its halt text no longer overstates what that buys: *"The last iteration's
+push is held behind this barrier, so its commit stays local; every iteration before it already
+published as it landed and is on the remote"* (`ship.ts:55`). That matches the loop, which
+publishes **every iteration but the last** as it lands (`goal-run.ts:120-131`) and holds the last
+one's push inside `close()`, to fire only after the DoD comes back green (`run/close.ts:58-67`).
+What remains is structural rather than textual: on a six-iteration run whose DoD refuses, five
+slices and a draft pull request are already public, and that body already claims every commit was
+verified. The invariant is true of every commit either way; as a *run* barrier the DoD holds back
+one slice out of six, and the code now says so itself.
 
 **2. The implementer is mechanically denied git.** ~~The mechanism named is a `permissions.deny`
-rule in `.claude/settings.local.json`, checked by three `String.includes` on the raw
+rule in `.claude/settings.local.json`, checked by `String.includes` on the raw
 file.~~ **Resolved for the current runner**, which dropped the check
-rather than repair it: an `allow` list naming those same three commands satisfied it, the rule was
+rather than repair it: an `allow` list naming the same commands satisfied it, the rule was
 installed project-wide so it also restrained the developer's own session, and it was read once
-before the loop, so it bound a session started after it and not one already running. The earlier
-bash runner enforced it and has since been deleted. The claim now rests on the HEAD snapshot in
-`run/iteration.ts`, which is
-executed. Nothing surveys remote refs across the implementer, and a
-`git push` moves neither HEAD nor the working tree, so it passes both post-implementer checks
-(`run/iteration.ts:154-162`). And what the implementer writes inside the git directory is
-invisible to `git status --porcelain -uall` — verified — therefore invisible to the scope
-check, and then executed by the gate, which runs outside the permission system entirely. What
-actually holds this invariant is the HEAD-before / HEAD-after comparison, not the file the
-preflight reads.
+before the loop, so it bound a session started after it and not one already running. (The rules
+`scripts/goal-deny-setup.sh:34` still installs are four: `git commit`, `git push`, `git add`,
+`git stash`.) The earlier bash runner enforced it and has since been deleted.
+
+The claim now rests on three snapshots taken around the implementer and compared after it, all
+of them executed rather than read off a file (`run/iteration.ts:132-165`). HEAD, for a commit.
+Every ref via `for-each-ref`, for the moves `git status` cannot see: a `refs/remotes/` change
+halts the run named as a push, anything else as a ref move. And the git directory's executable
+surface — `config`, `config.worktree`, `info/exclude`, every file under `hooks/` recursively,
+`.sample` included — via `run/gitwatch.ts`, because what the implementer writes there is
+invisible to `git status --porcelain -uall`, therefore invisible to the scope check, and would
+then be executed by the gate, which runs outside the permission system entirely. That check runs
+before the empty-tree case, so an implementer that touched only `.git/` is named for what it did
+rather than reported as having written nothing.
 
 **3. A test that passes without the implementation halts the slice.** The bite check is the
 sharpest thing in the harness, and it works: `gate/bite.ts` sets
 `impl_files` aside, re-runs `gate1`, requires a failure, and restores by overwrite with a
-fingerprint taken on both sides. It has a legal off switch. `gate/bite.ts:52-57` prints `SKIP`
-and returns when `test_files` is empty, and `plan-guard.ts:18` hashes only `gateN=` and `dodN=`
-lines — so emptying `test_files` is an edit `commands/supervise.md:73` explicitly authorises a
-supervisor to make, and the guard answers `OK: no gate or dod line moved.` The tool that exists
-to prove no bar moved certifies that the bar was removed.
+fingerprint taken on both sides. Its off switch is guarded. `gate/bite.ts:54-56` prints `SKIP`
+and returns when `test_files` is empty, and `plan-guard.ts:59-76` hashes exactly that — per
+resolved block, whether `test_files` is empty, beside the `gateN=` and `dodN=` lines — so a
+supervised repair may fix a mistyped path and still pass, while one emptying the field moves the
+hash and is refused. `commands/supervise.md:74-76` forbids the same edit in prose.
 
 **4. The plan is hashed.** Stronger than it sounds, holed in one place. `gate/plan.ts:29-30`
 hashes the *whole* plan rather than its gate lines, so for the length of a run `impl_files`,
 `max_diff` and the prose are pinned too, and every gate verb re-derives the hash and refuses a
-mismatch. The normalisation is what leaks: the hash is taken with every `- [x]` rewritten to
-`- [ ]`, because a tick is the one edit an iteration may legitimately make. That makes an
-untick equally invisible — and the regression wall replays only ticked iterations, so unticking
-iteration 3 removes its commands from every iteration after it without moving a hash. The plan
-lives in a directory the preflight requires gitignored (`run/preflight.ts:93`), so no scope
-check sees the edit either. Separately: the hash is self-derived at the start of the run
-(`goal-run.ts:64-83`). It pins the plan against the executor, never against whatever edited it
-between the human grill and the launch.
+mismatch. The normalisation still leaks, but it no longer leaks alone: the hash is taken with
+every `- [x]` rewritten to `- [ ]`, because a tick is the one edit an iteration may legitimately
+make, which makes an untick invisible to the hash too. A second check covers it.
+`gate/ticked.ts:13-27` compares the ticked set published by `check` against the set on disk at
+`commit` and halts on any iteration missing, enforced from `goal-gate.ts:154` — so unticking
+iteration 3 mid-run, which would otherwise remove its commands from the regression wall of every
+iteration after it, is refused. That check is scoped to one run: the set is captured at check
+time and carried by argument, so an untick between two runs is simply the state the next run
+locks. The plan lives in a directory the preflight requires gitignored (`run/preflight.ts:93`),
+so no scope check sees the edit either. Separately: the hash is self-derived at the start of the
+run (`goal-run.ts:64-83`). It pins the plan against the executor, never against whatever edited
+it between the human grill and the launch.
 
-**5. Every claim is a command that ran.** The gate honours it. The runner drops it at the one
-moment it matters most. `gate/halt.ts:8` writes the verdict — `HALT`, `REASON:`, `DETAIL:` — on
-its own stdout; `run/iteration.ts:173` captures that stdout and reads nothing out of it but the
-exit status. On a refusal the run prints one line and exits (`iteration.ts:191-193`); on a gate
-that could not run at all, the same (`iteration.ts:186-189`). The block never reaches the log.
-`commands/supervise.md:63-65` calls that block "the only evidence there is" and forbids
-re-running the gate for a second opinion — so the classifier that must choose between rewriting
-the plan and discarding the tree, two opposite repairs, chooses blind. The pull request body
-carries the same defect in miniature: `run/publish.ts:54` states "No commit exists that a gate
-did not verify" as static text, never as the output of anything.
+**5. Every claim is a command that ran.** The gate honours it, and the runner now carries it
+through the refusal. `gate/halt.ts:8` writes the verdict — `HALT`, `REASON:`, `DETAIL:` — on its
+own stdout; `run/iteration.ts:184` concatenates that stdout with stderr into `reporter.record()`,
+which appends it to the run's own log, `.claude/goal-runs/<work-id>/<run-id>/.run.log`
+(`run/report.ts:20-25`, `:80-84`), before the run prints its one line
+and exits. `tests/goal-run-halt-log.test.ts` asserts it, split streams included. So
+`commands/supervise.md:63-65`, which calls that block "the only evidence there is" and forbids
+re-running the gate for a second opinion, is pointing at something that exists. Where the
+invariant still slips is the pull request body: `run/publish.ts:54` states "No commit exists that
+a gate did not verify" as static text, never as the output of anything.
 
 ## Roles are capability restriction, not organisation
 
@@ -252,9 +269,10 @@ This section used to argue for the Workflow against the published anti-pattern. 
 was abandoned, twice over, and the half of the argument that survived is worth keeping straight
 from the half that did not.
 
-Two earlier generations preceded the one that runs today — a Workflow (941 lines, abandoned and
-unreachable from any command) and a bash script (594 lines, since deleted) — and
-`scripts/goal-run.ts` + `scripts/run/*.ts` is what runs now.
+Two earlier generations preceded the one that runs today — a Workflow (`workflows/goal-auto.js`,
+941 lines, still checked in and still registered as the skill `goal:goal-auto`, called by nothing
+in `scripts/`) and a bash script (594 lines, since deleted) — and `scripts/goal-run.ts` +
+`scripts/run/*.ts`, 1514 lines over 15 files, is what runs now.
 
 **What survived.** The published guidance warns against Claude generating an orchestration
 script on the fly, per run — genuinely wasteful for a repeatable task, since you pay a model to
@@ -306,11 +324,12 @@ that was going to run anyway, and A ended up adding no agent at all.
 - The gate is `scripts/goal-gate.ts` and the rules under `scripts/gate/`, one module per group
   of business rules. It is the single authority and the only thing that commits.
 - The plan's `gate` block gained `test_files`, `impl_files` and `max_diff`.
-- The per-iteration body is: implementer → gate → publish (`goal-run.ts:92-98`). There is no
+- The per-iteration body is: implementer → gate → publish (`goal-run.ts:120-131`). There is no
   steering read: nothing remote is consulted at an iteration boundary.
-- Publication is per-iteration, not a closing stage: push and a draft pull request at the first
-  landing, the body rewritten at every one after it, and the global Definition of Done only
-  once the loop is over. That inverts the order invariant 1 was written for.
+- Publication is per-iteration for every slice but the last: push and a draft pull request at the
+  first landing, the body rewritten at every one after it, and the last iteration's push held
+  inside `close()` behind a green global Definition of Done (`run/close.ts:58-67`). That inverts
+  the order invariant 1 was written for everywhere except a single-iteration plan.
 - A gate refusal exits inside the loop, so `close()` is never reached — no lens, no reviewer,
   no audit report on exactly the runs that would be worth reading.
 - `docs/adversarial-verification.md` lost its most important lens to the bite check. That is

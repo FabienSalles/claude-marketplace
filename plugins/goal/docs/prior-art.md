@@ -38,12 +38,15 @@ One place this goes further than SWE-bench: the restore is checked for idempoten
 fingerprinted before and after, so an acceptance command with side effects halts instead of
 quietly leaving the tree changed. SWE-bench never needed that — it throws the container away.
 
-**And the honest hole in the differentiator.** An iteration declaring an empty `test_files=` skips
-the bite check outright, and `test_files=` is not among the lines `plan-guard.ts` hashes: its
-guard covers `gateN=` and `dodN=` only. `/goal:supervise` is allowed, by its own closed repair
-set, to edit `test_files` and relaunch. So the one check nobody else has is guarded by nothing on
-its input side, and an automated classifier may move that input. That is the first thing to fix,
-and it is cheaper than anything else in this document.
+**And the off switch, which is guarded by prose.** An iteration declaring an empty `test_files=`
+skips the bite check outright, so that field is the check's input and its off switch at once.
+`plan-guard.ts` hashes it — not the paths, which a repair may legitimately fix, but whether the
+field is empty, per resolved block, beside the `gateN=` and `dodN=` lines (`:59-76`). But nothing
+the machine runs invokes it: its only callers are steps in `commands/supervise.md` (`:86-90`) that
+a model is asked to follow, and `supervise.md:74-76` forbids emptying the field in the same
+register. So the one check nobody else has is protected from the automated classifier that repairs
+the plan by an instruction, not by a program — the hash is a mechanism only for as long as
+something chooses to run it.
 
 ## Who commits, and when
 
@@ -58,11 +61,13 @@ checks run, then and only then does the gate stage and commit. The gate is the s
 and the implementer never reaches git at all.
 
 **Where the claim is narrower than it sounds.** "No commit exists that a gate did not verify"
-holds per slice. "Nothing ships unverified" does not: `goal-run.ts` publishes after each landed
-iteration and runs the global Definition of Done in `close()` afterwards — while `gate/ship.ts`
-describes that DoD as "the last barrier before anything is published". By the time the barrier
-runs, the branch has been pushed and a draft pull request opened. The barrier is real; it is not
-last.
+holds per slice. "Nothing ships unverified" holds only on the shortest plans:
+`goal-run.ts:120-131` publishes each iteration as it lands **except the last**, whose push waits
+inside `close()` for a green global Definition of Done (`run/close.ts:58-67`). So a
+one-iteration run does put the barrier last, exactly as `gate/ship.ts` claims when it calls the
+DoD "the last barrier before anything is published". On a six-iteration run, five slices and a
+draft pull request are on the remote before the barrier runs. The barrier is real; on anything
+longer than one slice it is not last.
 
 ## The judge is a program, not a reader
 
@@ -84,14 +89,14 @@ ship the loop that would use it — the issue asking for `--verify`, `--max-iter
 code contract on `claude -p` was closed "not planned".[^issue28489] This harness fills a hole its
 own vendor has described and not tooled.
 
-**Where it is behind its own claim.** When the gate refuses, `run/iteration.ts` exits on the
-verdict's exit code without ever writing the verdict's output anywhere. `gate/halt.ts` prints the
-`HALT` block — `REASON:` and `DETAIL:` — to the gate's stdout, the runner captures it, and drops
-it. Meanwhile `/goal:supervise` Phase 5 instructs the reader to "read the log tail back to the
-gate's own `HALT` block", calling it "the only evidence there is". That evidence never reaches
-the log. And there is no exit-code taxonomy separating an infrastructure failure from an
-implementation failure — the distinction the closed issue above asked for, and the one the
-classifier most needs.
+**Where it is behind its own claim.** `gate/halt.ts` prints the `HALT` block — `REASON:` and
+`DETAIL:` — to the gate's stdout, the runner concatenates it with stderr into `reporter.record()`
+(`run/iteration.ts:184`) and it lands in the run's own log,
+`.claude/goal-runs/<work-id>/<run-id>/.run.log` (`run/report.ts:20-25`, `:80-84`), which is
+exactly the evidence `/goal:supervise` Phase 5 is told to read back. What is missing is one rung
+up: there is no exit-code taxonomy separating an infrastructure failure from an implementation
+failure — the distinction the closed issue above asked for, and the one the classifier most
+needs, since the gate collapses every refusal it makes into a single code.
 
 ## Restriction was the wrong layer, and Amp said so first
 
@@ -101,24 +106,30 @@ like running a Bash command instead to access file contents."[^amp] Its answer i
 chain with an `allow / reject / ask / delegate` verdict, `delegate` handing the decision to an
 external program that answers by exit code.
 
-The audit found precisely the failure Amp predicted. `goal-deny-setup.sh` installs three prefix
-rules — `Bash(git commit:*)`, `Bash(git push:*)`, `Bash(git add:*)`. The earlier preflight verified
-they were present with a `String.includes` over the raw text of `.claude/settings.local.json`, so an
-*allow* entry naming the same verbs satisfies it. The rule does not apply retroactively to a session
-already running. The current runner dropped that check rather than repair it — a verdict a
-permission chain would have delegated to a program, where this one delegated it to a substring. Nothing reads the
-remote refs, so a push would go unnoticed. And a write into `.git/` is invisible to
-`git status --porcelain -uall`, which is what the gate reads.
+The audit found precisely the failure Amp predicted, on the denial side. `goal-deny-setup.sh:34`
+installs four prefix rules — `Bash(git commit:*)`, `Bash(git push:*)`, `Bash(git add:*)`,
+`Bash(git stash:*)`. The earlier preflight verified they were present with a `String.includes`
+over the raw text of `.claude/settings.local.json`, so an *allow* entry naming the same verbs
+satisfies it. The rule does not apply retroactively to a session already running. The current
+runner dropped that check rather than repair it — a verdict a permission chain would have
+delegated to a program, where this one delegated it to a substring.
 
 The documented precedent is not hypothetical either: in `anthropics/claude-code#40117`, an agent
 carrying a project memory rule against `--no-verify` used `--no-verify`, used `git stash` to
-manipulate the index, and landed six consecutive commits with failing tests.[^bypass] `git stash`
-is on none of the three prefixes above.
+manipulate the index, and landed six consecutive commits with failing tests.[^bypass] Both verbs
+that incident abused are on the list above — which is exactly why the list is not the answer. It
+is a set of prefixes read once from a file the implementer can write to, in a permission system
+that reads it at session start.
 
-**What this harness does have, and the panel does not:** HEAD is read before and after every
-iteration in `run/iteration.ts`, and a moved HEAD pauses the run with the commit named. That is
-the a-posteriori detection the incident above argues for. It catches the commit; it does not
-catch the push, and it does not catch a write under `.git/`.
+**What this harness does have, and the panel does not:** detection that does not depend on any of
+that. `run/iteration.ts:132-165` reads HEAD before and after every iteration and pauses on a move
+with the commit named; it snapshots the git directory's executable surface — `config`,
+`config.worktree`, `info/exclude` and every file under `hooks/`, recursively, `.sample` included
+— and pauses naming what changed (`run/gitwatch.ts`); and it snapshots **every** ref with
+`for-each-ref`, so a `refs/remotes/` move is reported as a push and any other ref move, `git
+stash` included, is reported as a ref move. `git status --porcelain -uall` sees none of the three.
+That is the a-posteriori detection the incident above argues for, and it catches the commit, the
+push, the stash and the planted hook.
 
 Cursor, for its part, documents its own guardrails as "best-effort guardrails rather than a hard
 security boundary", deprecated its denylist in 1.3, routes non-allowlisted calls to an LLM
@@ -151,10 +162,11 @@ changes are accepted".[^cline]
 
 Neither has a gate. This harness does not need rollback, because nothing lands unverified — that
 is a coherent trade. But the trade has a cost nobody has paid here: **post-halt forensics.** When
-a slice halts, what exists is the tree as the implementer left it, and nothing else. Roo can
-replay the film; `/goal:supervise` has to classify a halt from a `HALT` block that never reached
-the log (above) and from transcripts read through `transcripts.ts`. The forensic path exists on
-paper. It has never run once.
+a slice halts, what exists is the tree as the implementer left it, the gate's `HALT` block in the
+run log, and nothing else. Roo can replay the film; `/goal:supervise` has to classify from that
+one block and from transcripts read through `transcripts.ts` — no snapshot of the tree before the
+implementer touched it, and no closing synthesis, because a halt never reaches the closing stage.
+The forensic path exists on paper. It has never run once.
 
 ## The plan as a contract, which is the other thing nobody does
 
@@ -165,19 +177,25 @@ On the strength of the survey, this is a stronger differentiator than the bite c
 bite check is at least *conceivable* elsewhere, while an opposable plan contradicts how every
 other harness treats planning.
 
-Two verified leaks in it. The hash normalises ticked boxes back to unticked before digesting, so
-unticking a box is invisible to the hash — and an unticked iteration drops out of the regression
-wall, which replays the commands of ticked iterations only. And `plan-guard.ts` guards
-`gateN=`/`dodN=` alone, which is the second half of the `test_files` hole named at the top.
+One leak left, and it is narrower than it was. The hash still normalises ticked boxes back to
+unticked before digesting, so an untick moves nothing in it — but the untick no longer passes
+unnoticed: `gate/ticked.ts:13-27` compares the ticked set the plan carried when `check` locked
+the run against the set on disk at `commit`, and halts on any iteration that disappeared
+(`goal-gate.ts:154`). The boundary is the run: that set is captured at check time and carried by
+argument, so an untick performed *between* two runs is simply the state the next run locks, and
+the regression wall it replays is the smaller one.
 
 ## What the panel has and this harness does not
 
 - **A fuse.** SwarmOps caps everything numerically — turns, retries, review cycles, a hard
   30-minute timeout.[^swarmops] Anthropic's own `ralph-wiggum` plugin states that string-matching
   a completion promise is unreliable and to "always rely on `--max-iterations` as your primary
-  safety mechanism". Here there is no turn cap, no wall clock and no iteration cap: the only
-  bounded loop in `run/iteration.ts` is the quota-window retry. An implementer circling an
-  impossible slice circles until the quota runs out.
+  safety mechanism". Here the wall clock exists but stops at the wrong boundary: every declared
+  command runs under `GOAL_CMD_TIMEOUT`, 900 seconds by default, SIGKILL
+  (`gate/bounded.ts:17`, `:84-90`), while the implementer session is spawned with no timeout and
+  there is no turn cap and no iteration cap. The only bounded loop in `run/iteration.ts` is the
+  quota-window retry. An implementer circling an impossible slice circles until the quota runs
+  out.
 - **Detection of a weakened test.** The failure mode has a stable four-signal taxonomy —
   assertions deleted, tolerances widened, tests skipped, expected values and snapshots
   regenerated — and a formulation worth keeping: "in an agent PR, the tests are part of the
@@ -221,8 +239,11 @@ tokens in coordination overhead rather than code, which is why one close cousin 
 orchestrator with a plain scheduler.[^scheduler] That is the argument for the move away from the
 Workflow runtime that used to hold this loop, onto `goal-run.ts`. The move was made; the
 measurement was not. And no project in the panel kept both orchestrators alive — they renamed or
-replaced. Two prior generations preceded the one that runs today, and neither is checked in any
-more.
+replaced. This one did not replace either: `workflows/goal-auto.js` is still checked in at 941
+lines, and Claude Code still registers it as the invokable skill `goal:goal-auto`. Nothing in
+`scripts/` calls it, none of the six agent types it dispatches to exists as a file any more, its
+own `whenToUse` points at a deleted command — and it can still be typed by name. That is the
+panel's own lesson going unlearned here.
 
 ## Where this leaves the positioning
 
@@ -233,11 +254,11 @@ refusal, the determinism replay. If one piece of this harness deserves to be ext
 published on its own, it is `gate/`.
 
 The two honest sentences to keep beside that one. First, the deficits above are not cosmetic:
-no fuse, no assertion-count check, no holdout, no exportable proof, a `HALT` block that never
-reaches the log, and a deny layer built on the weakest available rung. Second, the single stage
-deliberately left un-automated — the human grill — sits in the column the field describes as the
-one that stops scaling, and it is acceptable only because it runs once per plan rather than once
-per diff.
+no fuse, no assertion-count check, no holdout, no exportable proof, no closing artifact on the
+one path that most needs one, and a deny layer built on the weakest available rung. Second, the
+single stage deliberately left un-automated — the human grill — sits in the column the field
+describes as the one that stops scaling, and it is acceptable only because it runs once per plan
+rather than once per diff.
 
 ---
 

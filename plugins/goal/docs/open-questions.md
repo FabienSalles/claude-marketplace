@@ -49,8 +49,8 @@ working. Nothing reaches the developer.
 to the GitHub issue when one exists"* was true of the abandoned Workflow and of nothing else. The
 current runner's only GitHub calls are `pr view`, `pr edit`, `pr create` (`scripts/run/publish.ts`)
 and `pr ready` (`scripts/run/close.ts`). It never comments on an issue, and on a halt it never
-reaches the closing stage at all (§15). Its entire account of itself is `<plan>.run.log` and an
-exit code.
+reaches the closing stage at all (§15). Its entire account of itself is a log file under
+`.claude/goal-runs/<work-id>/<run-id>/` and an exit code.
 
 **What partly covers it now.** `--permission-mode auto` is passed at every agent invocation, which
 removes most permission prompts; and `/goal:supervise` puts a live session in front of the run,
@@ -141,9 +141,12 @@ publication, the quota wait and the closing stage, against a gate split one modu
 business rules, each with its matching test file — a convention `goal-gate.ts` states in its own
 header and that the bash script was the one place in the plugin unable to follow.
 
-**What it cost.** `scripts/goal-run.ts` + `scripts/run/` came out at 938 lines over 8 modules,
-against `scripts/goal-gate.ts` + `scripts/gate/` at 920 lines over 10 — 344 lines bought the split
-over the 594-line original. The second defect this question named — the orchestrator re-reading
+**What it cost, re-measured.** `scripts/goal-run.ts` + `scripts/run/` now stands at 1514 lines
+over 15 files, against `scripts/goal-gate.ts` + `scripts/gate/` at 1134 over 12; all of
+`scripts/` is 2921 lines over 30 `.ts` files, covered by 31 test files and 271 passing tests.
+Most of the distance from the 594-line bash original is not the split — it is the mechanisms
+added since (`gitwatch.ts`, `postmortem.ts`, `quota.ts`), each of which is one of the modules the
+convention asked for. The second defect this question named — the orchestrator re-reading
 the plan in `sed`/`awk` where `gate/plan.ts` already exported the same accessors — did go, but not
 the way proposed: the runner imports `gate/plan.ts` directly instead of the gate gaining `section`
 and `survey` verbs.
@@ -205,20 +208,22 @@ first every time. The port would have finished green carrying precisely the dupl
 existed to remove, and nothing would have said so. A supervisor optimizing for green is a
 supervisor that deletes the rules.
 
-**The guardrail was built, and it does not close the hole it was built for.** `plan-guard.ts`
-hashes the plan's `gateN=` and `dodN=` lines and refuses when that hash moves. But
-`commands/supervise.md` explicitly permits the doctor to edit `test_files` and `impl_files`, and
-neither key is hashed — while an empty `test_files=` makes the gate skip the bite check outright
-(`scripts/gate/bite.ts`, *"declares no test_files, so there is nothing to set aside"*). Emptying
-one line disarms the invariant that a test must fail without its implementation, and the guard
-answers OK. That is the *make the halt disappear* repair the guardrail exists to forbid, reachable
-through the one door left open.
+**The guardrail was built, and it closes the sharpest version of the hole.** `plan-guard.ts`
+hashes the `gateN=` and `dodN=` lines of every block it resolves, and beside them, per block,
+whether `test_files` is empty (`:59-76`). An empty `test_files=` makes the gate skip the bite
+check outright (`scripts/gate/bite.ts`, *"declares no test_files, so there is nothing to set
+aside"*), so that is the one edit inside the closed repair set that could disarm the invariant
+that a test must fail without its implementation — and it now moves the hash. `supervise.md:74-76`
+forbids it in prose as well: *"It may never touch a `gateN=` or `dodN=` line, nor empty
+`test_files`"*. What is still unhashed is the rest of the set — an `impl_files` entry, `max_diff`,
+prose — each of which can widen what an iteration is judged against without moving anything.
 
-**And the classification, which this question correctly said had to come first, has nothing to read.**
-The same plan halted again at iteration 6 and needed the opposite response — nothing in the plan
+**And the classification, which this question correctly said had to come first, reads one block and
+no more.** The same plan halted again at iteration 6 and needed the opposite response — nothing in the plan
 was wrong, the implementation was, and the repair was to discard it and have it redone. From the
 outside the two halts are indistinguishable, so the doctor's first act must be to classify, not to
-repair. It classifies from the run log, and the run log never contains the gate's verdict (§15).
+repair. It classifies from the run log, which does carry the gate's verdict (§15) — what it does
+not carry is any synthesis around that verdict, because a halt never reaches the closing stage.
 
 **Built, never run.** `commands/supervise.md` and `scripts/plan-guard.ts` shipped in one commit and
 have not been exercised once. The measurement this question demanded — *what share of real halts
@@ -315,8 +320,9 @@ every line of it can be checked against the plan it executed:
   of every advisory agent's answer into it.
 
 **The cause is not a bug and cannot be fixed by a better plan.** Node resolves an import once, at
-load. `goal-run.ts` imports its eight modules at startup, so the process runs the code as it stood
-when it was launched, whatever the implementer writes to those files afterwards. Iterations 5 to 7
+load. `goal-run.ts` resolves its whole import graph at startup — eight direct imports that pull in
+eighteen modules in all — so the process runs the code as it stood when it was launched, whatever
+the implementer writes to those files afterwards. Iterations 5 to 7
 landed outside the import graph and could not have acted either, for the mirror reason: nothing in
 the runner imports `plan-guard.ts` or `transcripts.ts` — only the `/goal:supervise` chain reaches
 them, and it was not what launched this run.
@@ -348,21 +354,25 @@ budgets a proving run. And separately, whether the gate being mutable mid-run is
 HEAD before and after, replays declared commands, refuses undeclared paths. There is no
 *confinement* anywhere — no sandbox, no container, no filesystem boundary, no egress control. The
 implementer is an ordinary `claude -p` holding `Read, Write, Edit, Grep, Glob, Bash` under
-`--permission-mode auto`, and the only fence around it is three deny prefixes on git verbs.
+`--permission-mode auto`, and the only fence around it is four deny prefixes on git verbs
+(`scripts/goal-deny-setup.sh:34`: `git commit`, `git push`, `git add`, `git stash`).
 
-**What that costs is not hypothetical, and it is structural rather than a list of bugs.** Every
-detection the design relies on has a blind spot that confinement would close and that no additional
-check inside the same model can:
+**Two of the blind spots this question was written around have since been closed by more
+detection, which is worth recording precisely because it is the cheaper answer winning again.**
+`run/iteration.ts:132-165` now fingerprints the git directory's executable surface and every ref
+around the implementer (`run/gitwatch.ts`), so a planted hook, a rewritten `config` and a push all
+halt the run named for what they are — none of them visible to `git status --porcelain -uall`.
 
-- the scope check knows only what `git status --porcelain -uall` reports, and the git directory is
-  not in it — so the component with no git rights can leave something the privileged component
-  executes at commit time;
-- HEAD-before/HEAD-after cannot see a `git push`, which moves neither HEAD nor the tree, and no
-  remote refs are ever recorded;
-- the deny rule is read once, at preflight, from a gitignored file the implementer can write to
-  without appearing in any diff;
+**What still costs, and it is structural rather than a list of bugs.** Detection is bounded by
+what its author thought to snapshot, and confinement is not:
+
+- those deny prefixes are installed by hand, never checked at run time — the preflight check that
+  read them is gone (`run/preflight.ts:7-12`) — and they live in a gitignored file the implementer
+  can write to without appearing in any diff, read only at the *next* session's start;
 - `docs/steering-and-injection.md` already names network egress from the implementer as untreated,
-  and says why it stayed untreated: *"That is a sandbox question, not an orchestration one."*
+  and says why it stayed untreated: *"That is a sandbox question, not an orchestration one."*;
+- every check above compares a *before* to an *after*, so anything the implementer does and undoes
+  inside one iteration leaves no trace at all.
 
 **And that sentence is the question.** It was written as a scoping decision and has been read ever
 since as a resolution. Nobody has decided whether this harness should acquire a confinement layer,
@@ -383,15 +393,23 @@ becomes who declares it. That is the fork, and nothing has explored either branc
 floor per iteration, below which the run refused to start a slice it could not finish — inert
 unless the run declared a budget, and the legacy said so in its own log — and a per-iteration token
 count written into the run's report. Neither survived either port. The current runner has no turn
-cap, no wall-clock timeout on any subprocess, and no cost measurement at all. Its single brake is
-the quota wait — thirty minutes, three times — which arms only when the output matches a
-rate-limit string.
+cap, no iteration cap, and no cost measurement at all.
+
+One ceiling did get built, and it covers the wrong half. Every **declared command** — sweep, gate,
+Definition of Done — runs under a wall clock: `gate/bounded.ts:17` reads `GOAL_CMD_TIMEOUT`,
+default 900 seconds, and `:84-90` applies it as `spawnSync`'s `timeout` with
+`killSignal: 'SIGKILL'`, since the default `SIGTERM` is the signal a hung process is already
+ignoring. A test waiting on a port cannot hold an unattended run open. The **implementer session**
+is spawned with no `timeout` at all (`run/iteration.ts:68-85`), and it is the one that can loop.
+Its only brake is the quota wait — thirty minutes, three times — which arms only when the output
+matches a rate-limit string.
 
 **The consequence that matters here.** An implementer looping on an impossible slice runs to quota
 exhaustion, sleeps, and repeats, with nothing anywhere saying *this slice is not converging*.
 
 **Why it is a question and not a plan item.** A turn cap is one flag and would have been written by
-now if the answer were only *add a cap*. The open part is what a ceiling should be a ceiling *on*.
+now if the answer were only *add a cap* — the declared-command clock above proves the mechanism is
+one option away. The open part is what a ceiling on the *implementer* should be a ceiling *on*.
 Tokens are what the legacy counted and are the wrong unit for a harness whose iterations vary by an
 order of magnitude in size. Wall-clock is honest and punishes a slow machine. Turns are cheap to
 cap and easy to game by an agent that does more per turn. And whatever the unit, hitting the
@@ -403,34 +421,33 @@ stopping reason joins a contract that already conflates two.
 auditor is handed elapsed seconds per iteration and nothing about cost. Recording both per
 iteration blocks no decision and is the prerequisite for every version of this question.
 
-## 15. A halt leaves nothing to diagnose from
+## 15. A halt leaves the verdict, and nothing around it
 
-**Observed.** The harness's account of itself exists only on the success path. When the gate
-refuses an iteration, the runner prints *"iteration N was refused by the gate"* and exits — the
-gate's own verdict, the block naming which check failed and on what, is captured and never written
-anywhere (`scripts/run/iteration.ts`). The closing stage is not reached, so there is no run report,
-no lens, no auditor. The bash runner logged that verdict; the port dropped it.
+**Settled half.** The gate's own verdict does reach the log. On a refusal `run/iteration.ts:184`
+concatenates the gate's stdout and stderr and hands them to `reporter.record()`, which appends
+them to the run's own log, `.claude/goal-runs/<work-id>/<run-id>/.run.log`
+(`run/report.ts:20-25`, `:80-84`); `tests/goal-run-halt-log.test.ts` asserts it,
+including the case where the block is split across both streams. The block naming which check
+failed and on what is therefore on disk before the runner exits.
 
-**This is the fifth stated invariant failing at the one moment it is load-bearing.** *Every claim is
-a command that ran* holds for everything the harness asserts about success, and produces nothing at
-all about failure. A refusal is the single most information-dense event a run generates, and it is
-the only one that leaves no artifact.
+**Open half.** What is still missing is everything around that block. The runner exits on the
+refusal, so the closing stage is not reached: no run report, no lens, no auditor. A refusal is the
+single most information-dense event a run generates, and it produces one block and no synthesis.
 
-**What it blocks is not one feature but three.** `/goal:supervise` must classify a halt as *plan at
-fault* or *implementation at fault* and has only a one-line message to do it with (§8). §14's
-ceiling needs a stop tellable apart from a gate refusal, on a gate that collapses every refusal it
-makes into one exit code. And §9's session auditor is meant to learn from what went wrong, on a
-harness that records only what went right.
+**What that still blocks.** §14's ceiling needs a stop tellable apart from a gate refusal, on a
+gate that collapses every refusal it makes into one exit code. And §9's session auditor is meant
+to learn from what went wrong, on a harness whose closing artifacts only ever describe what went
+right.
 
-**Why it is structural rather than a missing log line.** Adding the verdict to the log is a small
-change and should happen. The question underneath it is what a run owes the outside world when it
-stops: today the closing stage — report, lens, audit — is conditioned on every requested iteration
-landing, which means the runs that most deserve a post-mortem are precisely the ones that get none.
-Inverting that (always close, and let the closing artifacts describe a halt) changes what the lens
-and auditor are for, since both are currently briefed on landed work. That is a design decision
-about whether this harness reports on plans or on runs.
+**Why the remainder is structural rather than a missing log line.** The question underneath it is
+what a run owes the outside world when it stops: today the closing stage — report, lens, audit —
+is conditioned on every requested iteration landing, which means the runs that most deserve a
+post-mortem are precisely the ones that get none. Inverting that (always close, and let the
+closing artifacts describe a halt) changes what the lens and auditor are for, since both are
+currently briefed on landed work. That is a design decision about whether this harness reports on
+plans or on runs.
 
-**To measure before deciding:** what a real halt actually needs in order to be classified. The two
-recorded halts were both diagnosed by a human reading a pasted terminal — nobody has established
-which parts of that paste were load-bearing, and building the artifact before knowing repeats
-exactly what §8 did.
+**To measure before deciding:** what a real halt actually needs, beyond the verdict, in order to
+be classified. The two recorded halts were both diagnosed by a human reading a pasted terminal —
+nobody has established which parts of that paste were load-bearing, and building the artifact
+before knowing repeats exactly what §8 did.
