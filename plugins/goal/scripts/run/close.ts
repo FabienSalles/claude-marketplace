@@ -8,6 +8,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
 
 import { header, iterationNumbers, readPlan } from '../gate/plan.ts';
+import { PAUSED } from './iteration.ts';
 import type { Publisher } from './publish.ts';
 import type { Reporter } from './report.ts';
 import { git, quote } from './shell.ts';
@@ -153,6 +154,13 @@ and do not judge whether the work was correct — the gate already did that.`;
   }
 
   if (dodExit !== 0) {
+    if (dodExit !== 1) {
+      reporter.say(`STOP the global Definition of Done could not be run (exit ${dodExit}), so no verdict exists:`);
+      reporter.say(dodOut);
+
+      return PAUSED;
+    }
+
     reporter.say('STOP the global Definition of Done refused this run:');
     reporter.say(dodOut);
 

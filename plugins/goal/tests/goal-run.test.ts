@@ -1,10 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { cpSync, existsSync, readFileSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 
-import { HASH, RUN_NODE, lockOf, logOf, repo, run, sessionOf } from './support/goal-run-harness.ts';
+import { HASH, PAUSED, RUN_NODE, lockOf, logOf, repo, run, sessionOf } from './support/goal-run-harness.ts';
+import { tmpDir } from './support/tmp.ts';
 
 // R4 — the plan lives in a gitignored directory outside the run's tree, and handing its path to
 // the implementer is what made a real run write its whole iteration into another checkout. The
@@ -181,6 +182,29 @@ test('it releases the lock when the run is killed mid-implementation', () => {
   );
 
   assert.ok(!existsSync(lockOf(fixture)), 'the lock survived a killed run');
+});
+
+// R7 — the gate command is interpolated unquoted into five `shell: true` strings, so a checkout
+// under a directory holding a space is split by the shell and every iteration is refused over a
+// gate that never ran. The real gate is used here: the fixture's own one is named by GOAL_GATE,
+// which is the path this default never takes.
+test('a gate installed under a path holding a space still runs', () => {
+  const fixture = repo();
+  const scripts = join(tmpDir('goal run install '), 'scripts');
+  cpSync(resolve(import.meta.dirname, '..', 'scripts'), scripts, { recursive: true });
+
+  const env: NodeJS.ProcessEnv = { ...process.env, PATH: `${fixture.bin}:${process.env.PATH ?? ''}` };
+  delete env.GOAL_GATE;
+
+  const result = spawnSync('node', [join(scripts, 'goal-run.ts'), fixture.plan, '1'], {
+    cwd: fixture.dir,
+    encoding: 'utf8',
+    env,
+  });
+  const output = `${result.stdout}${result.stderr}`;
+
+  assert.equal(result.status, PAUSED, output);
+  assert.match(output, /wrote nothing/i, output);
 });
 
 // R17 — a run that says nothing is indistinguishable from one that jammed, which is the whole

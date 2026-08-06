@@ -157,6 +157,34 @@ for (const [label, command, expected] of [
   });
 }
 
+// R9 — the window is the one moment the implementation exists nowhere but the backup directory,
+// so where that directory is has to be on stdout before the acceptance command is spawned.
+test('the bite check says where the implementation is set aside before running the command', () => {
+  const { repo, plan } = fixture();
+  touchDeclared(repo);
+
+  const { code, output } = runGate(repo, 'bite', plan, '1');
+
+  assert.equal(code, 0, output);
+  assert.match(output, /BACKUP: .*goal-bite-/, output);
+});
+
+// R9 — node fires no 'exit' on a default-disposition INT or TERM, so a signal during the window
+// used to leave the tree holding HEAD's blob and the work in a directory nothing ever named.
+test('a bite check signalled mid-window still puts the implementation back', () => {
+  const { repo, plan } = fixture(withGate1('sleep 4'));
+  touchDeclared(repo);
+
+  spawnSync(
+    'bash',
+    ['-c', `node "${GATE}" bite "${plan}" 1 & pid=$!; sleep 1.5; kill -TERM $pid; wait $pid`],
+    { cwd: repo, encoding: 'utf8' },
+  );
+
+  assert.equal(readFileSync(join(repo, 'src', 'a.ts'), 'utf8'), 'export const a = 2;\n');
+  assert.deepEqual(backups(repo), []);
+});
+
 test('an implementation rewritten during the window is restored by overwrite, not merged', () => {
   const { repo, plan } = fixture(withGate1(`${BITING} || echo broken > src/a.ts`));
   touchDeclared(repo);

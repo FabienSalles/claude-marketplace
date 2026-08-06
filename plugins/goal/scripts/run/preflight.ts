@@ -17,7 +17,7 @@ import { basename, dirname, resolve } from 'node:path';
 import { header, iterationNumbers } from '../gate/plan.ts';
 import { autoUpdaterWarning } from './advisory.ts';
 import type { Reporter } from './report.ts';
-import { git } from './shell.ts';
+import { git, quote } from './shell.ts';
 import { REFUSED, sweep } from './sweep.ts';
 
 export { REFUSED } from './sweep.ts';
@@ -91,9 +91,8 @@ export const preflight = (plan: string, source: string, reporter: Reporter, gate
 
   // 5. What the run writes must be out of git's sight, or the spec, the ticked box and this
   // run's own log become an undeclared modification the gate reads as a scope leak. Nothing
-  // narrates before this point: the log this reporter writes to lives inside the plan's
-  // directory, and a line written to it ahead of this check would itself dirty the tree check 4
-  // just ran, on the very tree this check exists to catch as untracked.
+  // narrates before this point: a line written ahead of this check would itself dirty the
+  // tree check 4 just ran, on the very tree this check exists to catch as untracked.
   const planDir = dirname(plan);
 
   if (git('check-ignore', '-q', planDir).status !== 0) {
@@ -126,7 +125,7 @@ export const preflight = (plan: string, source: string, reporter: Reporter, gate
   // 7. No run already holds the plan.
   if (existsSync(`${plan}.run.lock`)) {
     reporter.stop(
-      `another run holds this plan: ${plan}.run.lock. Wait for it, or free it with: ${gate} unlock ${plan}`,
+      `another run holds this plan: ${plan}.run.lock. Wait for it, or free it with: ${gate} unlock ${quote(plan)}`,
       REFUSED,
     );
   }

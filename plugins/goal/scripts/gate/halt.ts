@@ -18,4 +18,19 @@ export const git = (...args: string[]) => spawnSync('git', args, { encoding: 'ut
 
 export const heldLocks: string[] = [];
 
-process.on('exit', () => heldLocks.forEach((path) => rmSync(path, { recursive: true, force: true })));
+export const restorers: (() => void)[] = [];
+
+const release = (): void => {
+  restorers.splice(0).forEach((restore) => restore());
+  heldLocks.splice(0).forEach((path) => rmSync(path, { recursive: true, force: true }));
+};
+
+process.on('exit', release);
+process.once('SIGINT', () => {
+  release();
+  process.exit(130);
+});
+process.once('SIGTERM', () => {
+  release();
+  process.exit(143);
+});

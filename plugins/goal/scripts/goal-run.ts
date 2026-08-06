@@ -62,7 +62,7 @@ const main = (): void => {
   reporter.setLog(dir);
   reporter.say(`RUN writing this run's records to ${dir}`);
 
-  const gate = process.env.GOAL_GATE ?? `node ${resolve(import.meta.dirname, 'goal-gate.ts')}`;
+  const gate = process.env.GOAL_GATE ?? `node ${quote(resolve(import.meta.dirname, 'goal-gate.ts'))}`;
   const source = readFileSync(plan, 'utf8');
 
   const preflightStart = Date.now();
@@ -110,7 +110,7 @@ const main = (): void => {
   // Taken once, before the first iteration, and released only when this process exits — see
   // lock.ts's process.once('exit') handler, which runs on every path out of here, landed or not.
   if (!lock.acquire()) {
-    reporter.stop(`another run holds this plan. Wait for it, or free it with: ${gate} unlock ${plan}`, REFUSED);
+    reporter.stop(`another run holds this plan. Wait for it, or free it with: ${gate} unlock ${quote(plan)}`, REFUSED);
   }
 
   const publisher = createPublisher(plan, source, policy, remote, reporter, gate);

@@ -52,7 +52,7 @@ export const dodCheck = (source: string): void => {
     if (run.status !== 0) {
       halt(
         `The global Definition of Done fails at ${key}.`,
-        `Command: ${command}\nExit code: ${run.status}\n\nOutput:\n${`${run.stdout}${run.stderr}`.slice(-4000)}\n\nEvery slice was gated green and the plan as a whole is not. Nothing has been pushed.`,
+        `Command: ${command}\nExit code: ${run.status}\n\nOutput:\n${`${run.stdout}${run.stderr}`.slice(-4000)}\n\nEvery slice was gated green and the plan as a whole is not. The last iteration's push is held behind this barrier, so its commit stays local; every iteration before it already published as it landed and is on the remote.`,
       );
     }
   }

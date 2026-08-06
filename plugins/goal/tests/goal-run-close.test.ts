@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { HASH, PLAN, git, jsonlOf, repo, run, runDirOf } from './support/goal-run-harness.ts';
+import { HASH, PAUSED, PLAN, git, jsonlOf, repo, run, runDirOf } from './support/goal-run-harness.ts';
 import { close, LANDED } from '../scripts/run/close.ts';
 import type { Reporter } from '../scripts/run/report.ts';
 
@@ -53,6 +53,18 @@ test('a failing Definition of Done halts the run and skips marking the pull requ
   assert.match(output, /Definition of Done/, output);
   const calls = readFileSync(fixture.ghLog, 'utf8');
   assert.ok(!calls.includes('pr\nready'), `the pull request was marked ready though the Definition of Done refused:\n${calls}`);
+});
+
+// R7 — the gate exits 0 for a pass, 1 for a halt, and 2 for a misuse it never got past. Reading
+// that last one as a refused Definition of Done reports a verdict the barrier never reached.
+test('a Definition of Done that could not be run is not reported as a refusal', () => {
+  const fixture = repo({ planText: PLAN_PR, remote: true });
+
+  const { code, output } = land(fixture, { FAKE_GATE_DOD_EXIT: '2' });
+
+  assert.equal(code, PAUSED, output);
+  assert.match(output, /could not be run/i, output);
+  assert.ok(!/refused/i.test(output), `a non-verdict was reported as a refusal:\n${output}`);
 });
 
 // R18 — the advisory lens runs for the first time since it was written, and its own exit code

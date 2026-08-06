@@ -130,6 +130,41 @@ test('an iteration declaring a gitignored path halts', () => {
   assert.match(output, /build\/out\.ts/);
 });
 
+// R4 — git reports a non-ASCII path octal-escaped and quoted (`"src/caf\303\251.ts"`), which read
+// literally is a path the plan never declared and an iteration that can never pass.
+test('a declared non-ASCII path is not read as a scope leak', () => {
+  const { repo, plan } = fixture([
+    'test_files=',
+    'impl_files=src/café.ts',
+    'commit_msg=feat(a): add a café',
+    'gate1=true',
+  ]);
+  writeFileSync(join(repo, 'src', 'café.ts'), 'export const cafe = 1;\n');
+  git(repo, 'add', '-N', 'src/café.ts');
+
+  const { code, output } = runGate(repo, 'verify', plan, '1');
+
+  assert.equal(code, 0, output);
+});
+
+// R4 — a rename is two paths, and the one it left behind is a change too: the NUL-separated
+// status writes it as a record of its own, right after the path it moved to.
+test('the path a rename left behind is a change the iteration has to declare', () => {
+  const { repo, plan } = fixture([
+    'test_files=',
+    'impl_files=src/b.ts',
+    'commit_msg=feat(a): move a to b',
+    'gate1=true',
+  ]);
+  git(repo, 'mv', 'src/a.ts', 'src/b.ts');
+
+  const { code, output } = runGate(repo, 'verify', plan, '1');
+
+  assert.equal(code, 1, output);
+  assert.match(output, /Scope leak/);
+  assert.match(output, /src\/a\.ts/);
+});
+
 // R6 — at most one writer to the plan file at any instant
 test('a run lock is exclusive, and unlock hands it back', () => {
   const { repo, plan } = fixture();

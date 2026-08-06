@@ -31,7 +31,7 @@ export const scopeCheck = (
     );
   }
 
-  const status = git('status', '--porcelain', '-uall');
+  const status = git('-c', 'core.quotepath=false', 'status', '--porcelain', '-z', '-uall');
 
   if (status.status !== 0) {
     halt(
@@ -41,14 +41,20 @@ export const scopeCheck = (
   }
 
   const changed = new Set<string>();
+  const records = status.stdout.split('\0').filter((entry) => entry !== '');
 
-  for (const line of status.stdout.split('\n').filter((entry) => entry !== '')) {
-    const rest = line.slice(3);
-    const arrow = rest.indexOf(' -> ');
-    const parts = arrow === -1 ? [rest] : [rest.slice(0, arrow), rest.slice(arrow + 4)];
+  // With `-z`, a rename is the new path's record followed by the original as a record of its own.
+  for (let index = 0; index < records.length; index += 1) {
+    const record = records[index]!;
+    changed.add(record.slice(3));
 
-    for (const part of parts) {
-      changed.add(part.replace(/^"|"$/g, ''));
+    if (/^[RC]/.test(record)) {
+      index += 1;
+      const origin = records[index];
+
+      if (origin !== undefined) {
+        changed.add(origin);
+      }
     }
   }
 
@@ -96,14 +102,15 @@ export const runLock = (subcommand: string, plan: string): void => {
     return;
   }
 
-  if (existsSync(path)) {
+  try {
+    mkdirSync(path);
+  } catch {
     halt(
       'Another run holds this plan.',
       `Held: ${path}\n\nTwo runs on the same plan implement the same iteration twice, and the second commits over the first. Wait for the holder to finish, or release it with: goal-gate.ts unlock ${plan}`,
     );
   }
 
-  mkdirSync(path);
   process.stdout.write(`OK: run lock taken.\n`);
 };
 
