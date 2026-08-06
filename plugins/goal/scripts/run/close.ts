@@ -7,7 +7,7 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
 
-import { iterationNumbers, readPlan } from '../gate/plan.ts';
+import { header, iterationNumbers, readPlan } from '../gate/plan.ts';
 import type { Publisher } from './publish.ts';
 import type { Reporter } from './report.ts';
 import { git, quote } from './shell.ts';
@@ -50,7 +50,9 @@ export const close = (
 
   // The plan on disk, re-read here rather than trusted from before this run started: every box
   // the gate ticked, this run's own or an earlier run's, is on it now.
-  const ticked = iterationNumbers(readPlan(plan), true);
+  const source = readPlan(plan);
+  const ticked = iterationNumbers(source, true);
+  const postsReview = header(source, 'Review:') === 'comment';
 
   if (dodExit === 0) {
     // The last iteration's own push, held back until now: nothing this run committed reaches the
@@ -84,11 +86,12 @@ export const close = (
         const reviewBrief = `Review the pull request for ${branch} on ${repo}, carrying iteration(s) ${ticked.join(' ')} of ${basename(plan)}, which was just marked ready for review.
 
 Read the plan's own declarations for each landed iteration and the commits on this branch, then
-post exactly one GitHub review with inline comments: design, error handling, security posture,
-and this project's own conventions — the reading a gate is not built to give.
+write one review with inline comments: design, error handling, security posture, and this
+project's own conventions — the reading a gate is not built to give.
 
-Post the review with \`gh\`. Never request changes: nothing you post can block a pull request that
-already shipped, so leave a comment only.`;
+${postsReview
+  ? 'This plan carries a `Review: comment` header, opting into posting. Post it with `gh` as a comment review, never `REQUEST_CHANGES`: nothing you post can block a pull request that already shipped. Open the review with a banner stating plainly that it is the output of the goal-run-reviewer AI agent, never written as if the developer authored it.'
+  : 'This plan carries no `Review: comment` header. Do not post it to GitHub: return your review as text, so it reaches the developer through the run log only.'}`;
 
         const reviewStart = Date.now();
         const review = spawnSync('claude', ['-p', '--agent', 'goal:goal-run-reviewer', '--permission-mode', 'auto', reviewBrief], { encoding: 'utf8' });

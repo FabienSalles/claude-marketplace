@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { PAUSED, repo, run } from './support/goal-run-harness.ts';
-import { burstBackoffSeconds, classifyQuotaFailure, sleepInSlices } from '../scripts/run/quota.ts';
+import { burstBackoffSeconds, classifyFailure, classifyQuotaFailure, shutdownMaxRetries, sleepInSlices } from '../scripts/run/quota.ts';
 
 // One line per argv entry (see the fake `claude` binary), and the agent name is a whole
 // argument on its own line, once per call — a reliable count of how many times the
@@ -78,6 +78,62 @@ test('a failure with no quota shape pauses immediately, without a retry', () => 
 
   assert.equal(code, PAUSED, output);
   assert.equal(implementerCalls(fixture.claudeLog), 1, `expected exactly one implementer call:\n${readFileSync(fixture.claudeLog, 'utf8')}`);
+});
+
+// R18 — exit 143 (SIGTERM, the shape of a self-update or platform shutdown) is a distinct class
+// from a quota window: it relaunches on its own fixed, short backoff, bounded by
+// GOAL_RUN_SHUTDOWN_MAX_RETRIES, never the GOAL_RUN_QUOTA_SLEEP a quota-shaped failure waits out.
+test('an implementer that keeps exiting 143 relaunches on a short fixed backoff, bounded, never the quota sleep', () => {
+  const fixture = repo();
+
+  const { code, output } = run(fixture, [fixture.plan, '1'], {
+    FAKE_CLAUDE_EXIT: '143',
+    GOAL_RUN_SHUTDOWN_MAX_RETRIES: '2',
+    GOAL_RUN_QUOTA_SLEEP: '999999',
+  });
+
+  assert.equal(code, PAUSED, output);
+  assert.match(output, /143/, output);
+  assert.match(output, /shutdown/i, output);
+  assert.doesNotMatch(output, /quota sleep continues/i, output);
+  assert.equal(implementerCalls(fixture.claudeLog), 2, `expected exactly two implementer calls (bounded):\n${readFileSync(fixture.claudeLog, 'utf8')}`);
+});
+
+// R18 — exit 143 is classified as `shutdown` before the quota regex ever runs against the
+// output, so a 143 alongside quota-shaped text still reads as `shutdown`, and any other exit
+// code still falls through to `classifyQuotaFailure` exactly as before.
+test('exit 143 classifies as shutdown regardless of output, bypassing quota classification', () => {
+  assert.equal(classifyFailure(143, 'Claude AI usage limit reached|1735689600'), 'shutdown');
+  assert.equal(classifyFailure(143, 'HTTP 429 Too Many Requests'), 'shutdown');
+  assert.equal(classifyFailure(143, 'nothing quota-shaped here'), 'shutdown');
+  assert.equal(classifyFailure(1, 'Claude AI usage limit reached|1735689600'), 'exhausted');
+  assert.equal(classifyFailure(1, 'nothing quota-shaped here'), null);
+});
+
+// R18 — the shutdown retry bound defaults to 5 and honours GOAL_RUN_SHUTDOWN_MAX_RETRIES, the
+// same shape as the quota bound's own env override.
+test('the shutdown retry bound defaults to 5 and honours GOAL_RUN_SHUTDOWN_MAX_RETRIES', () => {
+  const previous = process.env.GOAL_RUN_SHUTDOWN_MAX_RETRIES;
+  delete process.env.GOAL_RUN_SHUTDOWN_MAX_RETRIES;
+
+  assert.equal(shutdownMaxRetries(), 5);
+
+  process.env.GOAL_RUN_SHUTDOWN_MAX_RETRIES = '2';
+  assert.equal(shutdownMaxRetries(), 2);
+
+  if (previous === undefined) {
+    delete process.env.GOAL_RUN_SHUTDOWN_MAX_RETRIES;
+  } else {
+    process.env.GOAL_RUN_SHUTDOWN_MAX_RETRIES = previous;
+  }
+});
+
+// R18 — self-update disabled: the claude spawn env carries DISABLE_AUTOUPDATER so an update
+// under way is never what an implementer call's exit 143 turns out to mean.
+test('the claude spawn env disables the autoupdater', () => {
+  const source = readFileSync(join(import.meta.dirname, '..', 'scripts', 'run', 'iteration.ts'), 'utf8');
+
+  assert.match(source, /DISABLE_AUTOUPDATER:\s*'1'/, source);
 });
 
 // R17 — the two shapes are distinct, escaped classes: a bare 429 or the literal

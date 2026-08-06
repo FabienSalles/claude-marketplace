@@ -12,8 +12,9 @@ import { iterationSection } from '../gate/plan.ts';
 import { brief } from './brief.ts';
 import { changedGitDirPaths, changedRefs, snapshotGitDir, snapshotRefs } from './gitwatch.ts';
 import { narrate } from './narrate.ts';
+import { claudeBinaryMtime, claudeBinaryPath, postmortem } from './postmortem.ts';
 import { REFUSED } from './preflight.ts';
-import { burstBackoffSeconds, classifyQuotaFailure, sleepInSlices } from './quota.ts';
+import { burstBackoffSeconds, classifyFailure, SHUTDOWN_BACKOFF_SECONDS, shutdownMaxRetries, sleepInSlices } from './quota.ts';
 import type { Reporter } from './report.ts';
 import { git, quote } from './shell.ts';
 
@@ -62,6 +63,7 @@ export const runIteration = (
   for (;;) {
     reporter.say(`RUN handing iteration ${iteration} to the implementer`);
 
+    const binaryBefore = claudeBinaryMtime(claudeBinaryPath());
     const implementerStart = Date.now();
     const implemented = spawnSync(
       '/bin/sh',
@@ -80,7 +82,7 @@ export const runIteration = (
         '--verbose',
         brief(iteration, process.cwd(), branch, section),
       ],
-      { encoding: 'utf8' },
+      { encoding: 'utf8', env: { ...process.env, DISABLE_AUTOUPDATER: '1' } },
     );
 
     narrate(implemented.stdout, reporter);
@@ -91,7 +93,8 @@ export const runIteration = (
     }
 
     const output = `${implemented.stdout}${implemented.stderr}`;
-    const quotaClass = classifyQuotaFailure(output);
+    postmortem(reporter, dir, attempt, process.cwd(), implemented.status ?? 1, implemented.stdout, implemented.stderr, binaryBefore);
+    const quotaClass = classifyFailure(implemented.status ?? 1, output);
 
     if (quotaClass === null) {
       reporter.stop(
@@ -100,7 +103,8 @@ export const runIteration = (
       );
     }
 
-    if (attempt >= quotaMax) {
+    const maxRetries = quotaClass === 'shutdown' ? shutdownMaxRetries() : quotaMax;
+    if (attempt >= maxRetries) {
       reporter.stop(
         `the quota still looks exhausted after ${attempt} attempt(s) on iteration ${iteration}. Pausing rather than spinning through a window that is not reopening: relaunch resumes here.`,
         PAUSED,
@@ -109,12 +113,15 @@ export const runIteration = (
 
     attempt += 1;
 
-    if (quotaClass === 'burst') {
+    if (quotaClass === 'shutdown') {
+      reporter.say(`RUN the implementer exited 143 (shutdown), backing off ${SHUTDOWN_BACKOFF_SECONDS}s before relaunching iteration ${iteration} (attempt ${attempt} of ${maxRetries})`);
+      spawnSync('sleep', [String(SHUTDOWN_BACKOFF_SECONDS)]);
+    } else if (quotaClass === 'burst') {
       const seconds = burstBackoffSeconds(attempt - 1);
-      reporter.say(`RUN the implementer hit a burst rate limit, backing off ${seconds}s before relaunching iteration ${iteration} (attempt ${attempt} of ${quotaMax})`);
+      reporter.say(`RUN the implementer hit a burst rate limit, backing off ${seconds}s before relaunching iteration ${iteration} (attempt ${attempt} of ${maxRetries})`);
       spawnSync('sleep', [String(seconds)]);
     } else {
-      reporter.say(`RUN the implementer looks quota-exhausted, sleeping ${quotaSleep}s before relaunching iteration ${iteration} (attempt ${attempt} of ${quotaMax})`);
+      reporter.say(`RUN the implementer looks quota-exhausted, sleeping ${quotaSleep}s before relaunching iteration ${iteration} (attempt ${attempt} of ${maxRetries})`);
       sleepInSlices(Number(quotaSleep), (remaining) => reporter.say(`RUN quota sleep continues, ${remaining}s remaining`));
     }
   }
@@ -123,10 +130,7 @@ export const runIteration = (
   const touched = git('status', '--porcelain').stdout;
 
   if (headAfter !== headBefore) {
-    reporter.stop(
-      `the implementer committed on its own, which only the gate may do. HEAD moved from ${headBefore} to ${headAfter}. Nothing was gate-verified: review that commit before relaunching.`,
-      PAUSED,
-    );
+    reporter.stop(`the implementer committed on its own, which only the gate may do. HEAD moved from ${headBefore} to ${headAfter}. Nothing was gate-verified: review that commit before relaunching.`, PAUSED);
   }
 
   // Checked before the empty-tree case below: an implementer that writes only into `.git/`

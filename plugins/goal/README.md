@@ -184,6 +184,32 @@ elapsed seconds per iteration, what halted it, and which failures recur across e
 At close, that report is folded into the pull request body under `## Run report`, replaced whole
 on every rerun of the same PR.
 
+## Long runs and the auto-updater
+
+**Observed, 2026-08-05:** installing an update to Claude Code shuts down every running instance
+on the machine, including a `claude -p` implementer mid-iteration. A run left unattended for
+hours is exactly the shape an update lands under.
+
+What the runner now absorbs by itself:
+
+- **Shutdown retries.** Exit 143 (SIGTERM) is classified as a shutdown, not quota exhaustion
+  (`run/quota.ts`): `run/iteration.ts` backs off a fixed 5s and relaunches the same iteration, up
+  to `GOAL_RUN_SHUTDOWN_MAX_RETRIES` (default 5) attempts — never the multi-minute quota sleep,
+  which would wait out a window that has already reopened.
+- **Spawn hygiene.** Every implementer is spawned with `DISABLE_AUTOUPDATER: '1'` in its own
+  environment (`run/iteration.ts`), so the process the runner controls cannot trigger the
+  shutdown against itself.
+- **Preflight advisory.** Preflight reads the machine's own `~/.claude/settings.json` and prints
+  a warning — never a refusal — when neither `env.DISABLE_AUTOUPDATER` nor
+  `"autoUpdatesChannel": "stable"` is set there (`run/advisory.ts`).
+
+What stays the developer's own choice: the plugin cannot write to a settings file it does not
+own, and would not decide for you when it could. Setting `env.DISABLE_AUTOUPDATER: "1"` or
+`autoUpdatesChannel: "stable"` in your own `~/.claude/settings.json` stops the auto-updater from
+shutting down *other* Claude Code instances on the same machine — a terminal you're using,
+another run — while this one is in flight. The advisory names both remedies; picking one, or
+neither, is yours.
+
 ## See also
 
 - [`docs/workflows-decision-guide.md`](../../docs/workflows-decision-guide.md) — `goal` vs

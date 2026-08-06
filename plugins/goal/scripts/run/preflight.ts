@@ -15,6 +15,7 @@ import { existsSync } from 'node:fs';
 import { basename, dirname, resolve } from 'node:path';
 
 import { header, iterationNumbers } from '../gate/plan.ts';
+import { autoUpdaterWarning } from './advisory.ts';
 import type { Reporter } from './report.ts';
 import { git } from './shell.ts';
 import { REFUSED, sweep } from './sweep.ts';
@@ -177,6 +178,12 @@ export const preflight = (plan: string, source: string, reporter: Reporter, gate
   }
 
   reporter.say(`RUN preflight: branch is caught up with ${base}`);
+
+  const warning = autoUpdaterWarning();
+
+  if (warning) {
+    reporter.say(`RUN preflight: warning — ${warning}`);
+  }
 
   return { policy, remote, workId, cleanup };
 };

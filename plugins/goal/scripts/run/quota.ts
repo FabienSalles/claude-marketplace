@@ -30,6 +30,20 @@ export const classifyQuotaFailure = (output: string): QuotaClass => {
 // the order of seconds, not the multi-minute window an exhausted quota needs.
 export const burstBackoffSeconds = (attempt: number): number => Math.min(2 ** (attempt - 1), 8);
 
+export type FailureClass = 'shutdown' | QuotaClass;
+
+// Exit 143 is SIGTERM, the shape of a self-update or platform-triggered shutdown, not a quota
+// window: checked first, so the quota regex never even runs against its output and a run/
+// iteration.ts loop never waits out GOAL_RUN_QUOTA_SLEEP for something a few seconds will clear.
+export const classifyFailure = (status: number | null, output: string): FailureClass =>
+  status === 143 ? 'shutdown' : classifyQuotaFailure(output);
+
+// Fixed, not exponential like a burst: a shutdown is not a load signal to back off from, just a
+// process that needs a moment to exit before the same iteration is handed to it again.
+export const SHUTDOWN_BACKOFF_SECONDS = 5;
+
+export const shutdownMaxRetries = (): number => Number(process.env.GOAL_RUN_SHUTDOWN_MAX_RETRIES ?? '5');
+
 // A loop of short slices, not one spawnSync('sleep', [totalSeconds]) whose return value is
 // discarded: a long wait is then a sequence of small, observable steps, each reported through
 // onSlice, rather than one opaque call that a run can only sit through in full.
