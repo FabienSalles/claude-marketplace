@@ -10,10 +10,11 @@ Shared hooks, agents, slash commands, and meta skills used across every project.
 
 Or `./setup.sh --pack common` (dev mode). The pack also writes `skillListingBudgetFraction = 0.06` to `~/.claude/settings.json` so the full skill catalog fits in context.
 
-## Skills (4)
+## Skills (5)
 
 | Skill | Purpose |
 |---|---|
+| [`claude-recovery`](skills/claude-recovery/SKILL.md) | Rebuild lost or deleted files (especially gitignored ones — `.claude/`, `.env`, plans) from Claude Code session transcripts by replaying Write/Edit/Read events, then restore them to their original location without silent overwrites |
 | [`context-window-management`](skills/context-window-management/SKILL.md) | Rules for keeping response quality high as conversations grow — offload to files, suggest fresh sessions, read selectively, session handoff template |
 | [`crispi-planning`](skills/crispi-planning/SKILL.md) | 5-phase planning framework (Context, Research, Implementation design, Structured plan, Implementation) with file persistence to avoid over-planning |
 | [`expert-persona-skills`](skills/expert-persona-skills/SKILL.md) | Short persona prompts for non-code expert analysis (security audits, product, competitive, vendor evaluation, architecture review) |
