@@ -43,6 +43,27 @@ jobs:
             exit 1
           fi
 
+      - name: Validate marketplace.json agrees with each plugin.json
+        run: |
+          errors=0
+          for plugin_dir in plugins/*/; do
+            plugin_name=$(basename "$plugin_dir")
+            plugin_json="$plugin_dir.claude-plugin/plugin.json"
+            for field in name version description; do
+              catalog=$(jq -r --arg n "$plugin_name" --arg f "$field" '.plugins[] | select(.name == $n) | .[$f] // empty' .claude-plugin/marketplace.json)
+              manifest=$(jq -r --arg f "$field" '.[$f] // empty' "$plugin_json")
+              if [[ "$catalog" != "$manifest" ]]; then
+                echo "✗ $plugin_name — $field disagrees: marketplace.json='$catalog' vs plugin.json='$manifest'"
+                errors=$((errors + 1))
+              fi
+            done
+          done
+          if [[ $errors -gt 0 ]]; then
+            echo "::error::$errors manifest parity errors found"
+            exit 1
+          fi
+          echo "✓ marketplace.json and every plugin.json agree on name, version and description"
+
       - name: Validate SKILL.md frontmatter and README skill counts
         run: ./scripts/validate-skills.sh
 
@@ -269,6 +290,34 @@ jobs:
           # is installed here and deliberately not vendored in the repository.
           npm install --no-save --no-package-lock typescript@5.9 @types/node@24
           npx tsc --noEmit
+
+  test-shell-suites:
+    name: Run the shell test suites
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Run every shell suite
+        run: |
+          errors=0
+          for suite in \
+            plugins/security-runtime/tests/test_claudemd-scanner.sh \
+            plugins/security-runtime/tests/test_prompt-injection-detector.sh \
+            plugins/security-runtime/tests/test_secret-file-guard.sh \
+            plugins/superpowers/tests/test-find-polluter.sh \
+            scripts/tests/test-validate-skills.sh; do
+            echo "== $suite"
+            if bash "$suite"; then
+              echo "✓ $suite"
+            else
+              echo "✗ $suite"
+              errors=$((errors + 1))
+            fi
+          done
+          if [[ $errors -gt 0 ]]; then
+            echo "::error::$errors shell suite(s) failed"
+            exit 1
+          fi
 
   health-check:
     name: Run health-check.sh (${{ matrix.os }})
