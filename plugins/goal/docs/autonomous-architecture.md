@@ -72,12 +72,12 @@ Four forms of the loop were tried. Each is named here by what it made impossible
 (`commands/plan.md:731`), and skipping it means a green iteration is only ever
 self-certified. Everything below is an answer to that one hole.
 
-**A dynamic Workflow, the abandoned generation.** It takes a subagent to run `git status`. The
-proof is checked into the repository: `workflows/goal-auto.js:67-81` defines a `runner` helper
-whose entire prompt is *"Run exactly this command, once, from the repository root […] Do not fix
-anything, do not retry, do not run any other command, and do not interpret what you read"*,
-dispatched to a `goal:goal-runner` agent type. An agent whose profession is to be a shell — and
-the agent file it names is not in the repository, so the workflow could not run today even if
+**A dynamic Workflow, the abandoned generation.** It takes a subagent to run `git status`. Its
+941 lines were deleted rather than kept as an exhibit, and git history holds them; what they
+contained was a `runner` helper whose entire prompt was *"Run exactly this command, once, from the
+repository root […] Do not fix anything, do not retry, do not run any other command, and do not
+interpret what you read"*, dispatched to a `goal:goal-runner` agent type. An agent whose profession
+is to be a shell — and the agent file it named was never in the repository, so it could not run even if
 something invoked it. Every `sed`, every `git status` costs a model call,
 a latency and a notification. The abstraction fights the task: orchestrating *is* sequencing
 deterministically, and a workflow turns every deterministic step non-deterministic. The defect

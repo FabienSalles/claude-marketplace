@@ -92,10 +92,11 @@ Each of the three carries content that the official NestJS docs don't cover well
 
 Rewritten 2026-08-06 after a full audit of the runner, the gate, the tests, the docs and the six
 run reports on disk. The previous version of this section opened with *"None of it is built"* and
-routed every item at `workflows/goal-auto.js` and `/goal:auto`. Both statements were false: the
-runner ships, is tested, and has landed 26 gate-verified slices across six unattended runs.
+routed every item at the Workflow generation and the command that launched it. Both statements
+were false: the runner ships, is tested, and has landed 26 gate-verified slices across six
+unattended runs. That Workflow generation has since been deleted.
 
-Ordered by **what it costs to lose**, not by effort. The competitive reading behind items 5–11 is
+Ordered by **what it costs to lose**, not by effort. The competitive reading behind items 4–10 is
 [`plugins/goal/docs/comparison.md`](plugins/goal/docs/comparison.md) §Where the field wins.
 
 ### 1. A fuse — an iteration ceiling and a clock on the implementer
@@ -129,49 +130,43 @@ Ordered by **what it costs to lose**, not by effort. The competitive reading beh
 - **Trigger:** now — it is the only open item that a previous plan already claimed as delivered.
 - **Path:** `scripts/run/report.ts`, `scripts/run/close.ts`, `scripts/gate/ship.ts`, and the test at `tests/goal-run-events.test.ts:124`.
 
-### 6. Retire `workflows/goal-auto.js`
-- **Why:** 941 lines of the abandoned Workflow generation, superseded by the runner, covered by no test — and **not dead code**: Claude Code registers it as the invokable skill `goal:goal-auto`, whose description is read verbatim from `goal-auto.js:18-20`. A user can launch it today. It also carries known defects that were the reason for abandoning that generation (it initialises its own PR tracking to `false`, so on a branch that already has an open PR it retries `gh pr create` every iteration and silently publishes nothing).
-- **Effort:** ~15 min to delete, plus a sweep of the references in this file.
-- **Trigger:** now.
-- **Path:** `plugins/goal/workflows/`, and `tests/support/workflow-runtime.ts` (98 lines, imported by no test).
-
-### 7. Close the test-coverage holes in the harness itself
+### 6. Close the test-coverage holes in the harness itself
 - **Why:** eleven of the 25 modules under `scripts/gate/` and `scripts/run/` have no test file of their own, including `gate/scope.ts`, `gate/commands.ts`, `run/iteration.ts` and `run/report.ts` — and the README's "each with its own test file" is written as though they all did. Worse, four of `tests/run.sh`'s five refusals are untested, including the missing-summary halt; and the skip guard that *is* tested is blind to any skip nested inside a `describe()` or a subtest, because its pattern is anchored at column 0 and node indents those. `run/shell.ts`'s `quote()` is the only shell-injection barrier for four command strings and has zero tests.
 - **Effort:** ~3 h.
 - **Trigger:** the next change to any of those modules.
 - **Path:** `plugins/goal/tests/`.
 
-### 8. Make the documents machine-checkable
+### 7. Make the documents machine-checkable
 - **Why:** a full audit found 12 high-severity claims in `docs/` that the code contradicted — in both directions, including several mechanisms that *ship and work* but appear only as admitted gaps. Roughly a third of the ~95 `file:line` anchors point at blank lines or unrelated code. These documents are unusually honest and that is exactly why they are worth keeping true; drift is the only thing that devalues them.
 - **Effort:** ~2 h for a CI check that resolves every `path:line` anchor in `docs/` and fails on one pointing at a blank line or a file that does not exist. Line-content matching is over-engineering; existence and non-blankness catch nearly all of it.
 - **Trigger:** after the current correction pass, so the check starts green.
 - **Path:** `scripts/`, wired into `.github/workflows/validate.yml`.
 
-### 9. Bind evidence freshness beyond plan time
+### 8. Bind evidence freshness beyond plan time
 - **Why:** the plan is hashed once, at plan time. *Proof-or-Stop* (<https://arxiv.org/abs/2607.14890>) binds a `materialHash` over the live tracked source tree at **every** gate, which is strictly stronger. Related measured result: using a stale verification trace against current code broke 34 of 135 otherwise-correct attempts, against 4 of 135 with a fresh one.
 - **Effort:** ~2 h.
 - **Trigger:** after items 1–3.
 - **Path:** `scripts/gate/plan.ts`, extending `lockedHash`.
 
-### 10. An observe mode
+### 9. An observe mode
 - **Why:** there is currently no way to try a new refusal without it being able to stop a run. `axiom` installs every rule recording-only — "it records what it *would* have blocked and blocks nothing" — and enforcement is turned on per rule once its findings have earned it. That is how items 2 and 9 should ship rather than going straight to blocking.
 - **Effort:** ~1 h.
 - **Trigger:** together with item 2.
 - **Path:** `scripts/gate/halt.ts`, plus a `GOAL_GATE_OBSERVE` list.
 
-### 11. Exportable proof
+### 10. Exportable proof
 - **Why:** "every claim is a command that ran" is a promise about how the code is written; no artefact exists that a third party could verify without re-running everything. `Bernstein` keeps a signed audit chain checkable offline, `axiom` a custody chain, `HORKOS` a receipt ledger. The `.run.jsonl` stream is most of the raw material already — it needs a stable schema and a signature, not a new mechanism.
 - **Effort:** ~2 h.
 - **Trigger:** the first time someone other than the author needs to trust a run.
 - **Path:** `scripts/run/report.ts`.
 
-### 12. A machine critic of the plan, before it freezes
+### 11. A machine critic of the plan, before it freezes
 - **Why:** Google's `Jules` added a critic reading self-approved plans before any code, for a measured 9.5% drop in failure rate. Keeping the *human* grill is deliberate and well supported; having **nothing** mechanical read a plan before freezing is a separate decision that was never actually taken. A plan defect is also the most common thing `/goal:supervise`'s classifier has to handle — and both halts on record were plan-vs-implementation calls.
 - **Effort:** ~2 h.
 - **Trigger:** after three more plans, so there is a defect corpus to write the critic against.
 - **Path:** `/goal:plan` Phase 4, before the lock.
 
-### 13. React to a red CI run
+### 12. React to a red CI run
 - **Why:** still the largest open loop. Nothing learns that the pull request the run just opened went red, and the gate passing locally is not the same claim. It is deliberately hard here, because closing it means reading CI and PR text — precisely what the write-only invariant forbids.
 - **Effort:** unknown, and the design matters more than the code. The safe shape is already written in [`plugins/goal/docs/steering-and-injection.md`](plugins/goal/docs/steering-and-injection.md): a reader agent holding no write tool, a remote vocabulary where every verb may only *subtract*, and a checkbox panel the run authored and reads back as a bit vector.
 - **Trigger:** not before items 1–3.
@@ -184,6 +179,8 @@ Ordered by **what it costs to lose**, not by effort. The competitive reading beh
 - **Reading issue or PR text.** The write-only invariant is the answer to a real attack class (a malicious GitHub issue *title* drove a chain ending with attacker code in a coding agent's own npm package, February 2026). The cost — you cannot steer a run by commenting — is accepted.
 
 ### Closed since the previous version of this section
+
+**Retiring the Workflow generation** (2026-08-06): `workflows/goal-auto.js` and the test harness built for it are deleted. It was never called by `scripts/`, but a plugin's `workflows/*.js` are registered as invokable skills, so it stayed launchable by name — carrying the publication defect that caused its abandonment. Every document citing it now says it was removed rather than pointing at a path.
 
 Verified against the code, not against memory: the **secret scan before any push** ships and refuses rather than degrades when no scanner is installed (`gate/ship.ts`); **smoke-testing the gate commands** ships as the base sweep, deduplicated, in preflight (`run/sweep.ts`); **reporting whether a failing gate is deterministic** ships as a three-run replay of `gate1` (`gate/commands.ts`); **the environment fingerprint on halt** ships in part, as the post-mortem that records the failing attempt, the dying session's transcript tail and whether the `claude` binary changed underneath it (`run/postmortem.ts`); **track disjointness** and the `--dry-run` mode are moot — tracks were removed, and every unfinished slice is already proven runnable before any is implemented (`goal-run.ts:72-106`).
 

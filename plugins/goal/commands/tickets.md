@@ -23,7 +23,7 @@ deliveries.
    └─ /goal:tickets ← YOU ARE HERE
         ├─ ordered backlog written to .claude/plans/<chantier-id>-backlog.md   (always)
         └─ GitHub milestone + one issue per ticket                             (only if the developer says yes)
-             └─ per ticket, at its turn: /goal:spec → /goal:plan → /goal · /goal:auto · /goal:supervise
+             └─ per ticket, at its turn: /goal:spec → /goal:plan → /goal + /goal:next, or /goal:supervise
                   └─ /goal:tickets <backlog>  (reconcile, then arm the next ticket)
 ```
 

@@ -82,7 +82,7 @@ loses as much as leaving eleven repairs strewn across the log.
   propose the reshaped list, and **ASK**. Pushing first and raising it after puts the
   developer in front of a force-push they never chose.
 - **Non-manual policy → reshape without asking.** Under `commit` / `commit+pr` — an
-  unattended `/goal:auto` run — there is nobody to answer, and that mode produces this
+  unattended `/goal:supervise` run — there is nobody to answer, and that mode produces this
   shape by construction: one commit per iteration plus whatever repaired it. Reshaping is
   part of shipping, and it lands before the single push at the end, so it never forces.
 - **Never rewrite across a merge**, nor any commit already on `main` or that someone may

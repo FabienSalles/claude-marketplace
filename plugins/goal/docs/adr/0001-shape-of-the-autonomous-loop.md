@@ -104,7 +104,7 @@ time.
   trusting its checkbox. Everything else in this ADR is the answer to the question *what replaces
   the human when nobody is watching.*
 
-### Option 2: a dynamic Workflow (`goal-auto.js`, 941 lines)
+### Option 2: a dynamic Workflow (941 lines, since deleted)
 
 The orchestration expressed as a workflow script whose only primitive is spawning agents.
 
@@ -181,10 +181,11 @@ Automating it would move the one judgement with no fallback into the layer with 
 guarantees. It is acceptable as a manual step only because it runs **once per plan**, not once per
 change.
 
-**One artefact of the abandoned generations still ships.** `workflows/goal-auto.js` is checked in
-at 941 lines and Claude Code registers it as an invokable skill, so a user can still launch the
-generation this ADR rejects — carrying the publication defect described in Option 2. Removing it is
-the first item of the goal roadmap in `BACKLOG.md`.
+**Both rejected generations are deleted, not archived in the tree.** The Workflow generation
+outlived its replacement by months because a plugin's `workflows/*.js` are registered as invokable
+skills, so it stayed launchable by name the whole time — carrying the publication defect described
+in Option 2. It was removed on 2026-08-06; git history is where it lives now. A rejected
+orchestrator left in the tree is not documentation, it is a second entry point.
 
 **This decision is falsifiable.** If a future run shows the halt classifier doing more harm than an
 unconditional stop would, Option 4 becomes the better shape and layer 5 should be deleted rather

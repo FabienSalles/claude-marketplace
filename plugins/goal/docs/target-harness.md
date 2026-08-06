@@ -269,9 +269,8 @@ This section used to argue for the Workflow against the published anti-pattern. 
 was abandoned, twice over, and the half of the argument that survived is worth keeping straight
 from the half that did not.
 
-Two earlier generations preceded the one that runs today — a Workflow (`workflows/goal-auto.js`,
-941 lines, still checked in and still registered as the skill `goal:goal-auto`, called by nothing
-in `scripts/`) and a bash script (594 lines, since deleted) — and `scripts/goal-run.ts` +
+Two earlier generations preceded the one that runs today — a Workflow (941 lines) and a bash script
+(594 lines), both since deleted — and `scripts/goal-run.ts` +
 `scripts/run/*.ts`, 1514 lines over 15 files, is what runs now.
 
 **What survived.** The published guidance warns against Claude generating an orchestration

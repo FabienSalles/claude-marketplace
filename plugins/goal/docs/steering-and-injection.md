@@ -63,11 +63,11 @@ untrusted content but holds no tools, while the *privileged* model holds the too
 sees the content.[^camel][^dual]
 
 The principle is right and it survives every generation of the harness. What did not survive is
-the mechanism. Its only expression was `workflows/goal-auto.js:436-447`, which dispatched the
-steering read to a `goal:goal-runner`-style agent type named `goal:goal-reader` — a reader with
-no write tool, handed one command whose output the shell had already reduced to a closed
-vocabulary. That workflow is still checked in and invoked by nothing, and the agent file it names
-is not in the repository at all. Nothing in the current runner has a quarantined reader.
+the mechanism. Its only expression lived in the abandoned Workflow generation, which dispatched
+the steering read to an agent type named `goal:goal-reader` — a reader with no write tool, handed
+one command whose output the shell had already reduced to a closed vocabulary. That workflow has
+since been deleted, and the agent file it named was never in the repository at all, so the
+mechanism was never more than a shape. Nothing in the current runner has a quarantined reader.
 
 **And the shipped path inverts the separation.** `run/close.ts:71-81` briefs
 `goal:goal-run-reviewer` to read a pull request — third-party text — *and* to post its review

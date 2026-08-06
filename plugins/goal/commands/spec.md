@@ -22,7 +22,7 @@ session entirely.
         ├─ functional contract written to .claude/plans/<work-id>-spec.md   (always)
         └─ GitHub issue mirror                                             (only if the developer says yes)
              └─ /goal:plan <source>
-                  └─ /goal · /goal:auto · /goal:supervise  (per iteration)
+                  └─ manual: /goal + /goal:next · commit+pr: /goal:supervise
 ```
 
 ## Argument — resolve the source
