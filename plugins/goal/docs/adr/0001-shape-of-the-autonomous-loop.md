@@ -97,8 +97,12 @@ Claude Code's native goal loop, handed the feature as a single goal.
 - **Advantages**: nothing to build; nothing to install; the developer sees every diff.
 - **Disadvantages**: **all-or-nothing, and no judge.** One goal for a whole feature goes too far
   in one stride: the smallest problem puts everything back in question, and what a failed run
-  leaves is one huge diff nobody can judge or salvage — nothing deliverable. And the model
-  decides when the work is done, so every green step is self-certified.
+  leaves is one huge diff nobody can judge or salvage — nothing deliverable. The arithmetic of
+  long horizons is against it too: per-step accuracy compounds, so 99% per step is one success
+  in three by step 100, and a context carrying its own earlier errors grows measurably more
+  likely to err — the documented remedy is decomposition into small, independently verifiable
+  subtasks, which is exactly what a slice is. And the model decides when the work is done, so
+  every green step is self-certified.
 - **Reason for rejection**: rejected at feature scale, **kept per slice** — one of the two
   supported modes. The plugin never hands `/goal` more than one slice, each cut as a functional
   delivery, so progress is iterative and a run that dies mid-plan still leaves every landed
@@ -126,7 +130,12 @@ The orchestration expressed as a workflow script whose only primitive is spawnin
   same decision as deterministic code costs nothing and cannot drift — less reliable, for no
   gain, on input that is already a frozen plan with predefined steps. A dynamic workflow earns
   its keep on open-ended work — research, exploration, judgement fanned out over an unknown
-  space — not on a plan a program can sequence. The defect that shape produced, for the record:
+  space — not on a plan a program can sequence. The field's own guidance draws the same line:
+  Anthropic's *Building Effective Agents* separates workflows — LLMs orchestrated through
+  predefined code paths, buying predictability and consistency on well-defined tasks — from
+  agents directing their own process, worth their cost only where flexibility is the point; and
+  12-Factor Agents says the control-flow half plainly: own the loop, keep what retries, pauses
+  or terminates out of the model's hands. The defect that shape produced, for the record:
   it initialised its own tracking of a published pull request to `false`, so on a branch that
   already carried an open pull request it retried creating one at every slice, never rewrote the
   body and never marked it ready — **it landed all of the work and silently published none of
@@ -146,7 +155,10 @@ The orchestration expressed as a workflow script whose only primitive is spawnin
   a list from degrading into a string.
 - **Reason for rejection**: maintainability, before any defect. 594 lines of shell in one file
   were hard to read, hard to change and not a base to industrialise — no modules, no types — so
-  the move was to a language readable and popular enough to be worked on for years. The defect
+  the move was to a language readable and popular enough to be worked on for years. The field
+  converged on the same move: serious harnesses live in typed, tooled languages — Claude Code in
+  TypeScript, Goose in Rust, and OpenAI rewrote Codex CLI from TypeScript to native Rust when
+  demands grew. Rewrites go toward stricter languages, never toward shell. The defect
   found on its first real use confirmed the call: the pull-request body built a regex alternation
   from the list of landed slices, which accumulated from an empty string; the leading space
   became an empty alternative; BSD `grep` refused it; **the pull request body stayed empty for
@@ -185,6 +197,14 @@ The orchestration expressed as a workflow script whose only primitive is spawnin
   Judgement* — <https://arxiv.org/html/2603.00539>
 - *On the Effectiveness of LLM-as-a-judge for Code Generation and Summarization* —
   <https://arxiv.org/pdf/2507.16587>
+- *Building Effective Agents* (workflows over predefined code paths vs self-directing agents) —
+  <https://www.anthropic.com/engineering/building-effective-agents>
+- *12-Factor Agents* (own your control flow; small, focused agents) —
+  <https://github.com/humanlayer/12-factor-agents>
+- *Solving a Million-Step LLM Task with Zero Errors* (error compounding; decomposition into
+  minimal verifiable subtasks) — <https://arxiv.org/pdf/2511.09030>
+- *OpenAI Rewrites Codex CLI from TypeScript to Rust* —
+  <https://www.infoq.com/news/2025/06/codex-cli-rust-native-rewrite>
 
 ## Implementation notes
 
