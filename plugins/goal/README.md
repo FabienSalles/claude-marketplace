@@ -43,8 +43,8 @@ draft pull request rewritten as the work lands.
 
 - **The plan is cut coarser**, because a slice is now sized to what a machine can verify rather
   than to what you can read in one sitting.
-- You launch **`node goal-run.ts <plan>`**, or **`/goal:supervise`** to have a session watch it,
-  classify a halt and repair or discard once.
+- You drive it with **`/goal:supervise`, once for the whole plan** — the counterpart of the
+  `/goal` + `/goal:next` loop: it watches the run, classifies a halt, and repairs or discards once.
 - Every guarantee in this README is doing its work here — the declared paths, the diff budget, the
   hashed plan, the test that must have been red — because **you are not there to catch anything.**
 - A run that stops at 3 slices of 15 still leaves a readable pull request, not a local branch.
@@ -58,7 +58,7 @@ frozen before anything starts.
 | Who judges a slice | you, reading the diff | `goal-gate.ts`, by exit code |
 | Who commits | you | the gate, and only the gate |
 | Slice size | fine — one reviewable diff | coarser — one verifiable unit |
-| You run | `/goal` then `/goal:next`, per slice | `goal-run.ts`, or `/goal:supervise`, once |
+| You run | `/goal` then `/goal:next`, per slice | `/goal:supervise`, once |
 | Pushes, opens a PR | never | yes, as it lands |
 | Catch a mistake | at the next slice | at the pull request |
 | Needs a `Remote:` line | no | yes, and it is never guessed |
@@ -119,12 +119,6 @@ Then, from the branch the plan locked:
 > /goal:supervise .claude/plans/<work-id>-spec.md
 ```
 
-or without a session watching it:
-
-```bash
-node <plugin>/scripts/goal-run.ts .claude/plans/<work-id>-spec.md
-```
-
 Exit `0` landed · `1` the gate refused a slice · `2` refused before anything was attempted ·
 `3` paused at a clean boundary, relaunch resumes there.
 
@@ -136,8 +130,7 @@ Exit `0` landed · `1` the gate refused a slice · `2` refused before anything w
 | 1 · optional | `/goal:spec <source>` | The **functional** contract: any source normalised, functional gaps grilled closed, one observable criterion per business rule, opt-in GitHub issue mirror |
 | 2 | `/goal:plan <source>` | The **executable** contract: technical grill, **the mode**, every rule mapped to a command, delivery decisions, slices, the locked plan on a branch |
 | 3 · `manual` | `/goal` (native) + `/goal:next` | One slice per session; `/goal:next` replays its acceptance commands, reconciles the plan, emits the next handoff. Nothing is staged for you |
-| 3 · `commit+pr` | `node scripts/goal-run.ts <plan>` | The runner: nine preflight refusals, a base sweep, one fresh implementer per slice, a gate verdict on each, publication, close |
-| 3 · `commit+pr`, watched | `/goal:supervise [plan]` | The same runner in the background, plus a halt classifier that repairs or discards **once**, then stops |
+| 3 · `commit+pr` | `/goal:supervise [plan]` | The runner in the background — nine preflight refusals, a base sweep, one fresh implementer per slice, a gate verdict on each, publication, close — and a halt classifier that repairs or discards **once**, then stops |
 
 **Steps 1–2 are deliberately not automated.** The ambiguity a source leaves cannot be lifted from
 inside a run: an unattended implementer resolves it by guessing, and the guess surfaces thirty
