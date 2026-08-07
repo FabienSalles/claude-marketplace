@@ -232,29 +232,28 @@ The commands fall back to inlined behaviour when they are absent.
 
 ## Troubleshooting
 
-Every row here has either been hit on a real run or is a refusal the code can still reach today.
+Every row is a refusal the code can still reach today.
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| Exit 2, "the base is not green" | a command the plan holds every slice to already fails on the untouched tree | Fix the base. The sweep runs before a byte is written, so nothing needs undoing. **Hit for real:** one attempt stopped here with 35 of 202 tests failing for a machine-permission reason, and never entered a slice |
+| Exit 2, "the base is not green" | a command the plan holds every slice to already fails on the untouched tree | Fix the base. The sweep runs before a byte is written, so nothing needs undoing |
 | Exit 2, "the plan's directory is visible to git" | `.claude/` is tracked | Ignore it, untracking any spec already committed |
 | Exit 2, "Policy is manual" | the runner has nowhere to put the work | That plan is for the manual loop — run it with `/goal` and `/goal:next`, or change the `Policy:` line |
 | Exit 2, "the plan declares no Remote line" | never defaulted to `origin` | Write the remote on the plan. Guessing here pushes a fork's work to its parent |
 | Exit 2, "the branch is behind &lt;base&gt;" | the base moved after the branch was cut | Rebase, then relaunch. A green sweep against a stale base certifies nothing anyone will merge into |
 | Exit 2, "another run holds this plan" | a `<plan>.run.lock` survived a dead run | `node <plugin>/scripts/goal-gate.ts unlock <plan>` once you know the holder is gone |
 | Exit 1, a slice was refused | the gate halted | The reason is in the run log and on the terminal. Reproduce it from the repo root: `node <plugin>/scripts/goal-gate.ts verify <plan> <n>` |
-| Exit 3, "the quota still looks exhausted" | the usage window did not reopen within the retries | Relaunch when it has. Checkboxes are the whole state, so it resumes at the first unticked box. **Hit on five slices across two runs** |
+| Exit 3, "the quota still looks exhausted" | the usage window did not reopen within the retries | Relaunch when it has. Checkboxes are the whole state, so it resumes at the first unticked box |
 | Exit 3, "the implementer wrote nothing in this tree" | the work went somewhere else | Look for it in another checkout before assuming it does not exist — this is what a wrong working directory looks like from here |
 | The gate halts on files you considered in scope | the slice's declared paths do not match reality | The declared list is the contract. Fix it in the plan, or keep the change out of this slice |
-| The run finishes but the review is not on the pull request | a safety hook refuses to post under your GitHub identity without explicit consent | Expected, and not a failure — the review text is in the run log. **Seen on three runs**; posting is opt-in via a `Review: comment` header |
+| The run finishes but the review is not on the pull request | a safety hook refuses to post under your GitHub identity without explicit consent | Expected, and not a failure — the review text is in the run log; posting is opt-in via a `Review: comment` header |
 
 ## Cost
 
 Everything runs on your **Claude Code subscription** — the runner spawns `claude -p`, so no API
 surcharge, and the 5-hour rate-limit window applies normally. A quota-exhausted implementer is
 slept through and retried against the same slice, bounded, then paused rather than spun. A burst
-rate limit gets seconds of backoff instead, after a measured incident where a 30-minute sleep fired
-at 4% of the session's usage.
+rate limit gets seconds of backoff instead.
 
 ## Long runs and the auto-updater
 
