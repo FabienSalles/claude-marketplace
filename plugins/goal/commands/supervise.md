@@ -45,6 +45,31 @@ Watch the background shell until it exits, without polling in a tight loop. Read
 | `2` | refused — the run never started |
 | `3` | paused — a clean boundary (quota, an implementer that wrote nothing) |
 
+## The failure report — evidence before diagnosis
+
+Every non-zero exit is reported in one structured block, in this order:
+
+1. **Command** — the exact command the run executed, verbatim from the log (`make php/qa`, the
+   `gateN=` line the gate refused…).
+2. **Output** — the failing part of that command's output, verbatim from `<plan>.run.log`: the
+   error lines plus enough surrounding context to read them (the failing suites, the assertion
+   diff, the lint error). Trim the green noise, never the failure.
+3. **Reproduce** — the command the developer can run themselves to see the same thing, what it
+   prints when healthy, and what it printed here.
+4. **Diagnosis** — what you conclude from 1–3, with your confidence.
+5. **Next move** — the repair, the relaunch, or the question for the developer.
+
+The same evidence duty covers silent mutations: after any stage that runs project commands
+(preflight, DoD), check `git status --short` — a QA command that *fixes* instead of failing
+(a mutating cs-fixer, a formatter) leaves a dirty tree nobody reported. Show that diff
+verbatim and say which command produced it; never fold it into a commit without showing it.
+
+Never deliver 4–5 without 1–3: a solution whose problem the developer never saw is advice, not
+a report — the failure this section was added after was three refusals reported as "jest OOM,
+fix Docker" without one line of jest output shown. And the whole block goes in the **final
+message of the turn**: text emitted between tool calls is not reliably displayed, so a report
+printed mid-turn may never reach the developer at all.
+
 ## Phase 3 — `0` or `3`: report, nothing to classify
 
 Neither exit names a fault. `0` → report what landed. `3` → report the boundary the log names
@@ -54,9 +79,11 @@ the developer's call, not a repair.
 ## Phase 4 — `2`: nothing was attempted
 
 A refusal exit means the preflight stopped the run before any iteration was handed to an
-implementer — there is no work to classify and nothing to discard. Print the log's `STOP` line
-verbatim and stop. Wake the developer: the cause (a lock, a dirty tree, a stale branch) is
-almost always theirs to fix, and relaunching blind repeats the same refusal.
+implementer — there is no work to classify and nothing to discard. Build the failure report:
+the `STOP` line names the command (Command), the log holds its output (Output — for a
+not-green base, the failing tests/lint lines themselves, not just the summary line). Wake the
+developer with it: the cause (a lock, a dirty tree, a stale branch, a red base) is almost
+always theirs to fix, and relaunching blind repeats the same refusal.
 
 ## Phase 5 — `1`: classify before repairing
 
@@ -90,9 +117,13 @@ Sort what it names into exactly one bucket:
 3. Prove it: `node ${CLAUDE_PLUGIN_ROOT}/scripts/plan-guard.ts <plan> <guard_hash>` must print
    `OK: no gate or dod line moved.` and exit 0. If it halts instead, the edit reached a guarded
    line — revert it (`git checkout -- <plan>`) and fall through to unknown.
-4. Relaunch the same iteration: `node ${CLAUDE_PLUGIN_ROOT}/scripts/goal-run.ts <plan>
-   <iteration>`. The implementer's tree from the halted attempt is left as it was; the contract
-   it is judged against is what changed.
+4. Have the gate re-judge the preserved tree **directly**: `node
+   ${CLAUDE_PLUGIN_ROOT}/scripts/goal-gate.ts verify <plan> <iteration>`, then on exit 0
+   `goal-gate.ts commit <plan> <iteration>`, then `goal-gate.ts dod <plan>` if it was the last
+   iteration. Do NOT relaunch via `goal-run.ts` here: its preflight requires a clean tree and
+   refuses (exit 2) the very implementer tree this procedure just decided to keep — observed on
+   ct-5865 iteration 3. The gate subcommands are the run's own judge/commit path, bite check
+   included, so nothing lands unbitten.
 
 ### Implementation fault → discard the tree, relaunch unchanged
 
@@ -106,8 +137,9 @@ Sort what it names into exactly one bucket:
 
 ### Unknown → stop, wake the developer
 
-Print the `HALT` block verbatim, say plainly that you could not classify it, and name why —
-which detail put it outside the closed set. Do not guess at a repair and do not discard anything.
+Build the failure report — the `HALT` block verbatim is its Command/Output — say plainly that
+you could not classify it, and name why — which detail put it outside the closed set. Do not
+guess at a repair and do not discard anything.
 This is the same halt a human reading the log would have to solve; it stays theirs.
 
 ## Phase 6 — One relaunch, then stop
@@ -115,8 +147,8 @@ This is the same halt a human reading the log would have to solve; it stays thei
 Whichever repair ran, watch the relaunch exactly as in Phase 2, then report Phase 3/4/5 against
 *its* exit code — but do not repair a second time. A second halt on the same iteration, of either
 kind, means the classification was wrong, the repair was incomplete, or the halt has a cause this
-command does not model: print everything (both `HALT` blocks, the repair made in between,
-`git status --short`) and stop for the developer. Looping again is exactly the failure the design
+command does not model: build the failure report with everything (both `HALT` blocks, the repair
+made in between, `git status --short`) and stop for the developer. Looping again is exactly the failure the design
 guards against — an agent that keeps relaunching optimizes for the run continuing, not for the
 work being right.
 
