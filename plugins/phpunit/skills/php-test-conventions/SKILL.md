@@ -53,6 +53,12 @@ $service->call($arg)->shouldHaveBeenCalled();
 
 Prefer an existing real / null implementation when it reads cleaner (an unverified logger → `new NullLogger()`, not a mocked interface). Otherwise: **manual stubs** for simple cases, **Prophecy** for complex dependencies, **Guzzle MockHandler** for HTTP clients.
 
+**Prophecy is the rule, not a statistic.** A double that needs scripting or verification is
+`prophesize()` — not `createMock()` + `willReturnCallback()`. Never arbitrate by counting
+existing usages in the repo ("15 files use createMock"): a convention is a rule, not a
+majority vote. `createMock` survives only where Prophecy technically cannot (final class
+without an interface).
+
 > For the full hierarchy and examples, see [references/test-doubles.md](references/test-doubles.md).
 
 ## PHP-specific: Data Providers (PHPUnit syntax)
@@ -84,6 +90,28 @@ public static function provideProfileAndExpectedEligibility(): \Generator
     ];
 }
 ```
+
+## PHP-specific: Providers That Decline a Contract Enum
+
+When the datasets enumerate an enum's cases, **derive them from `::cases()`** — a hardcoded
+list breaks at the first new case and buries which one is excluded:
+
+```php
+$everySource = SwisslifeFundSourceOption::cases();
+$everySourceButTheEmploymentIncome = [];
+
+foreach ($everySource as $source) {
+    if ($source === SwisslifeFundSourceOption::EmploymentIncome) {
+        continue;
+    }
+
+    $everySourceButTheEmploymentIncome[] = $source;
+}
+```
+
+Assert with `assertSame` on **lists of the same enum** — map the SUT's output back with
+`::from()` — never `in_array` on strings plus an arithmetic `assertCount`: only compared
+lists show exactly which case went missing.
 
 ## PHP-specific: SUT Naming
 
@@ -127,6 +155,8 @@ When testing API clients, always use a **real serializer** to catch deserializat
 | Complex dependencies | Prophecy — see [references/test-doubles.md](references/test-doubles.md) |
 | HTTP client testing | Guzzle MockHandler — see [references/http-testing.md](references/http-testing.md) |
 | Verify method called (Prophecy) | `$dep->method($args)->shouldHaveBeenCalled()` |
+| Double needing scripting/verification | Prophecy (`prophesize`) — never `createMock`; never arbitrate by usage counts |
+| Provider over a contract enum | Derive datasets from `::cases()` with a named exclusion; `assertSame` on enum lists |
 | Anything needing a Symfony kernel | `symfony:symfony-test-conventions` — `WebTestCase` / `KernelTestCase` / `TypeTestCase`, crawler, container doubles |
 | Advanced assertions | See [references/assertion-patterns.md](references/assertion-patterns.md) |
 | Exception test naming | `itThrows{ExceptionClassName}When{Condition}` |
