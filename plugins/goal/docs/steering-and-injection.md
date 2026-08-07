@@ -192,8 +192,8 @@ check was not switched off; it does not prove the scope stayed the same size.
 
 ## The capability restriction there used to be, and what replaced it
 
-The earlier bash runner refused to start unless `.claude/settings.local.json` mentions the verbs
-`scripts/goal-deny-setup.sh:34` installs — `git commit`, `git push`, `git add` and `git stash`.
+The earlier bash runner refused to start unless `.claude/settings.local.json` mentioned four
+denied git verbs — `git commit`, `git push`, `git add` and `git stash`.
 That was the one capability restriction the harness enforced, and the
 current runner dropped it for three reasons: the check was a `String.includes` over raw JSON, so an
 `allow` entry naming the same verbs passed it; it was installed as a project rule, so it restrained

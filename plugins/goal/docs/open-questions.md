@@ -354,8 +354,8 @@ budgets a proving run. And separately, whether the gate being mutable mid-run is
 HEAD before and after, replays declared commands, refuses undeclared paths. There is no
 *confinement* anywhere — no sandbox, no container, no filesystem boundary, no egress control. The
 implementer is an ordinary `claude -p` holding `Read, Write, Edit, Grep, Glob, Bash` under
-`--permission-mode auto`, and the only fence around it is four deny prefixes on git verbs
-(`scripts/goal-deny-setup.sh:34`: `git commit`, `git push`, `git add`, `git stash`).
+`--permission-mode auto`, and no fence stands around it: the four deny prefixes on git verbs
+were opt-in, and their installer has since been removed.
 
 **Two of the blind spots this question was written around have since been closed by more
 detection, which is worth recording precisely because it is the cheaper answer winning again.**
@@ -366,9 +366,9 @@ halt the run named for what they are — none of them visible to `git status --p
 **What still costs, and it is structural rather than a list of bugs.** Detection is bounded by
 what its author thought to snapshot, and confinement is not:
 
-- those deny prefixes are installed by hand, never checked at run time — the preflight check that
-  read them is gone (`run/preflight.ts:7-12`) — and they live in a gitignored file the implementer
-  can write to without appearing in any diff, read only at the *next* session's start;
+- nothing denies the implementer anything at run time: the deny-rule installer and the preflight
+  check that read its rules are both gone (`run/preflight.ts:7-12`), detection having replaced
+  them;
 - `docs/steering-and-injection.md` already names network egress from the implementer as untreated,
   and says why it stayed untreated: *"That is a sandbox question, not an orchestration one."*;
 - every check above compares a *before* to an *after*, so anything the implementer does and undoes

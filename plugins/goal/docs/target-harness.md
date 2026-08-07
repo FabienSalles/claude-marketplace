@@ -182,9 +182,9 @@ rule in `.claude/settings.local.json`, checked by `String.includes` on the raw
 file.~~ **Resolved for the current runner**, which dropped the check
 rather than repair it: an `allow` list naming the same commands satisfied it, the rule was
 installed project-wide so it also restrained the developer's own session, and it was read once
-before the loop, so it bound a session started after it and not one already running. (The rules
-`scripts/goal-deny-setup.sh:34` still installs are four: `git commit`, `git push`, `git add`,
-`git stash`.) The earlier bash runner enforced it and has since been deleted.
+before the loop, so it bound a session started after it and not one already running. The earlier
+bash runner enforced it and has since been deleted, and the installer script followed it out of
+the tree.
 
 The claim now rests on three snapshots taken around the implementer and compared after it, all
 of them executed rather than read off a file (`run/iteration.ts:132-165`). HEAD, for a commit.

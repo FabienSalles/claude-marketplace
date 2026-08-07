@@ -122,7 +122,6 @@ Exit `0` landed · `1` the gate refused a slice · `2` refused before anything w
 | A git-ignored `.claude/` | every run | Preflight refuses a plan directory git can see: the spec, the ticked box and the run log would read as an undeclared scope leak |
 | `betterleaks` or `gitleaks` | any push | The push is refused, not skipped, when neither is installed |
 | `gh` authenticated | `Policy: commit+pr`, or a GitHub source | `gh auth login` |
-| `jq` | `goal-deny-setup.sh` only | |
 | Atlassian MCP | a Jira source | Or paste with `inline` |
 
 Optional plugins enhance and never gate: `pocock` (grill skills), `superpowers`
@@ -193,9 +192,7 @@ guarantee narrower than its slogan.
   and the git directory's configuration and hooks. A permissions rule was tried and removed — it
   was read as a substring of raw JSON, which an `allow` entry satisfied just as well; it also
   restrained the developer's own session, and permissions are read at session start, so it
-  described a future session and never the running one. `goal-deny-setup.sh` still installs four
-  deny rules for the developer who wants them, but the runner never checks for it and does not
-  depend on it.
+  described a future session and never the running one.
 - **A test that passes without the implementation halts the slice** — unless the slice declares no
   `test_files`, which skips the check entirely. It proves the *new* test bites; **it does not
   prove a pre-existing test in the same files was not quietly weakened.**
@@ -233,13 +230,12 @@ where they win — is [`docs/comparison.md`](docs/comparison.md).
 | `goal-run.ts` + `run/*.ts` | `scripts/` | The runner — 1,514 lines over 15 modules: preflight, sweep, lock, iteration, publish, close, report |
 | `goal-gate.ts` + `gate/*.ts` | `scripts/` | The judge, and the only committer — 1,134 lines over 12 modules. Exit 0 runnable · 1 `HALT` with a reason · 2 misuse |
 | `transcripts.ts` · `digest.ts` | `scripts/` | Resolve a run's transcripts and compress them to a tool-call digest. `transcripts.ts` runs on every failed implementer attempt |
-| `goal-deny-setup.sh` | `scripts/` | Unions four deny rules into the tree's `.claude/settings.local.json`. Additive, idempotent, needs `jq`. Not a precondition of anything |
 | `plan-guard.ts` | `scripts/` | Hashes every `gateN=`/`dodN=` line, plus whether each iteration's `test_files` is empty, so a supervised repair can prove it disarmed nothing. Nothing under `scripts/` calls it — only `/goal:supervise`'s prose asks a model to. **Never run** |
 | `goal-run-implementer` · `goal-run-lens` · `goal-run-auditor` | `agents/` | Spawned by the runner: one implementer per slice, then an advisory lens and an auditor at close |
 | `goal-run-reviewer` · `goal-session-auditor` | `agents/` | Post-publication review and transcript audit. **Never fired** |
 | [`grill-adversarial`](skills/grill-adversarial/SKILL.md) | `skills/` | Opt-in, loaded during `/goal:spec`'s grill |
 | [`product:vertical-slice`](../product/skills/vertical-slice/SKILL.md) · [`product:delivery`](../product/skills/delivery/SKILL.md) | *(plugin `product`)* | Loaded by `/goal:plan` to split the work and give each slice a shipping strategy |
-| `tests/run.sh` | `tests/` | 271 tests in 48s. Wraps `node --test` and additionally refuses a zero-pass run, an undeclared skip, and a missing summary — a bare `node --test` exits 0 on a glob matching nothing |
+| `tests/run.sh` | `tests/` | 266 tests in 47s. Wraps `node --test` and additionally refuses a zero-pass run, an undeclared skip, and a missing summary — a bare `node --test` exits 0 on a glob matching nothing |
 | `done-criteria.template` · `goal-handoff.template` · `post-merge.template` | `templates/` | The DoD baseline, the handoff `/goal:next` fills, and the merge-day checklist — printed, never executed |
 
 The **work-id** generalises the old issue number: `issue-<N>` for a GitHub issue, the lowercased

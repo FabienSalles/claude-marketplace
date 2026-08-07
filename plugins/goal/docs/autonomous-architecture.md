@@ -42,7 +42,7 @@ so an orchestrator that misreads a result cannot produce a bad commit.
 
 The boundary of that anchor is worth naming. *Only the gate commits* used to lean on an
 implementer denied `git commit`, `git push`, `git add` and `git stash` by a Claude Code settings
-rule (`scripts/goal-deny-setup.sh:34`), and on a preflight check that
+rule, and on a preflight check that
 `.claude/settings.local.json` contained those strings — a substring match an ALLOW list satisfied
 exactly as well as a DENY one. The current runner dropped that
 check: it was also installed project-wide, so it restrained the developer's own session, and

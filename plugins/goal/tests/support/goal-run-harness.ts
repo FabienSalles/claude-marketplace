@@ -5,7 +5,6 @@ import { basename, join, resolve } from 'node:path';
 import { tmpDir } from './tmp.ts';
 
 export const RUN_NODE = resolve(import.meta.dirname, '..', '..', 'scripts', 'goal-run.ts');
-export const DENY_SETUP = resolve(import.meta.dirname, '..', '..', 'scripts', 'goal-deny-setup.sh');
 
 export const git = (cwd: string, ...args: string[]) => spawnSync('git', args, { cwd, encoding: 'utf8' });
 
@@ -69,11 +68,6 @@ export type FixtureOptions = {
   // A bare `origin` two path segments deep (`acme/demo.git`), so `repoOf`'s parse of a real
   // remote URL has something genuine to strip down to `acme/demo` rather than a stand-in.
   remote?: boolean;
-  // 'valid' (default) writes a .claude/settings.local.json denying git commit, push and add, so
-  // a fixture not exercising R9 itself starts past that preflight check. 'partial' denies only
-  // commit, the shape of a rule installed before the other two verbs were added. false leaves
-  // .claude/ without one, the tree goal-deny-setup.sh has never run against.
-  deny?: 'valid' | 'partial' | false;
 };
 
 // Both binaries the script shells out to are faked first on PATH, so a test drives the whole
@@ -243,15 +237,6 @@ exit 0
     git(dir, 'checkout', '-qb', branch);
   }
 
-  if (options.deny !== false) {
-    const rules =
-      options.deny === 'partial'
-        ? ['Bash(git commit:*)']
-        : ['Bash(git commit:*)', 'Bash(git push:*)', 'Bash(git add:*)'];
-    mkdirSync(join(dir, '.claude'), { recursive: true });
-    writeFileSync(join(dir, '.claude', 'settings.local.json'), JSON.stringify({ permissions: { deny: rules } }));
-  }
-
   let planText = options.planText ?? PLAN;
 
   if (options.prBase) {
@@ -314,5 +299,3 @@ export const logOf = (fixture: Fixture) => join(runDirOf(fixture), '.run.log');
 export const jsonlOf = (fixture: Fixture) => join(runDirOf(fixture), '.run.jsonl');
 
 export const sessionOf = (fixture: Fixture) => join(runDirOf(fixture), '.run.session');
-
-export const denyOf = (fixture: Fixture) => join(fixture.dir, '.claude', 'settings.local.json');

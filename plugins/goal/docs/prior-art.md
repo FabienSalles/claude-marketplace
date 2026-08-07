@@ -106,8 +106,8 @@ like running a Bash command instead to access file contents."[^amp] Its answer i
 chain with an `allow / reject / ask / delegate` verdict, `delegate` handing the decision to an
 external program that answers by exit code.
 
-The audit found precisely the failure Amp predicted, on the denial side. `goal-deny-setup.sh:34`
-installs four prefix rules — `Bash(git commit:*)`, `Bash(git push:*)`, `Bash(git add:*)`,
+The audit found precisely the failure Amp predicted, on the denial side. The deny installer of
+the time set four prefix rules — `Bash(git commit:*)`, `Bash(git push:*)`, `Bash(git add:*)`,
 `Bash(git stash:*)`. The earlier preflight verified they were present with a `String.includes`
 over the raw text of `.claude/settings.local.json`, so an *allow* entry naming the same verbs
 satisfies it. The rule does not apply retroactively to a session already running. The current
