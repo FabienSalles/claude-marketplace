@@ -12,6 +12,24 @@ reading its exit code. That program is the only thing in the system allowed to c
 Before it accepts a slice, it sets the implementation aside and runs the test again. If the test
 still passes, the slice is refused: it proved nothing.
 
+## The spec, then the plan — where the work gets its shape
+
+The gate can only enforce what the plan declares, so the leverage sits upstream, in the two
+commands that write it.
+
+**`/goal:spec` structures the request into a functional contract.** Any source — a Jira ticket, a
+GitHub issue, a file, pasted text — is normalised, then grilled: every functional gap becomes a
+question asked now, and every business rule ends as an observable criterion. That list **is** the
+functional Definition of Done.
+
+**The grill can be made adversarial.** Opt in, and `grill-adversarial` attacks the story instead
+of completing it — the case the ticket forgot, the rule that contradicts another, the input nobody
+specified — so the holes surface while they are still questions, not bugs in a landed slice.
+
+**`/goal:plan` turns that contract into one a program can enforce.** Every criterion is mapped to
+the command that proves it, the work is cut into slices each carrying its own proof, and the
+result is hashed and frozen on a feature branch. It is also where the mode is chosen.
+
 ## Two modes, and you pick one per plan
 
 This is the first real decision, and it is the one that shapes everything else. You are asked it
