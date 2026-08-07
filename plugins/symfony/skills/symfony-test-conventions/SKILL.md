@@ -27,6 +27,22 @@ function is the most common overspend — a transformation from a projection to 
 
 > FormType testing details: [references/formtype-testing.md](references/formtype-testing.md).
 
+## Where a form rule's assertion lives
+
+The table above says what boots; this one says **which test owns which assertion**. The
+governing principle is `craft:testing-principles` §14 — the level where the business intent
+reads best; the deciding class is the last resort when no higher level stays legible.
+
+| The rule | Its test |
+|---|---|
+| an option / constraint of the form type | `TypeTestCase` on the **real** type that carries it — never a test-only concrete subclass |
+| which business context sets the option | unit test of the orchestrator (strategy / handler): `prophesize` the `FormFactoryInterface`, assert the options passed to `create()` with `Argument::withEntry(...)` |
+| the full chain | **one** `WebTestCase` path per observable effect — the request reaches (or not) the port, the field carries the error |
+
+The placement smell: **re-reading through the crawler a list a lower level owns** (`<option>`
+extraction, select states). That assertion scrapes a consequence instead of naming the rule —
+keep the crawler for what only the rendered page can show.
+
 ## What NOT to test: FormType structure
 
 The `craft:testing-principles` rule "don't re-verify what a higher-level test already covers"
@@ -189,6 +205,7 @@ Prefer a plain hand-written double (public properties, no Prophecy) for these �
 | Situation | Approach |
 |---|---|
 | Pure function, no container | `TestCase` — don't boot a kernel |
+| Which test owns a form rule | Option → `TypeTestCase` on the real type; who sets it → orchestrator unit test (prophesized factory, `Argument::withEntry`); full chain → one `WebTestCase` per effect |
 | FormType in isolation | `TypeTestCase` — see [references/formtype-testing.md](references/formtype-testing.md) |
 | HTML page content, redirect, form state | Built-in assertions — see [references/interface-assertions.md](references/interface-assertions.md) |
 | API JSON response (deterministic) | `assertJsonStringEqualsJsonString` + heredoc — see [references/api-json-testing.md](references/api-json-testing.md) |
