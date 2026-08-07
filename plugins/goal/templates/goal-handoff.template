@@ -8,6 +8,12 @@ the `[x]` step and the policy block. Single source of truth — edit here, all t
 ## How to fill it
 
 - `<plan path>` = the resolved spec path (e.g. `.claude/plans/<work-id>-spec.md`).
+- `<skills résolus pour l'itération>` = the concrete skill names, derived from the
+  iteration's `test_files` + `impl_files`: `*Test.php` → `craft:testing-principles` +
+  `phpunit:php-test-conventions` (+ `symfony:symfony-test-conventions` when a kernel
+  boots); `src/**/*.php` → the project's PHP convention skills; `*.test.js` → the JS
+  test skills. Name them — the generic « charge les skills applicables » was skipped
+  in practice by the very sessions it addressed.
 - « Done » line 1 = the iteration's acceptance **test** command (use whatever the
   plan says — PHP/JS/other, dockerized where the plan is).
 - « Done » line 2 = the project **lint / QA** command.
@@ -54,9 +60,10 @@ Folded to one policy branch and one delivery-mode branch, the worst case lands n
 
 /goal Implémente la PROCHAINE itération non cochée de <plan path>, puis STOP.
 
-Avant de coder : charge les skills de conventions du projet applicables au périmètre
-(backend, templates, tests, TDD, langage) et lis le sibling le plus proche de la feature
-pour capter les conventions locales.
+Avant de coder : charge MAINTENANT, via le Skill tool : <skills résolus pour l'itération>.
+Vérifie que le contenu de chaque skill est arrivé dans le contexte — un skill invoqué sans
+contenu reçu se recharge. Puis lis le sibling le plus proche de la feature pour capter les
+conventions locales.
 
 Si l'itération porte une ligne « Delivery » (ou le spec une « Delivery strategy ») : charge
 `product:delivery` et respecte-la. N'AJOUTE que du additif — ne supprime, ne renomme et ne

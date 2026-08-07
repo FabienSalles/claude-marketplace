@@ -135,6 +135,14 @@ already answers.
   (a test command, a lint rule, a build output) — this is how the DoD gets teeth. Take
   the command they can run, not the name of a test: a name is proof of nothing once it
   is renamed, and only the command is replayed later.
+- For **each business rule**: which test **owns** it? Pick the level where the intent reads
+  best (`craft:testing-principles` §14) — an E2E command is right when the full-chain test
+  states the rule plainly, wrong when its assertion would scrape the DOM for a consequence
+  a lower level owns. "Every rule → the controller test" is a plan smell; the gate's
+  `test_files` must name the owning test.
+- Any **mechanism claim** ("X produces the violation", "the framework returns Y") enters
+  the plan verified by a probe (scratch script, grep into vendor), or carries the word
+  **hypothesis**. An unverified mechanism claim costs a full RED cycle downstream.
 - What is the smallest command that proves the whole thing works end to end?
 - What must **not** change as a side-effect? (files / behaviors to protect)
 - What are the project's actual test and lint/QA commands? (dockerized where
