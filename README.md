@@ -23,7 +23,8 @@ a pull request without you in the loop, under a rule most autonomous loops do no
 > again: if the test still passes, the slice is refused.
 
 It also declares, per slice, which files may change and how many diff lines may be spent, and
-refuses on either. Six unattended runs, 26 slices, all gate-verified — the reports are on disk.
+refuses on either. Unattended never means unwatched: every run leaves a log, a timed event stream
+and an auditor's report on disk.
 
 It ships in **two modes, and you pick one per plan**:
 

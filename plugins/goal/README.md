@@ -99,16 +99,23 @@ outright** rather than quietly committing under a policy that says it may not.
 - **An account of what it cost.** Every stage is timed into a JSON event stream, and an auditor
   writes a report naming what halted the run and which failures recur across earlier runs.
 
-## Does it actually run?
+## Why you can leave it
 
-Yes, and the evidence is on disk rather than in this paragraph. **Six unattended runs over four
-days, 26 slices, all landed gate-verified, 4h55m of measured wall time** — every row in every
-report names a commit that is in this repository's history.
+Autonomy is only worth having if walking away is reasonable. That is what the harness buys:
 
-The same record is honest about the rest: one slice was refused twice by the gate before landing
-unchanged on its third attempt, two slices burned a 30-minute sleep on a rate limit that had
-already cleared, and the advisory reviewer has caught a real defect the gate structurally could
-not see. Reports live in `.claude/goal-runs/`.
+- **The run spends its own time, not yours.** Your judgment is load-bearing for minutes — the
+  grill, the plan, the mode — and the slices land while you are in another session, or asleep.
+- **It verifies without getting tired.** Nine refusals before a byte is written, a base sweep,
+  then per slice: the declared command replayed, the declared paths enforced, the diff budget
+  counted, the test proven to bite, a secret scan before any push — a pace no human review
+  sustains.
+- **The harness is what makes the autonomy usable.** An agent left alone optimizes for
+  finishing; here every freedom is bounded by a refusal, so unattended never means unwatched.
+  You are not releasing a model into the wild — you are handing a frozen plan to a program that
+  refuses whatever the plan did not declare.
+- **You were not there, and it does not matter.** The run log and the auditor's report name what
+  landed, what halted and what it cost; an advisory reviewer reads the result with eyes the gate
+  does not have — it has caught a real defect the gate structurally could not see.
 
 ## Quick start
 
