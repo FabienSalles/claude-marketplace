@@ -41,6 +41,15 @@ Never write tests coupled to implementation without behavior. Only test classes 
 
 **Anti-pattern — the name promises a rule the assertion doesn't show:** a test named for a business rule (`submittingTheCouponExposesTheCoupon`) that only echoes back the value it submitted proves nothing — binding input to output is a framework given. Assert what the code exposes or withholds **as a function of inputs/context** (which fields exist per case, what is dropped when a condition flips). No such rule at this layer → the test belongs elsewhere or nowhere.
 
+**Anti-pattern — testing the absence of a rule:** a test proving that unwired code does not
+run ("the other provider is not filtered" when no production path wires the filter) protects
+nothing — there is no rule, so there is nothing to break. Absence of behavior is recorded in
+the plan's scope, never in a test.
+
+**Anti-pattern — testing a capability where production doesn't wire it:** a generic mechanism
+(an option, an extension point) is tested only through the concrete class production actually
+wires to it. Exercising it elsewhere proves a possibility, not a rule.
+
 ## 3. Pre-Test Checklist
 
 Before writing a new test, confront it to these **3 questions**. If you can't answer "yes" to all three, do not write the test.
@@ -81,6 +90,12 @@ Do NOT parameterize when assertions differ or setup is specific to each case.
 **Split first, consolidate after.** One test per case is fine while developing, but tests sharing the same Act+Assert and differing only in data are a smell — do a consolidation pass into one parameterized test. Split leftovers read as many features when it is one.
 
 **Name = mechanism; keys = the rule, in domain terms.** Keep the method name plain about what it exercises (`itRetainsTheSubmittedData`), not the rule crammed in (`itRetainsTheFieldsAvailableToThePremiumCustomerContext`). Each case key carries the rule using the domain's **existing** words (`a premium customer gets free shipping`), never jargon coined for the test (`eligible`, `the good case`) — an unresolvable term just moves the unclear intent into the key. **Criterion:** name + keys make the rule legible with no prose comment.
+
+**Identifiers follow the same law as keys.** Test method names, provider names, and variables
+reuse the codebase's **exact** vocabulary: the class is `Subscriber` → never "client"; the
+field is `source` → never "origin". And never borrow a term the domain reserves for something
+else — "offered/offering" reads as the `Offer` product, not as select choices. A synonym in a
+test name is a future misreading.
 
 ## 8. Factory Methods / Functions
 
@@ -159,6 +174,12 @@ reason — the real field name, a class the framework/theme actually emits. If n
 locator exists without adding test-only production code, do **not** add it — find
 another assertion.
 
+The mirror rule holds inside the test suite: never write a **production-shaped class that
+exists only for tests** — a concrete subclass of a production abstraction, a fake form type,
+a test-only implementation used as the SUT. The fixture for an abstract class's behavior is
+the **real concrete class** that carries the business rule. (Doubles for *collaborators* —
+§10/§11 — remain legitimate; this rule is about the thing under test.)
+
 ## 13. Interface Tests — Couple to Perceivable Function, Not Wiring
 
 An interface / UI test proves **behavior**: the text, values, labels, and state a user
@@ -198,6 +219,32 @@ assertSame("Express delivery",  options[1].text())
 If your assertion would still pass with the wrong text/value/state on screen, it tests
 wiring — rewrite it against perceivable content.
 
+## 14. Pick the Level Where the Intent Reads Best
+
+A business rule is tested **where its business intent is most visible** — not mechanically
+at the class that implements it, and not mechanically end-to-end either.
+
+1. **A higher-level test that states the rule plainly is perfect.** When the functional
+   test reads as the rule ("a subscriber without profession cannot declare employment
+   income") through a simple, robust assertion, keep it there — it proves the intent and
+   the wiring at once.
+2. **Descend when the top stops showing the intent.** A high-level test that turns fragile
+   or complex, whose assertion scrapes consequences instead of naming the rule (re-reading
+   `<option>` lists from the DOM, counting nodes), is at the wrong level — that fragility
+   is the signal to move down, not a cost to accept.
+3. **The deciding level is the last resort that always works.** When no higher level can
+   express the rule legibly, test the class that decides it — on the real class, never a
+   test-only stand-in (§12).
+4. **Orchestration is an intent of its own.** "This context routes that data to that
+   collaborator" is tested at the orchestrator: double the receiving collaborator and
+   assert **what transits** (the captured arguments). The top hides the glue inside its
+   outcome; the bottom cannot see who wires it.
+5. **One owner per rule.** Wherever the rule lands, other levels do not re-verify it —
+   each keeps only what it alone can observe.
+
+**Criterion:** read the test's name and assertions alone — they must state the business
+rule in domain terms. If they describe scraping mechanics, descend one level and retry.
+
 ## Quick Reference
 
 | Rule | Principle |
@@ -221,3 +268,8 @@ wiring — rewrite it against perceivable content.
 | No logic in the double | Never reimplement the real body in a mock — use a default stub + spy on the call, or assert the behavior in the collaborator's own test |
 | No prod code for tests | Never add a class/`js-*`/id/attribute to production solely as a test locator — locate via real production markup |
 | Interface tests | Selectors only locate; assert perceivable content (text/value/state), not technical classes or framework defaults |
+| Level choice | The level where the intent reads best; the deciding class is the last resort; orchestration → assert what transits to a doubled collaborator |
+| Absence of rule | Never prove that unwired code does not run — scope lives in the plan, not in a test |
+| Unwired capability | A generic mechanism is tested only through the concrete class production wires to it |
+| Test-only classes | No production-shaped class living only for tests — the fixture is the real concrete class |
+| Vocabulary | Identifiers reuse the codebase's exact terms — no synonyms ("client" for `Subscriber`), no reserved-term collisions ("offered" vs `Offer`) |
