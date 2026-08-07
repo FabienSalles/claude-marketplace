@@ -12,9 +12,10 @@
 The goal was to deliver a planned feature without sitting in front of it — a loop that takes a
 frozen plan and turns it into a reviewed pull request.
 
-Four shapes were built for this. Three were deleted. This record exists because each deletion was
-paid for with a real defect on a real run, and the reasoning is not recoverable from the surviving
-code — the whole point of the current shape is that the things it does *not* do leave no trace.
+Four shapes were built for this. Three were deleted. This record exists because the reasoning
+behind each deletion is not recoverable from the surviving code — the whole point of the current
+shape is that the things it does *not* do leave no trace. Each rejected shape also left a real
+defect on a real run; those defects illustrate the reasons below, they are not the reasons.
 
 One rule emerged and now decides every placement question in the harness:
 
@@ -64,7 +65,7 @@ The principle that falls out, and the one-line version of this whole document:
   audit is possible at all.
 - **Whole classes of bug disappear structurally.** A typed list cannot produce the empty regex
   alternative that broke the bash generation.
-- **Each module is independently testable**, which is what 271 tests over 30 modules rests on.
+- **Each module is independently testable**, which is what 266 tests over 30 modules rests on.
 
 ### Negative
 
@@ -91,18 +92,22 @@ The principle that falls out, and the one-line version of this whole document:
 
 ### Option 1: `/goal` on its own
 
-Claude Code's native goal loop, driven by the handoff the planning session emits, one slice at a
-time.
+Claude Code's native goal loop, handed the feature as a single goal.
 
 - **Advantages**: nothing to build; nothing to install; the developer sees every diff.
-- **Disadvantages**: **there is no judge.** The model decides when the work is done, so every
-  green slice is self-certified.
-- **Reason for rejection**: not rejected — **kept, as one of the two supported modes.** With a
-  human reviewing each slice, self-certification is not a hole, because the human is the judge. It
-  is only unacceptable *unattended*. `/goal:next` exists precisely to plug the gap in this mode: it
-  is the only step that replays a finished slice's acceptance commands independently instead of
-  trusting its checkbox. Everything else in this ADR is the answer to the question *what replaces
-  the human when nobody is watching.*
+- **Disadvantages**: **all-or-nothing, and no judge.** One goal for a whole feature goes too far
+  in one stride: the smallest problem puts everything back in question, and what a failed run
+  leaves is one huge diff nobody can judge or salvage — nothing deliverable. And the model
+  decides when the work is done, so every green step is self-certified.
+- **Reason for rejection**: rejected at feature scale, **kept per slice** — one of the two
+  supported modes. The plugin never hands `/goal` more than one slice, each cut as a functional
+  delivery, so progress is iterative and a run that dies mid-plan still leaves every landed
+  slice shippable instead of nothing. At that scale the remaining hole is self-certification,
+  and with a human reviewing each slice the human is the judge — it is only unacceptable
+  *unattended*. `/goal:next` exists precisely to plug that gap: it is the only step that replays
+  a finished slice's acceptance commands independently instead of trusting its checkbox.
+  Everything else in this ADR is the answer to the question *what replaces the human when nobody
+  is watching.*
 
 ### Option 2: a dynamic Workflow (941 lines, since deleted)
 
@@ -114,12 +119,18 @@ The orchestration expressed as a workflow script whose only primitive is spawnin
   whose entire job was to run one command and report its exit code, because a verdict had to cross
   back as an exit code rather than as a reading of the output. An agent whose profession is to be
   a shell. Every `sed`, every `git status` costs a model call, a latency and a notification.
-- **Reason for rejection**: the abstraction fights the task. Orchestrating *is* sequencing
-  deterministically, and a workflow turns every deterministic step non-deterministic. The defect
-  that shape actually produced: it initialised its own tracking of a published pull request to
-  `false`, so on a branch that already carried an open pull request it retried creating one at
-  every slice, never rewrote the body and never marked it ready — **it landed all of the work and
-  silently published none of it.**
+- **Reason for rejection**: the abstraction fights the task, on every axis at once. Sequential
+  and parallel control flow was genuinely hard to express in it, and every guarantee had to be
+  bolted on as one more check in one more step — the workflow grew heavier at each iteration and
+  a run's execution time grew with it. Each of those steps was decided by an agent, where the
+  same decision as deterministic code costs nothing and cannot drift — less reliable, for no
+  gain, on input that is already a frozen plan with predefined steps. A dynamic workflow earns
+  its keep on open-ended work — research, exploration, judgement fanned out over an unknown
+  space — not on a plan a program can sequence. The defect that shape produced, for the record:
+  it initialised its own tracking of a published pull request to `false`, so on a branch that
+  already carried an open pull request it retried creating one at every slice, never rewrote the
+  body and never marked it ready — **it landed all of the work and silently published none of
+  it.**
   One piece of evidence in its favour is worth recording: the prose version of the same loop ended
   in seventeen prohibitions (*never tick before the gate*, *a halt is final*, *never touch the
   index*), and the workflow reduced them to four. One writes those sentences only about things
@@ -133,11 +144,14 @@ The orchestration expressed as a workflow script whose only primitive is spawnin
 - **Disadvantages**: wrong material. 594 lines in one file cannot follow the convention the plugin
   holds itself to — one module per group of business rules — and bash has no type that would stop
   a list from degrading into a string.
-- **Reason for rejection**: the defect found on its first real use. The pull-request body built a
-  regex alternation from the list of landed slices, which accumulated from an empty string; the
-  leading space became an empty alternative; BSD `grep` refused it; **the pull request body stayed
-  empty for six slices.** In the Node rewrite that bug is unrepresentable — the equivalent value
-  is a typed array.
+- **Reason for rejection**: maintainability, before any defect. 594 lines of shell in one file
+  were hard to read, hard to change and not a base to industrialise — no modules, no types — so
+  the move was to a language readable and popular enough to be worked on for years. The defect
+  found on its first real use confirmed the call: the pull-request body built a regex alternation
+  from the list of landed slices, which accumulated from an empty string; the leading space
+  became an empty alternative; BSD `grep` refused it; **the pull request body stayed empty for
+  six slices.** In the Node rewrite that bug is unrepresentable — the equivalent value is a typed
+  array.
 
 ### Option 4: a compiled binary instead of a slash command on top
 
