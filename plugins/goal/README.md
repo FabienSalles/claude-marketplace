@@ -30,6 +30,36 @@ specified — so the holes surface while they are still questions, not bugs in a
 the command that proves it, the work is cut into slices each carrying its own proof, and the
 result is hashed and frozen on a feature branch. It is also where the mode is chosen.
 
+## Quick start
+
+Both modes share the same first step — the plan.
+
+```bash
+cd ~/projects/<repo>
+
+claude
+> /goal:spec CT-1234    # the functional contract — Jira via MCP, a GitHub issue, a file, or 'inline'
+> /goal:plan CT-1234    # the technical grill, the mode, then the locked plan on a feature branch
+```
+
+Then, from the branch the plan locked:
+
+**Under `manual`** — one slice per session, and you review between them.
+
+```text
+> /goal <paste the handoff /goal:plan just gave you>
+> /goal:next                       # verifies, reconciles, hands you the next one
+```
+
+**Under `commit+pr`** — the whole plan, once.
+
+```text
+> /goal:supervise .claude/plans/<work-id>-spec.md
+```
+
+Exit `0` landed · `1` the gate refused a slice · `2` refused before anything was attempted ·
+`3` paused at a clean boundary, relaunch resumes there.
+
 ## Two modes, and you pick one per plan
 
 This is the first real decision, and it is the one that shapes everything else. You are asked it
@@ -117,36 +147,6 @@ Autonomy is only worth having if walking away is reasonable. That is what the ha
   landed, what halted and what it cost; an advisory reviewer reads the result with eyes the gate
   does not have — it has caught a real defect the gate structurally could not see.
 
-## Quick start
-
-Both modes share the same first step — the plan.
-
-```bash
-cd ~/projects/<repo>
-
-claude
-> /goal:spec CT-1234    # the functional contract — Jira via MCP, a GitHub issue, a file, or 'inline'
-> /goal:plan CT-1234    # the technical grill, the mode, then the locked plan on a feature branch
-```
-
-Then, from the branch the plan locked:
-
-**Under `manual`** — one slice per session, and you review between them.
-
-```text
-> /goal <paste the handoff /goal:plan just gave you>
-> /goal:next                       # verifies, reconciles, hands you the next one
-```
-
-**Under `commit+pr`** — the whole plan, once.
-
-```text
-> /goal:supervise .claude/plans/<work-id>-spec.md
-```
-
-Exit `0` landed · `1` the gate refused a slice · `2` refused before anything was attempted ·
-`3` paused at a clean boundary, relaunch resumes there.
-
 ## The path
 
 | Step | You run | What happens |
@@ -163,6 +163,21 @@ turns later as work to throw away. The grill is the one place a human is load-be
 
 **→ [`docs/walkthrough.md`](docs/walkthrough.md) is every step of all of this, with the concrete
 reason for each one.**
+
+## Prerequisites
+
+| Item | Needed for | Note |
+|---|---|---|
+| Node 24 | the runner and the gate | Types are stripped at run time, never checked; `tsc --noEmit` is a CI concern |
+| A git-ignored `.claude/` | every run | Preflight refuses a plan directory git can see: the spec, the ticked box and the run log would read as an undeclared scope leak |
+| `betterleaks` or `gitleaks` | any push | The push is refused, not skipped, when neither is installed |
+| `gh` authenticated | `Policy: commit+pr`, or a GitHub source | `gh auth login` |
+| `jq` | `goal-deny-setup.sh` only | |
+| Atlassian MCP | a Jira source | Or paste with `inline` |
+
+Optional plugins enhance and never gate: `pocock` (grill skills), `superpowers`
+(`verification-before-completion`, `systematic-debugging`), `craft` and the language TDD packs.
+The commands fall back to inlined behaviour when they are absent.
 
 ## What the barriers actually hold
 
@@ -232,21 +247,6 @@ key (`ct-1234`) for Jira, a slug for a file or inline source. The plan lives at
 `.claude/plans/<work-id>-spec.md`; a run's records go to
 `.claude/goal-runs/<work-id>/<run-id>/` — `.run.log`, `.run.jsonl`, `.run.session` and the
 auditor's `report.md`. Only `<plan>.run.lock` stays beside the plan.
-
-## Prerequisites
-
-| Item | Needed for | Note |
-|---|---|---|
-| Node 24 | the runner and the gate | Types are stripped at run time, never checked; `tsc --noEmit` is a CI concern |
-| A git-ignored `.claude/` | every run | Preflight refuses a plan directory git can see: the spec, the ticked box and the run log would read as an undeclared scope leak |
-| `betterleaks` or `gitleaks` | any push | The push is refused, not skipped, when neither is installed |
-| `gh` authenticated | `Policy: commit+pr`, or a GitHub source | `gh auth login` |
-| `jq` | `goal-deny-setup.sh` only | |
-| Atlassian MCP | a Jira source | Or paste with `inline` |
-
-Optional plugins enhance and never gate: `pocock` (grill skills), `superpowers`
-(`verification-before-completion`, `systematic-debugging`), `craft` and the language TDD packs.
-The commands fall back to inlined behaviour when they are absent.
 
 ## Troubleshooting
 
