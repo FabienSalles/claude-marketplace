@@ -221,6 +221,26 @@ loses as much as leaving eleven repairs strewn across the log.
   ```
 
   If the repo has no parent, it **is** the upstream.
+- **PR opened ON the fork itself → sync the fork's `main` BEFORE `gh pr create`.** When the
+  PR's base is the fork's own `main` (not the parent's), fast-forward it from the parent
+  first, or the PR counts every commit the fork is behind as its own (13 commits / 70 files
+  for a 2-commit branch):
+
+  ```bash
+  git fetch --prune && git push <fork-remote> <parent-remote>/main:main   # fast-forward only
+  ```
+
+  The order is load-bearing: GitHub pins the merge-base at PR **creation** (`base.sha`) and
+  never recomputes it when the base branch advances afterwards — syncing after the fact
+  changes nothing on the open PR. Recovery for an already-open PR: flip its base away and
+  back, which forces the recompute:
+
+  ```bash
+  git push <fork-remote> <parent-remote>/main:refs/heads/tmp-rebase-base
+  gh pr edit <n> --repo <fork> --base tmp-rebase-base
+  gh pr edit <n> --repo <fork> --base main
+  git push <fork-remote> :refs/heads/tmp-rebase-base
+  ```
 - **WIP / multi-iteration batch → `--draft`.**
 
 ## G. Force-push
