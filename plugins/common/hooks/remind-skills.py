@@ -17,62 +17,50 @@ import sys
 
 
 def get_php_reminder():
-    return """**SKILLS REMINDER - PHP file**
+    return """**SKILLS - PHP file: LOAD, don't just recall**
 
-Before editing this PHP file, did you consult the relevant skills?
+If not already loaded IN THIS SESSION, load NOW via the Skill tool, before this edit.
+An invoked skill whose content never appeared in context is a FAILED load - re-invoke it.
 
-**Code skills:**
-| Level | Skill | Content |
-|-------|-------|---------|
-| **User** | `~/.claude/skills/code-conventions/` | PER Coding Style, PSR-12 |
-| **User** | `~/.claude/skills/sql-conventions/` | SQL conventions (queries, heredocs) |
-| **User** | `php:php-8-2` | mandatory `readonly class` (not per-property) |
-| **User** | `php:php-8-3` | mandatory typed class constants + default visibility |
-| **Organization** | `projects/org/.claude/skills/code-conventions/` | Organization conventions |
-| **Project** | `.claude/skills/code-conventions/` | Project conventions |
+| Skill | What it settles |
+|-------|-----------------|
+| `php:php-code-conventions` | code style beyond linters (no empty(), nullsafe, ordering) |
+| `php:php-sql-conventions` | only if the file writes SQL/DBAL |
+| `php:php-8-2` / `php:php-8-3` | readonly class, typed constants + visibility |
+| project skills (`.claude/skills/`) | e.g. eres-php-conventions (final, no autowire, foreach over array_*) |
 
-Critical points:
-- **PER Coding Style**: heredocs indented +1 level, spacing around control structures
-- **SQL**: start from the known entity, heredoc Format 2 (separate parameter)
-- **PSR-12**: PHP formatting standards
-- **PHP 8.2**: `final readonly class` when all props are readonly (not per-property)
-- **PHP 8.3**: typed class constants; default visibility is `private` unless externally consumed"""
+A convention is a rule, not a statistic: never arbitrate by counting existing usages."""
 
 
 def get_test_reminder():
-    return """**SKILLS REMINDER - PHP test file**
+    return """**SKILLS - PHP test file: LOAD, don't just recall**
 
-Before editing this test, did you consult the relevant skills?
+If not already loaded IN THIS SESSION, load NOW via the Skill tool, before this edit.
+An invoked skill whose content never appeared in context is a FAILED load - re-invoke it.
 
-**Test skills:**
-| Level | Skill | Content |
-|-------|-------|---------|
-| **User** | `~/.claude/skills/test-conventions/` | DAMP, test doubles, AAA |
-| **User** | `~/.claude/skills/tdd-workflow/` | Red-Green-Refactor |
-| **Project** | `.claude/skills/test-conventions/` | Project conventions |
+| Skill | What it settles |
+|-------|-----------------|
+| `craft:testing-principles` | level choice (intent reads best, deciding class = last resort), what NOT to test, naming, no test-only classes |
+| `phpunit:php-test-conventions` | Prophecy is the rule (never createMock), providers over enums, doubles, factories |
+| `symfony:symfony-test-conventions` | only if the test boots Symfony: WebTestCase / TypeTestCase / KernelTestCase, crawler, container doubles |
+| project skills (`.claude/skills/`) | e.g. eres-php-conventions |
 
-**Code skills (also apply):**
-| Level | Skill |
-|-------|-------|
-| **User** | `~/.claude/skills/code-conventions/` |
-| **Organization** | `projects/org/.claude/skills/code-conventions/` |
-| **Project** | `.claude/skills/code-conventions/` |
-
-Critical points:
-- **PER Coding Style**: heredocs indented +1 level
-- **DAMP**: clarity over DRY in tests
-- **AAA**: Arrange-Act-Assert without comments"""
+Hard points:
+- A business rule is tested where its INTENT reads best; the deciding class is the last resort
+- Never a production-shaped class living only for tests; the fixture is the real concrete class
+- Identifiers reuse the codebase's exact vocabulary (Subscriber, source...) - no synonyms
+- A convention is a rule, not a statistic: never arbitrate by counting existing usages"""
 
 
 def get_twig_reminder():
-    return """**SKILLS REMINDER - Twig template**
+    return """**SKILLS - Twig template: LOAD, don't just recall**
 
-Before editing this template, did you consult the Twig skills?
+If not already loaded IN THIS SESSION, load NOW via the Skill tool, before this edit.
 
-| Level | Skill | Content |
-|-------|-------|---------|
-| **User** | `~/.claude/skills/twig-conventions/` | Translations, components |
-| **User** | `~/.claude/skills/theme-bundle-conventions/` | If the project uses `acme/ui-bundle` |
+| Skill | What it settles |
+|-------|-----------------|
+| `symfony:twig-conventions` | trans_default_domain isolation, when to create a component |
+| project theme skill (`.claude/skills/`) | e.g. eres-theme-bundle (breadcrumb `params:`, icons, SCSS vars) |
 
 Critical points:
 - **Translations**: `<twig:*>` components do NOT inherit `trans_default_domain`
