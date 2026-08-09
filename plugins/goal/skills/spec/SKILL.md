@@ -1,7 +1,16 @@
 ---
+name: spec
 description: Functional contract of the goal workflow — normalize any planning source (Jira US, GitHub issue, spec file, PRD/BMAD story, a ticket cut by /goal:tickets, brainstorm, inline note), grill the functional gaps closed one question at a time, build the functional Definition of Done (an observable acceptance criterion per business rule — no project command named here), run the opt-in adversarial grill, and OPTIONALLY mirror the intent as a GitHub issue. Technical grill, decomposition and the locked plan are /goal:plan's.
-argument-hint: A source — Jira key (CT-1234), GitHub issue number (42), a spec path (.claude/plans/x-spec.md), a /goal:tickets backlog, or 'inline'
 ---
+
+## Portability
+
+This skill degrades gracefully outside Claude Code:
+
+- No `AskUserQuestion` tool → ask the question in plain text and wait for the reply.
+- No Atlassian MCP → ask the developer to paste the Jira source inline (see the
+  `$ARGUMENTS` table below, which already routes to this fallback).
+- No `pbcopy` → print the content instead of copying it to the clipboard.
 
 # /goal:spec — Source → functional contract (+ optional GitHub issue)
 
