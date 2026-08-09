@@ -188,7 +188,7 @@ The bite check **skips** an iteration that declares no `test_files` (`gate/bite.
 that exit is guarded only as far as prose goes: `plan-guard.ts` hashes each resolved block's
 `test_files` emptiness beside its `gateN=` and `dodN=` lines (`:59-76`), so a supervised repair
 that empties the field would move the hash. But nothing the machine runs calls that script. Its
-only callers are steps in `commands/supervise.md` (`:86-90`) a model is asked to follow, alongside
+only callers are steps in `skills/supervise/SKILL.md` (`:86-90`) a model is asked to follow, alongside
 `supervise.md:74-76` forbidding the edit in words. The refusal is real when it runs, and what
 makes it run is an instruction.
 

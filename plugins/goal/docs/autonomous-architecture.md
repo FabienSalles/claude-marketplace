@@ -69,7 +69,7 @@ Four forms of the loop were tried. Each is named here by what it made impossible
 
 **`/goal` on its own.** There is no judge: the model decides when the work is done. That is why
 `/goal:next` exists: it is "the only step that replays the acceptance commands independently"
-(`commands/plan.md:731`), and skipping it means a green iteration is only ever
+(`skills/plan/SKILL.md:731`), and skipping it means a green iteration is only ever
 self-certified. Everything below is an answer to that one hole.
 
 **A dynamic Workflow, the abandoned generation.** It takes a subagent to run `git status`. Its
@@ -231,7 +231,7 @@ text authored by anyone else ever crosses.
 ## What is deliberately not a program
 
 The grill is. `/goal:spec` and `/goal:plan` ask one question at a time and a human answers
-(`commands/spec.md:96`, `commands/plan.md:110`), and that is the step that decides what is being built. Nothing
+(`skills/spec/SKILL.md:96`, `skills/plan/SKILL.md:110`), and that is the step that decides what is being built. Nothing
 downstream can recover from a plan that is wrong, because every mechanism below it checks the
 plan against itself. Automating it would move the one judgment with no fallback into the layer
 with the weakest guarantees.
