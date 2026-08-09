@@ -14,17 +14,20 @@ Then use it: ask Claude, for example, to *"plan this feature with spec-first-dev
 ## Start here: `goal`
 
 Most of this marketplace is conventions: prose that shapes how Claude writes code. **One pack is
-not.** [`goal`](plugins/goal/README.md) is 2,865 lines of tested TypeScript that turn a ticket into
-a pull request without you in the loop, under a rule most autonomous loops do not have:
+not.** [`goal`](plugins/goal/README.md) turns a ticket into a pull request without you in the
+loop: a runner and a gate, 2,648 lines of TypeScript under 266 tests, built around rules most
+autonomous loops do not have.
 
 > A slice of work is accepted by a **program** that runs the command the plan declared and reads
 > its exit code, never by a model's opinion of its own output. That program is the only thing
-> allowed to commit. And before it accepts a slice, it removes the implementation and runs the test
-> again: if the test still passes, the slice is refused.
+> allowed to commit, and it refuses a slice that touches an undeclared file or outgrows its
+> declared diff budget. The pull request stays shippable at every slice: nothing lands on it that
+> the gate has not proven green on the branch, so a run that stops at 3 slices of 15 leaves 3
+> commits you can put in production.
 
-It also declares, per slice, which files may change and how many diff lines may be spent, and
-refuses on either. Unattended never means unwatched: every run leaves a log, a timed event stream
-and an auditor's report on disk.
+Unattended never means unwatched: every run leaves a log, a timed event stream and an auditor's
+report on disk. The gate even distrusts the tests: a slice whose test still passes with the
+implementation set aside is refused.
 
 Four steps take a ticket to a pull request:
 
@@ -67,7 +70,7 @@ Grouped by theme. Each links to the plugin's own README with the full skill cata
 
 | Plugin | What it does |
 |---|---|
-| [**goal**](plugins/goal/README.md) | Ticket → frozen plan → unattended execution, where a **program** judges each slice by exit code and is the only thing that commits. Per-slice declared paths and diff budget; a slice whose test passes without its implementation is refused. GitHub, commit and PR all opt-in. |
+| [**goal**](plugins/goal/README.md) | Ticket → functional contract → locked plan → slices judged by a **program** (exit code, declared paths, diff budget) that is the only committer. The pull request stays shippable at every slice. Two modes picked per plan: `manual` (you read every diff) or `commit+pr` (unattended). |
 | [**product**](plugins/product/README.md) | Slicing a spec into thin shippable iterations (`vertical-slice`) and shipping each without blocking: flags, additive change, cleanup (`delivery`). Loaded by `goal`. |
 | [**common**](plugins/common/README.md) | Shared workflow tools: planning, research, context-window, TDD/feature-dev commands, code-review/test hooks, a UI agent. |
 | [**git**](plugins/git/README.md) | Transverse git & PR discipline: fetch-first ref freshness, branch/commit/PR conventions, force-push and worktree guardrails. Merges the former PR-creation skill. |
