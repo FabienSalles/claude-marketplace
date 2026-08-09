@@ -1,8 +1,8 @@
-// The nine refusals a run judges before writing a byte: policy, remote, branch, clean tree,
-// ignored plan directory, cleanup iteration inside a feature plan, existing lock, base sweep
-// (with the Bootstrap carve-out), and branch behind its base. Every one is a refusal, never a
-// warning, and every one runs before the lock is taken: a run that starts wrong is worse than
-// one that never starts.
+// The ten refusals a run judges before writing a byte: policy, remote, branch, ignored goal-runs
+// directory, clean tree, ignored plan directory, cleanup iteration inside a feature plan,
+// existing lock, base sweep (with the Bootstrap carve-out), and branch behind its base. Every one
+// is a refusal, never a warning, and every one runs before the lock is taken: a run that starts
+// wrong is worse than one that never starts.
 //
 // A `.claude/settings.local.json` deny rule is not among them: an earlier check reading it was a
 // substring match over raw JSON, so a file whose permissions.allow granted `Bash(git commit:*)`
@@ -98,17 +98,27 @@ export const preflight = (plan: string, source: string, reporter: Reporter, gate
     reporter.stop(`the checkout stands on ${branch}, not feature/${workId} (or feature/${workId}-...)`, REFUSED);
   }
 
-  // 4. Clean tree — uncommitted work would end up in the first iteration's commit, unreviewed.
+  // 4. The run's own log directory must be out of git's sight before the tree is judged clean,
+  // or that check fires on this run's fresh records with "the tree is not clean" — the symptom,
+  // not the cause. Held before check 5, since the run's log directory is created before preflight
+  // runs. The check holds before the directory exists: check-ignore evaluates patterns, not files.
+  const goalRunsDir = '.claude/goal-runs';
+
+  if (git('check-ignore', '-q', goalRunsDir).status !== 0) {
+    reporter.stop(`${goalRunsDir} is visible to git. Add it to .gitignore:\n${goalRunsDir}`, REFUSED);
+  }
+
+  // 5. Clean tree — uncommitted work would end up in the first iteration's commit, unreviewed.
   const dirty = git('status', '--short').stdout.replace(/\n$/, '');
 
   if (dirty !== '') {
     reporter.stop(`the tree is not clean:\n${dirty}`, REFUSED);
   }
 
-  // 5. What the run writes must be out of git's sight, or the spec, the ticked box and this
+  // 6. What the run writes must be out of git's sight, or the spec, the ticked box and this
   // run's own log become an undeclared modification the gate reads as a scope leak. Nothing
   // narrates before this point: a line written ahead of this check would itself dirty the
-  // tree check 4 just ran, on the very tree this check exists to catch as untracked.
+  // tree check 5 just ran, on the very tree this check exists to catch as untracked.
   const planDir = dirname(plan);
 
   if (git('check-ignore', '-q', planDir).status !== 0) {
@@ -124,7 +134,7 @@ export const preflight = (plan: string, source: string, reporter: Reporter, gate
   reporter.say('RUN preflight: the tree is clean');
   reporter.say(`RUN preflight: plan directory ${planDir} is git-ignored`);
 
-  // 6. No cleanup iteration hiding inside a feature plan: its Trigger asserts something about
+  // 7. No cleanup iteration hiding inside a feature plan: its Trigger asserts something about
   // production this run cannot observe, and running it here deletes the fallback in the same PR
   // that introduces what falls back to it.
   if (!cleanup && source.includes('**Trigger:**')) {
@@ -138,7 +148,7 @@ export const preflight = (plan: string, source: string, reporter: Reporter, gate
     cleanup ? 'RUN preflight: cleanup plan, its Trigger line is left alone' : 'RUN preflight: no cleanup iteration inside this feature plan',
   );
 
-  // 7. No run already holds the plan.
+  // 8. No run already holds the plan.
   if (existsSync(`${plan}.run.lock`)) {
     reporter.stop(
       `another run holds this plan: ${plan}.run.lock. Wait for it, or free it with: ${gate} unlock ${quote(plan)}`,
@@ -148,7 +158,7 @@ export const preflight = (plan: string, source: string, reporter: Reporter, gate
 
   reporter.say('RUN preflight: no other run holds the lock');
 
-  // 8. The base is already green — the highest-return check in the whole preflight. Every
+  // 9. The base is already green — the highest-return check in the whole preflight. Every
   // distinct command the plan will hold every iteration to, run once now, against the untouched
   // tree. gate1 is excluded: it is the bitten criterion, supposed to fail without the
   // implementation.
@@ -161,8 +171,8 @@ export const preflight = (plan: string, source: string, reporter: Reporter, gate
     sweep(source, reporter);
   }
 
-  // 9. The branch must be caught up with what it forked from — implementing against a base the
-  // branch has since moved past ships a diff that conflicts, and certifies check 8 green against
+  // 10. The branch must be caught up with what it forked from — implementing against a base the
+  // branch has since moved past ships a diff that conflicts, and certifies check 9 green against
   // a base nobody will merge into. The base to compare against: the plan's own `PR base:`
   // header — a bare branch name on the declared remote, the same one publish.ts passes to
   // `gh pr create --base` — when it resolves there, else `<remote>/HEAD` (the fork this run
