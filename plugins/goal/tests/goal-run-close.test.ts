@@ -1,10 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { HASH, PAUSED, PLAN, git, jsonlOf, repo, run, runDirOf } from './support/goal-run-harness.ts';
+import { tmpDir } from './support/tmp.ts';
 import { close, LANDED } from '../scripts/run/close.ts';
+import { createPublisher } from '../scripts/run/publish.ts';
 import type { Reporter } from '../scripts/run/report.ts';
 
 const PLAN_PR = PLAN.replace('Policy: commit\n', 'Policy: commit+pr\n');
@@ -530,4 +532,63 @@ test('a Definition of Done refusal still leaves the draft pull request open from
   assert.notEqual(code, 0, output);
   const calls = readFileSync(fixture.ghLog, 'utf8');
   assert.match(calls, /pr\ncreate/, `expected a draft pull request opened once the first iteration landed:\n${calls}`);
+});
+
+// One report format everywhere — the auditor's brief names the same `### Functional` /
+// `### Technical` skeleton the agent's own prose is written against, so the two cannot diverge
+// silently.
+test('the auditor is briefed with the ### Functional / ### Technical skeleton', () => {
+  const fixture = repo();
+
+  const { code, output } = land(fixture);
+
+  assert.equal(code, 0, output);
+  const args = readFileSync(fixture.claudeLog, 'utf8');
+  assert.match(args, /### Functional/, `the audit brief never names the ### Functional section:\n${args}`);
+  assert.match(args, /### Technical/, `the audit brief never names the ### Technical section:\n${args}`);
+});
+
+// One report format everywhere — close() folds report.md into the pull request body without
+// transformation, and the body ends with the plan path and the run-directory path, one per line,
+// so both are copy-pastable straight off the pull request.
+test('close folds the report untransformed and ends the pull request body with the plan and run-directory paths', () => {
+  const fixture = repo({ planText: PLAN_PR, remote: true });
+  const dir = tmpDir('goal-run-report-footer-');
+  const reportText = '# Report\n\n### Functional\n\nNothing recurs.\n\n### Technical\n\nCosts: 1 iteration.\n';
+  writeFileSync(join(dir, 'report.md'), reportText);
+
+  const originalCwd = process.cwd();
+  const originalPath = process.env.PATH;
+  process.chdir(fixture.dir);
+  process.env.PATH = `${fixture.bin}:${originalPath ?? ''}`;
+
+  try {
+    const reporter: Reporter = {
+      say: () => {},
+      stop: () => {
+        throw new Error('unexpected stop');
+      },
+      record: () => {},
+      setLog: () => {},
+    };
+
+    const publisher = createPublisher(fixture.plan, fixture.plan, 'commit+pr', 'origin', reporter, join(fixture.bin, 'fake-gate'));
+    publisher.state.prOpen = true;
+
+    const code = close(fixture.plan, join(fixture.bin, 'fake-gate'), HASH, 'origin', publisher, ['1'], dir, reporter);
+
+    assert.equal(code, LANDED);
+    const calls = readFileSync(fixture.ghLog, 'utf8').split('--- call ---\n').filter((call) => call.trim() !== '');
+    const edits = calls.filter((call) => call.startsWith('pr\nedit'));
+    const last = edits[edits.length - 1]!;
+
+    assert.ok(last.includes(reportText), `the report was transformed before being folded into the pull request body:\n${last}`);
+    assert.ok(
+      last.trimEnd().endsWith(`${fixture.plan}\n${dir}`),
+      `the pull request body does not end with the plan path then the run-directory path, one per line:\n${last}`,
+    );
+  } finally {
+    process.chdir(originalCwd);
+    process.env.PATH = originalPath;
+  }
 });

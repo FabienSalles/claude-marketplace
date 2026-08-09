@@ -187,8 +187,9 @@ Every stage this run timed is recorded as a JSON event in ${jsonl}: read it for 
 what each stage cost, per iteration.
 
 Read the other reports already under ${dirname(dir)}/ and say which failures recur across runs
-rather than describing this one twice. Do not edit a single line of code, do not stage anything,
-and do not judge whether the work was correct — the gate already did that.`;
+rather than describing this one twice. Write it in two sections, \`### Functional\` then
+\`### Technical\`, no other heading anywhere in the file. Do not edit a single line of code, do
+not stage anything, and do not judge whether the work was correct — the gate already did that.`;
 
   const auditStart = Date.now();
   const audit = spawnSync('claude', ['-p', '--agent', 'goal:goal-run-auditor', '--permission-mode', 'auto', auditBrief], { encoding: 'utf8' });
@@ -199,7 +200,7 @@ and do not judge whether the work was correct — the gate already did that.`;
   // Folded into the pull request body the auditor's report has just been written to, never as a
   // comment: the reviewer reads costs, halts and recurrences on the pull request itself.
   if (existsSync(reportPath)) {
-    publisher.foldReport?.(readFileSync(reportPath, 'utf8'));
+    publisher.foldReport?.(readFileSync(reportPath, 'utf8'), plan, dir);
   }
 
   if (dodExit !== 0) {
