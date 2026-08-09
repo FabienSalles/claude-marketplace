@@ -173,6 +173,15 @@ and reports findings anchored to a tool-call sequence: an edit reverted, the sam
 twice, a file read five times, a brief that named a convention skill with no `Skill` call to
 match. Print what it returns; nothing it finds changes the exit you already reported.
 
+Once the audit returns, fold its highlights into the PR's run report as a `### Session audit`
+section — but only when the plan's policy is `commit+pr` and a pull request is open: `gh pr edit
+<branch> --repo <repo> --body "$(gh pr view <branch> --repo <repo> --json body -q .body)
+
+### Session audit
+
+<highlights>"`. Outside `commit+pr`, or with no PR open yet, there is nowhere to fold it: the
+highlights stay in this session's own final message instead.
+
 ## Duration table
 
 Every final report — Phase 3, 4, or the end of Phase 5/6 — that attempted at least one
@@ -181,17 +190,35 @@ iteration prints a duration table, built from the run's own `.run.jsonl` (one JS
 exit `2`: Phase 4 already covers that case, and there is no per-iteration row to print when
 nothing was attempted.
 
-Read every `stage=` line and group it: `preflight` and the base-must-already-be-green sweep
-stand alone at the top (they run once, before any iteration); `implementer` and `gate` are one
-row per iteration, in order; `push` and `pull-request-update` collapse into one `publication`
-row; the run total is the sum of every `duration_ms` in the file, not a wall-clock guess.
+Read every `stage=` line and give each counted stage its own row: `preflight` and the
+base-must-already-be-green sweep stand alone at the top (they run once, before any iteration);
+`implementer` and `gate` are one row per iteration, in order; `push` and
+`pull-request-update` collapse into one `publication` row; `dod`, `lens`, `reviewer`, and
+`auditor` each get their own row when the log carries them. Show every duration in minutes once
+it passes 60 s (`1m 12s`, not `72000`); below that, milliseconds are fine. The total row is the
+sum of the displayed rows, not a re-scan of every `duration_ms` in the file — a stage this table
+does not show never enters the total. Print an exit code only on the rows whose stage failed; a
+row that landed carries no exit code at all.
 
-| Iteration | Implementer | Gate |
+| Stage | Duration | Exit |
 |---|---|---|
-| 1 | `<duration_ms>` | `<duration_ms>` |
-| … | … | … |
+| Preflight/sweep | `<duration>` | |
+| Iteration 1 — Implementer | `<duration>` | |
+| Iteration 1 — Gate | `<duration>` | |
+| … | … | |
+| Publication | `<duration>` | |
+| Dod | `<duration>` | |
+| Lens | `<duration>` | |
+| Reviewer | `<duration>` | |
+| Auditor | `<duration>` | |
+| **Total** | **`<sum of the rows above>`** | |
 
-Preflight/sweep: `<duration_ms>` — Publication: `<duration_ms>` — Run total: `<duration_ms>`
+## Closing paths
+
+Every closing report names the plan and the run directories it produced, so the developer can
+open them without hunting: the plan path, then each run directory under `.claude/goal-runs/`,
+one path per line — never a single `·`-joined line. A developer copy-pasting a path off a run
+that used commas or middle dots as separators is the failure this rule exists to avoid.
 
 ## Rules for THIS command
 
