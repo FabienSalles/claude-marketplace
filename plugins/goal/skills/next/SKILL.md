@@ -1,7 +1,14 @@
 ---
+name: next
 description: Checkpoint between two /goal iterations — verify the finished iteration's Definition of Done, reconcile the plan with what actually changed in the codebase, verify the working tree is safe for a fresh session (in manual mode never stage — the tree is left intact for the developer's review; staging/committing is their job), confirm the next iteration is doable cold with no context loss, then print the exact ready-to-run /goal handoff for it. Does not write code, stage, commit, clear context, or launch /goal.
-argument-hint: Optional plan path (.claude/plans/<work-id>-spec.md); omit to auto-discover the active plan
 ---
+
+## Portability
+
+This skill degrades gracefully outside Claude Code:
+
+- No `AskUserQuestion` tool → ask the question in plain text and wait for the reply.
+- No `pbcopy` → print the content instead of copying it to the clipboard.
 
 # /goal:next — Iteration checkpoint + next-/goal handoff
 
