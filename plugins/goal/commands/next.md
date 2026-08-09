@@ -39,13 +39,24 @@ Read the plan and locate:
 
 ## Phase 1 — Verify the finished iteration is actually done
 
-Run the **finished iteration's own acceptance commands** from the plan (its test
-command, lint/QA) and show the **real output**. Never trust the `[x]` or memory.
+Launch the **finished iteration's own acceptance commands** from the plan (its test
+command, lint/QA) **in the background** — use Bash's `run_in_background`, since these
+are exactly the commands whose wall-clock a developer should never sit through twice.
+Never trust the `[x]` or memory; the replay's real output is what you show once it
+joins.
 
 Open the verification with the iteration's **intent**: one line restating its *Goal* —
 what it was meant to make true, and for whom — and, for each command you replay, the
 business rule it proves (the plan already maps rule → command; read the mapping back,
 never invent it). A green command only means something attached to the rule it covers.
+
+While the replay runs in the background, move straight into **Phase 2**, then
+**Phase 4** — both only read the plan and the git history of already-finished work,
+never the live tree the replay can still be writing into. **Join the replay before
+Phase 3 and Phase 5**: Phase 3 reports the working tree, and Phase 5 hands off the
+next iteration — both would be reporting on a tree, or an outcome, that the
+still-running replay had not finished settling. Collect its output, then continue as
+below.
 
 If anything fails → **restore `[ ]` on that iteration in the plan, then STOP**. Report
 what failed: the iteration is not done, so there is nothing to hand off. The un-tick
