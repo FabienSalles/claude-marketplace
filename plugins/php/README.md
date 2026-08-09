@@ -1,8 +1,8 @@
 # php
 
-PHP 8.0–8.3 **language** conventions — framework-agnostic. Code style, OOP, DDD, refactoring, SQL, Composer.
+PHP 8.0–8.3 **language** conventions, framework-agnostic. Code style, OOP, DDD, refactoring, SQL, Composer.
 
-Pair with [`phpunit`](../phpunit/) for testing discipline and [`symfony`](../symfony/) for Symfony-specific overlays (FormType, Twig component, PRG pattern). All three are independent — a Laravel project takes `php` alone or `php` + `phpunit`, a Symfony project takes the three together.
+Pair with [`phpunit`](../phpunit/) for testing discipline and [`symfony`](../symfony/) for Symfony-specific overlays (FormType, Twig component, PRG pattern). All three are independent: a Laravel project takes `php` alone or `php` + `phpunit`, a Symfony project takes the three together.
 
 ## Install
 
@@ -10,7 +10,7 @@ Pair with [`phpunit`](../phpunit/) for testing discipline and [`symfony`](../sym
 /plugin install php@fabien-claude-marketplace
 ```
 
-Or `./setup.sh --pack php` (dev mode — registers this directory as a local marketplace).
+Or `./setup.sh --pack php` (dev mode: registers this directory as a local marketplace).
 
 ## Skills (10)
 
@@ -27,7 +27,7 @@ Or `./setup.sh --pack php` (dev mode — registers this directory as a local mar
 
 | Skill | Purpose |
 |---|---|
-| [`php-code-conventions`](skills/php-code-conventions/SKILL.md) | Project-specific spacing, early return, no `empty()`, parameter ordering, nowdoc — goes beyond PSR-12/PER |
+| [`php-code-conventions`](skills/php-code-conventions/SKILL.md) | Project-specific spacing, early return, no `empty()`, parameter ordering, nowdoc. Goes beyond PSR-12/PER |
 | [`php-oop`](skills/php-oop/SKILL.md) | Tell Don't Ask, collections over named properties, Whole Object pattern, self-describing value objects |
 | [`php-refactoring`](skills/php-refactoring/SKILL.md) | End-to-end flow analysis before refactoring, consumer-driven value-object design, imports as coupling signals |
 

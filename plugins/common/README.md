@@ -14,8 +14,8 @@ Or `./setup.sh --pack common` (dev mode). The pack also writes `skillListingBudg
 
 | Skill | Purpose |
 |---|---|
-| [`claude-recovery`](skills/claude-recovery/SKILL.md) | Rebuild lost or deleted files (especially gitignored ones — `.claude/`, `.env`, plans) from Claude Code session transcripts by replaying Write/Edit/Read events, then restore them to their original location without silent overwrites |
-| [`context-window-management`](skills/context-window-management/SKILL.md) | Rules for keeping response quality high as conversations grow — offload to files, suggest fresh sessions, read selectively, session handoff template |
+| [`claude-recovery`](skills/claude-recovery/SKILL.md) | Rebuild lost or deleted files (especially gitignored ones: `.claude/`, `.env`, plans) from Claude Code session transcripts by replaying Write/Edit/Read events, then restore them to their original location without silent overwrites |
+| [`context-window-management`](skills/context-window-management/SKILL.md) | Rules for keeping response quality high as conversations grow: offload to files, suggest fresh sessions, read selectively, session handoff template |
 | [`crispi-planning`](skills/crispi-planning/SKILL.md) | 5-phase planning framework (Context, Research, Implementation design, Structured plan, Implementation) with file persistence to avoid over-planning |
 | [`expert-persona-skills`](skills/expert-persona-skills/SKILL.md) | Short persona prompts for non-code expert analysis (security audits, product, competitive, vendor evaluation, architecture review) |
 | [`product-research`](skills/product-research/SKILL.md) | 2-phase workflow (gather cheap, synthesize expensive) for market/competitive/technology research before BMAD product briefs |
@@ -24,7 +24,7 @@ Or `./setup.sh --pack common` (dev mode). The pack also writes `skillListingBudg
 
 | Command | Purpose |
 |---|---|
-| [`/spec-first-dev`](commands/spec-first-dev.md) | 5-phase spec-driven feature workflow — lock a validated specification before any code (business intent, scope, command-line acceptance criteria), then implement with iterative checkpoints. Use when the requirement is fuzzy or the domain is unfamiliar. Can be chained into [`/goal:spec`](../goal/commands/spec.md) to materialize the spec as a GitHub issue. |
+| [`/spec-first-dev`](commands/spec-first-dev.md) | 5-phase spec-driven feature workflow: lock a validated specification before any code (business intent, scope, command-line acceptance criteria), then implement with iterative checkpoints. Use when the requirement is fuzzy or the domain is unfamiliar. Can be chained into [`/goal:spec`](../goal/commands/spec.md) to materialize the spec as a GitHub issue. |
 | [`/feature-tdd-dev`](commands/feature-tdd-dev.md) | Guided feature development with TDD workflow and architecture focus |
 | [`/deep-review`](commands/deep-review.md) | Adversarial 3-agent code review producing ~2 high-impact comments per PR |
 | [`/research`](commands/research.md) | Objective research separating investigation from implementation to avoid confirmation bias |

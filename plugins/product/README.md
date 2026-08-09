@@ -1,6 +1,6 @@
 # product
 
-**Product delivery discipline** — how a functional spec becomes a sequence of thin
+**Product delivery discipline**: how a functional spec becomes a sequence of thin
 slices, and how each slice reaches production without waiting for the others.
 
 Two skills, one decision split in half:
@@ -16,15 +16,15 @@ slice, and a delivery strategy with nothing to deliver is theatre.
 ## vertical-slice
 
 17 splitting techniques (SPIDR, the Humanizing Work catalogue, hamburger, elephant
-carpaccio, conjunctions, roles, entry methods, branch by abstraction…) plus — the actual
-point — a **selection procedure**:
+carpaccio, conjunctions, roles, entry methods, branch by abstraction…) plus (the actual
+point) a **selection procedure**:
 
 1. name the **core complexity** (paths? rules? data? workflow? an unknown?)
 2. pick the techniques that isolate it, and **combine** them (real features slice on two
    axes)
 3. apply the **technical constraints** (migrations, contracts, legacy seams, deploy
-   coupling) — they reorder and merge slices
-4. adapt granularity to the **execution mode** — reviewing each diff yourself vs
+   coupling): they reorder and merge slices
+4. adapt granularity to the **execution mode**: reviewing each diff yourself vs
    a gated agent running unattended are not the same slice size, ordering or acceptance
 5. choose between candidate splits (80/20 test, comparable sizes, earliest feedback) and
    verify against INVEST
@@ -39,18 +39,18 @@ Full catalogue: [`references/techniques.md`](skills/vertical-slice/references/te
 
 Separating **deploy** from **release**, then the four moves that make it real:
 
-- **Flag it** — the four toggle types, and the cheapest mechanism that fits *this*
+- **Flag it**: the four toggle types, and the cheapest mechanism that fits *this*
   project (env var → runtime config → per-user setting → flag platform). No default
   answer, and a SaaS platform for a solo project is as wrong as a constant for a
   multi-tenant one. [`references/feature-flags.md`](skills/delivery/references/feature-flags.md)
-- **Make it additive** — never break an existing consumer in the deploy that introduces
+- **Make it additive**: never break an existing consumer in the deploy that introduces
   its replacement. Expand/contract, additive contracts, tolerant reader, branch by
   abstraction, strangler fig, dark launch / parallel run / canary.
   [`references/additive-change.md`](skills/delivery/references/additive-change.md)
-- **Clean up** — the removal slice, with a **trigger condition** and evidence that the
+- **Clean up**: the removal slice, with a **trigger condition** and evidence that the
   old path is dead. Cleanup that lives as an intention never happens.
   [`references/cleanup.md`](skills/delivery/references/cleanup.md)
-- **Adapt to the mode** — in an autonomous run the flag defaults to off and the agent
+- **Adapt to the mode**: in an autonomous run the flag defaults to off and the agent
   never flips it, additive and removal never share a slice, and cleanup moves to a
   follow-up plan because its trigger depends on production evidence no agent can observe.
 

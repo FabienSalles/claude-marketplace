@@ -1,6 +1,6 @@
 # marketing-content
 
-Content & copywriting playbooks — from strategy to publication. Framework-agnostic.
+Content & copywriting playbooks, from strategy to publication. Framework-agnostic.
 
 ## Install
 
@@ -27,14 +27,14 @@ Content & copywriting playbooks — from strategy to publication. Framework-agno
 
 Near-neighbor disambiguation:
 
-- **copywriting vs copy-editing** — writing new copy vs polishing existing copy
-- **content-strategy vs content-calendar** — strategy (topics, funnel mapping) vs execution (dates, cadence)
-- **write-blog vs seo-content-brief** — generate the article yourself vs brief a human writer
-- **seo-audit vs schema-markup** — diagnose site issues vs add structured data
-- **linkedin-content vs marketing-distribution:social-content** — LinkedIn-only depth vs multi-platform posts
+- **copywriting vs copy-editing**: writing new copy vs polishing existing copy
+- **content-strategy vs content-calendar**: strategy (topics, funnel mapping) vs execution (dates, cadence)
+- **write-blog vs seo-content-brief**: generate the article yourself vs brief a human writer
+- **seo-audit vs schema-markup**: diagnose site issues vs add structured data
+- **linkedin-content vs marketing-distribution:social-content**: LinkedIn-only depth vs multi-platform posts
 
 ## Pairs with
 
-- `marketing-strategy` — feeds positioning, ICP, and messaging inputs to copy skills
-- `marketing-distribution` — publishes the content this plugin produces
-- `marketing-analytics` — closes the loop with performance data (Search Console, GA4)
+- `marketing-strategy`: feeds positioning, ICP, and messaging inputs to copy skills
+- `marketing-distribution`: publishes the content this plugin produces
+- `marketing-analytics`: closes the loop with performance data (Search Console, GA4)

@@ -4,7 +4,7 @@ This file lists Claude Code plugins coming from marketplaces **external** to thi
 
 > Skills from this repo (`plugins/php/`, `plugins/typescript/`, etc.) are installed via `./setup.sh`. The plugins below are **independent** and must be installed through the Claude Code `/plugin` command.
 
-## Step 1 — Register the marketplaces
+## Step 1: Register the marketplaces
 
 In Claude Code:
 
@@ -13,9 +13,9 @@ In Claude Code:
 /plugin marketplace add atournayre/claude-marketplace
 ```
 
-> Note the resolved marketplace names used in Step 2: `anthropics/claude-plugins-official` registers as `claude-plugins-official`, but `atournayre/claude-marketplace` registers as **`atournayre-claude-plugin-marketplace`** (declared in its `marketplace.json`, not the repo basename) — so installs use `@atournayre-claude-plugin-marketplace`, not `@claude-marketplace`.
+> Note the resolved marketplace names used in Step 2: `anthropics/claude-plugins-official` registers as `claude-plugins-official`, but `atournayre/claude-marketplace` registers as **`atournayre-claude-plugin-marketplace`** (declared in its `marketplace.json`, not the repo basename), so installs use `@atournayre-claude-plugin-marketplace`, not `@claude-marketplace`.
 
-## Step 2 — Install the plugins
+## Step 2: Install the plugins
 
 ### Marketplace: `claude-plugins-official` (Anthropic)
 
@@ -41,16 +41,16 @@ In Claude Code:
 /plugin install symfony@atournayre-claude-plugin-marketplace
 ```
 
-## Step 3 — Additional components installed manually
+## Step 3: Additional components installed manually
 
 These items do not come from any marketplace and are placed directly under `~/.claude/`:
 
 | Component | Location | Source / Provenance |
 |---|---|---|
-| BMAD (method + agents) | `~/.claude/commands/bmad/` (subdirs: `bmm/`, `cis/`, `core/`) | To document — non-marketplace external source |
+| BMAD (method + agents) | `~/.claude/commands/bmad/` (subdirs: `bmm/`, `cis/`, `core/`) | To document: non-marketplace external source |
 | `eres-sync.md` | `~/.claude/commands/eres-sync.md` | Personal Eres sync script |
 
-## Step 4 — Verification
+## Step 4: Verification
 
 After installation, verify:
 

@@ -1,4 +1,4 @@
-# Loops — what each kind is for
+# Loops: what each kind is for
 
 Several unrelated things get called "the loop", and conflating them produces designs that
 cannot work. The distinction that decides everything is **where a loop runs**, because that is
@@ -10,14 +10,14 @@ command that has never been executed once.
 
 ---
 
-## The loop that runs the work — `goal-run.ts:92-98`
+## The loop that runs the work: `goal-run.ts:92-98`
 
 A plain `for` over the plan's unchecked boxes: implement, publish, next.
 
 **The work list is known before the loop starts, so the loop is a `for` and not a
 convergence.** Nothing an iteration does changes which iterations remain; a refusal is
 `process.exit`, not a `break` with a recovery branch. Any shape that keeps going until nothing
-new is found belongs upstream, where the plan is still being written — against a frozen plan it
+new is found belongs upstream, where the plan is still being written. Against a frozen plan it
 would only be a way to keep going after a refusal, which is the one thing the design refuses.
 
 Two properties of the loop body are easy to read backwards, so state them plainly:
@@ -33,10 +33,10 @@ Two properties of the loop body are easy to read backwards, so state them plainl
   and only on a green verdict does `run/close.ts:58-67` publish the iteration held back.
   `gate/ship.ts:11` describes that check as *"the barrier replayed once before anything ships"*.
   On a one-iteration plan that is literally true. On a longer one it is a barrier in front of the
-  last slice and behind all the others, which is a real decision — a halt leaves something
-  readable rather than an invisible branch — but not the one the barrier's own words claim.
+  last slice and behind all the others, which is a real decision (a halt leaves something
+  readable rather than an invisible branch), but not the one the barrier's own words claim.
 
-## The loop that proves the work first — `goal-run.ts:64-83`
+## The loop that proves the work first: `goal-run.ts:64-83`
 
 Before a single iteration is handed to an implementer, every unchecked one is put through
 `gate check`. **A plan that would fail on its third iteration never spends the first two.**
@@ -45,14 +45,14 @@ This shape has no box in the taxonomy below. It does not wait, converge or fan o
 work list to reject it before consuming it, which is the same instinct as the base sweep
 (`run/preflight.ts:130-141`) applied to the plan's structure rather than to the tree.
 
-It is also where the run's contract is captured — one `plan_hash` per iteration, carried into
+It is also where the run's contract is captured: one `plan_hash` per iteration, carried into
 `runIteration` and into `close`, and beside it the ticked set. The hash alone does not cover ticks:
 `gate/plan.ts:29-30` normalizes every `- [x]` back to `- [ ]` before hashing, so an untick moves
-nothing in it. **That is why the ticked set travels separately** — `gate/ticked.ts:13-27` compares
+nothing in it. **That is why the ticked set travels separately**: `gate/ticked.ts:13-27` compares
 what `check` published against what is on disk at `commit` and halts on any iteration that
 disappeared (`goal-gate.ts:154`), for the length of this run.
 
-## The loop that waits — `run/iteration.ts:104-152`
+## The loop that waits: `run/iteration.ts:104-152`
 
 A quota window is detected from the shape of a failed implementer call, slept through, and the
 **same** iteration retried, bounded by `GOAL_RUN_QUOTA_MAX_RETRIES` (default 3) and defaulting
@@ -67,11 +67,11 @@ already lives, and no session-level mechanism was ever needed.
 Safe for the reason the whole design is resumable: the durable state is the plan's checkboxes,
 so a relaunch resumes at the first unticked box and a wait needs no state at all.
 
-**A sleeping loop is indistinguishable from a stuck one from outside.** The log has to say so —
-it does, once, before sleeping (`run/iteration.ts:150`) — or one invisible wait has been traded
+**A sleeping loop is indistinguishable from a stuck one from outside.** The log has to say so
+(it does, once, before sleeping: `run/iteration.ts:150`), or one invisible wait has been traded
 for another.
 
-## The loop nobody has run — `commands/supervise.md`
+## The loop nobody has run: `commands/supervise.md`
 
 The only loop written since, and the only one at session level: launch `node goal-run.ts` in the
 background, wait for it to exit, read the exit code, classify a halt as a plan fault or an
@@ -106,9 +106,9 @@ classification itself, not its input.**
 | | Where it runs | Can it sleep? | Survives the session? | Used here |
 |---|---|---|---|---|
 | **a loop inside a process** | the process | **yes** | no | the three inside `goal-run.ts` |
-| **`/loop` + `ScheduleWakeup`** | the main session | yes | no | nowhere — `/goal:supervise` is this shape, hand-rolled |
+| **`/loop` + `ScheduleWakeup`** | the main session | yes | no | nowhere: `/goal:supervise` is this shape, hand-rolled |
 | **`Monitor`** | background process | n/a, event-driven | no | nowhere |
-| **`CronCreate`** | the main session | yes | **no** — in-memory, dies with the session | nowhere |
+| **`CronCreate`** | the main session | yes | **no**: in-memory, dies with the session | nowhere |
 | **`RemoteTrigger`** | claude.ai, cloud | yes | **yes** | nowhere |
 
 Four of the five primitives are unused, and the table earns its place anyway, because it is what
@@ -116,7 +116,7 @@ stops the same mistake being made twice. `CronCreate` is session-only: it is not
 my plan at 3am while I sleep", however much its name suggests otherwise. `RemoteTrigger` is the
 only row that survives the terminal closing.
 
-## Recovery classes — what may be retried, and what may not
+## Recovery classes: what may be retried, and what may not
 
 The rule that survived every generation: **recovery applies to the infrastructure around the
 verification, never to the verdict.** A test that fails is not a signal to be recovered from.
@@ -126,9 +126,9 @@ budget, then re-verify.[^selfheal]
 | Signal | Class | Recovery | Built? |
 |---|---|---|---|
 | implementer call reports a usage limit | the model is unavailable | sleep, retry the same iteration | yes, budget 3 (`run/iteration.ts:135-151`) |
-| gate exits anything but 0 or 1 | **no verdict exists** | none — pause, tree untouched | yes (`run/iteration.ts:193-195`) |
-| gate exits exactly 1 | the code or the contract is wrong | none — halt, verdict already in the log | yes (`run/iteration.ts:184`, `:198-199`) |
-| `git push` rejected, `gh` non-zero | transient infrastructure | retry the command | no — publication blocks stickily (`run/publish.ts:100-108`) |
+| gate exits anything but 0 or 1 | **no verdict exists** | none: pause, tree untouched | yes (`run/iteration.ts:193-195`) |
+| gate exits exactly 1 | the code or the contract is wrong | none: halt, verdict already in the log | yes (`run/iteration.ts:184`, `:198-199`) |
+| `git push` rejected, `gh` non-zero | transient infrastructure | retry the command | no: publication blocks stickily (`run/publish.ts:100-108`) |
 | gate output matches a known flaky signature | suspected flakiness | re-run **for information only**, verdict unchanged | no |
 
 The first three rows are why "a halt is final" is no longer the whole rule and did not weaken:
@@ -141,9 +141,9 @@ class it is recovering from is a token furnace.**
 
 ## The gap that is still open
 
-Nothing ever learns whether CI went red. A run no longer stops at PR creation — `close()` replays
-the Definition of Done, marks the pull request ready, and invokes a reviewer, a lens and an auditor
-— but every one of those happens inside the process, and no `gh pr checks` is called anywhere in
+Nothing ever learns whether CI went red. A run no longer stops at PR creation (`close()` replays
+the Definition of Done, marks the pull request ready, and invokes a reviewer, a lens and an auditor),
+but every one of those happens inside the process, and no `gh pr checks` is called anywhere in
 `scripts/`. The run exits, and nothing outside it ever asks. `Monitor` is the shape that fits: a
 background script whose every stdout line becomes a notification.
 
@@ -156,10 +156,10 @@ is indistinguishable from "still running".
 ## Truly unattended, and why the scheduling is not the blocker
 
 The gates are *your project's* commands, dockerized. A cloud routine has to be able to run
-`make php/qa`, or it can drive the loop but not verify it — and an unverifiable loop is exactly
+`make php/qa`, or it can drive the loop but not verify it, and an unverifiable loop is exactly
 what this whole design refuses. **Settle the environment question before the scheduling one.**
 Also worth knowing: interactively-authenticated MCP servers may simply be absent in headless runs.
 
 ---
 
-[^selfheal]: *Self-Healing Agentic Orchestrators for Reliable Tool-Augmented LLM Systems* — <https://arxiv.org/pdf/2606.01416>
+[^selfheal]: *Self-Healing Agentic Orchestrators for Reliable Tool-Augmented LLM Systems*: <https://arxiv.org/pdf/2606.01416>

@@ -2,13 +2,13 @@
 
 **The channel this document designs was never built.** Nothing in the current runner reads a
 remote instruction. Every `gh` call `scripts/goal-run.ts` and `scripts/run/` make is about one
-pull request — this run's own: create, edit, view, mark ready. There is no control panel, no
+pull request, this run's own: create, edit, view, mark ready. There is no control panel, no
 label kill switch, no reader agent in the path. A run launched by `node goal-run.ts <plan>` is
 steerable by nothing except killing the process, which `run/lock.ts:36-44` makes safe by
 releasing the plan's lock on `SIGINT`, `SIGTERM` and exit.
 
 So the document is two things now, and they should not be confused. The first half is the design
-rules a steering channel would have to satisfy — they cost nothing to keep and everything to
+rules a steering channel would have to satisfy: they cost nothing to keep and everything to
 rediscover. The second half is the injection surface that exists **today**, which is not the one
 the original text worried about.
 
@@ -23,7 +23,7 @@ That sentence is the test this document applies to itself, twice, below.
 
 ## The three levers, if the channel is ever built
 
-### L1 — Bound the vocabulary so a forged command is boring
+### L1: Bound the vocabulary so a forged command is boring
 
 The strongest and cheapest lever, and it is a design choice rather than a mechanism.
 
@@ -38,14 +38,14 @@ candidate:
 | `retry-current` | one iteration costs twice | acceptable |
 | `skip-lenses` | advisory findings are lost | acceptable, nothing blocking is lost |
 | `no-ship` | nothing is pushed, opened, updated **or marked ready** | acceptable |
-| `ship` | verified work is published early | **rejected** — publication is not remotely triggerable |
+| `ship` | verified work is published early | **rejected**: publication is not remotely triggerable |
 | `skip-iteration <n>` | a slice is silently omitted and the rest still ships | **rejected** |
 | anything carrying a path, a command or free text | arbitrary | **rejected** |
 
 With this vocabulary, a fully successful injection buys the attacker a stopped run. That is
 the point: make the worst case something you would shrug at.
 
-### L2 — Parse in code, never interpret in a model
+### L2: Parse in code, never interpret in a model
 
 Untrusted text must be reduced to a typed value by a **script**, before any model sees it.
 `jq` deciding whether a string equals `stop` cannot be talked out of it. A model deciding the
@@ -56,7 +56,7 @@ lever costs nothing: `run/publish.ts:128-134` asks `gh pr view --json number` wh
 request exists and reduces the answer with `/"number":\d+/` to a boolean. Nothing that came back
 from GitHub reaches a model, or reaches anything but that regex.
 
-### L3 — Separate the reader from the actor
+### L3: Separate the reader from the actor
 
 This is the dual-LLM pattern, and its refinement CaMeL: a *quarantined* model may see
 untrusted content but holds no tools, while the *privileged* model holds the tools and never
@@ -64,13 +64,13 @@ sees the content.[^camel][^dual]
 
 The principle is right and it survives every generation of the harness. What did not survive is
 the mechanism. Its only expression lived in the abandoned Workflow generation, which dispatched
-the steering read to an agent type named `goal:goal-reader` — a reader with no write tool, handed
+the steering read to an agent type named `goal:goal-reader`: a reader with no write tool, handed
 one command whose output the shell had already reduced to a closed vocabulary. That workflow has
 since been deleted, and the agent file it named was never in the repository at all, so the
 mechanism was never more than a shape. Nothing in the current runner has a quarantined reader.
 
 **And the shipped path inverts the separation.** `run/close.ts:71-81` briefs
-`goal:goal-run-reviewer` to read a pull request — third-party text — *and* to post its review
+`goal:goal-run-reviewer` to read a pull request (third-party text) *and* to post its review
 with `gh`, in `--permission-mode auto`, and that agent holds `Bash`
 (`agents/goal-run-reviewer.md`). One agent sees remote text and holds the tool that writes. That
 is precisely the fusion L3 exists to prevent, and it is what runs today.
@@ -78,20 +78,20 @@ is precisely the fusion L3 exists to prevent, and it is what runs today.
 **What the `tools:` field can and cannot buy.** This section first claimed the reader's frontmatter
 grants it *only* `Bash(gh api …)`. It cannot: the documented agent `tools:` field takes a list of
 tool **names** (`["Read", "Bash"]`), and the scoped `Bash(…)` form is permission-rule syntax, not
-a tools entry — checked against the official plugin component reference rather than assumed. An
+a tools entry (checked against the official plugin component reference rather than assumed). An
 agent definition therefore cannot express a narrow capability at all. Restricting *which* commands
 an agent may run is a settings-layer question, which is what the one enforced restriction below
 turns out to be.
 
-## The channels, from safest to richest — designed, never built
+## The channels, from safest to richest: designed, never built
 
-### Tier 0 — Enumerable state
+### Tier 0: Enumerable state
 
 A label, a reaction, an issue's open/closed state, a PR's draft/ready flag. Reading one is
 reading a boolean or a small enum. There is no free text anywhere in the path, so there is
 nothing to inject into. Cheapest to implement, and enough for `stop`.
 
-### Tier 1 — A checkbox control panel
+### Tier 1: A checkbox control panel
 
 Richer, and still injection-free, because of a permission asymmetry that is easy to miss:
 
@@ -109,12 +109,12 @@ No text written by anyone else is ever read. The attacker cannot edit this comme
 access, and someone with write access to your repository can already push code. This is the answer
 to "steer with comments and writing": you write, but what crosses the boundary is bits, not prose.
 
-Built once, in the abandoned Workflow runtime this loop used to run on, with three verbs —
+Built once, in the abandoned Workflow runtime this loop used to run on, with three verbs:
 `stop`, `no-ship`, `skip-lenses`. `retry-current` was rejected there for a reason that still
 holds: the loop it would live in had no retry, and a remote verb whose only job is to contradict
 the halt rule is the first place that rule would leak. None of it was carried into `goal-run.ts`.
 
-### Tier 2 — A fenced command block in a new comment
+### Tier 2: A fenced command block in a new comment
 
 Only if Tier 1 proves too coarse. Anyone can create a comment, so this tier needs all three
 levers at once:
@@ -125,15 +125,15 @@ levers at once:
    discarded. No partial parse, no best effort.
 3. **The L1 vocabulary**, unchanged. The grammar buys expressiveness, not authority.
 
-An allowlist alone is not a defense — the incident that motivates all of this began with an
+An allowlist alone is not a defense: the incident that motivates all of this began with an
 authorization bypass. It is one layer, and it only ever raises cost.
 
 ## The channels that exist
 
 ### The plan file is executed, and not only where you think
 
-`run/sweep.ts:55-62` resolves the blocks the plan's own iterations declare — one
-`iterationSection` per `### Iteration N` heading, plus the `## Definition of Done` section — and
+`run/sweep.ts:55-62` resolves the blocks the plan's own iterations declare (one
+`iterationSection` per `### Iteration N` heading, plus the `## Definition of Done` section) and
 `run/sweep.ts:69` runs each distinct `gate2..N` and `dodN` command with `shell: true`, before a
 byte is written, as preflight check 8. A ` ```gate ` fence in an appendix, a worked example, a
 quoted snippet of somebody else's plan: none of it is reached, because none of it belongs to a
@@ -148,7 +148,7 @@ first exec. Scoping the sweep narrowed *which* lines execute; it did not add a r
 The second is the fence-picking rule inside a section. `fenceIn` takes the **first** ` ```gate `
 fence in the section it was handed, exactly as `gate/plan.ts`'s `gateBlock` does. An iteration
 whose prose quotes an example block above its real one therefore runs the example, and is later
-judged by it too — the sweep and the gate agree, which is the property that matters, but they
+judged by it too: the sweep and the gate agree, which is the property that matters, but they
 agree on the wrong block.
 
 Which is still the honest statement of what a plan *is*. **The plan is executable input, and the
@@ -163,37 +163,37 @@ close (`run/close.ts:80`, `:107`, `:123`). None is capability-restricted by its 
 beyond the coarse list, and the reviewer reads remote text as established above. Network egress
 from any of them is not addressed anywhere: that is a sandbox question, not an orchestration one.
 
-### `/goal:supervise` — a local steering channel, guarded by a script nothing runs
+### `/goal:supervise`: a local steering channel, guarded by a script nothing runs
 
 `commands/supervise.md` introduces the one actor allowed to **edit the plan between two runs**,
 inside a closed set: an entry in `test_files` or `impl_files`, `max_diff`, a mistyped path, or
-prose (`supervise.md:72-75`). It asks the same question this document asks of a remote verb —
-*can this edit only subtract?* — and answers it with `scripts/plan-guard.ts`, which hashes the
+prose (`supervise.md:72-75`). It asks the same question this document asks of a remote verb
+(*can this edit only subtract?*) and answers it with `scripts/plan-guard.ts`, which hashes the
 plan's acceptance commands before and after and refuses if the hash moved.
 
 **Name the seam before crediting the mechanism.** Nothing under `scripts/` imports or spawns
 `plan-guard.ts`; its only callers are prose steps in `commands/supervise.md:86-90`, which ask a
 model to run it and to read what it printed. So this is a sentence asking for a mechanism, not a
-mechanism — the same shape this document rejects everywhere else, and it is worth saying plainly
+mechanism: the same shape this document rejects everywhere else, and it is worth saying plainly
 because the script itself is sound and has simply never been wired to anything that must run it.
 
 **What it would cover, once something ran it.** `plan-guard.ts`
 hashes the `gateN=` and `dodN=` lines of every block it resolves (`:55`), and alongside them, per
-block, whether `test_files` is empty (`:59-72`) — the emptiness, not the paths, so repairing a
+block, whether `test_files` is empty (`:59-72`): the emptiness, not the paths, so repairing a
 mistyped path still passes while emptying the field moves the hash. That is the edit that would
 otherwise switch off the bite check, which returns `SKIP` the moment `test_files` is empty
 (`gate/bite.ts:54-56`). `supervise.md:74-76` forbids it in prose as well: *"It may never touch a
 `gateN=` or `dodN=` line, nor empty `test_files`"*.
 
-What the hash still does not cover is the rest of the closed set — an added or removed
-`impl_files` entry, a widened `max_diff`, rewritten prose — all of which move what an iteration
+What the hash still does not cover is the rest of the closed set (an added or removed
+`impl_files` entry, a widened `max_diff`, rewritten prose), all of which move what an iteration
 is judged against without moving the hash. The guard proves the bar did not move and the bite
 check was not switched off; it does not prove the scope stayed the same size.
 
 ## The capability restriction there used to be, and what replaced it
 
 The earlier bash runner refused to start unless `.claude/settings.local.json` mentioned four
-denied git verbs — `git commit`, `git push`, `git add` and `git stash`.
+denied git verbs: `git commit`, `git push`, `git add` and `git stash`.
 That was the one capability restriction the harness enforced, and the
 current runner dropped it for three reasons: the check was a `String.includes` over raw JSON, so an
 `allow` entry naming the same verbs passed it; it was installed as a project rule, so it restrained
@@ -203,9 +203,9 @@ begin and never the one it was checking.
 
 So nothing restrains the implementer's capabilities today. What stands behind "only the gate
 commits" is `run/iteration.ts:132-165`, which snapshots HEAD around the implementer and halts when
-it moved — a claim the run executes rather than one it reads off a file.
+it moved: a claim the run executes rather than one it reads off a file.
 
-The settings layer was the right one — it is the layer L3 concluded the `tools:` field could not
+The settings layer was the right one: it is the layer L3 concluded the `tools:` field could not
 reach. The check on it never was: a `String.includes` over the whole file, which **an `allow` list
 naming those same strings satisfied exactly as well as a `deny` list did.** It proved the
 strings were in the file, not that they denied anything.
@@ -214,15 +214,15 @@ The two limits of that guarantee that used to outlive it are both covered now, b
 snapshot-and-compare shape, and neither by the permission system:
 
 - Every ref is read with `for-each-ref` before and after the implementer (`run/gitwatch.ts`). A
-  `refs/remotes/` move halts the run named as a push; any other ref move — a tag, a side branch,
-  `refs/stash` — halts it named as a ref move. `ls-remote` is deliberately not used: asking the
+  `refs/remotes/` move halts the run named as a push; any other ref move (a tag, a side branch,
+  `refs/stash`) halts it named as a ref move. `ls-remote` is deliberately not used: asking the
   remote would also catch a stranger pushing at 3am, and halt an unattended run over it.
 - The git directory's executable surface is fingerprinted: `config`, `config.worktree`,
   `info/exclude`, and every file under `hooks/`, walked recursively with `.sample` files included
   so a `pre-commit` made from a sample is caught. Absence is recorded as absence, so a hook
   created after the snapshot registers as a change. Neither the run's own tree check nor the
   scope check (`gate/scope.ts:34`) would report any of it, since git does not report on its own
-  directory — and the gate that runs next executes outside the permission system entirely, which
+  directory, and the gate that runs next executes outside the permission system entirely, which
   is exactly why this check runs before it.
 
 ## Where the untrusted input actually goes
@@ -232,7 +232,7 @@ The injection surface does not disappear, it **moves**, and moving it is the who
 `/goal:spec` reads Jira tickets, GitHub issues, PRDs, whatever the source is. That is
 genuinely untrusted text, and it is read by a model. What makes it acceptable is that its
 only output is a plan the developer reads and validates before anything is frozen, and that
-the plan — not the source — is what the autonomous run obeys, hash-checked at every
+the plan (not the source) is what the autonomous run obeys, hash-checked at every
 iteration.
 
 So the rule for the whole workflow is: **all untrusted input is concentrated at the one point
@@ -240,7 +240,7 @@ where a human is looking.** Everything downstream consumes only what that human 
 
 Which puts a real obligation on `/goal:spec`: a long source document is exactly where
 an instruction hides from a tired reader. Read the produced plan, not the source's summary of
-itself — and, per the sweep above, read the gate fence of every iteration as a command that will
+itself. And, per the sweep above, read the gate fence of every iteration as a command that will
 run before the first byte is written.
 
 ## Residual risks, stated plainly
@@ -257,9 +257,9 @@ run before the first byte is written.
 - **Repository write access.** Tier 1 would rest on it, if it were ever built. Someone who has it
   does not need an injection.
 - **A compromised run can still write anything to GitHub.** Write-only protects the run from
-  GitHub, not GitHub from the run — and the run is no longer write-only.
+  GitHub, not GitHub from the run, and the run is no longer write-only.
 
 ---
 
-[^camel]: *Defeating Prompt Injections by Design* (CaMeL, Google DeepMind) — summary and analysis at <https://simonwillison.net/2025/Apr/11/camel/>
-[^dual]: The Dual LLM pattern, and its system-level extension — <https://arxiv.org/pdf/2601.09923>
+[^camel]: *Defeating Prompt Injections by Design* (CaMeL, Google DeepMind): summary and analysis at <https://simonwillison.net/2025/Apr/11/camel/>
+[^dual]: The Dual LLM pattern, and its system-level extension: <https://arxiv.org/pdf/2601.09923>

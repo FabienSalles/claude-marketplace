@@ -1,6 +1,6 @@
 # marketing-distribution
 
-Distribution channels — social, threads, email, newsletter.
+Distribution channels: social, threads, email, newsletter.
 
 ## Install
 
@@ -19,16 +19,16 @@ Distribution channels — social, threads, email, newsletter.
 
 ## When to use what
 
-- **social-content vs thread-writer** — single-post multi-platform vs Twitter/X thread depth
-- **social-content vs marketing-content:linkedin-content** — multi-platform overview vs LinkedIn-only depth
-- **email-subject-lines vs newsletter** — subject line optimization vs full newsletter body + growth strategy
+- **social-content vs thread-writer**: single-post multi-platform vs Twitter/X thread depth
+- **social-content vs marketing-content:linkedin-content**: multi-platform overview vs LinkedIn-only depth
+- **email-subject-lines vs newsletter**: subject line optimization vs full newsletter body + growth strategy
 
 ## Requires
 
 - `social-content` and `thread-writer` declare `allowed-tools: [Bash]` for API calls (Reddit, Unsplash).
-- Reddit posting requires OAuth env vars — see the "Posting to Reddit" section in `social-content/SKILL.md`.
+- Reddit posting requires OAuth env vars (see the "Posting to Reddit" section in `social-content/SKILL.md`).
 
 ## Pairs with
 
-- `marketing-content` — produces the content to distribute
-- `marketing-analytics` — measures distribution performance
+- `marketing-content`: produces the content to distribute
+- `marketing-analytics`: measures distribution performance

@@ -2,9 +2,9 @@
 
 Personal **audit overlay** that complements upstream audit skills without modifying them.
 
-## Pattern — overlay, not replacement
+## Pattern: overlay, not replacement
 
-The community provides comprehensive audit skills (e.g. [`netresearch/security-audit-skill`](https://github.com/netresearch/security-audit-skill) — 61 reference files covering OWASP, CWE, CVSS, Symfony, NestJS, etc.). This plugin **does not duplicate** that content. Instead, it provides a **thin overlay** of personal/project-specific overrides:
+The community provides comprehensive audit skills (e.g. [`netresearch/security-audit-skill`](https://github.com/netresearch/security-audit-skill), 61 reference files covering OWASP, CWE, CVSS, Symfony, NestJS, etc.). This plugin **does not duplicate** that content. Instead, it provides a **thin overlay** of personal/project-specific overrides:
 
 - Stack scoping (which languages/frameworks are in scope)
 - False-positive filters specific to your projects
@@ -19,7 +19,7 @@ When you ask for a security audit, **both** load in parallel:
 🟢 audit:ts-security                  → TS/NestJS code patterns (Drizzle/JWT/bcrypt/…)
 ```
 
-Upstream can ship 100 updates — your overlay stays untouched. Run `claude plugin update security-audit` to sync upstream.
+Upstream can ship 100 updates, your overlay stays untouched. Run `claude plugin update security-audit` to sync upstream.
 
 ## What's included
 
@@ -29,7 +29,7 @@ Upstream can ship 100 updates — your overlay stays untouched. Run `claude plug
 |---|---|
 | `security-overrides` | ✓ shipped (cross-language overlay on netresearch/security-audit) |
 | `ts-security` | ✓ shipped (TS/NestJS code patterns) |
-| `php-security` | _planned (PHP/Symfony code patterns — currently covered by netresearch)_ |
+| `php-security` | _planned (PHP/Symfony code patterns, currently covered by netresearch)_ |
 | `dependency-audit` | _planned (overrides for SCA / npm audit / composer audit)_ |
 | `accessibility-audit` | _planned (a11y / WCAG overrides)_ |
 

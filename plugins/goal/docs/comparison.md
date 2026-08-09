@@ -1,8 +1,8 @@
-# Comparison — what the field does, and where this loses
+# Comparison: what the field does, and where this loses
 
 Written to be checked, not to persuade. Every claim about another tool comes from that tool's own
 repository, documentation or paper, read in **August 2026**; every claim about this one names the
-file that settles it. Both halves rot — the external half when those projects ship, the internal
+file that settles it. Both halves rot: the external half when those projects ship, the internal
 half when this one does.
 
 Companion documents: [`prior-art.md`](prior-art.md) is the older, deeper record of the twelve
@@ -20,7 +20,7 @@ A human and a model write a plan together. The plan is cut into slices, and each
 **in advance**: the exact command that proves it done, the files it may touch, a maximum number of
 diff lines, and its commit message. The plan is then hashed and frozen.
 
-A loop then runs each slice in a fresh model session. A **program** — not a model — judges the
+A loop then runs each slice in a fresh model session. A **program** (not a model) judges the
 result by running the declared command and reading its exit code, and that same program is the
 only thing in the system permitted to commit. A slice is refused if its test would still pass with
 the implementation removed. The run never reads issue text, pull-request text or comments.
@@ -42,19 +42,19 @@ and two arXiv preprints, every individual pillar has an independent implementati
 | A counterfactual on the tests | **greenproof** (snapshots the tests, re-runs the *originals* against the agent's code) |
 | Fresh session judges, not the builder | **proof-loop** ("The verifier must be a fresh session. The agent that built the change does not judge whether the change is done.") |
 
-What has **not** turned up anywhere is the conjunction — and inside it, two things in particular:
+What has **not** turned up anywhere is the conjunction, and inside it, two things in particular:
 
 1. **A numeric per-slice diff ceiling.** Not one of the eight harnesses read in depth bounds the
    size of a change. Path allowlists are common; a line budget is not. It is the only bound in
    this system that is a number rather than a judgement.
 2. **The judge is also the sole committer.** Elsewhere the model commits and *then* something
-   reviews — `claude-code-harness` auto-commits per task before its review runs; in
+   reviews: `claude-code-harness` auto-commits per task before its review runs; in
    `java-harness-agent` the model holds `Bash(git commit *)` in its own allowlist and decides when
    to invoke the deterministic gates. Here, verify → commit → tick happen inside one process the
    writing agent cannot reach.
 
 Say that, and the positioning survives contact with the field. Say "nobody makes the plan
-binding" — as this project's own French comparison still does — and a reader with a search engine
+binding" (as this project's own French comparison still does), and a reader with a search engine
 falsifies it in a minute.
 
 ---
@@ -65,7 +65,7 @@ falsifies it in a minute.
 
 **What it is.** `goal-gate.ts` runs the slice's declared command against the tree it is standing
 in, and stages, commits and ticks the plan in that same process. Nothing else in the codebase
-commits — one grep proves it: `gate/scope.ts:136` and `:142` are the only `git add` and
+commits. One grep proves it: `gate/scope.ts:136` and `:142` are the only `git add` and
 `git commit` calls in the whole `scripts/` tree.
 
 **Why it is not a model.** Measured agreement between an LLM judge and human ground truth on code
@@ -73,7 +73,7 @@ correctness sits at Kappa ≈ 0.21 (Java) and ≈ 0.10 (Python), and one systema
 wrong Java implementations judged correct.[^judge]
 
 **Where others land.** `NodeProof` judges identically and is the closest match on this row.
-`proof-loop`'s gate is 95 lines that parse a `verdict.json` — every input to it was written by a
+`proof-loop`'s gate is 95 lines that parse a `verdict.json`: every input to it was written by a
 model session, so the loop still ends in a model's self-report, mechanically checked.
 `Goalkeeper` defines a `validator.command` but its gate is a subagent emitting the string
 `VERDICT: approve`. `SWE-agent`, the academic reference, writes the diff to a file and hands it
@@ -96,8 +96,8 @@ alongside the commands.
 gate by matching `materialHash` / `headHash` against the live tracked tree, where this hashes the
 plan at plan time only. That is a mechanism worth stealing, not dismissing.
 
-The spec-driven family — `spec-kit`, `Agent OS`, `AWS Kiro`, `Tessl`, `OpenSpec`, `BMAD`,
-`cc-sdd`, `Tsumiki` — still produces excellent plans and ships nothing to hold an agent to one.
+The spec-driven family (`spec-kit`, `Agent OS`, `AWS Kiro`, `Tessl`, `OpenSpec`, `BMAD`,
+`cc-sdd`, `Tsumiki`) still produces excellent plans and ships nothing to hold an agent to one.
 Against *that* family the claim holds exactly as written.
 
 ### 3. Blast radius is declared before the work
@@ -106,7 +106,7 @@ Against *that* family the claim holds exactly as written.
 against `HEAD` before anything is committed. An undeclared path halts; an over-budget slice halts.
 
 **Where others land.** Path bounds exist elsewhere (`java-harness-agent`, `Proof-or-Stop`).
-`Goalkeeper` has the polarity inverted — `non_goals` lists what is out of scope, which cannot
+`Goalkeeper` has the polarity inverted: `non_goals` lists what is out of scope, which cannot
 enumerate what nobody thought of. **The line budget has no counterpart in anything read.** The
 nearest thing is a published technique, *Change Budget for Coding Agents*, not a shipped harness.
 
@@ -118,7 +118,7 @@ speed, and it names the price of this one: **this is much slower to land a slice
 ### 4. The test must have been red
 
 **What it is.** Before a slice is accepted, its implementation is set aside, the acceptance command
-is re-run, and it must **fail**. If it still passes, the slice is refused — the test asserted
+is re-run, and it must **fail**. If it still passes, the slice is refused: the test asserted
 nothing. The restore is then verified by fingerprinting the tree before and after, so an acceptance
 command with side effects halts rather than silently corrupting the tree.
 
@@ -128,7 +128,7 @@ again, fixing failures until everything passes". When the only stop condition is
 and it failed without this code*, which makes rewriting the test useless as a strategy rather than
 merely forbidden.
 
-**Where others land — and this is the row that changed.** The rule itself is not new: it is
+**Where others land, and this is the row that changed.** The rule itself is not new: it is
 SWE-bench's dataset admission criterion, and `SWT-Bench` operationalises fail-to-pass as an
 evaluation metric. Both are **evaluation** harnesses, checking it once in a throwaway container.
 `Tsumiki` binds each task to a red/green/refactor cycle as instruction. `java-harness-agent`
@@ -138,7 +138,7 @@ carries the anti-tautology idea in a skill, unenforced.
 snapshot the test files before the agent runs, then re-run those **original** tests against the
 agent's code, and the verdict is that second run's exit code. Pure program, no model, no network.
 
-The two are complementary, not competing — and the comparison exposes a genuine hole here:
+The two are complementary, not competing, and the comparison exposes a genuine hole here:
 
 > This proves the **new** evidence was ever real. `greenproof` proves the **old** evidence was not
 > destroyed. A pre-existing test living inside a slice's declared files, stripped of three
@@ -157,19 +157,19 @@ it; where the docs are silent rather than negative, the cell says so.
 | | this | NodeProof | proof-loop | axiom | greenproof | Goalkeeper | java-harness | spec-driven family |
 |---|---|---|---|---|---|---|---|---|
 | Program judges by exit code | **yes** | yes | reads a model's JSON | yes | yes | subagent verdict | yes, model-invoked | no |
-| Judge is the sole committer | **yes** | no | does not commit | does not commit | does not commit | no | no — model holds `git commit` | no |
+| Judge is the sole committer | **yes** | no | does not commit | does not commit | does not commit | no | no: model holds `git commit` | no |
 | Plan frozen against tampering | yes | protected paths, not hashed | prose rule only | snapshot, no hash | n/a | prose rule only | no | no |
 | Declared-paths allowlist | **yes** | no | no | no | no | negative only | yes | no |
 | Numeric diff ceiling | **yes** | no | no | no | no | no | no | no |
 | Test must have been red | **yes** | no | no | no | opposite direction | no | instruction only | no |
 | Old tests protected from weakening | **no** | no | no | no | **yes** | reviewer may notice | no | no |
 | Fresh session per slice | **yes** | no | yes | n/a | n/a | yes | no | varies |
-| Never reads issue/PR text | **yes** | not documented | n/a | n/a | n/a | not documented | **no** — ingests tickets | varies |
+| Never reads issue/PR text | **yes** | not documented | n/a | n/a | n/a | not documented | **no**: ingests tickets | varies |
 | Iteration / turn ceiling | **no** | not documented | no | no | n/a | checkpoint loop | no | n/a |
 | Sandbox or runtime tool-gating | **no** | PreToolUse path block | no | observe mode | no | no | no | Kiro: yes |
 | Exportable, third-party-checkable proof | **no** | receipts | `verdict.json` | custody chain | `--json` | no | no | no |
 
-Bold marks the cells worth reading in the first column — the six **yes** rows nothing else
+Bold marks the cells worth reading in the first column: the six **yes** rows nothing else
 combines, and the four **no** rows where the field is genuinely ahead. All four are in the roadmap
 below.
 
@@ -186,14 +186,14 @@ This is the section that produces work. Ordered by what it would cost to close.
    auto-fix cap; Anthropic's own `ralph-wiggum` plugin says to "always rely on a maximum iteration
    count as the primary safety mechanism". **Cheapest to fix, and the most overdue.**
 
-2. **Weakened-test detection.** Named above. The failure mode has a stable four-signal taxonomy —
-   assertions deleted, tolerances widened, tests marked skip, expected values and snapshots
-   regenerated — and a formula worth keeping: *in an agent's pull request, the tests are part of
+2. **Weakened-test detection.** Named above. The failure mode has a stable four-signal taxonomy
+   (assertions deleted, tolerances widened, tests marked skip, expected values and snapshots
+   regenerated), and a formula worth keeping: *in an agent's pull request, the tests are part of
    the claim, not part of the proof.* `greenproof` is a working implementation of half of it, and
    it is ~200 lines of Python. **This protects the only differentiator nobody else has.**
 
 3. **Forensics after a halt.** When a slice is refused, what exists is the tree as the implementer
-   left it, and nothing else — and, worse, **a halted run writes no report at all**, because the
+   left it, and nothing else. And, worse, **a halted run writes no report at all**, because the
    audit pass runs only at the close, which a halted run never reaches. So the corpus of six run
    reports on disk is successful-runs-only by construction. `Roo` keeps restore points in a shadow
    repository; `HORKOS` writes a `HANDOFF.md` after three strikes.
@@ -214,20 +214,20 @@ This is the section that produces work. Ordered by what it would cost to close.
    `axiom` keeps a custody chain; `HORKOS` keeps a receipt ledger. No artefact here can be checked
    by anyone who did not run it.
 
-7. **Observe mode.** `axiom` installs every rule recording-only — "it records what it *would* have
-   blocked and blocks nothing" — and you enable enforcement per rule once its findings have earned
+7. **Observe mode.** `axiom` installs every rule recording-only ("it records what it *would* have
+   blocked and blocks nothing"), and you enable enforcement per rule once its findings have earned
    it. This harness has no way to try a new refusal without it being able to stop a run.
 
 8. **An entirely empty axis: the machine.** `OpenHands` ships risk analysers, security levels and
    confirmation policies; `Codex` runs network-isolated in a container; `claude-code-harness` runs
    a Go engine adjudicating every tool call at PreToolUse across five deny categories.
    **They protect the machine from the agent; this protects the repository from the agent.** That
-   is an accepted debt, not a bug — this is pointed at a repository its owner trusts. The day it is
+   is an accepted debt, not a bug: this is pointed at a repository its owner trusts. The day it is
    pointed at somebody else's, the whole axis is missing.
 
 9. **Reacting to red CI.** The largest open loop. Nothing learns that the pull request the run just
-   opened went red. Closing it means reading CI and PR text — precisely what the write-only
-   invariant forbids — so the safe shape is the constrained one already designed in
+   opened went red. Closing it means reading CI and PR text (precisely what the write-only
+   invariant forbids), so the safe shape is the constrained one already designed in
    [`steering-and-injection.md`](steering-and-injection.md), not a general reader.
 
 ---
@@ -259,8 +259,8 @@ attempts, against 4 of 135 with a fresh one.[^looping]
 
 ---
 
-[^judge]: *Are LLMs Reliable Code Reviewers? Systematic Overcorrection in Requirement Conformance Judgement* — <https://arxiv.org/html/2603.00539>, and *On the Effectiveness of LLM-as-a-judge for Code Generation and Summarization* — <https://arxiv.org/pdf/2507.16587>
-[^looping]: *Looping Is Not Reliability* — <https://arxiv.org/abs/2607.24604>
+[^judge]: *Are LLMs Reliable Code Reviewers? Systematic Overcorrection in Requirement Conformance Judgement*: <https://arxiv.org/html/2603.00539>, and *On the Effectiveness of LLM-as-a-judge for Code Generation and Summarization*: <https://arxiv.org/pdf/2507.16587>
+[^looping]: *Looping Is Not Reliability*: <https://arxiv.org/abs/2607.24604>
 
 **Sources read for this survey, August 2026.** greenproof <https://github.com/zxyasfas/greenproof> ·
 proof-loop <https://github.com/LeoStehlik/proof-loop> · NodeProof <https://github.com/HomenShum/NodeProof> ·
@@ -272,5 +272,5 @@ HORKOS <https://github.com/eragonlonelyboy-lab/horkos> · SWT-Bench <https://git
 *Proof-or-Stop* <https://arxiv.org/abs/2607.14890> · *Rel(AI)Build* <https://arxiv.org/html/2606.26924v1> ·
 Traycer <https://docs.traycer.ai/llms.txt> · Tsumiki <https://github.com/classmethod/tsumiki> ·
 Antithesis <https://antithesis.com/product/> · Goose recipes <https://goose-docs.ai/docs/guides/recipes/recipe-reference/>.
-The commercial and academic panel — Cursor, Codex, aider, Cline, Roo, SWE-agent, spec-kit,
-OpenHands, SwarmOps, Jules, Bernstein, Hermes — is sourced in [`prior-art.md`](prior-art.md).
+The commercial and academic panel (Cursor, Codex, aider, Cline, Roo, SWE-agent, spec-kit,
+OpenHands, SwarmOps, Jules, Bernstein, Hermes) is sourced in [`prior-art.md`](prior-art.md).

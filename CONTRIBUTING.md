@@ -15,7 +15,7 @@ plugins/<name>/
 └── hooks/hooks.json + *.sh       # 0..n hooks
 ```
 
-- Reference bundled files with `${CLAUDE_PLUGIN_ROOT}/...` — never absolute or `~` paths. This is what makes a plugin portable and what `health-check.sh` verifies.
+- Reference bundled files with `${CLAUDE_PLUGIN_ROOT}/...`, never absolute or `~` paths. This is what makes a plugin portable and what `health-check.sh` verifies.
 - A plugin can ship any mix of skills / commands / hooks / agents. Single-purpose is fine (`jquery` ships one skill; `self-audit` ships one command).
 
 ## `plugin.json`
@@ -41,7 +41,7 @@ Add one entry to `.claude-plugin/marketplace.json` → `plugins[]`:
 |---|---|
 | `name` | Matches the directory name. |
 | `source` | `./plugins/<name>` for local, or a `{ "source": "github", "repo": "owner/name" }` object for a re-export (see `security-audit`). |
-| `description` | One line — reused verbatim as the plugin's tagline. |
+| `description` | One line, reused verbatim as the plugin's tagline. |
 | `version`, `author`, `license` | Mirror `plugin.json`. |
 | `category` | One of `development` · `testing` · `productivity` · `platform` · `security` · `marketing`. |
 | `keywords` | For discovery. |
@@ -55,7 +55,7 @@ Two conventions, pick the fit:
 - **Skills-catalog** (language/skill plugins): `# <name>` → one-line description → `## Install` → `## Skills (N)` table → optional `## When to use`. Model: [`plugins/frontend/README.md`](plugins/frontend/README.md).
 - **Overlay/rationale** (vendored or overlay plugins): lead with *why this exists / what's included / how it layers*. Model: [`plugins/audit/README.md`](plugins/audit/README.md).
 
-Keep the `## Skills (N)` count in sync with the actual number of skill directories — it's a convention readers rely on.
+Keep the `## Skills (N)` count in sync with the actual number of skill directories: it's a convention readers rely on.
 
 ## Validate locally
 
@@ -66,9 +66,9 @@ A diagnostic script orchestrates the native `claude plugin` commands:
 ./scripts/health-check.sh --quick   # skip the upstream sync (faster, for dev loops)
 ```
 
-It (1) re-syncs upstream marketplaces, (2) validates the root `marketplace.json`, (3) validates each plugin manifest, (4) checks every `${CLAUDE_PLUGIN_ROOT}/...` reference in `hooks.json` and command files resolves to a real file — catching renames not propagated to JSON — and (5) lists installed plugins. It exits `1` on any failure, so it's usable in a pre-commit hook or local CI.
+It (1) re-syncs upstream marketplaces, (2) validates the root `marketplace.json`, (3) validates each plugin manifest, (4) checks every `${CLAUDE_PLUGIN_ROOT}/...` reference in `hooks.json` and command files resolves to a real file (catching renames not propagated to JSON) and (5) lists installed plugins. It exits `1` on any failure, so it's usable in a pre-commit hook or local CI.
 
-`./scripts/validate-skills.sh` checks every `SKILL.md`'s frontmatter (present, `name:` present and matching the directory) and README skill counts — the same checks CI runs, runnable before you push.
+`./scripts/validate-skills.sh` checks every `SKILL.md`'s frontmatter (present, `name:` present and matching the directory) and README skill counts: the same checks CI runs, runnable before you push.
 
 ## What CI enforces
 

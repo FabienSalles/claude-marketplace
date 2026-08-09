@@ -1,6 +1,6 @@
-# Comparatif fonctionnel — Hermes, et le reste du panel
+# Comparatif fonctionnel : Hermes, et le reste du panel
 
-> **Note du 2026-08-06 — document dépassé.** Le comparatif courant et canonique est
+> **Note du 2026-08-06 : document dépassé.** Le comparatif courant et canonique est
 > [`comparison.md`](comparison.md), écrit après celui-ci et vérifié contre le code. Cette page
 > reste pour sa lecture non technique en français ; deux de ses affirmations ont été corrigées
 > sur place à cette date (la narration de l'implémenteur, et la ligne « Fusible » de la synthèse).
@@ -47,7 +47,7 @@ correctes.[^judge]
 
 ---
 
-# Partie 1 — Hermes
+# Partie 1 : Hermes
 
 Hermes, c'est une passerelle de messagerie devant un agent. On lui parle depuis Telegram ou une
 vingtaine d'autres canaux, il lance du travail, il rend compte. Sa force revendiquée, et elle est
@@ -168,7 +168,7 @@ révèle est légitime. L'outil ne l'est pas dans ce système.
 
 ---
 
-# Partie 2 — Le reste du panel
+# Partie 2 : Le reste du panel
 
 Mêmes quatre questions, en beaucoup plus court. Le panel : aider, OpenHands, Cline, Roo, Cursor,
 Codex, Amp, SWE-agent, spec-kit, SwarmOps, Jules, Bernstein.
@@ -368,23 +368,23 @@ n'invente pas une URL pour faire joli.
 
 ---
 
-[^judge]: *Are LLMs Reliable Code Reviewers? Systematic Overcorrection in Requirement Conformance Judgement* — <https://arxiv.org/html/2603.00539>, et *On the Effectiveness of LLM-as-a-judge for Code Generation and Summarization* — <https://arxiv.org/pdf/2507.16587>
-[^clinejection]: Note de recherche CSA sur la chaîne d'injection via la GitHub Action Cline — <https://labs.cloudsecurityalliance.org/research/csa-research-note-claude-code-github-action-prompt-injection/>
-[^swebench]: *Introducing SWE-bench Verified* — <https://openai.com/index/introducing-swe-bench-verified/>, et la construction `FAIL_TO_PASS` / `PASS_TO_PASS` — <https://github.com/SWE-bench/SWE-bench/issues/174>
-[^codex]: *Introducing Codex* — <https://openai.com/index/introducing-codex/>
-[^aider]: `aider/coders/base_coder.py` — <https://raw.githubusercontent.com/Aider-AI/aider/main/aider/coders/base_coder.py>, et <https://aider.chat/docs/git.html>
-[^sweagent]: `tools/review_on_submit_m/bin/submit` — <https://raw.githubusercontent.com/SWE-agent/SWE-agent/main/tools/review_on_submit_m/bin/submit>
+[^judge]: *Are LLMs Reliable Code Reviewers? Systematic Overcorrection in Requirement Conformance Judgement* : <https://arxiv.org/html/2603.00539>, et *On the Effectiveness of LLM-as-a-judge for Code Generation and Summarization* : <https://arxiv.org/pdf/2507.16587>
+[^clinejection]: Note de recherche CSA sur la chaîne d'injection via la GitHub Action Cline : <https://labs.cloudsecurityalliance.org/research/csa-research-note-claude-code-github-action-prompt-injection/>
+[^swebench]: *Introducing SWE-bench Verified* : <https://openai.com/index/introducing-swe-bench-verified/>, et la construction `FAIL_TO_PASS` / `PASS_TO_PASS` : <https://github.com/SWE-bench/SWE-bench/issues/174>
+[^codex]: *Introducing Codex* : <https://openai.com/index/introducing-codex/>
+[^aider]: `aider/coders/base_coder.py` : <https://raw.githubusercontent.com/Aider-AI/aider/main/aider/coders/base_coder.py>, et <https://aider.chat/docs/git.html>
+[^sweagent]: `tools/review_on_submit_m/bin/submit` : <https://raw.githubusercontent.com/SWE-agent/SWE-agent/main/tools/review_on_submit_m/bin/submit>
 [^loops]: <https://github.com/lSAAGl/loop-harness>, et <https://github.com/rxdt/loopgate_harness>
-[^anthropic]: *Building verification loops in Claude Code with skills* — <https://claude.com/blog/building-verification-loops-in-claude-code-with-skills>
+[^anthropic]: *Building verification loops in Claude Code with skills* : <https://claude.com/blog/building-verification-loops-in-claude-code-with-skills>
 [^issue28489]: <https://github.com/anthropics/claude-code/issues/28489>
-[^cursor]: *Agent security* — <https://cursor.com/docs/agent/security>
-[^amp]: *Permissions* — <https://ampcode.com/notes/permissions>, et <https://ampcode.com/news/tool-level-permissions>
-[^openhands]: *Security* — <https://docs.openhands.dev/sdk/guides/security>
+[^cursor]: *Agent security* : <https://cursor.com/docs/agent/security>
+[^amp]: *Permissions* : <https://ampcode.com/notes/permissions>, et <https://ampcode.com/news/tool-level-permissions>
+[^openhands]: *Security* : <https://docs.openhands.dev/sdk/guides/security>
 [^cline]: <https://docs.cline.bot/features/auto-approve>, et <https://roocodeinc.github.io/Roo-Code/features/checkpoints>
 [^speckit]: <https://github.com/github/spec-kit>
 [^swarmops]: <https://github.com/rekpero/claude-code-swarm>
-[^rewrite]: *The test rewrite failure mode* — <https://pyor.review/blog/test-rewrite-failure-mode>
-[^metr]: *Recent reward hacking* — <https://metr.org/blog/2025-06-05-recent-reward-hacking/>
+[^rewrite]: *The test rewrite failure mode* : <https://pyor.review/blog/test-rewrite-failure-mode>
+[^metr]: *Recent reward hacking* : <https://metr.org/blog/2025-06-05-recent-reward-hacking/>
 [^bernstein]: <https://github.com/sipyourdrink-ltd/bernstein>
 [^jules]: <https://jules.google/docs/changelog/2026-01-26-1/>
-[^looping]: *Looping Is Not Reliability* — <https://arxiv.org/abs/2607.24604>
+[^looping]: *Looping Is Not Reliability* : <https://arxiv.org/abs/2607.24604>

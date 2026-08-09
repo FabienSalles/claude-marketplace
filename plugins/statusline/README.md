@@ -1,6 +1,6 @@
 # statusline
 
-Claude Code statusline — directory, git branch, model, context progress bar, and 5h rate-limit usage with time-to-reset.
+Claude Code statusline: directory, git branch, model, context progress bar, and 5h rate-limit usage with time-to-reset.
 
 ![Statusline preview](../../docs/statusline-preview.png)
 
@@ -22,7 +22,7 @@ Claude Code does not accept the `statusLine` key in `plugin.json`, so `/plugin i
 /statusline:setup
 ```
 
-`/statusline:setup` creates the symlink `~/.claude/statusline-command.sh → ${CLAUDE_PLUGIN_ROOT}/statusline.sh` and writes `statusLine.command = "~/.claude/statusline-command.sh"` to `~/.claude/settings.json`. The symlink shields settings from the plugin cache path, which rotates on every plugin update — **re-run `/statusline:setup` after upgrading the plugin** so the symlink target follows.
+`/statusline:setup` creates the symlink `~/.claude/statusline-command.sh → ${CLAUDE_PLUGIN_ROOT}/statusline.sh` and writes `statusLine.command = "~/.claude/statusline-command.sh"` to `~/.claude/settings.json`. The symlink shields settings from the plugin cache path, which rotates on every plugin update. **Re-run `/statusline:setup` after upgrading the plugin** so the symlink target follows.
 
 ### Via `setup.sh` (from a clone)
 
@@ -32,7 +32,7 @@ cd claude-marketplace
 ./setup.sh --pack statusline
 ```
 
-`setup.sh` writes `statusLine.command = "<clone>/plugins/statusline/statusline.sh"` directly to `~/.claude/settings.json` — no symlink needed because the clone path is stable. Both paths back up the previous `settings.json` before editing it.
+`setup.sh` writes `statusLine.command = "<clone>/plugins/statusline/statusline.sh"` directly to `~/.claude/settings.json`: no symlink needed because the clone path is stable. Both paths back up the previous `settings.json` before editing it.
 
 ## What the bar shows
 
@@ -55,6 +55,6 @@ The 5h block is only emitted by Claude.ai Pro/Max subscribers and only after the
 
 ## Files
 
-- [`statusline.sh`](statusline.sh) — the script (single jq pass, ~80 lines)
-- [`commands/setup.md`](commands/setup.md) — the `/statusline:setup` slash command
-- [`.claude-plugin/plugin.json`](.claude-plugin/plugin.json) — manifest
+- [`statusline.sh`](statusline.sh): the script (single jq pass, ~80 lines)
+- [`commands/setup.md`](commands/setup.md): the `/statusline:setup` slash command
+- [`.claude-plugin/plugin.json`](.claude-plugin/plugin.json): manifest

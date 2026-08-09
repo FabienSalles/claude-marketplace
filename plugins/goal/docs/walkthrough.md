@@ -1,8 +1,8 @@
-# Walkthrough — every step, and why it is that step
+# Walkthrough: every step, and why it is that step
 
 This is the plugin explained as a sequence of decisions rather than a set of files. For each
 stage: what you do, then everything the machine does, and for every one of those a concrete
-reason — the failure it prevents, or the thing it buys you.
+reason (the failure it prevents, or the thing it buys you).
 
 No implementation detail and no file paths, deliberately: those go stale on the next commit, and
 nothing here should. For *which layer holds what*, see
@@ -36,7 +36,7 @@ left to judgement. That split is the whole design.
 
 ---
 
-## Stage 0 — `/goal:tickets`: cut an initiative into pieces
+## Stage 0 (`/goal:tickets`): cut an initiative into pieces
 
 Reach for this only when the work carries several independent outcomes and no single success
 signal. One spec for that would freeze guesses about parts nobody has learned anything about yet.
@@ -54,7 +54,7 @@ signal. One spec for that would freeze guesses about parts nobody has learned an
 3. **After a piece ships, you re-run the same step on the existing list.** It records what
    shipped and what that taught, re-asks whether the remaining order still holds, and details the
    next piece.
-   *Why:* re-cutting stays cheap only because everything below the line is still one-liners — so
+   *Why:* re-cutting stays cheap only because everything below the line is still one-liners, so
    the plan absorbs what you learned instead of contradicting it.
 
 4. **Mirroring the backlog as a GitHub milestone and issues is offered, never imposed.**
@@ -63,7 +63,7 @@ signal. One spec for that would freeze guesses about parts nobody has learned an
 
 ---
 
-## Stage 1 — `/goal:spec`: settle what must become true
+## Stage 1 (`/goal:spec`): settle what must become true
 
 1. **Your source is read, and the session refuses to proceed if it never evidenced a real
    problem.** A source that only says "improve X" stops with a question.
@@ -81,7 +81,7 @@ signal. One spec for that would freeze guesses about parts nobody has learned an
    runner later never reopens a business decision, and a business decision never quietly depends
    on today's tooling.
 
-4. **An adversarial pass is offered — states, invariants, and what every action does to every
+4. **An adversarial pass is offered: states, invariants, and what every action does to every
    state. Whether you took it is recorded in the contract.**
    *Why:* an interaction nobody enumerated before the work is cut into pieces resurfaces
    mid-implementation as rework, and by then the pieces are frozen around the wrong shape.
@@ -90,7 +90,7 @@ signal. One spec for that would freeze guesses about parts nobody has learned an
 5. **The stage ends with what now exists, an explicit list of what deliberately does not exist
    yet, and one command as the last thing on screen.**
    *Why:* you can tell from a single screen whether the work is ready to plan, without opening
-   the file — and the one actionable line is not buried under a summary.
+   the file, and the one actionable line is not buried under a summary.
 
 **Why this stage is not automated:** the ambiguity a source leaves cannot be lifted from inside an
 unattended run. An implementer with nobody to ask resolves it by guessing, and the guess surfaces
@@ -98,7 +98,7 @@ thirty turns later as work to throw away. This is the one place a human is load-
 
 ---
 
-## Stage 2 — `/goal:plan`: turn it into something a machine can judge
+## Stage 2 (`/goal:plan`): turn it into something a machine can judge
 
 1. **Functional questions are refused here.** A business hole found at this stage stops the
    session and goes back to Stage 1 rather than being decided inline.
@@ -110,7 +110,7 @@ thirty turns later as work to throw away. This is the one place a human is load-
    *Why:* an acceptance verdict produced by a program with an exit code cannot be talked around.
    One produced by a model reading the diff can be, and usually is, when nobody is watching.
 
-3. **You are asked which mode this plan runs in — `manual` or `commit+pr` — before anything is
+3. **You are asked which mode this plan runs in (`manual` or `commit+pr`) before anything is
    split**, along with whether existing behaviour may break and where it may push.
    *Why:* the mode changes the split itself. Slices you will review by hand should be small enough
    to read in one sitting; slices a machine verifies can be fatter, and forcing those thin burns a
@@ -124,7 +124,7 @@ thirty turns later as work to throw away. This is the one place a human is load-
 
 5. **The plan is written to disk on its own branch, and you get one paste-ready handoff whose
    length is measured against a hard cap rather than eyeballed.**
-   *Why:* past that cap the next step rejects the whole instruction and the slice never starts — a
+   *Why:* past that cap the next step rejects the whole instruction and the slice never starts: a
    failure that looks exactly like nothing happening.
 
 6. **Under `manual`, the handoff is offered on your clipboard rather than on screen.**
@@ -133,25 +133,25 @@ thirty turns later as work to throw away. This is the one place a human is load-
 
 ---
 
-## Stage 3 — the two ways to drive it
+## Stage 3: the two ways to drive it
 
 The plan is frozen. What happens next depends entirely on the mode you chose, and the two are
 genuinely different products sharing a contract.
 
-### 3a — `manual`: you are the judge, one slice at a time
+### 3a (`manual`): you are the judge, one slice at a time
 
 You run one slice, read the diff, correct it, and only then move on. Nothing is committed, pushed
 or staged for you at any point.
 
 1. **You paste the handoff, and one slice is implemented in that session.**
    *Why:* the slice is small on purpose under this mode, so what comes back is a diff you can hold
-   in your head. The value here is not autonomy — it is that you see the code at the moment
+   in your head. The value here is not autonomy: it is that you see the code at the moment
    correcting it is cheap, before anything is built on top of it.
 
 2. **`/goal:next` re-runs the finished slice's acceptance commands from scratch and shows you the
    output, rather than trusting its checkbox.**
    *Why:* the slice verified itself. Without an independent replay, every "pass" is only ever
-   self-certified — and this replay is the one thing in this mode that plays the role the gate
+   self-certified, and this replay is the one thing in this mode that plays the role the gate
    plays in the other.
 
 3. **The plan on disk is reconciled against what actually changed**, including propagating any
@@ -164,15 +164,15 @@ or staged for you at any point.
    thing you were about to look at.
 
 5. **You are handed the next slice's instruction, on your clipboard.**
-   *Why:* you are expected to clear the session between slices — that is what keeps each one
-   starting cold — and the clipboard is what survives that.
+   *Why:* you are expected to clear the session between slices (that is what keeps each one
+   starting cold), and the clipboard is what survives that.
 
-6. **When no slices remain you get a merge-day checklist instead of another handoff — printed,
+6. **When no slices remain you get a merge-day checklist instead of another handoff: printed,
    never executed.**
    *Why:* the merge happens days later in a session with no memory of the run, so whatever is not
    written down now is what gets forgotten. And deleting branches is not the machine's call.
 
-### 3b — `commit+pr`: you hand over the whole plan
+### 3b (`commit+pr`): you hand over the whole plan
 
 One command takes the plan end to end. Everything in Stage 4 happens with nobody watching, which
 is precisely why none of it is left to judgement.
@@ -180,7 +180,7 @@ is precisely why none of it is left to judgement.
 1. **The runner is launched against the frozen plan**, either directly or with a session watching
    it.
    *Why:* there is nothing to decide between slices any more. Choosing the next slice is the order
-   of the list — putting a model at that point would add a failure mode to the one layer
+   of the list. Putting a model at that point would add a failure mode to the one layer
    deliberately made stupid.
 
 2. **A watched run classifies a non-zero exit before repairing anything:** was the plan's contract
@@ -189,8 +189,8 @@ is precisely why none of it is left to judgement.
    or ships a plan quietly edited until it stops complaining. The two halts this was written after
    exited with the same code and the same message and needed opposite handling.
 
-3. **A repair to the plan is confined to a fixed list of editable things, and must prove — by
-   comparing a hash taken beforehand — that no acceptance line moved.**
+3. **A repair to the plan is confined to a fixed list of editable things, and must prove (by
+   comparing a hash taken beforehand) that no acceptance line moved.**
    *Why:* without that proof, "repairing the plan" is indistinguishable from deleting the check
    that was failing, and the run then passes against a bar nobody agreed to.
 
@@ -206,11 +206,11 @@ command asks a model to run rather than something that runs on its own.
 
 ---
 
-## Stage 4 — inside the run
+## Stage 4: inside the run
 
 Everything below happens only under `commit+pr`, once per slice, with nobody watching.
 
-### 4a — Before a byte is written
+### 4a: Before a byte is written
 
 1. **A timestamped folder for this launch's records is created first, and every line the run will
    print is written into it as well.**
@@ -224,16 +224,16 @@ Everything below happens only under `commit+pr`, once per slice, with nobody wat
    contain a cleanup slice; and no other run may hold this plan.
    *Why:* each prevents a specific, unrecoverable mess. Uncommitted work would be swept into the
    first automatic commit unreviewed. A plan folder that version control can see makes the run's
-   own log and its ticked checkbox look like unauthorised changes — to the very check that polices
+   own log and its ticked checkbox look like unauthorised changes, to the very check that polices
    scope. Guessing the remote would push, and open a pull request, on somebody else's repository,
    unattended.
 
 3. **Every distinct check the plan will ever hold a slice to is run once, right now, against the
-   untouched code** — deduplicated, so a six-slice plan reusing four commands runs four, not
+   untouched code**: deduplicated, so a six-slice plan reusing four commands runs four, not
    fifteen. The one check each slice is supposed to fail without its implementation is excluded.
    *Why:* two things at once. A plan that would fail on its third slice never spends the first
    two. And once this passes, any later failure of the same command is caused by the work that
-   just happened — which is what makes an automatic verdict trustworthy at all.
+   just happened, which is what makes an automatic verdict trustworthy at all.
    *This has fired for real:* one attempt stopped here with the base suite failing 35 of 202 tests
    for a machine-permission reason, and never entered a slice.
 
@@ -249,19 +249,19 @@ Everything below happens only under `commit+pr`, once per slice, with nobody wat
    written, not after two slices are already committed. The fingerprint captured here is what later
    proves the plan was not quietly rewritten mid-run to soften the terms it is judged by.
 
-6. **An exclusive lock on the plan is taken, and released on every way out** — finished, refused,
+6. **An exclusive lock on the plan is taken, and released on every way out**: finished, refused,
    paused, interrupted or crashed.
    *Why:* two runs on the same plan implement the same slice twice from different working copies,
    and the second commits over the first. Releasing on every exit path means a run that dies
    mid-slice does not block the next launch until somebody finds the stale lock by hand.
 
-### 4b — One slice, implemented
+### 4b: One slice, implemented
 
 7. **The slice's own text is copied verbatim into a prompt and handed to a brand-new session, told
    the working folder and the branch by name. The plan's location on disk is never passed.**
    *Why:* handing over that location once caused a real run to open the plan in a different copy of
    the project, treat that copy's parent as the project root, and write an entire slice into the
-   wrong place — while every command it ran looked correct throughout. A fresh session per slice
+   wrong place, while every command it ran looked correct throughout. A fresh session per slice
    also means the plan's checkboxes, not an accumulated conversation, are the only memory of
    progress.
 
@@ -270,7 +270,7 @@ Everything below happens only under `commit+pr`, once per slice, with nobody wat
    usage allowance gets a long pause reported in slices. Anything else stops the run. Retries are
    capped.
    *Why:* running out of allowance is not a defect in the work and must not be reported as one. But
-   the three causes need very different waits — treating a burst limit as an exhausted allowance
+   the three causes need very different waits: treating a burst limit as an exhausted allowance
    used to sleep half an hour for something that clears in seconds, measured at 4% of the session's
    usage. The cap means a window that never reopens ends in a clean pause rather than a process
    spinning until the machine is switched off.
@@ -278,10 +278,10 @@ Everything below happens only under `commit+pr`, once per slice, with nobody wat
 9. **Whether the session succeeded or failed, the attempt is recorded:** its full output, the tail
    of its own session log, and whether the tool it was running was replaced underneath it mid-work.
    *Why:* a killed unattended session used to take half a day to explain after the fact. Capturing
-   the evidence at the moment of death — including an auto-updater swapping the binary mid-run —
+   the evidence at the moment of death (including an auto-updater swapping the binary mid-run)
    turns that into a line in the log.
 
-### 4c — What the implementer is checked against, before any verdict
+### 4c: What the implementer is checked against, before any verdict
 
 10. **The commit pointer must not have moved.**
     *Why:* only the judge may commit. A session that commits its own work has bypassed every check
@@ -291,10 +291,10 @@ Everything below happens only under `commit+pr`, once per slice, with nobody wat
     *Why:* a push, a stash left behind, or a side branch leaves the ordinary "what changed" view
     completely clean, so none of it would be noticed until much later. The check compares two
     snapshots, so a stash pushed *and popped* inside the same session nets out and is invisible to
-    it — what stops that is the deny rule, which is a setting, not this check.
+    it: what stops that is the deny rule, which is a setting, not this check.
 
 12. **The project's configuration and hook area must be byte-identical to a snapshot taken before
-    the session started** — and this is checked *before* the did-anything-happen check.
+    the session started**, and this is checked *before* the did-anything-happen check.
     *Why:* a session that writes a commit hook or redirects the hook path has installed code that
     runs on every future commit, and version control shows nothing. Ordering matters: a session
     that wrote *only* there would otherwise be reported as having done nothing at all.
@@ -305,7 +305,7 @@ Everything below happens only under `commit+pr`, once per slice, with nobody wat
     advance the plan on an empty slice. Naming the likely cause matters because this looks identical
     to "the session did nothing", and the two need opposite responses.
 
-### 4d — The judgement, in a fixed order
+### 4d: The judgement, in a fixed order
 
 The order is the contract: everything cheap and mechanical runs before any command is spawned, so a
 slice that already broke its budget does not first pay the wall-clock of a suite it will be refused
@@ -328,7 +328,7 @@ on anyway.
     advance.
 
 17. **No later slice may be left declaring a location that no longer exists.**
-    *Why:* checked before the commit on purpose — committing first would leave a commit whose own
+    *Why:* checked before the commit on purpose: committing first would leave a commit whose own
     plan is already broken, and the run would only discover it three slices later.
 
 18. **The acceptance commands run, in order.**
@@ -345,33 +345,33 @@ on anyway.
     after it. Without this, a regression is attributed to whichever slice next happens to run the
     affected command.
 
-21. **Last, the implementation is set aside and the acceptance command re-run — it must fail.**
+21. **Last, the implementation is set aside and the acceptance command re-run: it must fail.**
     *Why:* this is the check that separates "the tests are green" from "the tests are green *and*
     they were red without this code". A test that passes with the implementation out of the tree
     asserts nothing about this slice. It matters more than it sounds: when the only stop condition
     is *the test passes*, editing the test is a valid path to stopping. This makes rewriting the
     test useless as a strategy rather than merely forbidden.
 
-22. **The restore is itself verified** — the tree is fingerprinted before setting the
+22. **The restore is itself verified**: the tree is fingerprinted before setting the
     implementation aside and again after putting it back, and a mismatch halts. The backup location
     is printed before the command runs, and an interrupt restores the tree on its way out.
-    *Why:* the acceptance command might write state — a snapshot, a migration, a generated file. A
+    *Why:* the acceptance command might write state: a snapshot, a migration, a generated file. A
     destructive check that trusts its own rollback is exactly how a verification step becomes the
     thing that broke the tree. The trade: during this window the judge cannot be stopped promptly,
     because finishing is what puts your work back.
 
-### 4e — The commit, and the tick
+### 4e: The commit, and the tick
 
 23. **Only if all of that passed does the judge stage exactly the declared files, commit them under
     the message the slice declared, and tick that slice's checkbox.** All three happen in one
     process, in that order.
     *Why:* the checkbox is the entire durable memory of the run, so one tick must mean exactly one
-    verified commit — otherwise a relaunch resumes in the wrong place. Verifying and committing in
+    verified commit. Otherwise a relaunch resumes in the wrong place. Verifying and committing in
     the same process is what stops an orchestrator that misread a result from producing a bad commit.
 
 24. **Generated files the project cannot help producing are staged too, not merely tolerated.**
     *Why:* a lockfile waved through but left uncommitted turns the next slice red on a file missing
-    from the repository — a deferred failure in place of an honest halt.
+    from the repository: a deferred failure in place of an honest halt.
 
 25. **The set of already-ticked slices is compared against what was recorded before the run
     started. Any un-ticking refuses the commit.**
@@ -379,7 +379,7 @@ on anyway.
     leave the contract looking untouched while quietly dropping that slice out of the replay in step
     20. This is the only thing that notices.
 
-### 4f — Publication
+### 4f: Publication
 
 26. **Every slice except the last pushes as it lands, opening a draft pull request or rewriting the
     existing one's description.**
@@ -391,10 +391,10 @@ on anyway.
     need a force-push. This is the last moment the history can still be made into the sequence a
     reviewer should read.
 
-28. **The committed content is scanned for secrets — and if no scanner is installed at all, the
+28. **The committed content is scanned for secrets, and if no scanner is installed at all, the
     push is refused rather than skipped.**
     *Why:* a halted branch gets pushed too, and that is exactly how a credential reaches a remote.
-    The scan reads *commits*, not the working directory, because a push carries commits — so a
+    The scan reads *commits*, not the working directory, because a push carries commits, so a
     secret committed three slices ago still refuses, which is the correct answer.
 
 29. **Publication failure is sticky: once it fails for any reason, it stays failed for the rest of
@@ -402,7 +402,7 @@ on anyway.
     *Why:* retrying a failing publish on every slice turns one clear error into fifteen identical
     ones and buries the cause.
 
-### 4g — Closing
+### 4g: Closing
 
 30. **Once every requested slice has landed, the plan's whole-project Definition of Done is
     replayed against the whole branch. Only if it passes is the final slice's commit pushed and the
@@ -414,7 +414,7 @@ on anyway.
 31. **Two or three model-driven passes run at the end, and none can change the outcome:** one argues
     the delivered work only *appears* to satisfy the plan, one reviews the pull request in prose,
     one audits the run's own timings and compares them against earlier runs.
-    *Why:* they are asked at the one moment they cannot hold anything up — the work is already
+    *Why:* they are asked at the one moment they cannot hold anything up: the work is already
     verified and shipped, so a blocking opinion would only add friction to clear by hand. A false
     positive that kills a provably-green run at 3am costs more than the finding is worth. They still
     contribute the reading a program cannot give: whether the letter of the plan was met but not its
@@ -430,7 +430,7 @@ on anyway.
     never started so nothing needs undoing; or it stopped at a clean boundary and relaunching
     resumes there.
     *Why:* an automated supervisor has to choose between repairing the plan, discarding the work and
-    retrying, and waking a human — and those are opposite responses. Collapsing them into pass/fail
+    retrying, and waking a human, and those are opposite responses. Collapsing them into pass/fail
     makes every stop look the same.
 
 ---
@@ -442,7 +442,7 @@ Stated here so nobody plans against a guarantee that is narrower than its slogan
 - **The blast radius is bounded per slice, not per run.** Each slice is held to its declared paths
   and its diff ceiling. Nothing bounds the total.
 - **Nothing counts assertions.** The set-aside check proves the *new* test bites. It does not prove
-  a pre-existing test inside the same declared files was not quietly weakened — three assertions
+  a pre-existing test inside the same declared files was not quietly weakened: three assertions
   removed of four, keeping the one that fails without the implementation, passes every check here.
 - **There is no iteration ceiling and no clock on the implementer.** Declared commands are bounded
   by a wall clock; the session writing the code is not. A session circling an impossible slice
@@ -451,7 +451,7 @@ Stated here so nobody plans against a guarantee that is narrower than its slogan
   handed to the thing being measured. The bet is that an explicit contract plus the set-aside check
   makes that knowledge harmless. It is a bet, not a proof.
 - **A run that halts leaves no report.** The audit pass runs only at the close, which a halted run
-  never reaches — so the evidence about failures is exactly the evidence that is missing.
+  never reaches, so the evidence about failures is exactly the evidence that is missing.
 - **The plan-repair guard is a script the supervising command asks a model to run**, not something
   that runs on its own. It is sound; it is simply not wired to anything that must invoke it.
 - **There is no sandbox.** This runs in your working tree, pointed at a repository you trust. It
@@ -461,8 +461,8 @@ Stated here so nobody plans against a guarantee that is narrower than its slogan
 
 ## See also
 
-- [`adr/0001-shape-of-the-autonomous-loop.md`](adr/0001-shape-of-the-autonomous-loop.md) — why this
+- [`adr/0001-shape-of-the-autonomous-loop.md`](adr/0001-shape-of-the-autonomous-loop.md): why this
   shape, and the three that were built and deleted before it
-- [`comparison.md`](comparison.md) — what the rest of the field does, and where this loses
-- [`autonomous-architecture.md`](autonomous-architecture.md) — which layer holds which guarantee
-- [`open-questions.md`](open-questions.md) — what is still undecided, and what would settle it
+- [`comparison.md`](comparison.md): what the rest of the field does, and where this loses
+- [`autonomous-architecture.md`](autonomous-architecture.md): which layer holds which guarantee
+- [`open-questions.md`](open-questions.md): what is still undecided, and what would settle it

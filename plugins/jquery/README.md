@@ -1,6 +1,6 @@
 # jquery
 
-jQuery code conventions — module structure, `js-*` selector hooks, per-block scoping, symmetric state toggles. Framework-agnostic (any backend / build system).
+jQuery code conventions: module structure, `js-*` selector hooks, per-block scoping, symmetric state toggles. Framework-agnostic (any backend / build system).
 
 ## Install
 
@@ -20,4 +20,4 @@ Ships two references: [`module-template.md`](skills/jquery/references/module-tem
 
 ## When to use
 
-Writing or modifying jQuery (`$(...)`, `$el.find(...)`, `$(document).ready(...)`), or a new feature whose page interaction is handled by jQuery. Not for vanilla JS, React/Vue/Astro, or template-engine / build-tool wiring — those belong with the backend framework's frontend skill.
+Writing or modifying jQuery (`$(...)`, `$el.find(...)`, `$(document).ready(...)`), or a new feature whose page interaction is handled by jQuery. Not for vanilla JS, React/Vue/Astro, or template-engine / build-tool wiring: those belong with the backend framework's frontend skill.

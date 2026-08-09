@@ -1,7 +1,7 @@
-# Adversarial verification — design note
+# Adversarial verification: design note
 
 One lens is implemented, asked once at the close of a run (`run/close.ts:107`). The rest of
-this note is the reasoning behind it, kept so it is not re-derived from scratch — and, below,
+this note is the reasoning behind it, kept so it is not re-derived from scratch; and, below,
 the record of which questions stopped being asked, which of them a mechanism took over, and
 which the port to a node runner simply dropped.
 
@@ -14,7 +14,7 @@ exits 0.
 
 That is the structural failure mode of any gate built on exit codes: everything that
 produces the measured signal is rewarded, including what nobody wanted. The name for it is
-**specification gaming** — the executor optimises the proxy instead of the intent.
+**specification gaming**: the executor optimises the proxy instead of the intent.
 
 No exit code will ever close this. It needs a different kind of check.
 
@@ -37,17 +37,17 @@ Five properties make it work, and dropping any one of them turns it into theatre
   Each lens asks one closed question and returns a verdict plus a citation. It does not
   write a review.
 - **A finding must cite `file:line`.** Hallucination accounts for roughly a third of judge
-  false negatives — verdicts about statements that do not appear in the code at all.[^halluc]
+  false negatives: verdicts about statements that do not appear in the code at all.[^halluc]
   Requiring a concrete anchor is the cheapest available filter, and a finding that cannot
   produce one is dropped before it reaches the developer.
 
 Majority voting is deliberately **not** used here. Its purpose is to suppress false
 positives before an expensive decision, and no decision downstream of these verifiers is
-expensive — see the next section. One verifier per lens.
+expensive (see the next section). One verifier per lens.
 
 All five are still the design. Only the last one lost its enforcement. The abandoned Workflow
-constrained the answer with a JSON schema — `refuted`, `verdict` and `anchor`, all three
-required — so a verdict without an anchor could not be returned at
+constrained the answer with a JSON schema (`refuted`, `verdict` and `anchor`, all three
+required), so a verdict without an anchor could not be returned at
 all. `run/close.ts:107` spawns a plain `claude -p` and records whatever text comes back, and
 the anchor rule now lives only in the lens's own brief (`agents/goal-run-lens.md`). Nothing
 rejects an unanchored finding any more. That is a prompt where there used to be a schema, and
@@ -58,7 +58,7 @@ it should be read as a regression rather than as a simplification.
 Not much, and by design. Measured against human ground truth, LLM code judgement reaches
 Kappa ≈ 0.21 on Java and ≈ 0.10 on Python; in one systematic study half the wrong Java
 implementations were judged correct.[^judge] Requirement-conformance judgement specifically
-suffers **systematic overcorrection** — the judge flags conformant code as non-conformant.
+suffers **systematic overcorrection**: the judge flags conformant code as non-conformant.
 
 That is not a reason to skip the layer. It is the reason the layer is advisory, and the
 reason the **specification conformance** lens is the one to read most sceptically: it is
@@ -80,14 +80,14 @@ what the run does next.
 Which makes the whole layer dependent on a place to deposit a non-blocking signal, and that is
 the weakest part of it. The findings go to the run's own log, through `reporter.record()` into
 `.claude/goal-runs/<work-id>/<run-id>/.run.log` (`run/report.ts:20-25`, `:80-84`). Not the pull
-request body — that is built from iteration headings alone (`run/publish.ts:47-55`). Not an issue
-comment — nothing in the runner writes one. A signal produced at 3am and deposited in a per-run
+request body: that is built from iteration headings alone (`run/publish.ts:47-55`). Not an issue
+comment: nothing in the runner writes one. A signal produced at 3am and deposited in a per-run
 log file under `.claude/` is a signal whose only reader is whoever thinks to open it.
 
 Worth recording how that came about, because it is the failure mode of a port rather than a
 design decision: the earlier bash runner appended an advisory agent's own words to the log, the
 port to node dropped the append outright, and a lens finding existed only for as long as the
-process that asked for it. `record()` exists because that was noticed and put back — its own comment
+process that asked for it. `record()` exists because that was noticed and put back: its own comment
 says so. The layer was silently worthless for the length of one generation.
 
 ## Promotion principle
@@ -103,7 +103,7 @@ it was "would this test fail if the rule broke?" As a command it is: set the imp
 aside, run the slice's test, require RED, restore. That is an exit code, not an opinion, and
 `goal-gate.ts` runs it on every iteration that declares a `test_files` / `impl_files` split.
 The finer industrial form is mutation testing (Infection, Stryker) scoped to the touched
-files — listed as an opt-in criterion in `templates/done-criteria.template`, not wired in.
+files, listed as an opt-in criterion in `templates/done-criteria.template`, not wired in.
 
 A lens promoted to a command moves out of this document and into the iteration's `gate`
 block, where it halts like everything else.
@@ -133,7 +133,7 @@ earlier design assumed.
 **It is briefed from the plan's ticked boxes, not from what this run landed.** `run/close.ts:53`
 re-reads the plan from disk and takes every box that carries an `[x]`, this run's own or an
 earlier run's. The reason is that a plan delivered across several runs would otherwise be
-judged in whatever fragment the last run happened to land — three iterations refuted against
+judged in whatever fragment the last run happened to land: three iterations refuted against
 each other's absence. The cost is that a resumed run re-judges work an earlier lens already
 looked at.
 
@@ -153,13 +153,13 @@ declared. It is explicitly told not to mention style, naming, coverage or archit
 returns one anchored sentence per iteration.
 
 The reviewer asks about the **code**: design, error handling, security posture, and whether it
-matches this project's own conventions — its brief names that as "the reading a gate is not
+matches this project's own conventions; its brief names that as "the reading a gate is not
 built to give". It posts one GitHub review with inline comments and may never request changes,
 since the branch it is reading has already shipped.
 
 They are the two halves of what an exit code cannot see, and keeping them apart is the same
 rule as "one lens per verifier": a single agent asked both questions answers the easy one.
-Neither blocks. The reviewer is also what fills the *Quality — advisory* row of
+Neither blocks. The reviewer is also what fills the *Quality: advisory* row of
 `target-harness.md`, which had no named mechanism until it was wired.
 
 It has never fired. `run/close.ts` only reaches it when the pull request was successfully
@@ -173,21 +173,21 @@ that survived that cut were lost to the port instead, which is a different and w
 
 | Lens | Answered instead by |
 |---|---|
-| **Sensitivity** | the gate's bite check — `impl_files` set aside, `gate1` required to fail — on every iteration that declares `test_files`, not just the ones a lens was dispatched for |
+| **Sensitivity** | the gate's bite check (`impl_files` set aside, `gate1` required to fail) on every iteration that declares `test_files`, not just the ones a lens was dispatched for |
 | **Invariant** | the sequence test `grill-adversarial` assigns to an owning iteration, which lands in that iteration's `gate1` |
 | **Accumulation** | the regression wall, which replays the gate commands of every ticked iteration |
-| **Reversibility** | the existing suite staying green, as `dod1` — but see below |
+| **Reversibility** | the existing suite staying green, as `dod1` (but see below) |
 | **Blast radius** | nothing: it was specified here and never implemented. The blast radius is established at planning time by `/goal:plan`, with a human reading the consumer list |
 | **Ripple** | nothing, and by accident. It asked whether iteration N left N+1 doable exactly as written, and the runner has no per-iteration advisory stage left to carry it |
-| **Completeness** | nothing, and by accident. It asked what the plan's Business intent implied that no iteration covered — a question the surviving conformance lens explicitly does not ask, since it judges against declarations rather than past them |
+| **Completeness** | nothing, and by accident. It asked what the plan's Business intent implied that no iteration covered: a question the surviving conformance lens explicitly does not ask, since it judges against declarations rather than past them |
 
-One of those rows has shrunk since it was written — the answering mechanism turned out to run
+One of those rows has shrunk since it was written: the answering mechanism turned out to run
 less often than the lens would have.
 
 The bite check **skips** an iteration that declares no `test_files` (`gate/bite.ts:54-56`), and
 that exit is guarded only as far as prose goes: `plan-guard.ts` hashes each resolved block's
 `test_files` emptiness beside its `gateN=` and `dodN=` lines (`:59-76`), so a supervised repair
-that empties the field would move the hash — but nothing the machine runs calls that script. Its
+that empties the field would move the hash. But nothing the machine runs calls that script. Its
 only callers are steps in `commands/supervise.md` (`:86-90`) a model is asked to follow, alongside
 `supervise.md:74-76` forbidding the edit in words. The refusal is real when it runs, and what
 makes it run is an instruction.
@@ -195,11 +195,11 @@ makes it run is an instruction.
 The Definition of Done runs **once, at close** (`run/close.ts:47`), after every iteration has
 already been committed and, under `commit+pr`, after every iteration but the last has been pushed
 (`goal-run.ts:120-131`). So "the existing suite is still green" is answered per branch rather than
-per slice, which is a weaker answer than the retired lens gave — and on a multi-iteration run it
+per slice, which is a weaker answer than the retired lens gave, and on a multi-iteration run it
 is answered after the earlier slices are already published.
 
 Removing the retired lenses also removed the per-iteration fact extraction that only they
-consumed — the `Delivery:`, invariant-count and `test_files` probe, and the tab-positional
+consumed: the `Delivery:`, invariant-count and `test_files` probe, and the tab-positional
 parsing that read it back.
 
 ## When a lens runs at all
@@ -210,8 +210,8 @@ runner exposes no flag, no environment variable and no remote channel. The lens 
 whenever the global DoD passes, and not otherwise.
 
 That trades a decision for a default. The judgement that used to be the developer's before a
-run — a mechanical slice, a documentation-only slice, or one whose goal is fully expressed by
-its gates is not worth a verifier — no longer has anywhere to be expressed. It is a defensible
+run (a mechanical slice, a documentation-only slice, or one whose goal is fully expressed by
+its gates is not worth a verifier) no longer has anywhere to be expressed. It is a defensible
 default only because the stage now costs one call instead of `2N`.
 
 ## Cost
@@ -233,10 +233,10 @@ This layer is why the gate's blind spot is visible.
 
 The measured numbers in *Calibration* above are the honest expectation: this layer will
 miss real defects and invent unreal ones. It earns its place only because it is free to be
-wrong — nothing downstream of it is automatic.
+wrong: nothing downstream of it is automatic.
 
 ---
 
-[^judge]: *Are LLMs Reliable Code Reviewers? Systematic Overcorrection in Requirement Conformance Judgement* — <https://arxiv.org/html/2603.00539>
-[^complexity]: *On the Effectiveness of LLM-as-a-judge for Code Generation and Summarization* — <https://arxiv.org/pdf/2507.16587>
+[^judge]: *Are LLMs Reliable Code Reviewers? Systematic Overcorrection in Requirement Conformance Judgement*: <https://arxiv.org/html/2603.00539>
+[^complexity]: *On the Effectiveness of LLM-as-a-judge for Code Generation and Summarization*: <https://arxiv.org/pdf/2507.16587>
 [^halluc]: same source; hallucinated findings are the largest single category of false negatives.

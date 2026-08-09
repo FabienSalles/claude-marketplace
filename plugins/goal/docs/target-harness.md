@@ -1,18 +1,18 @@
 # Target harness
 
 What the autonomous loop must guarantee, and by what. Nothing here is about any particular
-plan — a plan is only the input.
+plan: a plan is only the input.
 
 ## The six properties, restated as testable claims
 
 The loop must make each of these true *without anyone reading the code afterwards*:
 
-1. **Direction** — what lands implements the intent, not a reading of it that happens to make the checks pass.
-2. **Iteration** — each slice ships something reachable, and the previous behaviour survives it.
-3. **No regression** — nothing that worked before this slice stops working.
-4. **Quality** — the code meets the project's bar, not "it compiles".
-5. **Bounded** — a slice that goes off the rails is stopped by the machine, not noticed later.
-6. **Deterministic tests** — a green run means the same thing tomorrow.
+1. **Direction**: what lands implements the intent, not a reading of it that happens to make the checks pass.
+2. **Iteration**: each slice ships something reachable, and the previous behaviour survives it.
+3. **No regression**: nothing that worked before this slice stops working.
+4. **Quality**: the code meets the project's bar, not "it compiles".
+5. **Bounded**: a slice that goes off the rails is stopped by the machine, not noticed later.
+6. **Deterministic tests**: a green run means the same thing tomorrow.
 
 The organising rule: **mechanical or advisory, never in between.** A property held by an exit
 code is held. A property held by a model's opinion is a hint. Mixing the two produces a
@@ -22,11 +22,11 @@ system whose guarantees nobody can state.
 
 | # | Property | Mechanism | Kind |
 |---|---|---|---|
-| 1 | Direction | **bite check** — `impl_files` set aside, `gate1` required to fail | mechanical |
+| 1 | Direction | **bite check**: `impl_files` set aside, `gate1` required to fail | mechanical |
 | 1 | Direction | lens on what the plan carries ticked | advisory |
 | 2 | Iteration | plan declares a vertical slice + delivery strategy | frozen input |
 | 2 | Iteration | **no-deletion check** under `no-bc-break` | mechanical |
-| 3 | No regression | base sweep — every distinct declared command run against the untouched tree | mechanical |
+| 3 | No regression | base sweep: every distinct declared command run against the untouched tree | mechanical |
 | 3 | No regression | **every ticked iteration's gate commands replayed** at each iteration | mechanical |
 | 3 | No regression | scope leak / parasitic artifact check | mechanical |
 | 4 | Quality | the project's linter + static analysis, as gate commands | mechanical |
@@ -53,11 +53,11 @@ would look for it.
 free: before a byte is written, every distinct command the plan declares is run once against
 the untouched tree (`run/sweep.ts`, called from `run/preflight.ts:140`). A plan whose commands
 were already red never spends an implementer on iteration 1 to discover it. `gate1` is
-excluded on purpose — it is the bitten criterion, and it is *supposed* to fail without the
+excluded on purpose: it is the bitten criterion, and it is *supposed* to fail without the
 implementation. What the sweep counts as declared is scoped: it resolves the block of each
 `### Iteration N` section and of the `## Definition of Done` section (`run/sweep.ts:55-62`), so a
 fence quoted in prose outside any of them has no section to belong to and never runs. The
-residual is timing, not scope — the sweep fires before the plan hash of invariant 4 below has
+residual is timing, not scope: the sweep fires before the plan hash of invariant 4 below has
 been derived, so it is the one place the harness executes a line of the plan that nothing
 validated first.
 
@@ -65,13 +65,13 @@ validated first.
 two runs. `/goal:supervise` may repair a plan after a halt; the guard hashes every `gateN=` and
 `dodN=` line, plus whether each block's `test_files` is empty, so the repair can be proved not to
 have moved a bar nor switched the bite check off. Two things keep its row above at *partial*. It
-guards those and nothing else — an `impl_files` entry, `max_diff` and the prose are all inside
+guards those and nothing else: an `impl_files` entry, `max_diff` and the prose are all inside
 the closed repair set and outside the hash. And nothing calls it but the prompt it exists to
 constrain: `commands/supervise.md` runs it, `goal-run.ts` and `goal-gate.ts` never do.
 
 ## The four new mechanisms
 
-Everything above that is bold did not exist when this was written. All four shipped — three of
+Everything above that is bold did not exist when this was written. All four shipped: three of
 them as described, and **A took a different form**, recorded below where it was designed.
 
 ### A. A test must fail without the implementation
@@ -85,7 +85,7 @@ gate; what landed is the **bite check**: at verification time the gate sets the 
 aside, re-runs the acceptance command, and requires it to **fail** (`gate/bite.ts`). Same
 property, one agent instead of two, and it is checked on the finished slice rather than trusted
 from an ordering. The design that follows is kept because it explains what the property is and
-why it cannot be a judgement — read it as the reasoning, not as the implementation.
+why it cannot be a judgement. Read it as the reasoning, not as the implementation.
 
 Split the iteration into two agents with **disjoint write permissions**, enforced by the same
 scope check that already exists:
@@ -98,15 +98,15 @@ gate block:
 
 1. **Author** may write only `test_files`. It writes the test from the plan's business rule,
    never from an implementation that does not exist yet.
-2. **RED gate** — mechanical: the slice's test command must exit **non-zero**, and the diff
+2. **RED gate**, mechanical: the slice's test command must exit **non-zero**, and the diff
    must touch only `test_files`. A test that passes before the implementation exists is a
    test that asserts nothing. This is the assertion-strength check, as an exit code. It
-   stages the tests and records a seal over their staged content. **It commits nothing** — a
+   stages the tests and records a seal over their staged content. **It commits nothing**: a
    commit holding only a failing test is not a functional slice, and the history must stay a
    sequence of them.
 3. **Implementer** may write only `impl_files`. Editing a test is caught by the working-tree
    diff, and re-staging a weakened one is caught by the seal.
-4. **GREEN gate** — everything else, then **one commit for the whole slice**: the tests and
+4. **GREEN gate**: everything else, then **one commit for the whole slice**, the tests and
    the code that makes them pass, under the message the plan froze.
 
 This is what makes "direction" mechanical. The test is written against the intent, by
@@ -129,7 +129,7 @@ obvious.
 The wall reads the plan's ticked boxes to know which iterations are prior. That is the correct
 source and it is also the wall's dependency, which is why the ticked set is locked at `check` and
 re-compared at `commit` (`gate/ticked.ts:13-27`): inside a run, nothing can untick a box and
-shrink the wall. Between two runs it can — the next run locks whatever it finds.
+shrink the wall. Between two runs it can, and the next run locks whatever it finds.
 
 ### C. The diff budget
 
@@ -147,7 +147,7 @@ in a prompt. `git diff --name-status` makes it a fact.
 
 ### D. Determinism of the new test
 
-Run the iteration's acceptance command **three times** at the gate and require three passes —
+Run the iteration's acceptance command **three times** at the gate and require three passes;
 the acceptance pass itself spends the first of the three (`gate/commands.ts`). A test that
 passes two times out of three is not a gate, it is a coin. This costs two extra runs of one
 scoped command and removes the largest source of "it was green last night".
@@ -155,7 +155,7 @@ scoped command and removes the largest source of "it was green last night".
 ## The five invariants, and what each is worth today
 
 The six properties are what the loop owes. The five sentences below are what the harness says
-about *itself* — in the pull request body it writes, in the preflight lines it narrates, in the
+about *itself*: in the pull request body it writes, in the preflight lines it narrates, in the
 brief it hands the implementer. Those are the sentences a reader will quote back, so they are
 the ones that have to be accurate.
 
@@ -190,8 +190,8 @@ The claim now rests on three snapshots taken around the implementer and compared
 of them executed rather than read off a file (`run/iteration.ts:132-165`). HEAD, for a commit.
 Every ref via `for-each-ref`, for the moves `git status` cannot see: a `refs/remotes/` change
 halts the run named as a push, anything else as a ref move. And the git directory's executable
-surface — `config`, `config.worktree`, `info/exclude`, every file under `hooks/` recursively,
-`.sample` included — via `run/gitwatch.ts`, because what the implementer writes there is
+surface (`config`, `config.worktree`, `info/exclude`, every file under `hooks/` recursively,
+`.sample` included) via `run/gitwatch.ts`, because what the implementer writes there is
 invisible to `git status --porcelain -uall`, therefore invisible to the scope check, and would
 then be executed by the gate, which runs outside the permission system entirely. That check runs
 before the empty-tree case, so an implementer that touched only `.git/` is named for what it did
@@ -201,8 +201,8 @@ rather than reported as having written nothing.
 sharpest thing in the harness, and it works: `gate/bite.ts` sets
 `impl_files` aside, re-runs `gate1`, requires a failure, and restores by overwrite with a
 fingerprint taken on both sides. Its off switch is guarded. `gate/bite.ts:54-56` prints `SKIP`
-and returns when `test_files` is empty, and `plan-guard.ts:59-76` hashes exactly that — per
-resolved block, whether `test_files` is empty, beside the `gateN=` and `dodN=` lines — so a
+and returns when `test_files` is empty, and `plan-guard.ts:59-76` hashes exactly that (per
+resolved block, whether `test_files` is empty, beside the `gateN=` and `dodN=` lines), so a
 supervised repair may fix a mistyped path and still pass, while one emptying the field moves the
 hash and is refused. `commands/supervise.md:74-76` forbids the same edit in prose.
 
@@ -213,7 +213,7 @@ mismatch. The normalisation still leaks, but it no longer leaks alone: the hash 
 every `- [x]` rewritten to `- [ ]`, because a tick is the one edit an iteration may legitimately
 make, which makes an untick invisible to the hash too. A second check covers it.
 `gate/ticked.ts:13-27` compares the ticked set published by `check` against the set on disk at
-`commit` and halts on any iteration missing, enforced from `goal-gate.ts:154` — so unticking
+`commit` and halts on any iteration missing, enforced from `goal-gate.ts:154`, so unticking
 iteration 3 mid-run, which would otherwise remove its commands from the regression wall of every
 iteration after it, is refused. That check is scoped to one run: the set is captured at check
 time and carried by argument, so an untick between two runs is simply the state the next run
@@ -223,7 +223,7 @@ run (`goal-run.ts:64-83`). It pins the plan against the executor, never against 
 it between the human grill and the launch.
 
 **5. Every claim is a command that ran.** The gate honours it, and the runner now carries it
-through the refusal. `gate/halt.ts:8` writes the verdict — `HALT`, `REASON:`, `DETAIL:` — on its
+through the refusal. `gate/halt.ts:8` writes the verdict (`HALT`, `REASON:`, `DETAIL:`) on its
 own stdout; `run/iteration.ts:184` concatenates that stdout with stderr into `reporter.record()`,
 which appends it to the run's own log, `.claude/goal-runs/<work-id>/<run-id>/.run.log`
 (`run/report.ts:20-25`, `:80-84`), before the run prints its one line
@@ -258,7 +258,7 @@ Workflow runtime this loop used to run on.
 
 And the restriction the run actually stands behind is not the `tools:` field. All four are
 launched as separate `claude -p` processes under `--permission-mode auto`, so what takes git
-away from the implementer is the `permissions.deny` rule the preflight demands — which is why
+away from the implementer is the `permissions.deny` rule the preflight demands, which is why
 invariant 2 above is about a file and not about a frontmatter line.
 
 Restriction, not hierarchy. Nobody supervises anybody: the script sequences, the gate decides.
@@ -269,12 +269,12 @@ This section used to argue for the Workflow against the published anti-pattern. 
 was abandoned, twice over, and the half of the argument that survived is worth keeping straight
 from the half that did not.
 
-Two earlier generations preceded the one that runs today — a Workflow (941 lines) and a bash script
-(594 lines), both since deleted — and `scripts/goal-run.ts` +
+Two earlier generations preceded the one that runs today: a Workflow (941 lines) and a bash script
+(594 lines), both since deleted. `scripts/goal-run.ts` +
 `scripts/run/*.ts`, 1514 lines over 15 files, is what runs now.
 
 **What survived.** The published guidance warns against Claude generating an orchestration
-script on the fly, per run — genuinely wasteful for a repeatable task, since you pay a model to
+script on the fly, per run: genuinely wasteful for a repeatable task, since you pay a model to
 reinvent the same control flow every night. The resolution was to **check the script in** and
 invoke it by path, and that is still exactly what happens: `commands/supervise.md` launches
 `node goal-run.ts <plan>`. A static script invoked by path was the answer to the anti-pattern,
@@ -282,7 +282,7 @@ and it outlived the runtime it was first written for.
 
 **What did not.** The Workflow's own constraint was sold as load-bearing: no disk, no shell,
 only `agent()`. That is precisely what the two generations after it rejected. The bash runner
-that followed it stated the counter-argument in its own header, in one line — a workflow has no
+that followed it stated the counter-argument in its own header, in one line: a workflow has no
 shell, so every `sed` and every `git status` crosses through a subagent, which is simultaneously
 the run's latency and its notification flood. The current runner has a disk and a shell, by
 choice.
@@ -291,14 +291,14 @@ choice.
 what runs next is the plan.
 
 **What is still not written down.** Why bash first and why Node after was never decided in the
-open — `docs/open-questions.md` §6 poses the question ("the orchestrator is bash, and that was
+open: `docs/open-questions.md` §6 poses the question ("the orchestrator is bash, and that was
 never a decision"), makes the maintainability case module by module, and closes nothing.
 
 ## The honest cost
 
 Per iteration, before: **one** subagent.
 
-Per iteration now: **one** implementer, and nothing else — the script spawns the gate itself
+Per iteration now: **one** implementer, and nothing else. The script spawns the gate itself
 rather than through a runner agent. Three agents fire once, at close: reviewer, lens, auditor.
 So one model call per iteration, plus three for the whole run, plus no orchestrator context at
 all: the thing that sequences is a node process, not a session.
@@ -311,8 +311,8 @@ the runner keeps no token accounting of any kind, so there is no ceiling and not
 cannot see a budget.
 
 The lens is no longer behind a flag either. `run/close.ts:107` asks it once, unconditionally,
-as soon as the global DoD passes. What replaced the flag is placement — one lens at close
-instead of two per landed iteration — and that is the cheaper end of the same trade-off, not
+as soon as the global DoD passes. What replaced the flag is placement (one lens at close
+instead of two per landed iteration), and that is the cheaper end of the same trade-off, not
 the same trade-off.
 
 The mechanical additions stayed cheap: B, C and D are code in the gate, run by the process
@@ -329,7 +329,7 @@ that was going to run anyway, and A ended up adding no agent at all.
   first landing, the body rewritten at every one after it, and the last iteration's push held
   inside `close()` behind a green global Definition of Done (`run/close.ts:58-67`). That inverts
   the order invariant 1 was written for everywhere except a single-iteration plan.
-- A gate refusal exits inside the loop, so `close()` is never reached — no lens, no reviewer,
+- A gate refusal exits inside the loop, so `close()` is never reached: no lens, no reviewer,
   no audit report on exactly the runs that would be worth reading.
 - `docs/adversarial-verification.md` lost its most important lens to the bite check. That is
   the promotion principle working as intended: the sensitivity lens stopped being a judgement.

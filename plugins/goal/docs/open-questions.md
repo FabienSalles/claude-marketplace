@@ -1,7 +1,7 @@
 # Open questions
 
 Things noticed while running the harness for real, parked rather than acted on. Each says what
-was observed, what it would change, and what has to be measured before deciding — so picking one
+was observed, what it would change, and what has to be measured before deciding, so picking one
 up later does not start from the intuition again.
 
 A question that got answered stays here with its answer: what it cost and what it revealed is the
@@ -24,7 +24,7 @@ So the table of candidates below never had a row for what is actually in use, an
 not replaced by a better one. It was dropped along the way.
 
 **What tmux buys**, once the false premise is removed: surviving the terminal that opened it, and
-a stable reattach point. **What it does not buy:** a free checkout. That comes from the worktree —
+a stable reattach point. **What it does not buy:** a free checkout. That comes from the worktree,
 and the worktree is what the current chain gave up with it, silently.
 
 | Option | Buys | Costs |
@@ -32,10 +32,10 @@ and the worktree is what the current chain gave up with it, silently.
 | Background shell under `/goal:supervise` (today) | the supervising session reads the exit code and can act on it, which is the whole of §8 | tied to the session that launched it, untested against that session ending; runs in the developer's own tree, so a halt leaves that tree dirty |
 | tmux + worktree (the deleted launcher) | terminal-independent, stable name, a tree of its own | invisible while detached, and only reachable through the abandoned generation |
 | Claude Code on the web (claude.ai/code) | the run lives in the cloud; the machine may sleep | never tested against a full run |
-| Native backgrounding (`/bg`, `claude agents`) | integrates with notifications and Remote Control, so question 2 mostly dissolves | believed not to survive the terminal closing — **unverified** |
+| Native backgrounding (`/bg`, `claude agents`) | integrates with notifications and Remote Control, so question 2 mostly dissolves | believed not to survive the terminal closing: **unverified** |
 
-**To settle:** whether a supervising session watching the run *is* the isolation answer — it buys
-something tmux never could, a reader for the exit code — or merely the thing that made the
+**To settle:** whether a supervising session watching the run *is* the isolation answer (it buys
+something tmux never could, a reader for the exit code) or merely the thing that made the
 question invisible. And separately, whether a run should ever write in the developer's own
 checkout at all: the tree is exactly where a halt leaves the implementer's partial work, and §8's
 repair path has to reason about that tree.
@@ -54,7 +54,7 @@ reaches the closing stage at all (§15). Its entire account of itself is a log f
 
 **What partly covers it now.** `--permission-mode auto` is passed at every agent invocation, which
 removes most permission prompts; and `/goal:supervise` puts a live session in front of the run,
-which is a channel of a kind — it reads the exit code and acts on it. That is why the question
+which is a channel of a kind: it reads the exit code and acts on it. That is why the question
 stopped feeling urgent rather than being answered. An unwatched run still has nothing.
 
 **Mechanism, still available.** The `Notification` hook takes a matcher on the notification type,
@@ -66,7 +66,7 @@ hook declared in a project's `.claude/settings.json` would never see those runs.
 
 **Undecided:** the channel. ntfy.sh reaches a phone and is the only option that works when you are
 away from the machine; `osascript` is local-only; a log file gives history but only on reattach.
-Still downstream of question 1 — a run watched by a supervising session wants a very different
+Still downstream of question 1: a run watched by a supervising session wants a very different
 channel from one nobody is attached to, and the harness now has both shapes.
 
 ## 3. The fetch-first guard matches command text, not command effect
@@ -86,8 +86,8 @@ than an occasional false block. Wants a deliberate pass, not a quick regex edit.
 
 ## 4. Preflight 11 asks the developer what the session already knows
 
-**Observed.** A run launched by the earlier launcher — which always passed `--permission-mode
-auto` — still stopped at preflight 11 to ask the developer which permission mode the session was
+**Observed.** A run launched by the earlier launcher (which always passed `--permission-mode
+auto`) still stopped at preflight 11 to ask the developer which permission mode the session was
 in. It
 read as mistrust: the first reaction was *"why is it asking permission again, do I need to merge
 something?"*, when nothing was wrong at all. The check inspects `permissions.defaultMode` in the
@@ -103,29 +103,29 @@ abandoned chain, and that chain is gone.
 
 **What stays worth reading.** The framing was the useful part and it generalises: when a check
 cannot observe what it asks about, decide whether it exists to *know* the answer or to make the
-developer *accept* it. Only the second survives being blind — and if the answer is neither, the
+developer *accept* it. Only the second survives being blind. And if the answer is neither, the
 check should be replaced by an assertion of the thing it wanted.
 
-## 5. `/goal:next` offers a command whose preflight always refuses — settled by deletion
+## 5. `/goal:next` offers a command whose preflight always refuses: settled by deletion
 
 **Observed.** On 2026-08-01, `/goal:next` closed iteration 1 of `goal-run-script-spec.md` and
 offered the abandoned generation's autonomous command for the remaining six, which refused on its
 own preflight: a pull request was already open on the branch, and that command's cleanup logic
 retried `gh pr create` on it forever rather than adopting it. The developer read the refusal as
-their own omission — *"you told me I could run auto, not that I had to merge the PR first"* — and
+their own omission (*"you told me I could run auto, not that I had to merge the PR first"*), and
 nothing was omitted.
 
 **Why it was systematic, not a one-off.** `/goal:next` Phase 5 offered that command whenever
 `Policy:` was `commit` / `commit+pr` and every remaining iteration carried a `gate1`, without ever
-checking whether a pull request already existed — and under `commit+pr` one always does from
+checking whether a pull request already existed. And under `commit+pr` one always does from
 iteration 1 onward, since that policy opens the draft PR at the first commit. So after any first
 iteration, the two commands contradicted each other by construction.
 
 **Settled.** The abandoned command is deleted, `scripts/run/publish.ts` asks `gh` whether a pull
 request exists before creating one and adopts it rather than retrying blindly, and
-`commands/next.md` now offers `/goal:supervise` — whose preflight has no such check — instead.
+`commands/next.md` now offers `/goal:supervise` (whose preflight has no such check) instead.
 
-## 6. The orchestrator is bash, and that was never a decision — settled, and closed
+## 6. The orchestrator is bash, and that was never a decision: settled, and closed
 
 **Settled: the port landed, then the loser was deleted.** The earlier bash orchestrator was ported
 to Node/TypeScript across three runs, kept for a time as a frozen A/B reference, and has since been
@@ -134,20 +134,20 @@ checked in. `plugins/goal/tests/run.sh` now runs the suite once, under Node; the
 to compare it against.
 
 **The argument, unchanged.** Bash was never weighed against Node. The reasoning went "a `Workflow`
-script has no shell, therefore a shell script" — but the missing shell belonged to the *Workflow
+script has no shell, therefore a shell script", but the missing shell belonged to the *Workflow
 runtime*, not to JavaScript. The decisive column was never the language, it was the file count: one
 594-line file with eight functions holding argument parsing, ten preflight checks, the loop,
 publication, the quota wait and the closing stage, against a gate split one module per group of
-business rules, each with its matching test file — a convention `goal-gate.ts` states in its own
+business rules, each with its matching test file, a convention `goal-gate.ts` states in its own
 header and that the bash script was the one place in the plugin unable to follow.
 
 **What it cost, re-measured.** `scripts/goal-run.ts` + `scripts/run/` now stands at 1514 lines
 over 15 files, against `scripts/goal-gate.ts` + `scripts/gate/` at 1134 over 12; all of
 `scripts/` is 2921 lines over 30 `.ts` files, covered by 31 test files and 271 passing tests.
-Most of the distance from the 594-line bash original is not the split — it is the mechanisms
+Most of the distance from the 594-line bash original is not the split: it is the mechanisms
 added since (`gitwatch.ts`, `postmortem.ts`, `quota.ts`), each of which is one of the modules the
-convention asked for. The second defect this question named — the orchestrator re-reading
-the plan in `sed`/`awk` where `gate/plan.ts` already exported the same accessors — did go, but not
+convention asked for. The second defect this question named (the orchestrator re-reading
+the plan in `sed`/`awk` where `gate/plan.ts` already exported the same accessors) did go, but not
 the way proposed: the runner imports `gate/plan.ts` directly instead of the gate gaining `section`
 and `survey` verbs.
 
@@ -172,7 +172,7 @@ captured by command substitution and therefore could not stream by construction.
 
 **Both were answered, in the expensive variant, and the wait is unchanged.** The preflight now
 narrates each check as it passes (`scripts/run/preflight.ts`), and `narrate()` renders one line per
-tool use — `RUN implementer: Edit run/publish.ts` — from `--output-format stream-json`
+tool use (`RUN implementer: Edit run/publish.ts`) from `--output-format stream-json`
 (`scripts/run/iteration.ts`), which was the right choice: it shows what the agent *does* rather
 than what it says, so the developer's output style stops mattering. But the implementer is spawned
 with `spawnSync`, which returns only when the child exits, so every narrated line is printed after
@@ -180,13 +180,13 @@ the fact. The log is complete; the minutes of silence are exactly as long as bef
 
 **What that leaves open is a design decision, not a bug.** Live rendering needs `spawn` and a
 line-by-line reader, which would also remove the 1 MiB buffer ceiling on the harness's single
-largest call. That turns the iteration step asynchronous — the one place where the synchronous
+largest call. That turns the iteration step asynchronous: the one place where the synchronous
 shape makes every state transition trivially readable, and where every test in the suite currently
 asserts against a returned result rather than a stream. Worth deciding on purpose.
 
 **To measure before deciding:** whether the stream-json event shape is stable enough to render from
 without re-parsing at every Claude Code release, and whether a per-tool-use line is the right
-granularity or already too much for a fifteen-iteration run. Still unmeasured — the only run since
+granularity or already too much for a fifteen-iteration run. Still unmeasured: the only run since
 narration landed printed no narration at all, for the reason §12 gives.
 
 ## 8. Could a supervisor diagnose a halt and relaunch by itself?
@@ -194,8 +194,8 @@ narration landed printed no narration at all, for the reason §12 gives.
 **Observed.** A run halted at iteration 5. The developer pasted the output into a session, which
 diagnosed it in one pass: the plan was at fault, iteration 3's `gate1` asserted
 `! grep -rq '### Iteration' …` while publication legitimately needs that literal, and `plan.ts`
-published no accessor for an iteration heading. The repair — add `iterationHeading` to `plan.ts`,
-declare it in iteration 5's `impl_files` — was mechanical once stated, and so was everything after
+published no accessor for an iteration heading. The repair (add `iterationHeading` to `plan.ts`,
+declare it in iteration 5's `impl_files`) was mechanical once stated, and so was everything after
 it. None of it needed a human except to authorize destroying the implementer's partial work.
 
 **The loop is obvious**: run, and on a non-zero exit hand the exit code and the log tail to a
@@ -213,21 +213,21 @@ hashes the `gateN=` and `dodN=` lines of every block it resolves, and beside the
 whether `test_files` is empty (`:59-76`). An empty `test_files=` makes the gate skip the bite
 check outright (`scripts/gate/bite.ts`, *"declares no test_files, so there is nothing to set
 aside"*), so that is the one edit inside the closed repair set that could disarm the invariant
-that a test must fail without its implementation — and it now moves the hash. `supervise.md:74-76`
+that a test must fail without its implementation, and it now moves the hash. `supervise.md:74-76`
 forbids it in prose as well: *"It may never touch a `gateN=` or `dodN=` line, nor empty
-`test_files`"*. What is still unhashed is the rest of the set — an `impl_files` entry, `max_diff`,
-prose — each of which can widen what an iteration is judged against without moving anything.
+`test_files`"*. What is still unhashed is the rest of the set (an `impl_files` entry, `max_diff`,
+prose), each of which can widen what an iteration is judged against without moving anything.
 
 **And the classification, which this question correctly said had to come first, reads one block and
-no more.** The same plan halted again at iteration 6 and needed the opposite response — nothing in the plan
+no more.** The same plan halted again at iteration 6 and needed the opposite response: nothing in the plan
 was wrong, the implementation was, and the repair was to discard it and have it redone. From the
 outside the two halts are indistinguishable, so the doctor's first act must be to classify, not to
-repair. It classifies from the run log, which does carry the gate's verdict (§15) — what it does
+repair. It classifies from the run log, which does carry the gate's verdict (§15). What it does
 not carry is any synthesis around that verdict, because a halt never reaches the closing stage.
 
 **Built, never run.** `commands/supervise.md` and `scripts/plan-guard.ts` shipped in one commit and
-have not been exercised once. The measurement this question demanded — *what share of real halts
-fall inside the closed repair set* — was never taken; `supervise.md` says so in its own header
+have not been exercised once. The measurement this question demanded (*what share of real halts
+fall inside the closed repair set*) was never taken; `supervise.md` says so in its own header
 (*"two prior halts are the whole evidence"*). Building before measuring is a defensible choice on a
 cheap component; recording that it was made is not optional.
 
@@ -240,25 +240,25 @@ which is the one destructive step in the loop.
 recorded: the `pr_body` defect of §6, a plan assertion that was too broad in a way only executing
 it revealed, a preflight replaying fifteen commands without de-duplicating identical ones. Each
 surfaced because a human was reading. The run's own auditor measures elapsed time and recurring
-failures and is explicitly told not to judge the work. Nothing looked at the *session* — the
+failures and is explicitly told not to judge the work. Nothing looked at the *session*: the
 instructions given, what the assistant did with them, where it guessed wrong.
 
 **Built, never run.** `agents/goal-session-auditor.md` exists, `scripts/transcripts.ts` locates a
-run's transcripts, and `commands/supervise.md` invokes the auditor once per invocation — with the
+run's transcripts, and `commands/supervise.md` invokes the auditor once per invocation, with the
 bar this question called the hard part actually written down (a finding must be anchored to a
 tool-call sequence). None of it has executed once, and it shows: no run has ever produced the
 `<plan>.run.session` file the locator prefers, and its fallback turns `/` into `-` and stops there,
-where Claude Code also turns `.` into `-` — so any run launched into the launcher's own
+where Claude Code also turns `.` into `-`, so any run launched into the launcher's own
 `.worktrees/` directory resolves to a path that does not exist, and the auditor is handed nothing.
 Neither defect could have survived one real invocation.
 
 **Open, and it is still the hard part:** a transcript is long and mostly uneventful, so an agent
-reading it will find *something* every time — which is how continuous improvement becomes a backlog
+reading it will find *something* every time, which is how continuous improvement becomes a backlog
 nobody reads. The written bar is a hypothesis, not a result; whether it holds is the measurement,
 and nothing has measured it.
 
 Also undecided: whether a verbose output style helps or hurts. Its prose states reasoning the
-transcript would otherwise only imply, which is exactly what such an auditor reads — and it is also
+transcript would otherwise only imply, which is exactly what such an auditor reads, and it is also
 the noise §7 wanted removed. The two may want opposite settings.
 
 ## 10. Nothing reviews what the gate accepted
@@ -268,12 +268,12 @@ declared scope, diff budget, removals, acceptance commands, the bite check, and 
 does not verify is whether the code is *good*: naming, design, error handling, security posture,
 whether an abstraction leaks. The gate was built to refuse the failures an unattended agent
 produces mechanically, not to hold an opinion. So a plan can land complete and green with nobody
-having read a line — the intended economy — leaving the review debt where attention is scarcest.
+having read a line (the intended economy), leaving the review debt where attention is scarcest.
 
 **Built and decided, never fired.** `agents/goal-run-reviewer.md` is invoked at the one moment
 publication can no longer be blocked behind it: right after the pull request goes ready
 (`scripts/run/close.ts`). Both open sub-questions were settled in the code and its brief: inline
-comments rather than one summary, and never `REQUEST_CHANGES` — pushed work is already shipped, so
+comments rather than one summary, and never `REQUEST_CHANGES`: pushed work is already shipped, so
 a review that cannot block would only add friction to clear by hand. The reviewer has not run once:
 the run that added it could not use it (§12), and no run has closed since.
 
@@ -292,14 +292,14 @@ stage entirely, and the relaunch starts the accumulator empty. So the coverage o
 step in the harness was inversely proportional to how much the plan resisted.
 
 **Settled, by two of the three candidates at once.** The lens is now briefed from the plan re-read
-on disk — every box the gate ticked, this run's or an earlier run's (`scripts/run/close.ts`) — so
+on disk: every box the gate ticked, this run's or an earlier run's (`scripts/run/close.ts`). So
 the last run of a plan reviews the whole plan. And the review also moved to the pull request, where
 the diff is the whole branch and the question of which run landed what disappears (§10). The third
 candidate, firing per landing, was not taken: it multiplies the calls to solve a problem the first
 two already close.
 
 **The measurement it asked for was taken and thrown away.** *Whether a lens handed six iterations
-at once still anchors its findings, or dilutes into a summary* — the run of 2026-08-01 handed its
+at once still anchors its findings, or dilutes into a summary*: the run of 2026-08-01 handed its
 lens all seven of its landed iterations, and that verdict exists nowhere. The version of the
 closing stage that ran spawned the lens and discarded its output while announcing *"lens findings
 recorded, advisory only"*. Capturing it is now in the code; the datapoint is lost, and the question
@@ -308,7 +308,7 @@ still has exactly one observation, from a lens given a single iteration, which d
 ## 12. A plan that improves the runner cannot use its own improvements
 
 **Observed, 2026-08-01.** Seven iterations of runner improvements landed, gate-verified, in a single
-run — and not one of them acted on the run that produced them. The run's own log is the proof, and
+run, and not one of them acted on the run that produced them. The run's own log is the proof, and
 every line of it can be checked against the plan it executed:
 
 - iteration 2 made the preflight narrate each passing check; the log holds no preflight line;
@@ -320,16 +320,16 @@ every line of it can be checked against the plan it executed:
   of every advisory agent's answer into it.
 
 **The cause is not a bug and cannot be fixed by a better plan.** Node resolves an import once, at
-load. `goal-run.ts` resolves its whole import graph at startup — eight direct imports that pull in
-eighteen modules in all — so the process runs the code as it stood when it was launched, whatever
+load. `goal-run.ts` resolves its whole import graph at startup (eight direct imports that pull in
+eighteen modules in all), so the process runs the code as it stood when it was launched, whatever
 the implementer writes to those files afterwards. Iterations 5 to 7
 landed outside the import graph and could not have acted either, for the mirror reason: nothing in
-the runner imports `plan-guard.ts` or `transcripts.ts` — only the `/goal:supervise` chain reaches
+the runner imports `plan-guard.ts` or `transcripts.ts`: only the `/goal:supervise` chain reaches
 them, and it was not what launched this run.
 
 **The boundary is exact, and it cuts both ways.** What the runner *imports* is frozen at launch.
 What it *spawns* is re-read at every call: the gate is `node goal-gate.ts` invoked per iteration,
-and each agent is a fresh `claude -p`. So the harness has the property nobody chose — a plan cannot
+and each agent is a fresh `claude -p`. So the harness has the property nobody chose: a plan cannot
 improve the process running it, **and** a plan can rewrite its own judge mid-run. An iteration that
 edits `gate/bounds.ts` is judged by the old bounds; iteration N+1 is judged by the new ones, as is
 every earlier iteration the regression wall replays. Nothing pins the gate's own source the way
@@ -345,14 +345,14 @@ the plan lie.
 **To settle:** whether the runner should refuse a plan that declares any of its own modules in
 `impl_files` (cheap, honest, and blocks the harness from ever improving itself in one pass), or
 whether the frozen-process property should simply be stated in the plan template so the author
-budgets a proving run. And separately, whether the gate being mutable mid-run is acceptable at all
-— it is the one component the whole design says must not be influenced by what it judges.
+budgets a proving run. And separately, whether the gate being mutable mid-run is acceptable at all:
+it is the one component the whole design says must not be influenced by what it judges.
 
 ## 13. The confinement axis is empty, and that was never a decision either
 
 **Observed.** The harness is built entirely on *detection*: the gate reads `git status`, compares
 HEAD before and after, replays declared commands, refuses undeclared paths. There is no
-*confinement* anywhere — no sandbox, no container, no filesystem boundary, no egress control. The
+*confinement* anywhere: no sandbox, no container, no filesystem boundary, no egress control. The
 implementer is an ordinary `claude -p` holding `Read, Write, Edit, Grep, Glob, Bash` under
 `--permission-mode auto`, and no fence stands around it: the four deny prefixes on git verbs
 were opt-in, and their installer has since been removed.
@@ -361,7 +361,7 @@ were opt-in, and their installer has since been removed.
 detection, which is worth recording precisely because it is the cheaper answer winning again.**
 `run/iteration.ts:132-165` now fingerprints the git directory's executable surface and every ref
 around the implementer (`run/gitwatch.ts`), so a planted hook, a rewritten `config` and a push all
-halt the run named for what they are — none of them visible to `git status --porcelain -uall`.
+halt the run named for what they are, none of them visible to `git status --porcelain -uall`.
 
 **What still costs, and it is structural rather than a list of bugs.** Detection is bounded by
 what its author thought to snapshot, and confinement is not:
@@ -381,7 +381,7 @@ implementer *can* do, where every mechanism currently shipped only observes what
 observation is bounded by the imagination of whoever wrote the observer.
 
 **To measure before deciding:** what a run actually needs. The implementer's real requirements are
-narrow — read the repository, write declared paths, run the project's test commands — and if that
+narrow (read the repository, write declared paths, run the project's test commands), and if that
 set is small enough to enumerate, a container or a per-run user account is cheaper than the growing
 list of blind spots it would retire wholesale. If it is not enumerable (a project whose tests need
 the network, a `make` that pulls images), confinement is a per-project setting and the question
@@ -390,34 +390,34 @@ becomes who declares it. That is the fork, and nothing has explored either branc
 ## 14. The port dropped every quantitative ceiling, and nobody noticed for a generation
 
 **Observed.** The abandoned Workflow carried two numbers the current runner does not: a token
-floor per iteration, below which the run refused to start a slice it could not finish — inert
-unless the run declared a budget, and the legacy said so in its own log — and a per-iteration token
+floor per iteration, below which the run refused to start a slice it could not finish (inert
+unless the run declared a budget, and the legacy said so in its own log), and a per-iteration token
 count written into the run's report. Neither survived either port. The current runner has no turn
 cap, no iteration cap, and no cost measurement at all.
 
-One ceiling did get built, and it covers the wrong half. Every **declared command** — sweep, gate,
-Definition of Done — runs under a wall clock: `gate/bounded.ts:17` reads `GOAL_CMD_TIMEOUT`,
+One ceiling did get built, and it covers the wrong half. Every **declared command** (sweep, gate,
+Definition of Done) runs under a wall clock: `gate/bounded.ts:17` reads `GOAL_CMD_TIMEOUT`,
 default 900 seconds, and `:84-90` applies it as `spawnSync`'s `timeout` with
 `killSignal: 'SIGKILL'`, since the default `SIGTERM` is the signal a hung process is already
 ignoring. A test waiting on a port cannot hold an unattended run open. The **implementer session**
 is spawned with no `timeout` at all (`run/iteration.ts:68-85`), and it is the one that can loop.
-Its only brake is the quota wait — thirty minutes, three times — which arms only when the output
+Its only brake is the quota wait (thirty minutes, three times), which arms only when the output
 matches a rate-limit string.
 
 **The consequence that matters here.** An implementer looping on an impossible slice runs to quota
 exhaustion, sleeps, and repeats, with nothing anywhere saying *this slice is not converging*.
 
 **Why it is a question and not a plan item.** A turn cap is one flag and would have been written by
-now if the answer were only *add a cap* — the declared-command clock above proves the mechanism is
+now if the answer were only *add a cap*: the declared-command clock above proves the mechanism is
 one option away. The open part is what a ceiling on the *implementer* should be a ceiling *on*.
 Tokens are what the legacy counted and are the wrong unit for a harness whose iterations vary by an
 order of magnitude in size. Wall-clock is honest and punishes a slow machine. Turns are cheap to
 cap and easy to game by an agent that does more per turn. And whatever the unit, hitting the
-ceiling has to leave a signal §8's classifier can act on — where the gate already collapses every
+ceiling has to leave a signal §8's classifier can act on. The gate already collapses every
 refusal it makes into one exit code whatever caused it (`scripts/gate/halt.ts`), so a fifth
 stopping reason joins a contract that already conflates two.
 
-**To measure before deciding:** the real distribution. No run on record was instrumented — the
+**To measure before deciding:** the real distribution. No run on record was instrumented: the
 auditor is handed elapsed seconds per iteration and nothing about cost. Recording both per
 iteration blocks no decision and is the prerequisite for every version of this question.
 
@@ -440,7 +440,7 @@ to learn from what went wrong, on a harness whose closing artifacts only ever de
 right.
 
 **Why the remainder is structural rather than a missing log line.** The question underneath it is
-what a run owes the outside world when it stops: today the closing stage — report, lens, audit —
+what a run owes the outside world when it stops: today the closing stage (report, lens, audit)
 is conditioned on every requested iteration landing, which means the runs that most deserve a
 post-mortem are precisely the ones that get none. Inverting that (always close, and let the
 closing artifacts describe a halt) changes what the lens and auditor are for, since both are
@@ -448,6 +448,6 @@ currently briefed on landed work. That is a design decision about whether this h
 plans or on runs.
 
 **To measure before deciding:** what a real halt actually needs, beyond the verdict, in order to
-be classified. The two recorded halts were both diagnosed by a human reading a pasted terminal —
-nobody has established which parts of that paste were load-bearing, and building the artifact
+be classified. The two recorded halts were both diagnosed by a human reading a pasted terminal.
+Nobody has established which parts of that paste were load-bearing, and building the artifact
 before knowing repeats exactly what §8 did.

@@ -1,6 +1,6 @@
 # marketing-strategy
 
-Strategic marketing playbooks — audience, positioning, campaign ideation, competitive intelligence.
+Strategic marketing playbooks: audience, positioning, campaign ideation, competitive intelligence.
 
 ## Install
 
@@ -23,9 +23,9 @@ Strategic marketing playbooks — audience, positioning, campaign ideation, comp
 
 Near-neighbor disambiguation:
 
-- **product-marketing vs product-marketing-context** — do strategy work vs maintain a shared context file. Set up context ONCE so other skills stop re-asking foundational questions.
-- **marketing-ideas vs competitor-analysis** — brainstorm new tactics vs learn what competitors are already doing
-- **icp-builder vs product-marketing** — who buys vs how to position
+- **product-marketing vs product-marketing-context**: do strategy work vs maintain a shared context file. Set up context ONCE so other skills stop re-asking foundational questions.
+- **marketing-ideas vs competitor-analysis**: brainstorm new tactics vs learn what competitors are already doing
+- **icp-builder vs product-marketing**: who buys vs how to position
 
 ## Recommended workflow
 
@@ -37,5 +37,5 @@ Near-neighbor disambiguation:
 
 ## Pairs with
 
-- `marketing-content` — turns strategy into content
-- `marketing-distribution` — channels for the strategy
+- `marketing-content`: turns strategy into content
+- `marketing-distribution`: channels for the strategy

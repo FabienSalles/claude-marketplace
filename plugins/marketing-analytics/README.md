@@ -1,6 +1,6 @@
 # marketing-analytics
 
-Marketing analytics — implementation (tracking setup) and reporting (Search Console, GA4).
+Marketing analytics: implementation (tracking setup) and reporting (Search Console, GA4).
 
 ## Install
 
@@ -18,20 +18,20 @@ Marketing analytics — implementation (tracking setup) and reporting (Search Co
 
 ## When to use what
 
-- **analytics-tracking vs google-analytics** — set up tracking (implementation) vs read the data (reporting)
-- **google-analytics vs search-console** — post-click (site behavior) vs pre-click (search performance)
-- **search-console vs marketing-content:seo-audit** — reporting on published search data vs technical/on-page diagnostics on a URL
+- **analytics-tracking vs google-analytics**: set up tracking (implementation) vs read the data (reporting)
+- **google-analytics vs search-console**: post-click (site behavior) vs pre-click (search performance)
+- **search-console vs marketing-content:seo-audit**: reporting on published search data vs technical/on-page diagnostics on a URL
 
 ## Requires
 
 Google Cloud OAuth credentials (client_id, client_secret, refresh_token) for `google-analytics` and `search-console` reporting skills. Both skills document the setup steps inline.
 
 `analytics-tracking` includes progressive-disclosure references under `skills/analytics-tracking/references/`:
-- `ga4-implementation.md` — GA4 install patterns
-- `gtm-implementation.md` — GTM container setup
-- `event-library.md` — reusable event taxonomy
+- `ga4-implementation.md`: GA4 install patterns
+- `gtm-implementation.md`: GTM container setup
+- `event-library.md`: reusable event taxonomy
 
 ## Pairs with
 
-- `marketing-content:seo-audit` — technical SEO diagnostics complement Search Console reports
-- `marketing-strategy` — feeds conversion KPIs back into ICP and positioning
+- `marketing-content:seo-audit`: technical SEO diagnostics complement Search Console reports
+- `marketing-strategy`: feeds conversion KPIs back into ICP and positioning
