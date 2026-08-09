@@ -97,7 +97,7 @@ export const declaredKeys = (block: string[], subject: string): Map<string, stri
   const twice: string[] = [];
 
   for (const line of block) {
-    if (line.trim() === '') {
+    if (line.trim() === '' || line.trim().startsWith('#')) {
       continue;
     }
 

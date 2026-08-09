@@ -142,6 +142,25 @@ test('a gate fence quoted in prose outside any iteration section does not move t
   assert.match(output, /^OK/);
 });
 
+// R4 — a comment line added inside the gate fence does not move the hash
+test('a comment line added inside the gate fence does not move the hash', () => {
+  const plan = writePlan(PLAN);
+  const hash = runGuard([plan]).output.trim().slice('guard_hash='.length);
+
+  writeFileSync(
+    plan,
+    PLAN.replace(
+      'gate1=node --test tests/a.test.ts',
+      '# rule: the slice is proven by its own test\ngate1=node --test tests/a.test.ts',
+    ),
+  );
+
+  const { code, output } = runGuard([plan, hash]);
+
+  assert.equal(code, 0, output);
+  assert.match(output, /^OK/);
+});
+
 test('an unreadable plan is a misuse, not a crash', () => {
   const { code, output } = runGuard(['/nonexistent/path/spec.md']);
 

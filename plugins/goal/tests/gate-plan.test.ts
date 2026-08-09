@@ -62,6 +62,27 @@ test('a well-formed iteration is runnable and its plan hash is reported', () => 
   assert.match(output, /^plan_hash=[0-9a-f]{64}$/m);
 });
 
+// R4 — a `#` comment or a blank line inside the gate fence is ignored, not a declared key
+test('a comment or blank line inside the gate fence is ignored', () => {
+  const plan = writePlan(
+    planWith([
+      '# rule: the thing under test behaves',
+      'test_files=tests/a.test.ts',
+      '',
+      '# rule: the file exists',
+      'impl_files=src/a.ts',
+      'max_diff=100',
+      'commit_msg=feat(a): do a thing',
+      '# rule: the test suite proves it',
+      'gate1=true',
+    ]),
+  );
+
+  const { code, output } = check(plan);
+
+  assert.equal(code, 0, output);
+});
+
 test('an iteration with nothing to test is runnable', () => {
   const plan = writePlan(
     planWith(['test_files=', 'impl_files=docs/a.md', 'commit_msg=docs(a): write', 'gate1=true']),

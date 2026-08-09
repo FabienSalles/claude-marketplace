@@ -7,6 +7,16 @@ The criteria here are **command-line verifiable**, because they end up
 in a spec's `gate` block and are replayed literally by
 `goal-gate.ts`. Nothing here is judged by a model.
 
+A `#` comment line preceding a command names the rule that command proves; a
+gate block tolerates blank lines and comments and ignores both:
+
+```gate
+# rule: the discount never drops the total below zero
+gate1=pnpm test tests/discount.test.ts
+# rule: the API rejects a negative quantity
+gate2=pnpm test tests/quantity.test.ts
+```
+
 ---
 
 ## Always required (the baseline, language-agnostic)

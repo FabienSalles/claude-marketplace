@@ -492,6 +492,16 @@ so now, because `/goal:supervise` halts on an iteration with no `gate1`.
 Use the project's real commands, dockerized where the project is, and check each one runs
 today. A command that does not exist yet is a halt at iteration 1, not at review time.
 
+**Precede each command with a `#` comment naming the rule it proves.** The gate block
+tolerates `#` comment lines and blank lines — they change no verdict and no guard hash —
+so annotate every `gate1..N` line with the business rule from the spec that command is the
+proof of, one comment per command:
+
+```gate
+# rule: <business rule from the spec>
+gate1=<command>
+```
+
 **Name the generated tooling once, on the header's `Incidental:` line.** A lockfile, a
 `tsconfig.json`, a CLI's own config file: the slice does not author them, it provokes them by
 installing a dependency or initialising a tool. Left undeclared they read as a scope leak, and
