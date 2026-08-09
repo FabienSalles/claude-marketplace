@@ -307,6 +307,76 @@ test('a second close() replaces the run report section instead of appending to i
   }
 });
 
+// PR body format — the body opens with "## Delivered" and one numbered bullet per landed
+// iteration, derived from its own Goal line and ending with the commit sha that landed it,
+// never a bare title list.
+test('the pull request body opens with Delivered bullets built from the Goal line and commit sha', () => {
+  const fixture = repo({ planText: PLAN_PR, remote: true });
+
+  const { code, output } = publish(fixture, [fixture.plan, '1'], {
+    FAKE_CLAUDE_WRITES: join(fixture.dir, 'a.txt'),
+  });
+
+  assert.equal(code, 0, output);
+  const sha = git(fixture.dir, 'rev-parse', '--short', 'HEAD').stdout.trim();
+  const calls = readFileSync(fixture.ghLog, 'utf8');
+  assert.match(calls, /## Delivered/, `no "## Delivered" heading in the pull request body:\n${calls}`);
+  assert.match(
+    calls,
+    new RegExp(`1\\. write a\\.txt \\(\`${sha}\`\\)`),
+    `no numbered bullet carrying the Goal and the landing commit's sha:\n${calls}`,
+  );
+});
+
+// PR body format — a second landing appends a second numbered bullet rather than replacing the
+// first, each derived from its own iteration's Goal and its own commit sha.
+test('a second landing adds a second numbered Delivered bullet, each with its own commit sha', () => {
+  const fixture = repo({ planText: PLAN_PR, remote: true });
+
+  const { code, output } = run(fixture, [fixture.plan], {
+    FAKE_GATE_COMMITS: '1',
+    FAKE_CLAUDE_WRITES: join(fixture.dir, 'a.txt'),
+  });
+
+  assert.equal(code, 0, output);
+  const calls = readFileSync(fixture.ghLog, 'utf8').split('--- call ---\n').filter((call) => call.trim() !== '');
+  const edits = calls.filter((call) => call.startsWith('pr\nedit'));
+  const last = edits[edits.length - 1]!;
+
+  assert.match(last, /1\. write a\.txt \(`[0-9a-f]+`\)/, `first Delivered bullet missing:\n${last}`);
+  assert.match(last, /2\. write b\.txt \(`[0-9a-f]+`\)/, `second Delivered bullet missing:\n${last}`);
+});
+
+// PR body format — the run report lands behind a `---` separator, never immediately after the
+// Delivered list, so the machine-written summary and the auditor's own prose stay visually apart.
+test('close folds the run report behind a --- separator from the Delivered list', () => {
+  const fixture = repo({ planText: PLAN_PR, remote: true });
+  const dir = tmpDir('goal-run-report-sep-');
+  writeFileSync(join(dir, 'report.md'), '# Report\n\nCosts: 3 iterations.\n');
+
+  const originalCwd = process.cwd();
+  const originalPath = process.env.PATH;
+  process.chdir(fixture.dir);
+  process.env.PATH = `${fixture.bin}:${originalPath ?? ''}`;
+
+  try {
+    const publisher = createPublisher(fixture.plan, fixture.plan, 'commit+pr', 'origin', silentReporter, 'true');
+    publisher.state.prOpen = true;
+
+    const code = close(fixture.plan, join(fixture.bin, 'fake-gate'), HASH, 'origin', publisher, ['1'], dir, silentReporter);
+
+    assert.equal(code, LANDED);
+    const calls = readFileSync(fixture.ghLog, 'utf8').split('--- call ---\n').filter((call) => call.trim() !== '');
+    const edits = calls.filter((call) => call.startsWith('pr\nedit'));
+    const last = edits[edits.length - 1]!;
+
+    assert.match(last, /\n---\n\n## Run report\n/, `the run report was not folded behind a "---" separator:\n${last}`);
+  } finally {
+    process.chdir(originalCwd);
+    process.env.PATH = originalPath;
+  }
+});
+
 // Under Policy: commit (no `+pr`), nothing is pushed and no pull request is opened — the plan
 // asked the developer to keep the commits on the branch.
 test('a plan under Policy: commit is never pushed and opens no pull request', () => {
