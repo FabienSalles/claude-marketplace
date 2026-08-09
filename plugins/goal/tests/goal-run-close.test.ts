@@ -447,6 +447,52 @@ test('the reviewer never runs when the publisher\'s own state says blocked', () 
   }
 });
 
+// one advisory duration — the lens and reviewer run concurrently, so close() takes roughly the
+// slower of the two advisory calls plus the auditor's, never their sum.
+test('the lens and reviewer run concurrently rather than one after the other', () => {
+  const fixture = repo({ planText: PLAN_PR, remote: true });
+  const originalCwd = process.cwd();
+  const originalPath = process.env.PATH;
+
+  process.chdir(fixture.dir);
+  process.env.PATH = `${fixture.bin}:${originalPath ?? ''}`;
+  process.env.FAKE_CLAUDE_SLEEPS = '1';
+
+  try {
+    const reporter: Reporter = {
+      say: () => {},
+      stop: () => {
+        throw new Error('unexpected stop');
+      },
+      record: () => {},
+      setLog: () => {},
+    };
+
+    const start = Date.now();
+    const code = close(
+      fixture.plan,
+      join(fixture.bin, 'fake-gate'),
+      HASH,
+      'origin',
+      { publish: () => {}, state: { publishes: true, prOpen: true, blocked: false } },
+      ['1'],
+      'run-dir',
+      reporter,
+    );
+    const elapsedMs = Date.now() - start;
+
+    assert.equal(code, LANDED);
+    assert.ok(
+      elapsedMs < 3200,
+      `expected the lens and reviewer to overlap, keeping close() well under 3 advisory durations, took ${elapsedMs}ms`,
+    );
+  } finally {
+    process.chdir(originalCwd);
+    process.env.PATH = originalPath;
+    delete process.env.FAKE_CLAUDE_SLEEPS;
+  }
+});
+
 // R5 — the lock is acquired once, before the first iteration, and released only when the process
 // exits: two iterations landing in the same run must not show up as two lock/unlock pairs in the
 // gate's own log.
