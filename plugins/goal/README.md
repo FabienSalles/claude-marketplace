@@ -187,11 +187,11 @@ More, including the axes that are entirely empty: [`docs/comparison.md`](docs/co
 
 | Component | Path | Role |
 |---|---|---|
-| [`/goal:tickets`](commands/tickets.md) | `commands/` | Chantier → ordered backlog, elaborated just-in-time; opt-in GitHub milestone + issues |
-| [`/goal:spec`](commands/spec.md) | `commands/` | Any source → the functional contract; opt-in adversarial grill and GitHub issue |
-| [`/goal:plan`](commands/plan.md) | `commands/` | The technical grill → command-mapped DoD, slices, policy, remote → the locked plan on a branch |
-| [`/goal:supervise`](commands/supervise.md) | `commands/` | Launches the runner, classifies a halt, repairs or discards once. **Never exercised by a real run** |
-| [`/goal:next`](commands/next.md) | `commands/` | Manual-loop checkpoint: replay the DoD, reconcile plan against code, emit the next handoff |
+| [`/goal:tickets`](skills/tickets/SKILL.md) | `skills/` | Chantier → ordered backlog, elaborated just-in-time; opt-in GitHub milestone + issues |
+| [`/goal:spec`](skills/spec/SKILL.md) | `skills/` | Any source → the functional contract; opt-in adversarial grill and GitHub issue |
+| [`/goal:plan`](skills/plan/SKILL.md) | `skills/` | The technical grill → command-mapped DoD, slices, policy, remote → the locked plan on a branch |
+| [`/goal:supervise`](skills/supervise/SKILL.md) | `skills/` | Launches the runner, classifies a halt, repairs or discards once. **Never exercised by a real run** |
+| [`/goal:next`](skills/next/SKILL.md) | `skills/` | Manual-loop checkpoint: replay the DoD, reconcile plan against code, emit the next handoff |
 | `goal-run.ts` + `run/*.ts` | `scripts/` | The runner: 1,514 lines over 15 modules (preflight, sweep, lock, iteration, publish, close, report) |
 | `goal-gate.ts` + `gate/*.ts` | `scripts/` | The judge, and the only committer: 1,134 lines over 12 modules. Exit 0 runnable · 1 `HALT` with a reason · 2 misuse |
 | `transcripts.ts` · `digest.ts` | `scripts/` | Resolve a run's transcripts and compress them to a tool-call digest. `transcripts.ts` runs on every failed implementer attempt |

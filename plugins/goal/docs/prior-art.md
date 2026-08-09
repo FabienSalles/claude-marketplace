@@ -42,7 +42,7 @@ quietly leaving the tree changed. SWE-bench never needed that: it throws the con
 skips the bite check outright, so that field is the check's input and its off switch at once.
 `plan-guard.ts` hashes it: not the paths, which a repair may legitimately fix, but whether the
 field is empty, per resolved block, beside the `gateN=` and `dodN=` lines (`:59-76`). But nothing
-the machine runs invokes it: its only callers are steps in `commands/supervise.md` (`:86-90`) that
+the machine runs invokes it: its only callers are steps in `skills/supervise/SKILL.md` (`:86-90`) that
 a model is asked to follow, and `supervise.md:74-76` forbids emptying the field in the same
 register. So the one check nobody else has is protected from the automated classifier that repairs
 the plan by an instruction, not by a program: the hash is a mechanism only for as long as

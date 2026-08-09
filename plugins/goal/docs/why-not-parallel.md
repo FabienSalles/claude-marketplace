@@ -14,7 +14,7 @@ splits becomes several plan files, and the developer launches one run per file.
 
 **What a run is, as of today.** A run is one `node goal-run.ts <plan>` process
 (`scripts/goal-run.ts` plus `scripts/run/*.ts`), which is what `/goal:supervise` launches
-(`commands/supervise.md:31`). It surveys the plan's unchecked boxes, then implements them one at a
+(`skills/supervise/SKILL.md:31`). It surveys the plan's unchecked boxes, then implements them one at a
 time in a single `for` loop (`goal-run.ts:92-98`). The harness that carried tracks is the
 abandoned Workflow runtime this loop used to run on (still checked in, orchestrating nothing
 that ships), and the sections below describe it in the past tense on purpose.

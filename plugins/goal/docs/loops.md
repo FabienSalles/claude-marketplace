@@ -71,7 +71,7 @@ so a relaunch resumes at the first unticked box and a wait needs no state at all
 (it does, once, before sleeping: `run/iteration.ts:150`), or one invisible wait has been traded
 for another.
 
-## The loop nobody has run: `commands/supervise.md`
+## The loop nobody has run: `skills/supervise/SKILL.md`
 
 The only loop written since, and the only one at session level: launch `node goal-run.ts` in the
 background, wait for it to exit, read the exit code, classify a halt as a plan fault or an

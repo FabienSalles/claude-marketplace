@@ -165,14 +165,14 @@ from any of them is not addressed anywhere: that is a sandbox question, not an o
 
 ### `/goal:supervise`: a local steering channel, guarded by a script nothing runs
 
-`commands/supervise.md` introduces the one actor allowed to **edit the plan between two runs**,
+`skills/supervise/SKILL.md` introduces the one actor allowed to **edit the plan between two runs**,
 inside a closed set: an entry in `test_files` or `impl_files`, `max_diff`, a mistyped path, or
 prose (`supervise.md:72-75`). It asks the same question this document asks of a remote verb
 (*can this edit only subtract?*) and answers it with `scripts/plan-guard.ts`, which hashes the
 plan's acceptance commands before and after and refuses if the hash moved.
 
 **Name the seam before crediting the mechanism.** Nothing under `scripts/` imports or spawns
-`plan-guard.ts`; its only callers are prose steps in `commands/supervise.md:86-90`, which ask a
+`plan-guard.ts`; its only callers are prose steps in `skills/supervise/SKILL.md:86-90`, which ask a
 model to run it and to read what it printed. So this is a sentence asking for a mechanism, not a
 mechanism: the same shape this document rejects everywhere else, and it is worth saying plainly
 because the script itself is sound and has simply never been wired to anything that must run it.

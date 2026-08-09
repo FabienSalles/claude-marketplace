@@ -16,7 +16,7 @@ justification turned out to be false: it claimed a run living in an interactive 
 a keystroke", where backgrounding kills nothing and the real cause was a permission prompt nobody
 answered. That correction stands. What changed since is bigger than the correction. The chain that
 runs today has no isolation layer: `/goal:supervise` starts the runner as a plain background shell
-(`commands/supervise.md`, Phase 1), in the developer's own checkout, with no worktree and no named
+(`skills/supervise/SKILL.md`, Phase 1), in the developer's own checkout, with no worktree and no named
 session to reattach to. The earlier launcher that opened tmux for a run has since been deleted; it
 launched the abandoned generation.
 
@@ -123,7 +123,7 @@ iteration, the two commands contradicted each other by construction.
 
 **Settled.** The abandoned command is deleted, `scripts/run/publish.ts` asks `gh` whether a pull
 request exists before creating one and adopts it rather than retrying blindly, and
-`commands/next.md` now offers `/goal:supervise` (whose preflight has no such check) instead.
+`skills/next/SKILL.md` now offers `/goal:supervise` (whose preflight has no such check) instead.
 
 ## 6. The orchestrator is bash, and that was never a decision: settled, and closed
 
@@ -225,7 +225,7 @@ outside the two halts are indistinguishable, so the doctor's first act must be t
 repair. It classifies from the run log, which does carry the gate's verdict (§15). What it does
 not carry is any synthesis around that verdict, because a halt never reaches the closing stage.
 
-**Built, never run.** `commands/supervise.md` and `scripts/plan-guard.ts` shipped in one commit and
+**Built, never run.** `skills/supervise/SKILL.md` and `scripts/plan-guard.ts` shipped in one commit and
 have not been exercised once. The measurement this question demanded (*what share of real halts
 fall inside the closed repair set*) was never taken; `supervise.md` says so in its own header
 (*"two prior halts are the whole evidence"*). Building before measuring is a defensible choice on a
@@ -244,7 +244,7 @@ failures and is explicitly told not to judge the work. Nothing looked at the *se
 instructions given, what the assistant did with them, where it guessed wrong.
 
 **Built, never run.** `agents/goal-session-auditor.md` exists, `scripts/transcripts.ts` locates a
-run's transcripts, and `commands/supervise.md` invokes the auditor once per invocation, with the
+run's transcripts, and `skills/supervise/SKILL.md` invokes the auditor once per invocation, with the
 bar this question called the hard part actually written down (a finding must be anchored to a
 tool-call sequence). None of it has executed once, and it shows: no run has ever produced the
 `<plan>.run.session` file the locator prefers, and its fallback turns `/` into `-` and stops there,

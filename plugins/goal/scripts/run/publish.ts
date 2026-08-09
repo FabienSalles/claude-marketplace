@@ -6,7 +6,7 @@
 import { spawnSync } from 'node:child_process';
 import { basename } from 'node:path';
 
-import { header, iterationHeading } from '../gate/plan.ts';
+import { header } from '../gate/plan.ts';
 import type { Reporter } from './report.ts';
 import type { PublishState } from './close.ts';
 import { git } from './shell.ts';
@@ -42,16 +42,34 @@ export const createPublisher = (
   let blocked = '';
   let shipped = false;
   const landed: string[] = [];
+  const shas = new Map<string, string>();
   const state: PublishState = { publishes, prOpen: false, blocked: false };
 
+  const goalOf = (iteration: string): string | undefined => {
+    const lines = source.split('\n');
+    const start = lines.findIndex((line) => new RegExp(`^### Iteration ${iteration}\\b`).test(line));
+
+    if (start === -1) {
+      return undefined;
+    }
+
+    const next = lines.slice(start + 1).findIndex((line) => /^#{2,3} /.test(line));
+    const section = lines.slice(start + 1, next === -1 ? lines.length : start + 1 + next);
+
+    return section.find((line) => /^- \*\*Goal:\*\*/.test(line))?.replace(/^- \*\*Goal:\*\* */, '');
+  };
+
   const prBody = (): string => {
-    const headings = landed
-      .map((n) => iterationHeading(source, n))
-      .filter((heading): heading is string => heading !== undefined)
-      .map((heading) => heading.replace(/^### /, '- '))
+    const bullets = landed
+      .map((n, i) => {
+        const goal = goalOf(n);
+
+        return goal === undefined ? undefined : `${i + 1}. ${goal} (\`${shas.get(n) ?? ''}\`)`;
+      })
+      .filter((bullet): bullet is string => bullet !== undefined)
       .join('\n');
 
-    return `## Landed\n\n${headings}\n\nEach iteration was judged by the gate before its commit: declared scope, diff budget, removals, acceptance commands, and the bite check that requires the test to fail without the implementation. No commit exists that a gate did not verify.\n`;
+    return `## Delivered\n\n${bullets}\n\nEach iteration was judged by the gate before its commit: declared scope, diff budget, removals, acceptance commands, and the bite check that requires the test to fail without the implementation. No commit exists that a gate did not verify.\n`;
   };
 
   // The pull request is opened as a draft at the **first** landed commit, and its body rewritten
@@ -60,6 +78,7 @@ export const createPublisher = (
   // for any reason it stays failed for the rest of this run rather than retried every iteration.
   const publish = (iteration: string): void => {
     landed.push(iteration);
+    shas.set(iteration, git('rev-parse', '--short', 'HEAD').stdout.trim());
 
     if (blocked !== '') {
       return;
@@ -169,7 +188,7 @@ export const createPublisher = (
 
     const repo = repoOf(remote);
     const branch = git('branch', '--show-current').stdout.trim();
-    const gh = spawnSync('gh', ['pr', 'edit', branch, '--repo', repo, '--body', `${prBody()}\n## Run report\n\n${text}\n`], { encoding: 'utf8' });
+    const gh = spawnSync('gh', ['pr', 'edit', branch, '--repo', repo, '--body', `${prBody()}\n---\n\n## Run report\n\n${text}\n`], { encoding: 'utf8' });
 
     if ((gh.status ?? 1) === 0) {
       reporter.say('RUN folded the run report into the pull request body');

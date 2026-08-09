@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
 import { tmpDir } from './support/tmp.ts';
@@ -163,6 +163,27 @@ test('the path a rename left behind is a change the iteration has to declare', (
   assert.equal(code, 1, output);
   assert.match(output, /Scope leak/);
   assert.match(output, /src\/a\.ts/);
+});
+
+// R4 — the same rename reported from the worktree side (` R`, not `R `): a new file
+// intent-to-added beside its deleted source, which is what the git-add-empty hook produces.
+// The origin is still the record after the destination, so reading it as a standalone record
+// strips three characters off its path and refuses a phantom nobody declared.
+test('a worktree-side rename with both paths declared is not a scope leak', () => {
+  const { repo, plan } = fixture([
+    'test_files=',
+    'impl_files=src/a.ts src/b.ts',
+    'commit_msg=feat(a): move a to b',
+    'gate1=true',
+  ]);
+  writeFileSync(plan, `Delivery mode: allow-bc-break\n\n${readFileSync(plan, 'utf8')}`);
+  writeFileSync(join(repo, 'src', 'b.ts'), readFileSync(join(repo, 'src', 'a.ts')));
+  rmSync(join(repo, 'src', 'a.ts'));
+  git(repo, 'add', '-N', 'src/b.ts');
+
+  const { code, output } = runGate(repo, 'verify', plan, '1');
+
+  assert.equal(code, 0, output);
 });
 
 // R6 — at most one writer to the plan file at any instant

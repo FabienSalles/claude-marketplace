@@ -1,7 +1,15 @@
 ---
+name: tickets
 description: Chantier level of the goal workflow — split an initiative too big for one spec into an ordered backlog of outcome-sized tickets, elaborated just-in-time — ticket 1 gets a handoff, the rest deliberately stay one-liners. Re-run on an existing backlog to reconcile it after a ticket ships and arm the next one. Routes are executor-agnostic (a ticket may go to /goal:spec, another skill, or manual work). GitHub mirroring (milestone + issues) is opt-in, never forced.
-argument-hint: A chantier — a brief/vision file path, 'inline' to paste it, or an existing backlog (.claude/plans/<chantier-id>-backlog.md) to reconcile
 ---
+
+## Portability
+
+This skill degrades gracefully outside Claude Code:
+
+- No `AskUserQuestion` tool → ask the question in plain text and wait for the reply.
+- No Atlassian MCP → route through the inline paste path, same as `/goal:spec`.
+- No `pbcopy` → print the content instead of copying it to the clipboard.
 
 # /goal:tickets — Chantier → ordered backlog, elaborated just-in-time
 

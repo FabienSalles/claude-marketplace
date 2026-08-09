@@ -43,12 +43,14 @@ export const scopeCheck = (
   const changed = new Set<string>();
   const records = status.stdout.split('\0').filter((entry) => entry !== '');
 
-  // With `-z`, a rename is the new path's record followed by the original as a record of its own.
+  // With `-z`, a rename is the new path's record followed by the original as a record of its
+  // own — whichever of the two status columns carries the R/C: `R ` from the index (git mv),
+  // ` R` from the worktree (a deleted source beside its intent-to-added copy).
   for (let index = 0; index < records.length; index += 1) {
     const record = records[index]!;
     changed.add(record.slice(3));
 
-    if (/^[RC]/.test(record)) {
+    if (/^.?[RC]/.test(record.slice(0, 2))) {
       index += 1;
       const origin = records[index];
 

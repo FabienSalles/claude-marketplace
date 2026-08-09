@@ -67,7 +67,7 @@ two runs. `/goal:supervise` may repair a plan after a halt; the guard hashes eve
 have moved a bar nor switched the bite check off. Two things keep its row above at *partial*. It
 guards those and nothing else: an `impl_files` entry, `max_diff` and the prose are all inside
 the closed repair set and outside the hash. And nothing calls it but the prompt it exists to
-constrain: `commands/supervise.md` runs it, `goal-run.ts` and `goal-gate.ts` never do.
+constrain: `skills/supervise/SKILL.md` runs it, `goal-run.ts` and `goal-gate.ts` never do.
 
 ## The four new mechanisms
 
@@ -204,7 +204,7 @@ fingerprint taken on both sides. Its off switch is guarded. `gate/bite.ts:54-56`
 and returns when `test_files` is empty, and `plan-guard.ts:59-76` hashes exactly that (per
 resolved block, whether `test_files` is empty, beside the `gateN=` and `dodN=` lines), so a
 supervised repair may fix a mistyped path and still pass, while one emptying the field moves the
-hash and is refused. `commands/supervise.md:74-76` forbids the same edit in prose.
+hash and is refused. `skills/supervise/SKILL.md:74-76` forbids the same edit in prose.
 
 **4. The plan is hashed.** Stronger than it sounds, holed in one place. `gate/plan.ts:29-30`
 hashes the *whole* plan rather than its gate lines, so for the length of a run `impl_files`,
@@ -228,7 +228,7 @@ own stdout; `run/iteration.ts:184` concatenates that stdout with stderr into `re
 which appends it to the run's own log, `.claude/goal-runs/<work-id>/<run-id>/.run.log`
 (`run/report.ts:20-25`, `:80-84`), before the run prints its one line
 and exits. `tests/goal-run-halt-log.test.ts` asserts it, split streams included. So
-`commands/supervise.md:63-65`, which calls that block "the only evidence there is" and forbids
+`skills/supervise/SKILL.md:63-65`, which calls that block "the only evidence there is" and forbids
 re-running the gate for a second opinion, is pointing at something that exists. Where the
 invariant still slips is the pull request body: `run/publish.ts:54` states "No commit exists that
 a gate did not verify" as static text, never as the output of anything.
@@ -276,7 +276,7 @@ Two earlier generations preceded the one that runs today: a Workflow (941 lines)
 **What survived.** The published guidance warns against Claude generating an orchestration
 script on the fly, per run: genuinely wasteful for a repeatable task, since you pay a model to
 reinvent the same control flow every night. The resolution was to **check the script in** and
-invoke it by path, and that is still exactly what happens: `commands/supervise.md` launches
+invoke it by path, and that is still exactly what happens: `skills/supervise/SKILL.md` launches
 `node goal-run.ts <plan>`. A static script invoked by path was the answer to the anti-pattern,
 and it outlived the runtime it was first written for.
 
