@@ -1,7 +1,15 @@
 ---
+name: supervise
 description: Launches `node goal-run.ts <plan>` in the background and watches it to the end. On a non-zero exit it classifies before repairing — plan at fault, implementation at fault, or unknown — never the reverse. A plan fault is repaired within a closed set (declared paths, max_diff, a mistyped path, prose) with plan-guard.ts proving no gate or dod line moved, then relaunched; an implementation fault discards the tree and relaunches unchanged; anything else stops and wakes the developer. One relaunch per iteration, then stop. Unproven — two prior halts are the whole evidence this classifier has ever seen.
-argument-hint: Optional plan path (.claude/plans/<work-id>-spec.md); omit to auto-discover
+disable-model-invocation: true
 ---
+
+## Outside Claude Code
+
+This skill is Claude Code only, not portable prose: it launches `node goal-run.ts`, which
+spawns `claude -p` and plugin agents (`goal:goal-session-auditor`) to drive the run. Outside
+Claude Code there is no `claude -p` to spawn and no agent to invoke. State that reason and
+STOP before Phase 0 runs.
 
 # /goal:supervise — Watch a run, classify a halt, repair or relaunch once
 
