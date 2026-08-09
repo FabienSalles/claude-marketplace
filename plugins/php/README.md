@@ -10,8 +10,6 @@ Pair with [`phpunit`](../phpunit/) for testing discipline and [`symfony`](../sym
 /plugin install php@fabien-claude-marketplace
 ```
 
-Or `./setup.sh --pack php` (dev mode: registers this directory as a local marketplace).
-
 ## Skills (10)
 
 ### Language

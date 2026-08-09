@@ -8,8 +8,6 @@ NestJS architectural conventions with a hexagonal/DDD layout.
 /plugin install nest@fabien-claude-marketplace
 ```
 
-Or `./setup.sh --pack nest` (dev mode).
-
 ## Skills (2)
 
 | Skill | Purpose |

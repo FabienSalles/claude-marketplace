@@ -8,8 +8,6 @@ Vitest TDD workflow and test writing conventions.
 /plugin install vitest@fabien-claude-marketplace
 ```
 
-Or `./setup.sh --pack vitest` (dev mode).
-
 ## Skills (2)
 
 | Skill | Purpose |

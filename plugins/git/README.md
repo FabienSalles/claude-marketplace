@@ -10,8 +10,6 @@ built around the costliest recurring mistake: reasoning on **stale refs**.
 /plugin install git@fabien-claude-marketplace
 ```
 
-Or `./setup.sh --pack git` (dev mode).
-
 ## Skills (1)
 
 | Skill | Purpose |

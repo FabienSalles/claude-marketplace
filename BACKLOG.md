@@ -184,6 +184,12 @@ Ordered by **what it costs to lose**, not by effort. The competitive reading beh
 
 Verified against the code, not against memory: the **secret scan before any push** ships and refuses rather than degrades when no scanner is installed (`gate/ship.ts`); **smoke-testing the gate commands** ships as the base sweep, deduplicated, in preflight (`run/sweep.ts`); **reporting whether a failing gate is deterministic** ships as a three-run replay of `gate1` (`gate/commands.ts`); **the environment fingerprint on halt** ships in part, as the post-mortem that records the failing attempt, the dying session's transcript tail and whether the `claude` binary changed underneath it (`run/postmortem.ts`); **track disjointness** and the `--dry-run` mode are moot — tracks were removed, and every unfinished slice is already proven runnable before any is implemented (`goal-run.ts:72-106`).
 
+### Port the goal commands to skills, with a declared portability boundary
+- **Why:** the doc confirms commands and skills are equivalent at invocation ("Custom commands have been merged into skills", code.claude.com/docs/en/skills), and skills add what goal wants: `npx skills` distribution, `disable-model-invocation` (a model must never launch `supervise` on its own), a support-files directory. The boundary to declare per skill: `tickets`/`spec`/`plan`/`next` are portable prose (degrade AskUserQuestion → plain question, MCP → inline paste, pbcopy → print), `supervise` is Claude Code only (the runner spawns `claude -p --agent`, see ADR 0001).
+- **Not one plugin split in two:** the gate serves the manual loop too, and `plan`/`next` reference `supervise`; a structural split creates cross-plugin drift for nothing a frontmatter line does not already say.
+- **Effort:** 2–3 slices (mechanical move + reference sweep, then the degradation pass and postures).
+- **Trigger:** after the `goal-parallel-readability` run lands (2026-08-09 session).
+
 ## 🗂️ How to add to this list
 
 - Append a new section under the relevant category.

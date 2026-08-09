@@ -8,8 +8,6 @@ jQuery code conventions: module structure, `js-*` selector hooks, per-block scop
 /plugin install jquery@fabien-claude-marketplace
 ```
 
-Or `./setup.sh --pack jquery` (dev mode).
-
 ## Skills (1)
 
 | Skill | Purpose |

@@ -46,7 +46,7 @@ Add one entry to `.claude-plugin/marketplace.json` → `plugins[]`:
 | `category` | One of `development` · `testing` · `productivity` · `platform` · `security` · `marketing`. |
 | `keywords` | For discovery. |
 
-To make the plugin installable in **dev mode** (`./setup.sh --pack <name>`), also add it to the `PACKS` array and a line in `PACK_DESCRIPTIONS` in `setup.sh`.
+Dev mode needs no extra step: `/plugin marketplace add /path/to/clone` registers the clone as a local marketplace, and the new plugin is installable as soon as it appears in `.claude-plugin/marketplace.json`.
 
 ## Write the README
 
@@ -77,7 +77,6 @@ It (1) re-syncs upstream marketplaces, (2) validates the root `marketplace.json`
 - `marketplace.json` is valid JSON and every plugin has a `plugin.json`.
 - Every `SKILL.md` has valid frontmatter (`./scripts/validate-skills.sh`).
 - Every `marketplace.json` reference resolves.
-- `setup.sh` behaves (`--all` / `--pack` / `--remove` / `--status` / idempotency / `ts` alias).
 - `claude plugin validate` passes for the manifest and each plugin.
 - `npx skills` can discover the skills.
 - `health-check.sh` passes on both OSes.

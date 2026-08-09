@@ -12,9 +12,7 @@ Plain-text fallback (no terminal colors):
 
 ## Install
 
-Claude Code does not accept the `statusLine` key in `plugin.json`, so `/plugin install statusline` alone cannot activate the bar. Two activation paths are provided.
-
-### Via `/plugin` + slash command
+Claude Code does not accept the `statusLine` key in `plugin.json`, so `/plugin install statusline` alone cannot activate the bar. `/statusline:setup` finishes the wiring:
 
 ```text
 /plugin marketplace add FabienSalles/claude-marketplace
@@ -22,17 +20,7 @@ Claude Code does not accept the `statusLine` key in `plugin.json`, so `/plugin i
 /statusline:setup
 ```
 
-`/statusline:setup` creates the symlink `~/.claude/statusline-command.sh → ${CLAUDE_PLUGIN_ROOT}/statusline.sh` and writes `statusLine.command = "~/.claude/statusline-command.sh"` to `~/.claude/settings.json`. The symlink shields settings from the plugin cache path, which rotates on every plugin update. **Re-run `/statusline:setup` after upgrading the plugin** so the symlink target follows.
-
-### Via `setup.sh` (from a clone)
-
-```bash
-git clone https://github.com/FabienSalles/claude-marketplace.git
-cd claude-marketplace
-./setup.sh --pack statusline
-```
-
-`setup.sh` writes `statusLine.command = "<clone>/plugins/statusline/statusline.sh"` directly to `~/.claude/settings.json`: no symlink needed because the clone path is stable. Both paths back up the previous `settings.json` before editing it.
+`/statusline:setup` creates the symlink `~/.claude/statusline-command.sh → ${CLAUDE_PLUGIN_ROOT}/statusline.sh` and writes `statusLine.command = "~/.claude/statusline-command.sh"` to `~/.claude/settings.json`, backing up the previous `settings.json` before editing it. The symlink shields settings from the plugin cache path, which rotates on every plugin update. **Re-run `/statusline:setup` after upgrading the plugin** so the symlink target follows.
 
 ## What the bar shows
 

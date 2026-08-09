@@ -2,7 +2,7 @@
 
 This file lists Claude Code plugins coming from marketplaces **external** to this repo. It serves as a checklist for reproducing the setup on a new machine.
 
-> Skills from this repo (`plugins/php/`, `plugins/typescript/`, etc.) are installed via `./setup.sh`. The plugins below are **independent** and must be installed through the Claude Code `/plugin` command.
+> Skills from this repo (`plugins/php/`, `plugins/typescript/`, etc.) are installed via `/plugin install <pack>@fabien-claude-marketplace`. The plugins below are **independent** and must be installed through their own marketplaces.
 
 ## Step 1: Register the marketplaces
 

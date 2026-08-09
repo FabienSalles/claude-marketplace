@@ -8,8 +8,6 @@ PHPUnit testing discipline for PHP projects, extracted from the original monolit
 /plugin install phpunit@fabien-claude-marketplace
 ```
 
-Or `./setup.sh --pack phpunit` (dev mode).
-
 ## Skills (2)
 
 | Skill | Purpose |

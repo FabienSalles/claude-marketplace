@@ -8,8 +8,6 @@ Personal Symfony conventions extracted from the original monolithic `php` plugin
 /plugin install symfony@fabien-claude-marketplace
 ```
 
-Or `./setup.sh --pack symfony` (dev mode).
-
 ## Skills (5)
 
 | Skill | Purpose |

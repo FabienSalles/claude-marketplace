@@ -6,10 +6,10 @@ Skills, hooks, agents, and slash commands for [Claude Code](https://claude.ai/cl
 
 ```text
 /plugin marketplace add FabienSalles/claude-marketplace
-/plugin install common@fabien-claude-marketplace
+/plugin install goal@fabien-claude-marketplace
 ```
 
-Then use it: ask Claude, for example, to *"plan this feature with spec-first-dev"* or *"research how this library handles retries"*, both shipped by `common`. Browse the [catalog](#plugins), install the packs for your stack, and you're set. Other install methods (`setup.sh`, `npx skills`, `skillkit`) are [below](#installation).
+Then use it: `/goal:spec <your ticket>` turns the ticket into a functional contract, `/goal:plan` locks the executable plan, and `/goal:supervise` runs it unattended. Browse the [catalog](#plugins), install the packs for your stack (`craft`, `php`, `typescript`…), and you're set. Other install methods (dev mode, `npx skills`, `skillkit`) are [below](#installation), folded under "Other install methods".
 
 ## Start here: `goal`
 
@@ -130,29 +130,28 @@ These overlap: [**docs/workflows-decision-guide.md**](docs/workflows-decision-gu
 
 ```text
 /plugin marketplace add FabienSalles/claude-marketplace
-/plugin install common@fabien-claude-marketplace
-/plugin install php@fabien-claude-marketplace
+/plugin install goal@fabien-claude-marketplace
+/plugin install craft@fabien-claude-marketplace
 # …one install line per pack you want
 ```
 
 The `statusline` plugin needs one extra activation step: see [Statusline](#statusline) below.
 
 <details>
-<summary><strong>Other install methods</strong>: <code>setup.sh</code> (dev mode), <code>npx skills</code>, <code>claude plugin</code>, <code>skillkit</code></summary>
+<summary><strong>Other install methods</strong>: dev mode (local clone), <code>npx skills</code>, <code>claude plugin</code>, <code>skillkit</code></summary>
 
-### Via `setup.sh` (local marketplace registration)
+### Dev mode (local clone as marketplace)
 
-For active development of the marketplace. The script registers this clone as a local marketplace in `~/.claude/settings.json` (`extraKnownMarketplaces.fabien-claude-marketplace`) and toggles packs via `enabledPlugins.<pack>@fabien-claude-marketplace`. No symlinks: edits in `plugins/*/` are picked up live on the next Claude Code session.
+For active development of the marketplace: register the clone itself, natively. No symlinks: edits in `plugins/*/` are picked up live on the next Claude Code session.
 
 ```bash
 git clone https://github.com/FabienSalles/claude-marketplace.git
-cd claude-marketplace
+```
 
-./setup.sh                  # interactive
-./setup.sh --all            # install everything
-./setup.sh --pack php ts    # selected packs (ts → typescript)
-./setup.sh --status         # show installed packs
-./setup.sh --remove php     # uninstall a pack
+```text
+/plugin marketplace add /path/to/claude-marketplace
+/plugin install goal@fabien-claude-marketplace
+# …one install line per pack you want
 ```
 
 ### Via `npx skills add`

@@ -8,8 +8,6 @@ Cross-stack tooling skills: Docker, Drizzle ORM, pnpm workspaces, Zod schemas, C
 /plugin install tooling@fabien-claude-marketplace
 ```
 
-Or `./setup.sh --pack tooling` (dev mode).
-
 ## Skills (6)
 
 | Skill | Purpose |

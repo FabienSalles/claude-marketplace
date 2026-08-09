@@ -8,8 +8,6 @@ Frontend clean architecture (hexagonal), React component patterns, and best prac
 /plugin install frontend@fabien-claude-marketplace
 ```
 
-Or `./setup.sh --pack frontend` (dev mode).
-
 ## Skills (3)
 
 | Skill | Purpose |

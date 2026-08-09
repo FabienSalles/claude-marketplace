@@ -8,8 +8,6 @@ Meta-tooling that keeps this marketplace **honestly curated**: it runs a rigorou
 /plugin install self-audit@fabien-claude-marketplace
 ```
 
-Or `./setup.sh --pack self-audit` (dev mode).
-
 ## Command
 
 ```text

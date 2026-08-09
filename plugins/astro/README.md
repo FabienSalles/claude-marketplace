@@ -8,8 +8,6 @@ Astro 5.x conventions: components, routing, content collections, i18n, SEO, Tail
 /plugin install astro@fabien-claude-marketplace
 ```
 
-Or `./setup.sh --pack astro` (dev mode).
-
 ## Skills (11)
 
 ### Components & layouts

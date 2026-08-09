@@ -8,8 +8,6 @@ Shared hooks, agents, slash commands, and meta skills used across every project.
 /plugin install common@fabien-claude-marketplace
 ```
 
-Or `./setup.sh --pack common` (dev mode). The pack also writes `skillListingBudgetFraction = 0.06` to `~/.claude/settings.json` so the full skill catalog fits in context.
-
 ## Skills (5)
 
 | Skill | Purpose |

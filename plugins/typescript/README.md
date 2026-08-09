@@ -8,8 +8,6 @@ TypeScript conventions and workflows: typing, code style, functional programming
 /plugin install typescript@fabien-claude-marketplace
 ```
 
-Or `./setup.sh --pack typescript` (or alias `--pack ts`).
-
 ## Skills (7)
 
 ### Code & typing
