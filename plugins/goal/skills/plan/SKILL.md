@@ -1,7 +1,16 @@
 ---
+name: plan
 description: Executable contract of the goal workflow (Session 1) — from a functional contract built by /goal:spec, or any source whose functional level is already settled, surface the technical consequences, map every business rule to a command-line check, decide delivery mode / commit policy / remote, decompose into gate-blocked iterations, persist the locked plan on a feature branch, then echo the per-iteration /goal handoff for Session 2. Never re-opens a functional question — a functional hole is a spec fault and goes back through /goal:spec.
-argument-hint: A source — Jira key (CT-1234), GitHub issue number (42), a spec path (.claude/plans/x-spec.md), or 'inline'
 ---
+
+## Portability
+
+This skill degrades gracefully outside Claude Code:
+
+- No `AskUserQuestion` tool → ask the question in plain text and wait for the reply.
+- No Atlassian MCP → route through the inline paste path, same as `/goal:spec`.
+- No `gh` → skip GitHub reads/writes, same as `/goal:spec`.
+- No `pbcopy` → print the content instead of copying it to the clipboard.
 
 # /goal:plan — Spec → locked plan → branch (Session 1 of the goal workflow)
 
