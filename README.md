@@ -13,12 +13,12 @@ Then use it — e.g. ask Claude to *"plan this feature with spec-first-dev"* or 
 
 ## Start here: `goal`
 
-Most of this marketplace is conventions — prose that shapes how Claude writes code. **One pack is
+Most of this marketplace is conventions: prose that shapes how Claude writes code. **One pack is
 not.** [`goal`](plugins/goal/README.md) is 2,865 lines of tested TypeScript that turn a ticket into
 a pull request without you in the loop, under a rule most autonomous loops do not have:
 
 > A slice of work is accepted by a **program** that runs the command the plan declared and reads
-> its exit code — never by a model's opinion of its own output. That program is the only thing
+> its exit code, never by a model's opinion of its own output. That program is the only thing
 > allowed to commit. And before it accepts a slice, it removes the implementation and runs the test
 > again: if the test still passes, the slice is refused.
 
@@ -26,13 +26,21 @@ It also declares, per slice, which files may change and how many diff lines may 
 refuses on either. Unattended never means unwatched: every run leaves a log, a timed event stream
 and an auditor's report on disk.
 
-It ships in **two modes, and you pick one per plan**:
+Four steps take a ticket to a pull request:
 
-- **`manual`** — Claude never commits. You run one slice, read the diff, correct it, and a
-  checkpoint command re-runs that slice's acceptance commands before handing you the next one. You
-  see the code while correcting it is still cheap.
-- **`commit+pr`** — you hand over the whole feature and leave. The program judges and commits each
-  slice, pushes it, and keeps a draft pull request rewritten as the work lands.
+1. **`/goal:spec`**: the ticket becomes a functional contract. Every gap a question asked now,
+   every business rule an observable criterion.
+2. **`/goal:plan`**: every criterion mapped to the command that proves it, the work cut into
+   independently shippable slices (each with its delivery strategy: breaking change accepted, or
+   additive change plus a cleanup slice), the plan hashed and frozen on a branch.
+3. **`/goal` + `/goal:next`** *(mode `manual`)*: one slice per session, you read every diff, and
+   the checkpoint re-runs the acceptance commands before handing you the next one.
+4. **`/goal:supervise`** *(mode `commit+pr`)*: the whole plan unattended. A fresh implementer per
+   slice, the gate's verdict on each, a pull request that stays shippable from the first landed
+   slice, halts classified and repaired once, every run audited.
+
+You pick the mode per plan: `manual` (Claude never commits; you correct the code while it is
+still cheap) or `commit+pr` (you hand over the feature and leave).
 
 **→ [What it does and why](plugins/goal/README.md) · [every step, with the reason for each](plugins/goal/docs/walkthrough.md) · [why this shape](plugins/goal/docs/adr/0001-shape-of-the-autonomous-loop.md) · [how it compares](plugins/goal/docs/comparison.md)**
 
