@@ -14,7 +14,7 @@
 import { existsSync } from 'node:fs';
 import { basename, dirname, resolve } from 'node:path';
 
-import { header, iterationNumbers } from '../gate/plan.ts';
+import { frontmatter, header, iterationNumbers, topRegion } from '../gate/plan.ts';
 import { autoUpdaterWarning } from './advisory.ts';
 import type { Reporter } from './report.ts';
 import { git, quote } from './shell.ts';
@@ -44,6 +44,22 @@ export const preflight = (plan: string, source: string, reporter: Reporter, gate
     workId = planBase.replace(/\.md$/, '');
     cleanup = false;
   }
+
+  // 0. Metadata block — every Key: line the plan declares belongs in one `---`-delimited block
+  // at the top of the file, or the checks below silently read nothing. Refused before any of
+  // them runs, with the plan's own header lines already wrapped so the fix is a straight paste.
+  if (frontmatter(source) === undefined) {
+    const legacy = topRegion(source)
+      .split('\n')
+      .filter((line) => /^[A-Z][\w -]*: .*$/.test(line));
+
+    reporter.stop(
+      `the plan declares no \`---\`-delimited metadata block. Paste this at the top of the plan, right after the title:\n\n---\n${legacy.join('\n')}\n---`,
+      REFUSED,
+    );
+  }
+
+  reporter.say('RUN preflight: the plan carries a --- metadata block');
 
   // 1. Policy — unattended execution needs somewhere to put the work; manual means nothing may
   // be committed, so there is nothing here to chain.

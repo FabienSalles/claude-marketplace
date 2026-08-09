@@ -21,8 +21,10 @@ export const FAKE_REPO = 'acme/demo';
 
 export const PLAN = `# Spec: demo
 
+---
 Policy: commit
 Remote: origin
+---
 
 ### Iteration 1 — the first one
 - [ ] Not done yet

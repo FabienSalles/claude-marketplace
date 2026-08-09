@@ -159,8 +159,10 @@ test('commit ignores a ticked set parked in the environment', () => {
 // in a gitignored directory, so rewriting it never shows up as a scope leak.
 const RUN_PLAN_TWO = `# Spec: demo
 
+---
 Policy: commit
 Remote: origin
+---
 
 ### Iteration 1 — first
 - [x] Landed

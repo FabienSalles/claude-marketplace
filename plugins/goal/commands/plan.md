@@ -557,6 +557,7 @@ Persist at `.claude/plans/<work-id>-spec.md`:
 ````markdown
 # Spec: <title>
 
+---
 Source: <Jira CT-1234 | gh issue #42 URL | spec file path | inline>
 Work-id: <work-id>
 Policy: <manual | commit+pr — filled in Phase 2c>
@@ -566,6 +567,7 @@ Remote: <the git remote a run pushes to, and the repo its PR opens on — filled
 PR base: <branch the pull request targets — omit entirely when it is the repository's default, and always under manual>
 Incidental: <generated tooling every slice may touch — a lockfile, a tsconfig, a CLI's own config. Omit when the project generates none>
 Bootstrap: <the iteration that creates the toolchain the acceptance commands need. Omit when the project already builds and tests today>
+---
 
 ## Business intent
 
