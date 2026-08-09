@@ -115,7 +115,9 @@ Politique commit/PR : <policy>
                 Le corps de la PR décrit UNIQUEMENT les itérations qu'elle livre (but,
                 règles métier, commande qui les prouve), jamais le plan entier. Si une
                 issue GitHub existe, ajoute « Refs #N » : elle porte déjà le plan. Jamais
-                « Closes », un plan peut donner plusieurs PR.
+                « Closes », un plan peut donner plusieurs PR — sauf le run supervisé mono-PR
+                dont le spec est nommé `issue-<N>-spec.md` : là, la PR ferme directement
+                l'issue #N.
 
 Termine TOUJOURS par une SYNTHÈSE structurée dans le prompt :
 - **Fait** : ce qui a été implémenté

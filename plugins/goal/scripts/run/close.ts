@@ -10,6 +10,7 @@ import { basename, dirname, join } from 'node:path';
 
 import { header, iterationNumbers, readPlan } from '../gate/plan.ts';
 import { PAUSED } from './iteration.ts';
+import { resultEnvelope, tokensLine } from './narrate.ts';
 import { blockedNote, type Publisher } from './publish.ts';
 import type { Reporter } from './report.ts';
 import { git, quote } from './shell.ts';
@@ -153,10 +154,12 @@ this run: it is advisory only.`;
     // Run once neither can still block anything and each is briefed: the reviewer against a mark
     // pull requests only lands whole, after both have exited, so an advisory duration is paid
     // once instead of twice.
-    const jobs: AgentJob[] = [{ name: 'lens', args: ['-p', '--agent', 'goal:goal-run-lens', '--permission-mode', 'auto', lensBrief] }];
+    const jobs: AgentJob[] = [
+      { name: 'lens', args: ['-p', '--agent', 'goal:goal-run-lens', '--permission-mode', 'auto', '--output-format', 'json', lensBrief] },
+    ];
 
     if (reviewBrief !== undefined) {
-      jobs.push({ name: 'reviewer', args: ['-p', '--agent', 'goal:goal-run-reviewer', '--permission-mode', 'auto', reviewBrief] });
+      jobs.push({ name: 'reviewer', args: ['-p', '--agent', 'goal:goal-run-reviewer', '--permission-mode', 'auto', '--output-format', 'json', reviewBrief] });
     }
 
     const advisoryStart = Date.now();
@@ -164,8 +167,15 @@ this run: it is advisory only.`;
     const advisoryDuration = Date.now() - advisoryStart;
 
     for (const result of results) {
-      reporter.record(result.output);
+      const { text, usage } = resultEnvelope(result.output);
+      reporter.record(text);
       reporter.say(`RUN stage=${result.name} duration_ms=${advisoryDuration} exit=${result.status}`);
+
+      const tokens = tokensLine(result.name, usage);
+
+      if (tokens) {
+        reporter.say(tokens);
+      }
 
       if (result.name === 'reviewer') {
         if (result.status === 0) {
@@ -187,19 +197,28 @@ Every stage this run timed is recorded as a JSON event in ${jsonl}: read it for 
 what each stage cost, per iteration.
 
 Read the other reports already under ${dirname(dir)}/ and say which failures recur across runs
-rather than describing this one twice. Do not edit a single line of code, do not stage anything,
-and do not judge whether the work was correct — the gate already did that.`;
+rather than describing this one twice. Write it in two sections, \`### Functional\` then
+\`### Technical\`, no other heading anywhere in the file. Do not edit a single line of code, do
+not stage anything, and do not judge whether the work was correct — the gate already did that.`;
 
   const auditStart = Date.now();
-  const audit = spawnSync('claude', ['-p', '--agent', 'goal:goal-run-auditor', '--permission-mode', 'auto', auditBrief], { encoding: 'utf8' });
-  reporter.record(`${audit.stdout}${audit.stderr}`);
+  const audit = spawnSync('claude', ['-p', '--agent', 'goal:goal-run-auditor', '--permission-mode', 'auto', '--output-format', 'json', auditBrief], { encoding: 'utf8' });
+  const { text: auditText, usage: auditUsage } = resultEnvelope(`${audit.stdout}${audit.stderr}`);
+  reporter.record(auditText);
   reporter.say(`RUN stage=auditor duration_ms=${Date.now() - auditStart} exit=${audit.status ?? 1}`);
+
+  const auditTokens = tokensLine('auditor', auditUsage);
+
+  if (auditTokens) {
+    reporter.say(auditTokens);
+  }
+
   reporter.say('RUN audit recorded');
 
   // Folded into the pull request body the auditor's report has just been written to, never as a
   // comment: the reviewer reads costs, halts and recurrences on the pull request itself.
   if (existsSync(reportPath)) {
-    publisher.foldReport?.(readFileSync(reportPath, 'utf8'));
+    publisher.foldReport?.(readFileSync(reportPath, 'utf8'), plan, dir);
   }
 
   if (dodExit !== 0) {

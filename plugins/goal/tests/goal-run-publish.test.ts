@@ -323,9 +323,11 @@ test('the pull request body opens with Delivered bullets built from the Goal lin
   assert.match(calls, /## Delivered/, `no "## Delivered" heading in the pull request body:\n${calls}`);
   assert.match(
     calls,
-    new RegExp(`1\\. write a\\.txt \\(\`${sha}\`\\)`),
-    `no numbered bullet carrying the Goal and the landing commit's sha:\n${calls}`,
+    new RegExp(`1\\. write a\\.txt ${sha}`),
+    `no numbered bullet carrying the Goal and the bare landing commit sha:\n${calls}`,
   );
+  assert.doesNotMatch(calls, new RegExp(`\`${sha}\``), `the sha is wrapped in backticks instead of bare:\n${calls}`);
+  assert.doesNotMatch(calls, /judged by the gate/i, `the certification boilerplate is still in the pull request body:\n${calls}`);
 });
 
 // PR body format — a second landing appends a second numbered bullet rather than replacing the
@@ -343,8 +345,58 @@ test('a second landing adds a second numbered Delivered bullet, each with its ow
   const edits = calls.filter((call) => call.startsWith('pr\nedit'));
   const last = edits[edits.length - 1]!;
 
-  assert.match(last, /1\. write a\.txt \(`[0-9a-f]+`\)/, `first Delivered bullet missing:\n${last}`);
-  assert.match(last, /2\. write b\.txt \(`[0-9a-f]+`\)/, `second Delivered bullet missing:\n${last}`);
+  assert.match(last, /1\. write a\.txt [0-9a-f]+\b/, `first Delivered bullet missing:\n${last}`);
+  assert.match(last, /2\. write b\.txt [0-9a-f]+\b/, `second Delivered bullet missing:\n${last}`);
+});
+
+// PR body format — a Goal spanning several lines in the plan folds to one line in the bullet,
+// continuation lines joined with spaces up to the next `- **` bullet or blank line.
+test('a multi-line Goal folds to one line in its Delivered bullet', () => {
+  const planText = PLAN_PR.replace(
+    '- **Goal:** write a.txt\n',
+    '- **Goal:** write a.txt with a long description that\n  continues on a second line and even\n  a third line before the gate block.\n',
+  );
+  const fixture = repo({ planText, remote: true });
+
+  const { code, output } = publish(fixture, [fixture.plan, '1'], {
+    FAKE_CLAUDE_WRITES: join(fixture.dir, 'a.txt'),
+  });
+
+  assert.equal(code, 0, output);
+  const calls = readFileSync(fixture.ghLog, 'utf8');
+  assert.match(
+    calls,
+    /1\. write a\.txt with a long description that continues on a second line and even a third line before the gate block\./,
+    `the multi-line Goal was not folded to one line:\n${calls}`,
+  );
+});
+
+// PR body format — a plan named `issue-<N>-spec.md` carries `Closes #N` in its Delivered
+// section, so the merge closes the backing issue.
+test('a plan named issue-<N>-spec.md carries a Closes line in the pull request body', () => {
+  const fixture = repo({ planText: PLAN_PR, planFile: 'issue-42-spec.md', branch: 'feature/issue-42', remote: true });
+
+  const { code, output } = publish(fixture, [fixture.plan, '1'], {
+    FAKE_CLAUDE_WRITES: join(fixture.dir, 'a.txt'),
+  });
+
+  assert.equal(code, 0, output);
+  const calls = readFileSync(fixture.ghLog, 'utf8');
+  assert.match(calls, /Closes #42/, `no "Closes #42" line in the pull request body:\n${calls}`);
+});
+
+// PR body format — a plan not named `issue-<N>-spec.md` carries no Closes line: closing an
+// issue is only inferred from the plan's own filename, never guessed.
+test('a plan not named issue-<N>-spec.md carries no Closes line', () => {
+  const fixture = repo({ planText: PLAN_PR, remote: true });
+
+  const { code, output } = publish(fixture, [fixture.plan, '1'], {
+    FAKE_CLAUDE_WRITES: join(fixture.dir, 'a.txt'),
+  });
+
+  assert.equal(code, 0, output);
+  const calls = readFileSync(fixture.ghLog, 'utf8');
+  assert.doesNotMatch(calls, /Closes #/, `an unexpected Closes line appeared in the pull request body:\n${calls}`);
 });
 
 // PR body format — the run report lands behind a `---` separator, never immediately after the

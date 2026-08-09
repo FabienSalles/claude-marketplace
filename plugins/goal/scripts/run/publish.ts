@@ -20,7 +20,7 @@ const repoOf = (remote: string): string =>
 
 export type Publisher = {
   publish: (iteration: string) => void;
-  foldReport?: (text: string) => void;
+  foldReport?: (text: string, plan: string, dir: string) => void;
   state: PublishState;
 };
 
@@ -61,20 +61,42 @@ export const createPublisher = (
     const next = lines.slice(start + 1).findIndex((line) => /^#{2,3} /.test(line));
     const section = lines.slice(start + 1, next === -1 ? lines.length : start + 1 + next);
 
-    return section.find((line) => /^- \*\*Goal:\*\*/.test(line))?.replace(/^- \*\*Goal:\*\* */, '');
+    const goalStart = section.findIndex((line) => /^- \*\*Goal:\*\*/.test(line));
+
+    if (goalStart === -1) {
+      return undefined;
+    }
+
+    // Continuation lines fold into the same sentence: a `**Goal:**` bullet reads as one
+    // paragraph up to the next `- **` bullet or blank line, never as a truncated first line.
+    const goalRest = section.slice(goalStart + 1).findIndex((line) => /^- \*\*/.test(line) || line.trim() === '');
+    const goalEnd = goalRest === -1 ? section.length : goalStart + 1 + goalRest;
+
+    return section
+      .slice(goalStart, goalEnd)
+      .map((line) => line.trim())
+      .join(' ')
+      .replace(/^- \*\*Goal:\*\* */, '');
   };
+
+  // Iteration 1 of the supervised-PR plan `issue-<N>-spec.md`: a single-issue, single-PR run
+  // names its issue in the plan's own filename, so the PR body can close it without guessing
+  // an issue number out of the plan's prose.
+  const closesIssue = /^issue-(\d+)-spec\.md$/.exec(basename(plan));
 
   const prBody = (): string => {
     const bullets = landed
       .map((n, i) => {
         const goal = goalOf(n);
 
-        return goal === undefined ? undefined : `${i + 1}. ${goal} (\`${shas.get(n) ?? ''}\`)`;
+        return goal === undefined ? undefined : `${i + 1}. ${goal} ${shas.get(n) ?? ''}`;
       })
       .filter((bullet): bullet is string => bullet !== undefined)
       .join('\n');
 
-    return `## Delivered\n\n${bullets}\n\nEach iteration was judged by the gate before its commit: declared scope, diff budget, removals, acceptance commands, and the bite check that requires the test to fail without the implementation. No commit exists that a gate did not verify.\n`;
+    const closes = closesIssue !== null ? `\n\nCloses #${closesIssue[1]}` : '';
+
+    return `## Delivered\n\n${bullets}${closes}\n`;
   };
 
   // The pull request is opened as a draft at the **first** landed commit, and its body rewritten
@@ -186,14 +208,16 @@ export const createPublisher = (
   // The auditor's report, folded into the same body-rewrite path as every other landing: no
   // comment, no separate channel, and a rerun on the same pull request replaces the section
   // rather than stacking another one beside it, since the whole body is recomputed every time.
-  const foldReport = (text: string): void => {
+  // `text` is carried verbatim, and the body ends with the plan path and the run-directory path,
+  // one per line, learned from the caller rather than guessed here.
+  const foldReport = (text: string, plan: string, dir: string): void => {
     if (!state.publishes || !state.prOpen) {
       return;
     }
 
     const repo = repoOf(remote);
     const branch = git('branch', '--show-current').stdout.trim();
-    const gh = spawnSync('gh', ['pr', 'edit', branch, '--repo', repo, '--body', `${prBody()}\n---\n\n## Run report\n\n${text}\n`], { encoding: 'utf8' });
+    const gh = spawnSync('gh', ['pr', 'edit', branch, '--repo', repo, '--body', `${prBody()}\n---\n\n## Run report\n\n${text}\n${plan}\n${dir}\n`], { encoding: 'utf8' });
 
     if ((gh.status ?? 1) === 0) {
       reporter.say('RUN folded the run report into the pull request body');

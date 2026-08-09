@@ -4,6 +4,7 @@ import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
+import { narrate, resultEnvelope, tokensLine } from '../scripts/run/narrate.ts';
 import { createReporter } from '../scripts/run/report.ts';
 import { tmpDir } from './support/tmp.ts';
 import { jsonlOf, repo, run } from './support/goal-run-harness.ts';
@@ -126,4 +127,74 @@ test('a landed run records a stage event with duration_ms and exit for preflight
   for (const name of ['preflight', 'implementer', 'gate', 'push']) {
     assert.match(messages, stage(name), `no stage=${name} event was recorded:\n${messages}`);
   }
+});
+
+// R20 — the implementer's stream-json result event carries the session's token usage, in the
+// same four classes every Claude session bills in; narrate() hands that usage back to its caller
+// rather than swallowing it.
+test('narrate returns the four token classes carried by the result event', () => {
+  const reporter = createReporter();
+  const stdout = [
+    JSON.stringify({ type: 'assistant', session_id: 's1', message: { content: [] } }),
+    JSON.stringify({
+      type: 'result',
+      session_id: 's1',
+      usage: { input_tokens: 10, output_tokens: 20, cache_creation_input_tokens: 30, cache_read_input_tokens: 40 },
+    }),
+  ].join('\n');
+
+  const usage = narrate(stdout, reporter);
+
+  assert.deepEqual(usage, { input_tokens: 10, output_tokens: 20, cache_creation_input_tokens: 30, cache_read_input_tokens: 40 });
+});
+
+// R20 — a result event carrying no usage (an older CLI, a stubbed fixture) leaves narrate()
+// returning undefined rather than a fabricated zero.
+test('narrate returns undefined when no result event carries usage', () => {
+  const reporter = createReporter();
+  const stdout = JSON.stringify({ type: 'result', session_id: 's1' });
+
+  const usage = narrate(stdout, reporter);
+
+  assert.equal(usage, undefined);
+});
+
+// R20 — lens, reviewer and auditor answer `--output-format json`: one JSON object whose prose is
+// in `result` and whose usage carries the same four classes. resultEnvelope() is what extracts
+// both.
+test('resultEnvelope extracts the text and usage from a --output-format json envelope', () => {
+  const raw = JSON.stringify({
+    type: 'result',
+    result: 'the lens finding',
+    usage: { input_tokens: 1, output_tokens: 2, cache_creation_input_tokens: 3, cache_read_input_tokens: 4 },
+  });
+
+  const { text, usage } = resultEnvelope(raw);
+
+  assert.equal(text, 'the lens finding');
+  assert.deepEqual(usage, { input_tokens: 1, output_tokens: 2, cache_creation_input_tokens: 3, cache_read_input_tokens: 4 });
+});
+
+// Implementation trap — an agent still answering bare prose (an un-updated fixture, or a CLI that
+// never wrapped its answer) must not have its text swallowed by the extraction step: resultEnvelope
+// falls back to the raw text, with no usage.
+test('resultEnvelope falls back to the raw text when the input is not a json envelope', () => {
+  const { text, usage } = resultEnvelope('plain prose, no envelope here');
+
+  assert.equal(text, 'plain prose, no envelope here');
+  assert.equal(usage, undefined);
+});
+
+// R20 — the one line format a Claude-session stage reports its cost in, so a run report can total
+// the four classes without re-deriving them from a `stage=` line that carries none.
+test('tokensLine formats the four classes for a named stage', () => {
+  const line = tokensLine('lens', { input_tokens: 1, output_tokens: 2, cache_creation_input_tokens: 3, cache_read_input_tokens: 4 });
+
+  assert.equal(line, 'RUN tokens stage=lens input_tokens=1 output_tokens=2 cache_creation_input_tokens=3 cache_read_input_tokens=4');
+});
+
+// R20 — a non-session stage (the gate, `gh pr ready`, a push) never carries usage, and
+// tokensLine() reports that by returning nothing to emit, rather than a line of dashes.
+test('tokensLine returns undefined when there is no usage to report', () => {
+  assert.equal(tokensLine('gate', undefined), undefined);
 });

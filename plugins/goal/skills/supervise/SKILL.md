@@ -200,18 +200,29 @@ sum of the displayed rows, not a re-scan of every `duration_ms` in the file — 
 does not show never enters the total. Print an exit code only on the rows whose stage failed; a
 row that landed carries no exit code at all.
 
-| Stage | Duration | Exit |
-|---|---|---|
-| Preflight/sweep | `<duration>` | |
-| Iteration 1 — Implementer | `<duration>` | |
-| Iteration 1 — Gate | `<duration>` | |
-| … | … | |
-| Publication | `<duration>` | |
-| Dod | `<duration>` | |
-| Lens | `<duration>` | |
-| Reviewer | `<duration>` | |
-| Auditor | `<duration>` | |
-| **Total** | **`<sum of the rows above>`** | |
+Every stage that is a Claude session — `implementer`, `lens`, `reviewer`, `auditor` — also
+carries a `RUN tokens stage=<name> input_tokens=<n> output_tokens=<n>
+cache_creation_input_tokens=<n> cache_read_input_tokens=<n>` line right after its `stage=` line.
+Give the table a `Tokens` column: that stage's total (the four classes summed), a dash for every
+row that is not a Claude session (`gate`, `publication`, `dod`), and the sum of the displayed
+rows in the total row, same rule as `Duration`. Under the table, one line naming the run's own
+per-class totals, summed straight off the `RUN tokens` lines: `Input: <n> · Output: <n> · Cache
+creation: <n> · Cache read: <n>` — enough to price the run without opening `.run.jsonl`.
+
+| Stage | Duration | Tokens | Exit |
+|---|---|---|---|
+| Preflight/sweep | `<duration>` | — | |
+| Iteration 1 — Implementer | `<duration>` | `<tokens>` | |
+| Iteration 1 — Gate | `<duration>` | — | |
+| … | … | … | |
+| Publication | `<duration>` | — | |
+| Dod | `<duration>` | — | |
+| Lens | `<duration>` | `<tokens>` | |
+| Reviewer | `<duration>` | `<tokens>` | |
+| Auditor | `<duration>` | `<tokens>` | |
+| **Total** | **`<sum of the rows above>`** | **`<sum of the rows above>`** | |
+
+Input: `<n>` · Output: `<n>` · Cache creation: `<n>` · Cache read: `<n>`
 
 ## Closing paths
 
