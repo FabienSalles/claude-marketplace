@@ -10,6 +10,20 @@ import { tmpDir } from './support/tmp.ts';
 // warnings. A run that would have burned a night on a red base, a stale branch or an absent
 // remote refuses in seconds instead.
 
+// R1 — a plan without the `---`-delimited metadata block is refused before anything else runs,
+// with the exact block to paste back into the plan.
+test('it refuses before any other check when the plan carries no --- metadata block', () => {
+  const planText = PLAN.replace('---\nPolicy: commit\nRemote: origin\n---\n', 'Policy: commit\nRemote: origin\n');
+  const fixture = repo({ planText });
+
+  const { code, output } = run(fixture, [fixture.plan, '1']);
+
+  assert.notEqual(code, 0);
+  assert.match(output, /STOP the plan declares no `---`-delimited metadata block/, output);
+  assert.match(output, /---\nPolicy: commit\nRemote: origin\n---/, output);
+  assert.ok(!existsSync(fixture.claudeLog), 'an implementer was spawned on a refusal');
+});
+
 test('it refuses when the plan declares no Policy line', () => {
   const fixture = repo({ planText: PLAN.replace('Policy: commit\n', '') });
 

@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
 import { tmpDir } from './support/tmp.ts';
+import { header } from '../scripts/gate/plan.ts';
 
 const GATE = resolve(import.meta.dirname, '..', 'scripts', 'goal-gate.ts');
 
@@ -60,6 +61,27 @@ test('a well-formed iteration is runnable and its plan hash is reported', () => 
 
   assert.equal(code, 0, output);
   assert.match(output, /^plan_hash=[0-9a-f]{64}$/m);
+});
+
+// R4 — a `#` comment or a blank line inside the gate fence is ignored, not a declared key
+test('a comment or blank line inside the gate fence is ignored', () => {
+  const plan = writePlan(
+    planWith([
+      '# rule: the thing under test behaves',
+      'test_files=tests/a.test.ts',
+      '',
+      '# rule: the file exists',
+      'impl_files=src/a.ts',
+      'max_diff=100',
+      'commit_msg=feat(a): do a thing',
+      '# rule: the test suite proves it',
+      'gate1=true',
+    ]),
+  );
+
+  const { code, output } = check(plan);
+
+  assert.equal(code, 0, output);
 });
 
 test('an iteration with nothing to test is runnable', () => {
@@ -163,6 +185,32 @@ test('a plan edited beyond ticking no longer matches the hash it was locked with
 
   assert.equal(code, 1, output);
   assert.match(output, new RegExp(locked));
+});
+
+// Metadata block — header() reads a `Key:` line only inside the `---`-delimited block at the
+// top of the file; the `# Spec:` title stays an H1 read outside it.
+test('header reads a Key: value line from inside the top --- block', () => {
+  const source = '# Spec: demo\n\n---\nPolicy: commit\n---\n\n## Business intent\n';
+
+  assert.equal(header(source, 'Policy:'), 'commit');
+});
+
+test('header ignores a Key: value line sitting outside the --- block', () => {
+  const source = '# Spec: demo\n\nPolicy: commit\n\n## Business intent\n';
+
+  assert.equal(header(source, 'Policy:'), undefined);
+});
+
+test('header ignores a Key: value line past the first heading, even wrapped in its own --- fences', () => {
+  const source = '# Spec: demo\n\n---\nPolicy: commit\n---\n\n## Business intent\n\n---\nRemote: origin\n---\n';
+
+  assert.equal(header(source, 'Remote:'), undefined);
+});
+
+test('header still reads the # Spec: title outside the block', () => {
+  const source = '# Spec: demo\n\n---\nPolicy: commit\n---\n';
+
+  assert.equal(header(source, '# Spec:'), 'demo');
 });
 
 test('no argument exits 2 rather than reporting a bad plan', () => {

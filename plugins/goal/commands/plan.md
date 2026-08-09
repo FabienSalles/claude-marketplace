@@ -147,6 +147,12 @@ already answers.
 - What must **not** change as a side-effect? (files / behaviors to protect)
 - What are the project's actual test and lint/QA commands? (dockerized where
   applicable — do not assume host-level runners)
+- For every enumerated command set (a gate's `gate1..N`, a DoD's `dod1..N`): are the
+  commands independent — no shared database, fixtures, or written cache? When yes, combine
+  them into **one** gate command with a grouped-output failure-propagating runner: `make -j
+  --output-sync=target`, `npm-run-all -p`, and `concurrently -n` are the approved forms.
+  `cmd1 & cmd2 & wait` is refused — it interleaves output and can swallow a non-zero exit
+  code, so a real failure reads as green.
 
 ### Stop condition
 
@@ -486,6 +492,16 @@ so now, because `/goal:supervise` halts on an iteration with no `gate1`.
 Use the project's real commands, dockerized where the project is, and check each one runs
 today. A command that does not exist yet is a halt at iteration 1, not at review time.
 
+**Precede each command with a `#` comment naming the rule it proves.** The gate block
+tolerates `#` comment lines and blank lines — they change no verdict and no guard hash —
+so annotate every `gate1..N` line with the business rule from the spec that command is the
+proof of, one comment per command:
+
+```gate
+# rule: <business rule from the spec>
+gate1=<command>
+```
+
 **Name the generated tooling once, on the header's `Incidental:` line.** A lockfile, a
 `tsconfig.json`, a CLI's own config file: the slice does not author them, it provokes them by
 installing a dependency or initialising a tool. Left undeclared they read as a scope leak, and
@@ -541,6 +557,7 @@ Persist at `.claude/plans/<work-id>-spec.md`:
 ````markdown
 # Spec: <title>
 
+---
 Source: <Jira CT-1234 | gh issue #42 URL | spec file path | inline>
 Work-id: <work-id>
 Policy: <manual | commit+pr — filled in Phase 2c>
@@ -550,6 +567,7 @@ Remote: <the git remote a run pushes to, and the repo its PR opens on — filled
 PR base: <branch the pull request targets — omit entirely when it is the repository's default, and always under manual>
 Incidental: <generated tooling every slice may touch — a lockfile, a tsconfig, a CLI's own config. Omit when the project generates none>
 Bootstrap: <the iteration that creates the toolchain the acceptance commands need. Omit when the project already builds and tests today>
+---
 
 ## Business intent
 

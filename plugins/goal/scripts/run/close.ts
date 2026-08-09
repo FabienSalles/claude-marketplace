@@ -4,7 +4,8 @@
 // neither able to undo work the gate already verified and shipped.
 
 import { spawnSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
 
 import { header, iterationNumbers, readPlan } from '../gate/plan.ts';
@@ -30,6 +31,37 @@ export type PublishState = {
   publishes: boolean;
   prOpen: boolean;
   blocked: boolean;
+};
+
+type AgentJob = { name: string; args: string[] };
+
+// Runs several `claude` invocations as background shell jobs of one spawnSync, so the block
+// costs the slowest job rather than their sum, while close() itself stays synchronous. Each
+// job's combined stdout/stderr lands whole, once its process has exited, in its own temp file.
+const runConcurrently = (jobs: AgentJob[]): { name: string; output: string; status: number }[] => {
+  const dir = mkdtempSync(join(tmpdir(), 'goal-close-'));
+
+  try {
+    const starts = jobs
+      .map((job, i) => `claude ${job.args.map(quote).join(' ')} > ${quote(join(dir, String(i)))} 2>&1 &\npid${i}=$!`)
+      .join('\n');
+    const waits = jobs.map((_, i) => `wait $pid${i}; printf 'STATUS${i}=%s\\n' "$?"`).join('\n');
+    const result = spawnSync(`${starts}\n${waits}`, { shell: true, encoding: 'utf8' });
+    const stdout = result.stdout ?? '';
+
+    return jobs.map((job, i) => {
+      const status = new RegExp(`STATUS${i}=(\\d+)`).exec(stdout)?.[1];
+      const outFile = join(dir, String(i));
+
+      return {
+        name: job.name,
+        output: existsSync(outFile) ? readFileSync(outFile, 'utf8') : '',
+        status: status !== undefined ? Number(status) : 1,
+      };
+    });
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 };
 
 export const close = (
@@ -69,9 +101,11 @@ export const close = (
     reporter.say('RUN the global Definition of Done passed');
     const repo = repoOf(remote);
     const publish = publisher.state;
+    let branch = '';
+    let reviewBrief: string | undefined;
 
     if (publish.publishes && publish.prOpen && !publish.blocked) {
-      const branch = git('branch', '--show-current').stdout.trim();
+      branch = git('branch', '--show-current').stdout.trim();
       const readyStart = Date.now();
       const ready = spawnSync('gh', ['pr', 'ready', '--repo', repo, branch], { encoding: 'utf8' });
       const readyOut = `${ready.stdout}${ready.stderr}`;
@@ -84,7 +118,7 @@ export const close = (
         // pull request just went ready. It comments, never `REQUEST_CHANGES` — pushed work is
         // already shipped, and a review that cannot block would only add friction to clear by
         // hand.
-        const reviewBrief = `Review the pull request for ${branch} on ${repo}, carrying iteration(s) ${ticked.join(' ')} of ${basename(plan)}, which was just marked ready for review.
+        reviewBrief = `Review the pull request for ${branch} on ${repo}, carrying iteration(s) ${ticked.join(' ')} of ${basename(plan)}, which was just marked ready for review.
 
 Read the plan's own declarations for each landed iteration and the commits on this branch, then
 write one review with inline comments: design, error handling, security posture, and this
@@ -93,17 +127,6 @@ project's own conventions — the reading a gate is not built to give.
 ${postsReview
   ? 'This plan carries a `Review: comment` header, opting into posting. Post it with `gh` as a comment review, never `REQUEST_CHANGES`: nothing you post can block a pull request that already shipped. Open the review with a banner stating plainly that it is the output of the goal-run-reviewer AI agent, never written as if the developer authored it.'
   : 'This plan carries no `Review: comment` header. Do not post it to GitHub: return your review as text, so it reaches the developer through the run log only.'}`;
-
-        const reviewStart = Date.now();
-        const review = spawnSync('claude', ['-p', '--agent', 'goal:goal-run-reviewer', '--permission-mode', 'auto', reviewBrief], { encoding: 'utf8' });
-        reporter.record(`${review.stdout}${review.stderr}`);
-        reporter.say(`RUN stage=reviewer duration_ms=${Date.now() - reviewStart} exit=${review.status ?? 1}`);
-
-        if ((review.status ?? 1) === 0) {
-          reporter.say('RUN the reviewer finished, its answer is in the run log');
-        } else {
-          reporter.say(`RUN the reviewer exited ${review.status ?? 1}, so the pull request may carry no review`);
-        }
       } else {
         reporter.say(`RUN marking the pull request ready failed: ${readyOut}`);
       }
@@ -123,10 +146,32 @@ each iteration and the commits on this branch; change nothing.
 Answer with a verdict of one sentence per finding and a path:line anchor. Nothing you say blocks
 this run: it is advisory only.`;
 
-    const lensStart = Date.now();
-    const lens = spawnSync('claude', ['-p', '--agent', 'goal:goal-run-lens', '--permission-mode', 'auto', lensBrief], { encoding: 'utf8' });
-    reporter.record(`${lens.stdout}${lens.stderr}`);
-    reporter.say(`RUN stage=lens duration_ms=${Date.now() - lensStart} exit=${lens.status ?? 1}`);
+    // Run once neither can still block anything and each is briefed: the reviewer against a mark
+    // pull requests only lands whole, after both have exited, so an advisory duration is paid
+    // once instead of twice.
+    const jobs: AgentJob[] = [{ name: 'lens', args: ['-p', '--agent', 'goal:goal-run-lens', '--permission-mode', 'auto', lensBrief] }];
+
+    if (reviewBrief !== undefined) {
+      jobs.push({ name: 'reviewer', args: ['-p', '--agent', 'goal:goal-run-reviewer', '--permission-mode', 'auto', reviewBrief] });
+    }
+
+    const advisoryStart = Date.now();
+    const results = runConcurrently(jobs);
+    const advisoryDuration = Date.now() - advisoryStart;
+
+    for (const result of results) {
+      reporter.record(result.output);
+      reporter.say(`RUN stage=${result.name} duration_ms=${advisoryDuration} exit=${result.status}`);
+
+      if (result.name === 'reviewer') {
+        if (result.status === 0) {
+          reporter.say('RUN the reviewer finished, its answer is in the run log');
+        } else {
+          reporter.say(`RUN the reviewer exited ${result.status}, so the pull request may carry no review`);
+        }
+      }
+    }
+
     reporter.say('RUN lens findings recorded, advisory only');
   }
 

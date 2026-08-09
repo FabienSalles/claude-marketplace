@@ -6,12 +6,29 @@ import { readFileSync } from 'node:fs';
 
 import { halt, misuse } from './halt.ts';
 
+// The region above the plan's first `##`/`###` heading — title and metadata, nothing else —
+// which is where the `---`-delimited metadata block lives.
+export const topRegion = (source: string): string => {
+  const lines = source.split('\n');
+  const end = lines.findIndex((line) => /^#{2,3} /.test(line));
+
+  return lines.slice(0, end === -1 ? lines.length : end).join('\n');
+};
+
+// The `---`-delimited block at the top of the file, its fences excluded — undefined when the
+// plan carries none. Every `Key:` line the plan declares lives in here; the `# Spec:` title is
+// the one exception, kept outside as an H1.
+export const frontmatter = (source: string): string | undefined =>
+  /^---\n([\s\S]*?)\n---[ \t]*$/m.exec(topRegion(source))?.[1];
+
 // A single-line declaration, read the way `sed -n 's/^Prefix *//p' | head -1` reads one: the
-// first line starting with `prefix`, trimmed. Used for every `Key:` and `# Heading:` line the
-// plan carries, so a preflight or a publish step names its prefix instead of writing its own sed.
+// first line starting with `prefix`, trimmed. `# Heading:` prefixes (the plan's own `# Spec:`
+// title) are read against the whole file; every `Key:` prefix is scoped to the frontmatter
+// block, so a stray `Policy:` sitting in prose further down is never mistaken for the plan's own.
 export const header = (source: string, prefix: string): string | undefined => {
   const escaped = prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const match = new RegExp(`^${escaped} *(.*)$`, 'm').exec(source);
+  const scope = prefix.startsWith('#') ? source : (frontmatter(source) ?? '');
+  const match = new RegExp(`^${escaped} *(.*)$`, 'm').exec(scope);
 
   return match?.[1];
 };
@@ -97,7 +114,7 @@ export const declaredKeys = (block: string[], subject: string): Map<string, stri
   const twice: string[] = [];
 
   for (const line of block) {
-    if (line.trim() === '') {
+    if (line.trim() === '' || line.trim().startsWith('#')) {
       continue;
     }
 

@@ -16,20 +16,10 @@ const PLAN2 = PLAN.replace(
 // section and outside the Definition of Done, is not an executable block: its gate2 failing on
 // the untouched tree must not refuse the run.
 test('a ```gate fence quoted in prose is not swept, even when its gate2 would fail', () => {
-  const planText = [
-    '# Spec: demo',
-    '',
-    'Policy: commit',
-    'Remote: origin',
-    '',
-    'An iteration gate block looks like this:',
-    '',
-    '```gate',
-    'gate2=false',
-    '```',
-    '',
-    PLAN2.split('\n').slice(2).join('\n'),
-  ].join('\n');
+  const planText = PLAN2.replace(
+    '### Iteration 1',
+    ['An iteration gate block looks like this:', '', '```gate', 'gate2=false', '```', '', '### Iteration 1'].join('\n'),
+  );
   const fixture = repo({ planText });
 
   const { code, output } = run(fixture, [fixture.plan, '1'], { FAKE_CLAUDE_WRITES: join(fixture.dir, 'a.txt') });
