@@ -165,6 +165,26 @@ and reports findings anchored to a tool-call sequence: an edit reverted, the sam
 twice, a file read five times, a brief that named a convention skill with no `Skill` call to
 match. Print what it returns; nothing it finds changes the exit you already reported.
 
+## Duration table
+
+Every final report — Phase 3, 4, or the end of Phase 5/6 — that attempted at least one
+iteration prints a duration table, built from the run's own `.run.jsonl` (one JSON line per
+`RUN stage=<name> duration_ms=<n> exit=<n>` event `goal-run.ts` already emits). Skip it only on
+exit `2`: Phase 4 already covers that case, and there is no per-iteration row to print when
+nothing was attempted.
+
+Read every `stage=` line and group it: `preflight` and the base-must-already-be-green sweep
+stand alone at the top (they run once, before any iteration); `implementer` and `gate` are one
+row per iteration, in order; `push` and `pull-request-update` collapse into one `publication`
+row; the run total is the sum of every `duration_ms` in the file, not a wall-clock guess.
+
+| Iteration | Implementer | Gate |
+|---|---|---|
+| 1 | `<duration_ms>` | `<duration_ms>` |
+| … | … | … |
+
+Preflight/sweep: `<duration_ms>` — Publication: `<duration_ms>` — Run total: `<duration_ms>`
+
 ## Rules for THIS command
 
 - **Classify before repairing, always** — never patch a plan and never discard a tree without

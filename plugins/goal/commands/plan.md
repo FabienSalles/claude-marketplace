@@ -471,6 +471,18 @@ are not — and where the granularity from `Policy:` lands as a number: fine und
 fatter under `commit+pr`, never past one functional outcome. And a slice with
 nothing to test declares `test_files=` empty, which skips the bite rather than faking it.
 
+**Scope every `gateN` to the slice it verifies, never to the whole project.** `gate1` runs
+three times per iteration (the bite, then twice more), and `/goal:supervise`'s preflight
+replays the whole gate block again before the next iteration starts — so a `gate1` written as
+the full suite pays for that suite five times across a five-slice plan instead of once. Point
+it at the file, the directory, or the test tag the slice actually touches; leave the
+whole-scope run to `dod1` in the global Definition of Done, which runs once, at the end. The
+trade-off is accepted deliberately: a slice-scoped `gate1` cannot catch a regression it
+introduces in a file outside its own scope, but every later iteration's regression wall (see
+`goal-gate.ts`'s own name for it) replays this slice's `gate1` again on top of its own, and the
+wall and the DoD already cover that same regression before the plan ships — so the redundant
+whole-suite run inside `gate1` buys nothing the run doesn't already pay for once.
+
 **A slice proving the absence of more than one obsolete form writes one `gate1`, not several.**
 The bite check only ever sets aside the implementation and re-runs `gate1`; `gate2..N` are never
 replayed against the pre-implementation tree, by the bite check or by `/goal:supervise`'s own
