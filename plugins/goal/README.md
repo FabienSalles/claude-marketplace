@@ -120,7 +120,7 @@ Exit `0` landed · `1` the gate refused a slice · `2` refused before anything w
 | Item | Needed for | Note |
 |---|---|---|
 | Node 24 | the runner and the gate | Types are stripped at run time, never checked; `tsc --noEmit` is a CI concern |
-| A git-ignored `.claude/` | every run | Preflight refuses a plan directory git can see: the spec, the ticked box and the run log would read as an undeclared scope leak |
+| Git-ignored `.claude/plans/` and `.claude/goal-runs/` | every run | Preflight refuses a plan directory git can see. The run records must be out of git's sight too: the gate would read them as an undeclared scope leak. The rest of `.claude/` may stay tracked |
 | `betterleaks` or `gitleaks` | any push | The push is refused, not skipped, when neither is installed |
 | `gh` authenticated | `Policy: commit+pr`, or a GitHub source | `gh auth login` |
 | Atlassian MCP | a Jira source | Or paste with `inline` |
@@ -216,7 +216,7 @@ Every row is a refusal the code can still reach today.
 | Symptom | Cause | Fix |
 |---|---|---|
 | Exit 2, "the base is not green" | a command the plan holds every slice to already fails on the untouched tree | Fix the base. The sweep runs before a byte is written, so nothing needs undoing |
-| Exit 2, "the plan's directory is visible to git" | `.claude/` is tracked | Ignore it, untracking any spec already committed |
+| Exit 2, "the plan's directory is visible to git" | `.claude/plans/` is not git-ignored | Ignore that directory, untracking any spec already committed |
 | Exit 2, "Policy is manual" | the runner has nowhere to put the work | That plan is for the manual loop: run it with `/goal` and `/goal:next`, or change the `Policy:` line |
 | Exit 2, "the plan declares no Remote line" | never defaulted to `origin` | Write the remote on the plan. Guessing here pushes a fork's work to its parent |
 | Exit 2, "the branch is behind &lt;base&gt;" | the base moved after the branch was cut | Rebase, then relaunch. A green sweep against a stale base certifies nothing anyone will merge into |
