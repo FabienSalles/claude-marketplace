@@ -147,6 +147,12 @@ already answers.
 - What must **not** change as a side-effect? (files / behaviors to protect)
 - What are the project's actual test and lint/QA commands? (dockerized where
   applicable — do not assume host-level runners)
+- For every enumerated command set (a gate's `gate1..N`, a DoD's `dod1..N`): are the
+  commands independent — no shared database, fixtures, or written cache? When yes, combine
+  them into **one** gate command with a grouped-output failure-propagating runner: `make -j
+  --output-sync=target`, `npm-run-all -p`, and `concurrently -n` are the approved forms.
+  `cmd1 & cmd2 & wait` is refused — it interleaves output and can swallow a non-zero exit
+  code, so a real failure reads as green.
 
 ### Stop condition
 
