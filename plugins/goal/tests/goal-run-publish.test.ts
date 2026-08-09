@@ -141,9 +141,9 @@ test('the first landed iteration opens a draft pull request against the declared
   assert.match(calls, new RegExp(FAKE_REPO), calls);
 });
 
-// R14 — a title containing a quote is refused rather than stripped, so the pull request never
-// opens under a mangled title nobody wrote.
-test('a plan title carrying a quote is refused, not stripped, and the branch stays pushed', () => {
+// R14 — a title carrying an apostrophe opens its pull request normally: every `gh` call passes
+// argv, never a shell, so nothing about the title needs quoting in the first place.
+test('a plan title carrying an apostrophe opens a pull request rather than being refused', () => {
   const planText = PLAN_PR.replace('# Spec: demo\n', "# Spec: demo's run\n");
   const fixture = repo({ planText, remote: true });
 
@@ -152,9 +152,10 @@ test('a plan title carrying a quote is refused, not stripped, and the branch sta
   });
 
   assert.equal(code, 0, output);
-  assert.match(output, /quote/i, output);
-  assert.ok(!existsSync(fixture.ghLog), `a pull request was attempted with an unsafe title:\n${output}`);
-  assert.match(git(fixture.dir, 'ls-remote', '--heads', 'origin').stdout, /feature\/demo/, 'the branch should already be pushed by the time the title is checked');
+  assert.doesNotMatch(output, /quote/i, output);
+  const calls = readFileSync(fixture.ghLog, 'utf8');
+  assert.match(calls, /demo's run/, `the apostrophe title never reached the pull request create call:\n${calls}`);
+  assert.match(git(fixture.dir, 'ls-remote', '--heads', 'origin').stdout, /feature\/demo/, output);
 });
 
 // R15 — every landing after the first rewrites the same pull request's body instead of

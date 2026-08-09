@@ -21,7 +21,7 @@ import { preflight, REFUSED } from './run/preflight.ts';
 import { createLock } from './run/lock.ts';
 import { runIteration } from './run/iteration.ts';
 import { createPublisher } from './run/publish.ts';
-import { close, LANDED } from './run/close.ts';
+import { blockedNote, close, LANDED } from './run/close.ts';
 import { quote } from './run/shell.ts';
 import { iterationNumbers } from './gate/plan.ts';
 
@@ -133,7 +133,7 @@ const main = (): void => {
   const exitCode = close(plan, gate, hashes.get(iterations[iterations.length - 1]!)!, remote, publisher, landed, dir, reporter);
 
   if (exitCode === LANDED) {
-    reporter.say(`STOP ${iterations.length} iteration(s) landed, gate-verified`);
+    reporter.say(`STOP ${iterations.length} iteration(s) landed, gate-verified.${blockedNote(publisher)}`);
   }
 
   process.exit(exitCode);

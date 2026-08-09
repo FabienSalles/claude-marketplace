@@ -31,7 +31,16 @@ export type PublishState = {
   publishes: boolean;
   prOpen: boolean;
   blocked: boolean;
+  // The reason `blocked` stuck, named at the run's terminal line, whatever the exit, rather than
+  // left to whoever reads the middle of the log. Optional so a caller that never blocks can omit
+  // it.
+  blockedReason?: string;
 };
+
+// Named on the run's own terminal line, whatever the exit, rather than left in an earlier `RUN`
+// line a developer skimming straight to the bottom of the log would never reach.
+export const blockedNote = (publisher: Publisher): string =>
+  publisher.state.blocked ? ` Publication is blocked: ${publisher.state.blockedReason ?? ''}` : '';
 
 type AgentJob = { name: string; args: string[] };
 
@@ -200,13 +209,13 @@ and do not judge whether the work was correct — the gate already did that.`;
 
   if (dodExit !== 0) {
     if (dodExit !== 1) {
-      reporter.say(`STOP the global Definition of Done could not be run (exit ${dodExit}), so no verdict exists:`);
+      reporter.say(`STOP the global Definition of Done could not be run (exit ${dodExit}), so no verdict exists:${blockedNote(publisher)}`);
       reporter.say(dodOut);
 
       return PAUSED;
     }
 
-    reporter.say('STOP the global Definition of Done refused this run:');
+    reporter.say(`STOP the global Definition of Done refused this run:${blockedNote(publisher)}`);
     reporter.say(dodOut);
 
     return HALTED;
