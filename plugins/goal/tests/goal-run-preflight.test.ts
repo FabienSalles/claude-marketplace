@@ -68,6 +68,31 @@ test('it refuses when the checkout stands on the wrong branch', () => {
   assert.ok(!existsSync(fixture.claudeLog), 'an implementer was spawned on a refusal');
 });
 
+test("it refuses when .claude/goal-runs is visible to git, naming the directory and the gitignore line, before the clean-tree check", () => {
+  const fixture = repo();
+  writeFileSync(join(fixture.dir, '.gitignore'), 'fake-bin/\n*-args.txt\n');
+  git(fixture.dir, 'add', '.gitignore');
+  git(fixture.dir, 'commit', '-qm', 'narrow gitignore');
+
+  const { code, output } = run(fixture, [fixture.plan, '1']);
+
+  assert.notEqual(code, 0);
+  assert.match(output, /STOP \.claude\/goal-runs is visible to git\. Add it to \.gitignore:\n\.claude\/goal-runs/, output);
+  assert.ok(!output.includes('STOP the tree is not clean'), output);
+  assert.ok(!existsSync(fixture.claudeLog), 'an implementer was spawned on a refusal');
+});
+
+test('it is valid on a first run, before .claude/goal-runs ever exists', () => {
+  const fixture = repo();
+
+  assert.ok(!existsSync(join(fixture.dir, '.claude', 'goal-runs')), 'the fixture already carries a goal-runs directory');
+
+  const { code, output } = run(fixture, [fixture.plan, '1'], { FAKE_CLAUDE_WRITES: join(fixture.dir, 'a.txt') });
+
+  assert.equal(code, 0, output);
+  assert.ok(existsSync(fixture.claudeLog), 'a git-ignored but absent goal-runs directory still refused the run');
+});
+
 test('it refuses when the tree carries uncommitted work', () => {
   const fixture = repo();
   writeFileSync(join(fixture.dir, 'stray.txt'), 'oops\n');

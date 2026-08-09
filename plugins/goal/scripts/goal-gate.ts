@@ -14,7 +14,7 @@
 // Exit codes: 0 the iteration is runnable · 1 HALT, with a reason · 2 misuse.
 
 import { halt, misuse } from './gate/halt.ts';
-import { blockOf, declaredPaths, incidentalPaths, lockedHash, readPlan } from './gate/plan.ts';
+import { blockOf, covers, declaredPaths, incidentalPaths, lockedHash, readPlan } from './gate/plan.ts';
 import { determinismCheck, runGates } from './gate/commands.ts';
 import { commitAndTick, runLock, scopeCheck } from './gate/scope.ts';
 import { budgetCheck, removalCheck } from './gate/bounds.ts';
@@ -52,6 +52,42 @@ const keysAreLegal = (declared: Map<string, string>, iteration: string): void =>
       `Missing or empty: ${missing.join(' ')}\n\ngate1 is the acceptance criterion — without it the iteration exits 0 having proved nothing, which is exactly what the loop must never advance on. impl_files is the reference the scope check is made against. commit_msg is the message the slice is committed under. Write them into the gate block, or halt and report that this slice cannot be verified unattended.`,
     );
   }
+};
+
+// A bite check sets impl_files aside and reruns gate1: if impl_files also covers a test_files
+// path, that test vanishes along with the implementation, and gate1 fails for the wrong reason
+// or not at all. Refused for every verb, before any of them spend a command on it. An iteration
+// with no test_files is exempt: there is nothing gate1 could stop covering.
+const overlapCheck = (declared: Map<string, string>, iteration: string): void => {
+  const tests = (declared.get('test_files') ?? '').split(/\s+/).filter((path) => path !== '');
+
+  if (tests.length === 0) {
+    return;
+  }
+
+  const impls = (declared.get('impl_files') ?? '').split(/\s+/).filter((path) => path !== '');
+  const overlapping = new Set<string>();
+  const pairs: string[] = [];
+
+  for (const impl of impls) {
+    for (const path of tests) {
+      if (covers(impl, path)) {
+        pairs.push(`${impl} covers ${path}`);
+        overlapping.add(impl);
+      }
+    }
+  }
+
+  if (pairs.length === 0) {
+    return;
+  }
+
+  const fix = impls.filter((impl) => !overlapping.has(impl));
+
+  halt(
+    `Iteration ${iteration} declares impl_files that covers its own test_files.`,
+    `Overlapping: ${pairs.join(', ')}\n\nA bite check sets impl_files aside and reruns gate1: an impl_files path that also covers the test removes the test along with the implementation, so gate1 cannot fail for the right reason. Declare impl_files as: ${fix.join(' ') || '(none — every declared impl file covers a test)'}`,
+  );
 };
 
 // The order is the contract. Everything cheap and mechanical runs before any command is spawned,
@@ -117,6 +153,7 @@ const main = (): void => {
   const declared = blockOf(source, iteration);
 
   keysAreLegal(declared, iteration);
+  overlapCheck(declared, iteration);
 
   // The sanctioned RED check: sets impl_files aside, reruns gate1, requires it to fail, restores
   // by overwrite — the same mechanism `verify` runs last, invocable on demand so an implementer

@@ -1,7 +1,7 @@
 // Publication under commit+pr: the first landed iteration pushes to the plan's declared remote
 // and opens a draft pull request; every landing after it rewrites the same body. A secret-scanner
-// refusal, a fixup commit, a failed push, an unquotable title or a `gh` error blocks publication
-// stickily for the rest of this run rather than being retried every iteration.
+// refusal, a fixup commit, a failed push, or a `gh` error blocks publication stickily for the
+// rest of this run rather than being retried every iteration.
 
 import { spawnSync } from 'node:child_process';
 import { basename } from 'node:path';
@@ -81,6 +81,7 @@ export const createPublisher = (
       if (fixups > 0) {
         blocked = 'The run carries a fixup or squash commit, so the history is not the sequence a reviewer should read. Nothing was pushed: fold them yourself, then push.';
         state.blocked = true;
+        state.blockedReason = blocked;
         reporter.say(`RUN ${blocked}`);
 
         return;
@@ -92,6 +93,7 @@ export const createPublisher = (
     if ((scan.status ?? 1) !== 0) {
       blocked = `The secret scanner refused this tree, so nothing was pushed:\n${scan.stdout}${scan.stderr}`;
       state.blocked = true;
+      state.blockedReason = blocked;
       reporter.say(`RUN ${blocked}`);
 
       return;
@@ -102,6 +104,7 @@ export const createPublisher = (
     if (push.status !== 0) {
       blocked = `The push failed:\n${push.stdout}${push.stderr}`;
       state.blocked = true;
+      state.blockedReason = blocked;
       reporter.say(`RUN ${blocked}`);
 
       return;
@@ -109,14 +112,6 @@ export const createPublisher = (
 
     shipped = true;
     reporter.say(`RUN pushed to ${remote}`);
-
-    if (/['\\]/.test(planTitle)) {
-      blocked = `The plan's title cannot be safely quoted for a pull request — it contains a quote or a backslash: ${planTitle}. Rename its "# Spec:" line, then relaunch; the branch is already pushed.`;
-      state.blocked = true;
-      reporter.say(`RUN ${blocked}`);
-
-      return;
-    }
 
     const repo = repoOf(remote);
     const branch = git('branch', '--show-current').stdout.trim();
@@ -160,6 +155,7 @@ export const createPublisher = (
 
     blocked = `${gh.stdout}${gh.stderr}`;
     state.blocked = true;
+    state.blockedReason = blocked;
     reporter.say(`RUN ${blocked}`);
   };
 
