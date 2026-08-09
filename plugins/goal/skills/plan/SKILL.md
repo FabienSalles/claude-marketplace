@@ -769,7 +769,23 @@ Tell the developer where the plan now lives, and read the branch name back.
 
 ## Phase 5 — Hand off to Session 2 (one /goal per iteration)
 
-Emit the canonical `/goal` handoff from `templates/goal-handoff.template`, filled
+Read `Policy:` from the spec header and check every iteration for a `gate` block with a
+`gate1` — this mirrors `/goal:next`'s Phase 5 routing table verbatim:
+
+| `Policy:` | Iterations | Emit |
+|---|---|---|
+| `manual` | any | the per-iteration handoff **only** — `/goal:supervise` refuses `manual` |
+| `commit+pr` | all gateable | **`/goal:supervise <plan path>` first**, per-iteration handoff below it as the fallback |
+| `commit+pr` | one or more not gateable | the per-iteration handoff first, and name the iterations that block a clean autonomous run |
+
+**Always pass the plan path explicitly** in the `/goal:supervise` line, and state in one
+line what it will do: how many iterations it covers, and that it halts hard on the first
+failing gate.
+
+Under `commit+pr` with every iteration gateable, do not print the full per-iteration
+`/goal` block below the `/goal:supervise` line — the block below applies to `manual` and
+to the named-fallback case only. Emit the canonical `/goal` handoff from
+`templates/goal-handoff.template`, filled
 per that file's **"How to fill it"** section: `<plan path>` =
 `.claude/plans/<work-id>-spec.md`, the spec's real test/lint commands, `<policy>` =
 the chosen policy verbatim, `<delivery-mode>` = the spec's `Delivery mode:` line verbatim.

@@ -14,6 +14,7 @@ import { changedGitDirPaths, changedRefs, snapshotGitDir, snapshotRefs } from '.
 import { narrate } from './narrate.ts';
 import { claudeBinaryMtime, claudeBinaryPath, postmortem } from './postmortem.ts';
 import { REFUSED } from './preflight.ts';
+import { blockedNote, type Publisher } from './publish.ts';
 import { burstBackoffSeconds, classifyFailure, SHUTDOWN_BACKOFF_SECONDS, shutdownMaxRetries, sleepInSlices } from './quota.ts';
 import type { Reporter } from './report.ts';
 import { git, quote } from './shell.ts';
@@ -31,13 +32,14 @@ export const runIteration = (
   gate: string,
   dir: string,
   reporter: Reporter,
+  publisher: Publisher,
 ): void => {
   reporter.say(`RUN iteration ${iteration} of ${basename(plan)}, in ${process.cwd()}`);
 
   const section = iterationSection(source, iteration).join('\n');
 
   if (section.trim() === '') {
-    reporter.stop(`iteration ${iteration} has no section in the plan, so there is nothing to implement`, REFUSED);
+    reporter.stop(`iteration ${iteration} has no section in the plan, so there is nothing to implement:${blockedNote(publisher)}`, REFUSED);
   }
 
   const branch = git('rev-parse', '--abbrev-ref', 'HEAD').stdout.trim();
@@ -98,7 +100,7 @@ export const runIteration = (
 
     if (quotaClass === null) {
       reporter.stop(
-        `the implementer exited ${implemented.status}. The tree holds whatever it wrote and no gate has judged it: review it before relaunching.`,
+        `the implementer exited ${implemented.status}. The tree holds whatever it wrote and no gate has judged it: review it before relaunching.${blockedNote(publisher)}`,
         PAUSED,
       );
     }
@@ -106,7 +108,7 @@ export const runIteration = (
     const maxRetries = quotaClass === 'shutdown' ? shutdownMaxRetries() : quotaMax;
     if (attempt >= maxRetries) {
       reporter.stop(
-        `the quota still looks exhausted after ${attempt} attempt(s) on iteration ${iteration}. Pausing rather than spinning through a window that is not reopening: relaunch resumes here.`,
+        `the quota still looks exhausted after ${attempt} attempt(s) on iteration ${iteration}. Pausing rather than spinning through a window that is not reopening: relaunch resumes here.${blockedNote(publisher)}`,
         PAUSED,
       );
     }
@@ -130,7 +132,7 @@ export const runIteration = (
   const touched = git('status', '--porcelain').stdout;
 
   if (headAfter !== headBefore) {
-    reporter.stop(`the implementer committed on its own, which only the gate may do. HEAD moved from ${headBefore} to ${headAfter}. Nothing was gate-verified: review that commit before relaunching.`, PAUSED);
+    reporter.stop(`the implementer committed on its own, which only the gate may do. HEAD moved from ${headBefore} to ${headAfter}. Nothing was gate-verified: review that commit before relaunching.${blockedNote(publisher)}`, PAUSED);
   }
 
   // Checked before the empty-tree case below: an implementer that writes only into `.git/`
@@ -140,7 +142,7 @@ export const runIteration = (
 
   if (gitDirChanges.length > 0) {
     reporter.stop(
-      `the implementer changed the git directory: ${gitDirChanges.join(', ')}. \`git status\` will not show this: the artifact is still in .git/, not in the tree. Review it before relaunching.`,
+      `the implementer changed the git directory: ${gitDirChanges.join(', ')}. \`git status\` will not show this: the artifact is still in .git/, not in the tree. Review it before relaunching.${blockedNote(publisher)}`,
       PAUSED,
     );
   }
@@ -150,7 +152,7 @@ export const runIteration = (
 
   if (remoteRefChanges.length > 0) {
     reporter.stop(
-      `the implementer pushed: ${remoteRefChanges.join(', ')} moved. Only the gate may publish. Review it before relaunching.`,
+      `the implementer pushed: ${remoteRefChanges.join(', ')} moved. Only the gate may publish. Review it before relaunching.${blockedNote(publisher)}`,
       PAUSED,
     );
   }
@@ -159,14 +161,14 @@ export const runIteration = (
 
   if (otherRefChanges.length > 0) {
     reporter.stop(
-      `the implementer moved ${otherRefChanges.join(', ')}. \`git status\` will not show this: review it before relaunching.`,
+      `the implementer moved ${otherRefChanges.join(', ')}. \`git status\` will not show this: review it before relaunching.${blockedNote(publisher)}`,
       PAUSED,
     );
   }
 
   if (touched.trim() === '') {
     reporter.stop(
-      'the implementer wrote nothing in this tree, so no verdict was asked for. The usual cause is a path that left the tree: look for the work in another checkout before assuming it does not exist.',
+      `the implementer wrote nothing in this tree, so no verdict was asked for. The usual cause is a path that left the tree: look for the work in another checkout before assuming it does not exist.${blockedNote(publisher)}`,
       PAUSED,
     );
   }
@@ -191,10 +193,10 @@ export const runIteration = (
   }
 
   if (gateExit !== 1) {
-    reporter.say(`STOP the gate could not be run (exit ${gateExit}), so no verdict exists. The tree holds whatever the implementer wrote and nothing was committed.`);
+    reporter.say(`STOP the gate could not be run (exit ${gateExit}), so no verdict exists. The tree holds whatever the implementer wrote and nothing was committed.${blockedNote(publisher)}`);
     process.exit(PAUSED);
   }
 
-  reporter.say(`STOP iteration ${iteration} was refused by the gate. Nothing was committed, and the gate's reasoning is in ${join(dir, '.run.log')}. The tree is left exactly as the implementer left it.`);
+  reporter.say(`STOP iteration ${iteration} was refused by the gate. Nothing was committed, and the gate's reasoning is in ${join(dir, '.run.log')}. The tree is left exactly as the implementer left it.${blockedNote(publisher)}`);
   process.exit(HALTED);
 };

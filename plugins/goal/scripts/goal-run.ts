@@ -20,8 +20,8 @@ import { createReporter, runDir, type Reporter } from './run/report.ts';
 import { preflight, REFUSED } from './run/preflight.ts';
 import { createLock } from './run/lock.ts';
 import { runIteration } from './run/iteration.ts';
-import { createPublisher } from './run/publish.ts';
-import { blockedNote, close, LANDED } from './run/close.ts';
+import { blockedNote, createPublisher } from './run/publish.ts';
+import { close, LANDED } from './run/close.ts';
 import { quote } from './run/shell.ts';
 import { iterationNumbers } from './gate/plan.ts';
 
@@ -118,7 +118,7 @@ const main = (): void => {
   const landed: string[] = [];
 
   for (const n of iterations) {
-    runIteration(plan, source, n, hashes.get(n)!, tickedSets.get(n) ?? '', gate, dir, reporter);
+    runIteration(plan, source, n, hashes.get(n)!, tickedSets.get(n) ?? '', gate, dir, reporter, publisher);
     landed.push(n);
 
     // Every iteration but the last publishes here, as it lands. The last one's push waits for

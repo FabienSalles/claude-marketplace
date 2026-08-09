@@ -10,7 +10,7 @@ import { basename, dirname, join } from 'node:path';
 
 import { header, iterationNumbers, readPlan } from '../gate/plan.ts';
 import { PAUSED } from './iteration.ts';
-import type { Publisher } from './publish.ts';
+import { blockedNote, type Publisher } from './publish.ts';
 import type { Reporter } from './report.ts';
 import { git, quote } from './shell.ts';
 
@@ -36,11 +36,6 @@ export type PublishState = {
   // it.
   blockedReason?: string;
 };
-
-// Named on the run's own terminal line, whatever the exit, rather than left in an earlier `RUN`
-// line a developer skimming straight to the bottom of the log would never reach.
-export const blockedNote = (publisher: Publisher): string =>
-  publisher.state.blocked ? ` Publication is blocked: ${publisher.state.blockedReason ?? ''}` : '';
 
 type AgentJob = { name: string; args: string[] };
 

@@ -24,6 +24,11 @@ export type Publisher = {
   state: PublishState;
 };
 
+// Named on the run's own terminal line, whatever the exit, rather than left in an earlier `RUN`
+// line a developer skimming straight to the bottom of the log would never reach.
+export const blockedNote = (publisher: Publisher): string =>
+  publisher.state.blocked ? ` Publication is blocked: ${publisher.state.blockedReason ?? ''}` : '';
+
 export const createPublisher = (
   plan: string,
   source: string,
