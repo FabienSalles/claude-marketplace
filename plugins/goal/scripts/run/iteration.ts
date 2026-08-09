@@ -11,7 +11,7 @@ import { ceiling } from '../gate/bounded.ts';
 import { iterationSection } from '../gate/plan.ts';
 import { brief } from './brief.ts';
 import { changedGitDirPaths, changedRefs, snapshotGitDir, snapshotRefs } from './gitwatch.ts';
-import { narrate } from './narrate.ts';
+import { narrate, tokensLine } from './narrate.ts';
 import { claudeBinaryMtime, claudeBinaryPath, postmortem } from './postmortem.ts';
 import { REFUSED } from './preflight.ts';
 import { blockedNote, type Publisher } from './publish.ts';
@@ -87,8 +87,14 @@ export const runIteration = (
       { encoding: 'utf8', env: { ...process.env, DISABLE_AUTOUPDATER: '1' } },
     );
 
-    narrate(implemented.stdout, reporter);
+    const usage = narrate(implemented.stdout, reporter);
     reporter.say(`RUN stage=implementer duration_ms=${Date.now() - implementerStart} exit=${implemented.status ?? 1}`);
+
+    const tokens = tokensLine('implementer', usage);
+
+    if (tokens) {
+      reporter.say(tokens);
+    }
 
     if ((implemented.status ?? 1) === 0) {
       break;

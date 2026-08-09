@@ -11,7 +11,10 @@ Nobody watched the run. You are what did.
 You are handed the path to the run's own JSONL event stream and, when the run halted, the halt
 verbatim. Every stage `goal-run.ts` timed — preflight, implementer, gate, push,
 pull-request-update, dod, reviewer, lens, auditor — wrote a `stage=<name> duration_ms=<n>
-exit=<n>` line into it. Read that file. You write one report and change nothing else.
+exit=<n>` line into it. Every stage that is a Claude session — implementer, lens, reviewer,
+auditor — also wrote a `tokens stage=<name> input_tokens=<n> output_tokens=<n>
+cache_creation_input_tokens=<n> cache_read_input_tokens=<n>` line right after it. Read that
+file. You write one report and change nothing else.
 
 ## What the report has to answer
 
@@ -36,9 +39,12 @@ table with one row per counted stage (`preflight`, `implementer` and `gate` per 
 `push`/`pull-request-update` collapsed into `publication`, `dod`, `lens`, `reviewer`,
 `auditor` — whichever the log carries). Show durations in minutes once they pass 60 s, and
 print an exit code only on the rows whose stage failed — a row that landed carries no exit
-code. The total row is the sum of the displayed rows, not a re-scan of the JSONL file. Name
-the slowest stage and say whether its time matches its size — read the commit it produced if
-you need to.
+code. The total row is the sum of the displayed rows, not a re-scan of the JSONL file. Give
+the table a `Tokens` column: the four classes summed for every row backed by a `tokens
+stage=<name>` line, a dash for every row that is not a Claude session, and the sum of the
+displayed rows in the total row. Under the table, one line naming the run's own per-class totals,
+summed straight off the `tokens` lines. Name the slowest stage and say whether its time matches
+its size — read the commit it produced if you need to.
 
 Keep it short enough to read at breakfast.
 
