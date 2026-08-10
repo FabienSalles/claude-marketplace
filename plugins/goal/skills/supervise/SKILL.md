@@ -209,28 +209,39 @@ rows in the total row, same rule as `Duration`. Under the table, one line naming
 per-class totals, summed straight off the `RUN tokens` lines: `Input: <n> · Output: <n> · Cache
 creation: <n> · Cache read: <n>` — enough to price the run without opening `.run.jsonl`.
 
-| Stage | Duration | Tokens | Exit |
-|---|---|---|---|
-| Preflight/sweep | `<duration>` | — | |
-| Iteration 1 — Implementer | `<duration>` | `<tokens>` | |
-| Iteration 1 — Gate | `<duration>` | — | |
-| … | … | … | |
-| Publication | `<duration>` | — | |
-| Dod | `<duration>` | — | |
-| Lens | `<duration>` | `<tokens>` | |
-| Reviewer | `<duration>` | `<tokens>` | |
-| Auditor | `<duration>` | `<tokens>` | |
-| **Total** | **`<sum of the rows above>`** | **`<sum of the rows above>`** | |
+| Stage | Duration | Tokens | Model | Context peak | Compactions | Exit |
+|---|---|---|---|---|---|---|
+| Preflight/sweep | `<duration>` | — | — | — | — | |
+| Iteration 1 — Implementer | `<duration>` | `<tokens>` | `<model>` | `<pct>` | `<n>` | |
+| Iteration 1 — Gate | `<duration>` | — | — | — | — | |
+| … | … | … | … | … | … | |
+| Publication | `<duration>` | — | — | — | — | |
+| Dod | `<duration>` | — | — | — | — | |
+| Lens | `<duration>` | `<tokens>` | `<model>` | `<pct>` | `<n>` | |
+| Reviewer | `<duration>` | `<tokens>` | `<model>` | `<pct>` | `<n>` | |
+| Auditor | `<duration>` | `<tokens>` | `<model>` | `<pct>` | `<n>` | |
+| **Total** | **`<sum of the rows above>`** | **`<sum of the rows above>`** | — | — | — | |
 
 Input: `<n>` · Output: `<n>` · Cache creation: `<n>` · Cache read: `<n>`
+
+Every row backed by a `RUN tokens` line also carries the served model, the context peak, and the
+compaction count, read off that same line's `model=`, `context_pct=` (or `context_tokens=` when
+the model is unknown), and `compactions=` fields. Give the table a `Model` column (the served
+model, dash for a non-session row), a `Context peak` column showing the percentage only — never
+the token count, and never the effective window itself, which is named once in a note under the
+table (`Effective window: <model> <n> tokens`) rather than repeated cell by cell — with a model
+absent from that note showing its tokens instead of a percentage, and a `Compactions` column
+showing the count, `0` stated rather than left blank.
 
 **The supervising session counts itself.** Everything above measures what `goal-run.ts` spawned;
 it never measures the session reading this skill and watching it. After the run ends, locate
 this session's own transcript under `~/.claude/projects/<encoded-cwd>/` (the working directory
 with every `/` turned into a `-`), sum its per-class usage across every entry in that transcript,
-and add a `Supervising session` row to the table with those four numbers. The total row, and the
-per-class totals line beneath it, include that row like any other — a token total that leaves
-out the session that spent them is not a total.
+and add a `Supervising session` row to the table with those four numbers, and — read the same way
+off that transcript's own events — its served model, its context peak (percentage against the
+note's effective window, or tokens if the model is unknown), and its compaction count. The total
+row, and the per-class totals line beneath it, include that row like any other — a token total
+that leaves out the session that spent them is not a total.
 
 ## Closing paths
 
