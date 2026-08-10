@@ -143,36 +143,101 @@ test('narrate returns the four token classes carried by the result event', () =>
     }),
   ].join('\n');
 
-  const usage = narrate(stdout, reporter);
+  const extraction = narrate(stdout, reporter);
 
-  assert.deepEqual(usage, { input_tokens: 10, output_tokens: 20, cache_creation_input_tokens: 30, cache_read_input_tokens: 40 });
+  assert.deepEqual(extraction.usage, { input_tokens: 10, output_tokens: 20, cache_creation_input_tokens: 30, cache_read_input_tokens: 40 });
 });
 
 // R20 — a result event carrying no usage (an older CLI, a stubbed fixture) leaves narrate()
 // returning undefined rather than a fabricated zero.
-test('narrate returns undefined when no result event carries usage', () => {
+test('narrate returns undefined usage when no result event carries usage', () => {
   const reporter = createReporter();
   const stdout = JSON.stringify({ type: 'result', session_id: 's1' });
 
-  const usage = narrate(stdout, reporter);
+  const extraction = narrate(stdout, reporter);
 
-  assert.equal(usage, undefined);
+  assert.equal(extraction.usage, undefined);
 });
 
-// R20 — lens, reviewer and auditor answer `--output-format json`: one JSON object whose prose is
-// in `result` and whose usage carries the same four classes. resultEnvelope() is what extracts
-// both.
-test('resultEnvelope extracts the text and usage from a --output-format json envelope', () => {
-  const raw = JSON.stringify({
-    type: 'result',
-    result: 'the lens finding',
-    usage: { input_tokens: 1, output_tokens: 2, cache_creation_input_tokens: 3, cache_read_input_tokens: 4 },
-  });
+// R21 — the served model is read from an assistant event's own `message.model` field when the
+// stream carries one.
+test('narrate reads the served model off an assistant event\'s own model field', () => {
+  const reporter = createReporter();
+  const stdout = JSON.stringify({ type: 'assistant', message: { model: 'claude-sonnet-5', content: [] } });
 
-  const { text, usage } = resultEnvelope(raw);
+  const extraction = narrate(stdout, reporter);
+
+  assert.equal(extraction.model, 'claude-sonnet-5');
+});
+
+// R21 — the served model is read from the result event's `modelUsage` key when no assistant event
+// named one first.
+test('narrate falls back to the result event\'s modelUsage key for the served model', () => {
+  const reporter = createReporter();
+  const stdout = JSON.stringify({ type: 'result', modelUsage: { 'claude-fable-5': {} } });
+
+  const extraction = narrate(stdout, reporter);
+
+  assert.equal(extraction.model, 'claude-fable-5');
+});
+
+// R21 — the context peak is the highest single assistant turn's input + cache read + cache
+// creation tokens, not the sum across turns.
+test('narrate reads the context peak as the max, not the sum, over assistant usage blocks', () => {
+  const reporter = createReporter();
+  const stdout = [
+    JSON.stringify({ type: 'assistant', message: { usage: { input_tokens: 100, output_tokens: 1, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 } } }),
+    JSON.stringify({ type: 'assistant', message: { usage: { input_tokens: 10, output_tokens: 1, cache_creation_input_tokens: 5, cache_read_input_tokens: 5 } } }),
+  ].join('\n');
+
+  const extraction = narrate(stdout, reporter);
+
+  assert.equal(extraction.peakTokens, 100);
+});
+
+// R21 — both verified compaction marker shapes are counted: a `compact_boundary` system event,
+// and a `isCompactSummary` flag on the summary message it produces.
+test('narrate counts both verified compaction marker shapes', () => {
+  const reporter = createReporter();
+  const stdout = [
+    JSON.stringify({ type: 'system', subtype: 'compact_boundary' }),
+    JSON.stringify({ type: 'user', isCompactSummary: true }),
+  ].join('\n');
+
+  const extraction = narrate(stdout, reporter);
+
+  assert.equal(extraction.compactions, 2);
+});
+
+// R21 — a stream with no compaction marker at all reports zero, never undefined: a count is
+// always meaningful, even when nothing compacted.
+test('narrate reports zero compactions when the stream never compacted', () => {
+  const reporter = createReporter();
+  const stdout = JSON.stringify({ type: 'result' });
+
+  const extraction = narrate(stdout, reporter);
+
+  assert.equal(extraction.compactions, 0);
+});
+
+// R21 — lens, reviewer and auditor answer `--output-format stream-json`: the same event stream
+// narrate() already parses, its prose in the terminal result event's `result` field, its usage and
+// served model extracted the same way. resultEnvelope() is what extracts all of it.
+test('resultEnvelope extracts the text, usage and model from a stream-json envelope', () => {
+  const raw = [
+    JSON.stringify({ type: 'assistant', message: { model: 'claude-sonnet-5', content: [] } }),
+    JSON.stringify({
+      type: 'result',
+      result: 'the lens finding',
+      usage: { input_tokens: 1, output_tokens: 2, cache_creation_input_tokens: 3, cache_read_input_tokens: 4 },
+    }),
+  ].join('\n');
+
+  const { text, usage, model } = resultEnvelope(raw);
 
   assert.equal(text, 'the lens finding');
   assert.deepEqual(usage, { input_tokens: 1, output_tokens: 2, cache_creation_input_tokens: 3, cache_read_input_tokens: 4 });
+  assert.equal(model, 'claude-sonnet-5');
 });
 
 // Implementation trap — an agent still answering bare prose (an un-updated fixture, or a CLI that
@@ -188,9 +253,39 @@ test('resultEnvelope falls back to the raw text when the input is not a json env
 // R20 — the one line format a Claude-session stage reports its cost in, so a run report can total
 // the four classes without re-deriving them from a `stage=` line that carries none.
 test('tokensLine formats the four classes for a named stage', () => {
-  const line = tokensLine('lens', { input_tokens: 1, output_tokens: 2, cache_creation_input_tokens: 3, cache_read_input_tokens: 4 });
+  const line = tokensLine('lens', {
+    usage: { input_tokens: 1, output_tokens: 2, cache_creation_input_tokens: 3, cache_read_input_tokens: 4 },
+    compactions: 0,
+  });
 
-  assert.equal(line, 'RUN tokens stage=lens input_tokens=1 output_tokens=2 cache_creation_input_tokens=3 cache_read_input_tokens=4');
+  assert.equal(line, 'RUN tokens stage=lens input_tokens=1 output_tokens=2 cache_creation_input_tokens=3 cache_read_input_tokens=4 compactions=0');
+});
+
+// R21 — the peak reads against the served model's own effective window: a known model carries
+// both the raw tokens and the percentage they represent of that window.
+test('tokensLine reads the peak against the served model\'s effective window', () => {
+  const line = tokensLine('implementer', {
+    usage: { input_tokens: 1, output_tokens: 2, cache_creation_input_tokens: 3, cache_read_input_tokens: 4 },
+    model: 'claude-sonnet-5',
+    peakTokens: 100_000,
+    compactions: 1,
+  });
+
+  assert.match(line ?? '', /model=claude-sonnet-5 context_tokens=100000 context_pct=50% compactions=1$/);
+});
+
+// R21 — the unknown-model rule: a served model absent from the effective-window map still reports
+// its peak in tokens, with no percentage to read it against.
+test('tokensLine reports the peak in tokens with no percentage for an unmapped model', () => {
+  const line = tokensLine('implementer', {
+    usage: { input_tokens: 1, output_tokens: 2, cache_creation_input_tokens: 3, cache_read_input_tokens: 4 },
+    model: 'claude-unknown-9',
+    peakTokens: 12_345,
+    compactions: 0,
+  });
+
+  assert.match(line ?? '', /model=claude-unknown-9 context_tokens=12345 compactions=0$/);
+  assert.ok(!(line ?? '').includes('context_pct'), `an unmapped model still reported a percentage:\n${line}`);
 });
 
 // R20 — a non-session stage (the gate, `gh pr ready`, a push) never carries usage, and
@@ -199,16 +294,18 @@ test('tokensLine returns undefined when there is no usage to report', () => {
   assert.equal(tokensLine('gate', undefined), undefined);
 });
 
-// R20 — driven end to end against the fixture's fake `claude`, a landed run's own .run.jsonl
-// carries a token line for every runner-spawned session: the implementer (stream-json), and the
-// lens, reviewer and auditor (--output-format json), never left with an empty token cell.
-test('a driven iteration and close land a token line for the implementer, lens, reviewer and auditor', () => {
+// R20 / R21 — driven end to end against the fixture's fake `claude`, a landed run's own
+// .run.jsonl carries a token line for every runner-spawned session — the implementer and the
+// lens, reviewer and auditor, all stream-json now — each carrying the served model, the context
+// peak against its effective window, and a compaction count, never left with an empty cell.
+test('a driven iteration and close land a token line carrying model, peak and compactions for every session', () => {
   const fixture = repo({ planText: PLAN.replace('Policy: commit\n', 'Policy: commit+pr\n'), remote: true });
 
   const { code, output } = run(fixture, [fixture.plan, '1'], {
     FAKE_GATE_COMMITS: '1',
     FAKE_CLAUDE_WRITES: join(fixture.dir, 'a.txt'),
     FAKE_GH_PR_EXISTS: '1',
+    FAKE_CLAUDE_COMPACT: '1',
   });
 
   assert.equal(code, 0, output);
@@ -217,9 +314,13 @@ test('a driven iteration and close land a token line for the implementer, lens, 
   const messages = lines.map((line) => (JSON.parse(line) as { event: string; message?: string }).message ?? '').join('\n');
 
   const tokens = (stage: string) =>
-    new RegExp(`^RUN tokens stage=${stage} input_tokens=\\d+ output_tokens=\\d+ cache_creation_input_tokens=\\d+ cache_read_input_tokens=\\d+$`, 'm');
+    new RegExp(
+      `^RUN tokens stage=${stage} input_tokens=\\d+ output_tokens=\\d+ cache_creation_input_tokens=\\d+ cache_read_input_tokens=\\d+ ` +
+        `model=claude-sonnet-5 context_tokens=50000 context_pct=25% compactions=1$`,
+      'm',
+    );
 
   for (const stage of ['implementer', 'lens', 'reviewer', 'auditor']) {
-    assert.match(messages, tokens(stage), `no token line for stage=${stage}:\n${messages}`);
+    assert.match(messages, tokens(stage), `no full token line for stage=${stage}:\n${messages}`);
   }
 });

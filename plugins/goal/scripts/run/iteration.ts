@@ -87,10 +87,10 @@ export const runIteration = (
       { encoding: 'utf8', env: { ...process.env, DISABLE_AUTOUPDATER: '1' } },
     );
 
-    const usage = narrate(implemented.stdout, reporter);
+    const extraction = narrate(implemented.stdout, reporter);
     reporter.say(`RUN stage=implementer duration_ms=${Date.now() - implementerStart} exit=${implemented.status ?? 1}`);
 
-    const tokens = tokensLine('implementer', usage);
+    const tokens = tokensLine('implementer', extraction);
 
     if (tokens) {
       reporter.say(tokens);

@@ -124,23 +124,26 @@ if [ -n "$FAKE_CLAUDE_SLEEPS" ]; then
   sleep "$FAKE_CLAUDE_SLEEPS"
   [ -n "$out" ] && printf '%s %s\n' "$start" "$(node -e 'console.log(Date.now())')" > "$out"
 fi
-# Only when the caller passed --output-format stream-json or --output-format json does the
-# fixture answer in JSON: the bash runner never asks for either and keeps grepping this same
-# fixture's plain prose for a quota window, so emitting JSON unconditionally would break the
-# frozen reference's own tests. Both branches carry usage in the same four classes the real CLI
-# answers with, per its own probe.
+# Only when the caller passed --output-format stream-json does the fixture answer in JSON: the
+# bash runner never asks for it and keeps grepping this same fixture's plain prose for a quota
+# window, so emitting JSON unconditionally would break the frozen reference's own tests. The
+# implementer and the advisory agents (lens, reviewer, auditor) all ask for stream-json now, so one
+# branch answers both: an assistant event carrying the served model and a per-call usage block (for
+# narrate()'s context-peak extraction), an optional compact-boundary marker, then the terminal
+# result event carrying the four token classes, the prose (for the advisory agents) and modelUsage
+# (an alternate way the served model is named).
 # Opt-in noise on stderr, beside whatever the case below still answers on stdout: proves a
 # caller that captures the two streams separately never lets this leak into the parsed envelope.
 [ -n "$FAKE_CLAUDE_STDERR_NOISE" ] && printf '%s\n' "$FAKE_CLAUDE_STDERR_NOISE" >&2
 case "$*" in
   *"stream-json"*)
     sid="\${FAKE_CLAUDE_SESSION_ID:-fake-session-id}"
+    model="\${FAKE_CLAUDE_MODEL:-claude-sonnet-5}"
     [ -n "$FAKE_CLAUDE_TOOL_NAME" ] &&
       printf '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"%s","input":{"file_path":"%s"}}]}}\\n' "$FAKE_CLAUDE_TOOL_NAME" "$FAKE_CLAUDE_TOOL_ARG"
-    printf '{"type":"result","session_id":"%s","usage":{"input_tokens":10,"output_tokens":20,"cache_creation_input_tokens":30,"cache_read_input_tokens":40}}\\n' "$sid"
-    ;;
-  *"--output-format json"*)
-    printf '{"type":"result","result":"fake advisory finding","usage":{"input_tokens":1,"output_tokens":2,"cache_creation_input_tokens":3,"cache_read_input_tokens":4}}\\n'
+    printf '{"type":"assistant","message":{"model":"%s","usage":{"input_tokens":%s,"output_tokens":100,"cache_creation_input_tokens":0,"cache_read_input_tokens":0}}}\\n' "$model" "\${FAKE_CLAUDE_CONTEXT_TOKENS:-50000}"
+    [ -n "$FAKE_CLAUDE_COMPACT" ] && printf '{"type":"system","subtype":"compact_boundary"}\\n'
+    printf '{"type":"result","session_id":"%s","result":"fake advisory finding","usage":{"input_tokens":10,"output_tokens":20,"cache_creation_input_tokens":30,"cache_read_input_tokens":40},"modelUsage":{"%s":{}}}\\n' "$sid" "$model"
     ;;
 esac
 # The closing sequence hands the same binary a lens call and an audit call, each identified by

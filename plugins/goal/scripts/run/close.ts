@@ -162,11 +162,14 @@ this run: it is advisory only.`;
     // pull requests only lands whole, after both have exited, so an advisory duration is paid
     // once instead of twice.
     const jobs: AgentJob[] = [
-      { name: 'lens', args: ['-p', '--agent', 'goal:goal-run-lens', '--permission-mode', 'auto', '--output-format', 'json', lensBrief] },
+      { name: 'lens', args: ['-p', '--agent', 'goal:goal-run-lens', '--permission-mode', 'auto', '--output-format', 'stream-json', '--verbose', lensBrief] },
     ];
 
     if (reviewBrief !== undefined) {
-      jobs.push({ name: 'reviewer', args: ['-p', '--agent', 'goal:goal-run-reviewer', '--permission-mode', 'auto', '--output-format', 'json', reviewBrief] });
+      jobs.push({
+        name: 'reviewer',
+        args: ['-p', '--agent', 'goal:goal-run-reviewer', '--permission-mode', 'auto', '--output-format', 'stream-json', '--verbose', reviewBrief],
+      });
     }
 
     const advisoryStart = Date.now();
@@ -174,11 +177,11 @@ this run: it is advisory only.`;
     const advisoryDuration = Date.now() - advisoryStart;
 
     for (const result of results) {
-      const { text, usage } = resultEnvelope(result.output);
+      const { text, ...extraction } = resultEnvelope(result.output);
       reporter.record(text);
       reporter.say(`RUN stage=${result.name} duration_ms=${advisoryDuration} exit=${result.status}`);
 
-      const tokens = tokensLine(result.name, usage);
+      const tokens = tokensLine(result.name, extraction);
 
       if (tokens) {
         reporter.say(tokens);
@@ -213,12 +216,16 @@ rather than describing this one twice. Write it in two sections, \`### Functiona
 not stage anything, and do not judge whether the work was correct — the gate already did that.`;
 
   const auditStart = Date.now();
-  const audit = spawnSync('claude', ['-p', '--agent', 'goal:goal-run-auditor', '--permission-mode', 'auto', '--output-format', 'json', auditBrief], { encoding: 'utf8' });
-  const { text: auditText, usage: auditUsage } = resultEnvelope(audit.stdout ?? '');
+  const audit = spawnSync(
+    'claude',
+    ['-p', '--agent', 'goal:goal-run-auditor', '--permission-mode', 'auto', '--output-format', 'stream-json', '--verbose', auditBrief],
+    { encoding: 'utf8' },
+  );
+  const { text: auditText, ...auditExtraction } = resultEnvelope(audit.stdout ?? '');
   reporter.record(auditText);
   reporter.say(`RUN stage=auditor duration_ms=${Date.now() - auditStart} exit=${audit.status ?? 1}`);
 
-  const auditTokens = tokensLine('auditor', auditUsage);
+  const auditTokens = tokensLine('auditor', auditExtraction);
 
   if (auditTokens) {
     reporter.say(auditTokens);
