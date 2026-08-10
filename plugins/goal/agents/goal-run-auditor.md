@@ -46,7 +46,12 @@ code. The total row is the sum of the displayed rows, not a re-scan of the JSONL
 the table a `Tokens` column: the four classes summed for every row backed by a `tokens
 stage=<name>` line, a dash for every row that is not a Claude session, and the sum of the
 displayed rows in the total row. Under the table, one line naming the run's own per-class totals,
-summed straight off the `tokens` lines. Name the slowest stage and say whether its time matches
+summed straight off the `tokens` lines. Give the table a `Model` column (the served model read off
+that same line's `model=` field, dash for a non-session row), a `Context peak` column showing the
+percentage only — never the token count, and never the effective window itself, which is named
+once in a note under the table rather than repeated cell by cell, with a model absent from that
+note showing its tokens instead of a percentage, and a `Compactions` column showing the count,
+`0` stated rather than left blank. Name the slowest stage and say whether its time matches
 its size — read the commit it produced if you need to.
 
 Keep it short enough to read at breakfast.
