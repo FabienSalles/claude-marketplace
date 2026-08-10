@@ -656,8 +656,8 @@ test('close folds the report untransformed and ends the pull request body with t
 
     assert.ok(last.includes(reportText), `the report was transformed before being folded into the pull request body:\n${last}`);
     assert.ok(
-      last.trimEnd().endsWith(`${fixture.plan}\n${dir}`),
-      `the pull request body does not end with the plan path then the run-directory path, one per line:\n${last}`,
+      last.trimEnd().endsWith(`*Plan and logs (local, gitignored):*\n- \`${fixture.plan}\`\n- \`${dir}\``),
+      `the pull request body does not end with the "Plan and logs" line then one bullet per path:\n${last}`,
     );
   } finally {
     process.chdir(originalCwd);
