@@ -7,7 +7,7 @@ import { join, resolve } from 'node:path';
 import { narrate, resultEnvelope, tokensLine } from '../scripts/run/narrate.ts';
 import { createReporter } from '../scripts/run/report.ts';
 import { tmpDir } from './support/tmp.ts';
-import { jsonlOf, repo, run } from './support/goal-run-harness.ts';
+import { jsonlOf, PLAN, repo, run } from './support/goal-run-harness.ts';
 
 const dir = (): string => tmpDir('goal-run-events-');
 
@@ -197,4 +197,29 @@ test('tokensLine formats the four classes for a named stage', () => {
 // tokensLine() reports that by returning nothing to emit, rather than a line of dashes.
 test('tokensLine returns undefined when there is no usage to report', () => {
   assert.equal(tokensLine('gate', undefined), undefined);
+});
+
+// R20 — driven end to end against the fixture's fake `claude`, a landed run's own .run.jsonl
+// carries a token line for every runner-spawned session: the implementer (stream-json), and the
+// lens, reviewer and auditor (--output-format json), never left with an empty token cell.
+test('a driven iteration and close land a token line for the implementer, lens, reviewer and auditor', () => {
+  const fixture = repo({ planText: PLAN.replace('Policy: commit\n', 'Policy: commit+pr\n'), remote: true });
+
+  const { code, output } = run(fixture, [fixture.plan, '1'], {
+    FAKE_GATE_COMMITS: '1',
+    FAKE_CLAUDE_WRITES: join(fixture.dir, 'a.txt'),
+    FAKE_GH_PR_EXISTS: '1',
+  });
+
+  assert.equal(code, 0, output);
+
+  const lines = readFileSync(jsonlOf(fixture), 'utf8').trim().split('\n');
+  const messages = lines.map((line) => (JSON.parse(line) as { event: string; message?: string }).message ?? '').join('\n');
+
+  const tokens = (stage: string) =>
+    new RegExp(`^RUN tokens stage=${stage} input_tokens=\\d+ output_tokens=\\d+ cache_creation_input_tokens=\\d+ cache_read_input_tokens=\\d+$`, 'm');
+
+  for (const stage of ['implementer', 'lens', 'reviewer', 'auditor']) {
+    assert.match(messages, tokens(stage), `no token line for stage=${stage}:\n${messages}`);
+  }
 });

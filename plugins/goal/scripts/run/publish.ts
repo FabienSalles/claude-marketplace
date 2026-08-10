@@ -208,8 +208,8 @@ export const createPublisher = (
   // The auditor's report, folded into the same body-rewrite path as every other landing: no
   // comment, no separate channel, and a rerun on the same pull request replaces the section
   // rather than stacking another one beside it, since the whole body is recomputed every time.
-  // `text` is carried verbatim, and the body ends with the plan path and the run-directory path,
-  // one per line, learned from the caller rather than guessed here.
+  // `text` is carried verbatim, and the body ends with a `*Plan and logs (local, gitignored):*`
+  // line followed by one bullet per path, learned from the caller rather than guessed here.
   const foldReport = (text: string, plan: string, dir: string): void => {
     if (!state.publishes || !state.prOpen) {
       return;
@@ -217,7 +217,8 @@ export const createPublisher = (
 
     const repo = repoOf(remote);
     const branch = git('branch', '--show-current').stdout.trim();
-    const gh = spawnSync('gh', ['pr', 'edit', branch, '--repo', repo, '--body', `${prBody()}\n---\n\n## Run report\n\n${text}\n${plan}\n${dir}\n`], { encoding: 'utf8' });
+    const footer = `*Plan and logs (local, gitignored):*\n- \`${plan}\`\n- \`${dir}\`\n`;
+    const gh = spawnSync('gh', ['pr', 'edit', branch, '--repo', repo, '--body', `${prBody()}\n---\n\n## Run report\n\n${text}\n${footer}`], { encoding: 'utf8' });
 
     if ((gh.status ?? 1) === 0) {
       reporter.say('RUN folded the run report into the pull request body');

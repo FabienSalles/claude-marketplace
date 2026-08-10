@@ -449,16 +449,81 @@ test('the reviewer never runs when the publisher\'s own state says blocked', () 
   }
 });
 
-// one advisory duration — the lens and reviewer run concurrently, so close() takes roughly the
-// slower of the two advisory calls plus the auditor's, never their sum.
-test('the lens and reviewer run concurrently rather than one after the other', () => {
+// stderr noise loses nothing — an envelope on stdout still yields its stage's token line and
+// extracted text intact, the noise recorded separately as diagnostics rather than dropped or
+// mixed into the parsed result.
+test('an envelope beside stderr noise still yields the token line and text, noise nowhere in the result', () => {
   const fixture = repo({ planText: PLAN_PR, remote: true });
   const originalCwd = process.cwd();
   const originalPath = process.env.PATH;
 
   process.chdir(fixture.dir);
   process.env.PATH = `${fixture.bin}:${originalPath ?? ''}`;
+  process.env.FAKE_CLAUDE_STDERR_NOISE = 'npm warn deprecated some-noisy-package@1.0.0';
+
+  try {
+    const messages: string[] = [];
+    const records: string[] = [];
+    const reporter: Reporter = {
+      say: (message) => {
+        messages.push(message);
+      },
+      stop: () => {
+        throw new Error('unexpected stop');
+      },
+      record: (text) => {
+        records.push(text);
+      },
+      setLog: () => {},
+    };
+
+    const code = close(
+      fixture.plan,
+      join(fixture.bin, 'fake-gate'),
+      HASH,
+      'origin',
+      { publish: () => {}, state: { publishes: true, prOpen: true, blocked: false } },
+      ['1'],
+      'run-dir',
+      reporter,
+    );
+
+    assert.equal(code, LANDED);
+    assert.match(
+      messages.join('\n'),
+      /^RUN tokens stage=lens input_tokens=1 output_tokens=2 cache_creation_input_tokens=3 cache_read_input_tokens=4$/m,
+      `the lens's token line never survived the stderr noise:\n${messages.join('\n')}`,
+    );
+    assert.ok(records.includes('fake advisory finding'), `the lens's extracted text never reached record():\n${records.join('\n')}`);
+    assert.ok(
+      !records.some((text) => text.includes('npm warn deprecated')),
+      `stderr noise leaked into the parsed result:\n${records.join('\n')}`,
+    );
+    assert.ok(
+      messages.some((message) => message.includes('npm warn deprecated')),
+      `stderr noise was dropped entirely, never recorded as diagnostics:\n${messages.join('\n')}`,
+    );
+  } finally {
+    process.chdir(originalCwd);
+    process.env.PATH = originalPath;
+    delete process.env.FAKE_CLAUDE_STDERR_NOISE;
+  }
+});
+
+// one advisory duration — the lens and reviewer run concurrently, so their sleeps overlap in
+// time rather than the reviewer only starting once the lens has finished.
+test('the lens and reviewer run concurrently rather than one after the other', () => {
+  const fixture = repo({ planText: PLAN_PR, remote: true });
+  const originalCwd = process.cwd();
+  const originalPath = process.env.PATH;
+  const lensTiming = join(fixture.dir, 'lens.timing');
+  const reviewerTiming = join(fixture.dir, 'reviewer.timing');
+
+  process.chdir(fixture.dir);
+  process.env.PATH = `${fixture.bin}:${originalPath ?? ''}`;
   process.env.FAKE_CLAUDE_SLEEPS = '1';
+  process.env.FAKE_CLAUDE_LENS_TIMING = lensTiming;
+  process.env.FAKE_CLAUDE_REVIEWER_TIMING = reviewerTiming;
 
   try {
     const reporter: Reporter = {
@@ -470,7 +535,6 @@ test('the lens and reviewer run concurrently rather than one after the other', (
       setLog: () => {},
     };
 
-    const start = Date.now();
     const code = close(
       fixture.plan,
       join(fixture.bin, 'fake-gate'),
@@ -481,17 +545,25 @@ test('the lens and reviewer run concurrently rather than one after the other', (
       'run-dir',
       reporter,
     );
-    const elapsedMs = Date.now() - start;
 
     assert.equal(code, LANDED);
+    const interval = (path: string) => {
+      const [start, end] = readFileSync(path, 'utf8').trim().split(' ').map(Number);
+      return { start: start!, end: end! };
+    };
+    const lens = interval(lensTiming);
+    const reviewer = interval(reviewerTiming);
+
     assert.ok(
-      elapsedMs < 3200,
-      `expected the lens and reviewer to overlap, keeping close() well under 3 advisory durations, took ${elapsedMs}ms`,
+      lens.start <= reviewer.end && reviewer.start <= lens.end,
+      `expected the lens [${lens.start}, ${lens.end}] and reviewer [${reviewer.start}, ${reviewer.end}] intervals to overlap`,
     );
   } finally {
     process.chdir(originalCwd);
     process.env.PATH = originalPath;
     delete process.env.FAKE_CLAUDE_SLEEPS;
+    delete process.env.FAKE_CLAUDE_LENS_TIMING;
+    delete process.env.FAKE_CLAUDE_REVIEWER_TIMING;
   }
 });
 
@@ -584,8 +656,8 @@ test('close folds the report untransformed and ends the pull request body with t
 
     assert.ok(last.includes(reportText), `the report was transformed before being folded into the pull request body:\n${last}`);
     assert.ok(
-      last.trimEnd().endsWith(`${fixture.plan}\n${dir}`),
-      `the pull request body does not end with the plan path then the run-directory path, one per line:\n${last}`,
+      last.trimEnd().endsWith(`*Plan and logs (local, gitignored):*\n- \`${fixture.plan}\`\n- \`${dir}\``),
+      `the pull request body does not end with the "Plan and logs" line then one bullet per path:\n${last}`,
     );
   } finally {
     process.chdir(originalCwd);

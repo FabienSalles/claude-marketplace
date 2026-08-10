@@ -42,13 +42,18 @@ type AgentJob = { name: string; args: string[] };
 
 // Runs several `claude` invocations as background shell jobs of one spawnSync, so the block
 // costs the slowest job rather than their sum, while close() itself stays synchronous. Each
-// job's combined stdout/stderr lands whole, once its process has exited, in its own temp file.
-const runConcurrently = (jobs: AgentJob[]): { name: string; output: string; status: number }[] => {
+// job's stdout and stderr land whole, once its process has exited, in their own temp files —
+// separate, so the envelope `resultEnvelope` parses off stdout is never a warning on stderr away
+// from failing to parse at all.
+const runConcurrently = (jobs: AgentJob[]): { name: string; output: string; stderr: string; status: number }[] => {
   const dir = mkdtempSync(join(tmpdir(), 'goal-close-'));
 
   try {
     const starts = jobs
-      .map((job, i) => `claude ${job.args.map(quote).join(' ')} > ${quote(join(dir, String(i)))} 2>&1 &\npid${i}=$!`)
+      .map(
+        (job, i) =>
+          `claude ${job.args.map(quote).join(' ')} > ${quote(join(dir, `${i}.out`))} 2> ${quote(join(dir, `${i}.err`))} &\npid${i}=$!`,
+      )
       .join('\n');
     const waits = jobs.map((_, i) => `wait $pid${i}; printf 'STATUS${i}=%s\\n' "$?"`).join('\n');
     const result = spawnSync(`${starts}\n${waits}`, { shell: true, encoding: 'utf8' });
@@ -56,11 +61,13 @@ const runConcurrently = (jobs: AgentJob[]): { name: string; output: string; stat
 
     return jobs.map((job, i) => {
       const status = new RegExp(`STATUS${i}=(\\d+)`).exec(stdout)?.[1];
-      const outFile = join(dir, String(i));
+      const outFile = join(dir, `${i}.out`);
+      const errFile = join(dir, `${i}.err`);
 
       return {
         name: job.name,
         output: existsSync(outFile) ? readFileSync(outFile, 'utf8') : '',
+        stderr: existsSync(errFile) ? readFileSync(errFile, 'utf8') : '',
         status: status !== undefined ? Number(status) : 1,
       };
     });
@@ -177,6 +184,10 @@ this run: it is advisory only.`;
         reporter.say(tokens);
       }
 
+      if (result.stderr.trim() !== '') {
+        reporter.say(`RUN diagnostics stage=${result.name}: ${result.stderr.trim()}`);
+      }
+
       if (result.name === 'reviewer') {
         if (result.status === 0) {
           reporter.say('RUN the reviewer finished, its answer is in the run log');
@@ -203,7 +214,7 @@ not stage anything, and do not judge whether the work was correct — the gate a
 
   const auditStart = Date.now();
   const audit = spawnSync('claude', ['-p', '--agent', 'goal:goal-run-auditor', '--permission-mode', 'auto', '--output-format', 'json', auditBrief], { encoding: 'utf8' });
-  const { text: auditText, usage: auditUsage } = resultEnvelope(`${audit.stdout}${audit.stderr}`);
+  const { text: auditText, usage: auditUsage } = resultEnvelope(audit.stdout ?? '');
   reporter.record(auditText);
   reporter.say(`RUN stage=auditor duration_ms=${Date.now() - auditStart} exit=${audit.status ?? 1}`);
 
@@ -211,6 +222,10 @@ not stage anything, and do not judge whether the work was correct — the gate a
 
   if (auditTokens) {
     reporter.say(auditTokens);
+  }
+
+  if ((audit.stderr ?? '').trim() !== '') {
+    reporter.say(`RUN diagnostics stage=auditor: ${audit.stderr.trim()}`);
   }
 
   reporter.say('RUN audit recorded');

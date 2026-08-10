@@ -23,20 +23,23 @@ given, in exactly two sections, in this order, and no `#` or `##` heading anywhe
 
 ### Functional
 
+Written as verdict-first bullets, one finding per bullet with a bold lead naming the verdict, not the
+technique used to reach it. No duration figure belongs here — those live in the table below.
 What happened and what recurs, in that order:
 
-1. **What happened.** Which iterations landed, in what order, and the cause in one sentence if
-   the run halted.
+1. **What happened.** One bullet per landed iteration, bold lead naming the outcome, and the
+   cause in one sentence if the run halted.
 2. **What recurs.** Read the other reports under this work-id's own directory, one per earlier
    run, and say which of today's failures already happened. A failure appearing for the third
-   time is a design problem, not an incident, and that sentence is the most valuable one in the
+   time is a design problem, not an incident, and that bullet is the most valuable one in the
    file.
 
 ### Technical
 
-**What it cost.** Read the stage events from the JSONL path you were given, and build the cost
-table with one row per counted stage (`preflight`, `implementer` and `gate` per iteration,
-`push`/`pull-request-update` collapsed into `publication`, `dod`, `lens`, `reviewer`,
+The cost table, then short notes underneath it — modeled on the validated reference, never a
+wall of prose. **What it cost.** Read the stage events from the JSONL path you were given, and
+build the cost table with one row per counted stage (`preflight`, `implementer` and `gate` per
+iteration, `push`/`pull-request-update` collapsed into `publication`, `dod`, `lens`, `reviewer`,
 `auditor` — whichever the log carries). Show durations in minutes once they pass 60 s, and
 print an exit code only on the rows whose stage failed — a row that landed carries no exit
 code. The total row is the sum of the displayed rows, not a re-scan of the JSONL file. Give

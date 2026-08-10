@@ -111,16 +111,36 @@ fi
 # stays untouched for them. Pushes HEAD to origin's current branch, which is what moves the local
 # remote-tracking ref this guard watches.
 [ -n "$FAKE_CLAUDE_PUSHES" ] && git push -q origin "HEAD:$(git rev-parse --abbrev-ref HEAD)" 2>/dev/null
-[ -n "$FAKE_CLAUDE_SLEEPS" ] && sleep "$FAKE_CLAUDE_SLEEPS"
-# Only when the caller passed --output-format stream-json does the fixture answer in stream-json:
-# the bash runner never asks for it and keeps grepping this same fixture's plain prose for a
-# quota window, so emitting JSON unconditionally would break the frozen reference's own tests.
+# Records the sleep's start/end instants (node, not BSD date -%N, for millisecond precision) into
+# a per-invocation file, so a concurrency test can assert the lens and reviewer intervals overlap
+# instead of budgeting a wall-clock ceiling that machine load can blow.
+if [ -n "$FAKE_CLAUDE_SLEEPS" ]; then
+  case "$*" in
+    *goal-run-lens*)     out="$FAKE_CLAUDE_LENS_TIMING" ;;
+    *goal-run-reviewer*) out="$FAKE_CLAUDE_REVIEWER_TIMING" ;;
+    *)                   out= ;;
+  esac
+  start=$(node -e 'console.log(Date.now())')
+  sleep "$FAKE_CLAUDE_SLEEPS"
+  [ -n "$out" ] && printf '%s %s\n' "$start" "$(node -e 'console.log(Date.now())')" > "$out"
+fi
+# Only when the caller passed --output-format stream-json or --output-format json does the
+# fixture answer in JSON: the bash runner never asks for either and keeps grepping this same
+# fixture's plain prose for a quota window, so emitting JSON unconditionally would break the
+# frozen reference's own tests. Both branches carry usage in the same four classes the real CLI
+# answers with, per its own probe.
+# Opt-in noise on stderr, beside whatever the case below still answers on stdout: proves a
+# caller that captures the two streams separately never lets this leak into the parsed envelope.
+[ -n "$FAKE_CLAUDE_STDERR_NOISE" ] && printf '%s\n' "$FAKE_CLAUDE_STDERR_NOISE" >&2
 case "$*" in
   *"stream-json"*)
     sid="\${FAKE_CLAUDE_SESSION_ID:-fake-session-id}"
     [ -n "$FAKE_CLAUDE_TOOL_NAME" ] &&
       printf '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"%s","input":{"file_path":"%s"}}]}}\\n' "$FAKE_CLAUDE_TOOL_NAME" "$FAKE_CLAUDE_TOOL_ARG"
-    printf '{"type":"result","session_id":"%s"}\\n' "$sid"
+    printf '{"type":"result","session_id":"%s","usage":{"input_tokens":10,"output_tokens":20,"cache_creation_input_tokens":30,"cache_read_input_tokens":40}}\\n' "$sid"
+    ;;
+  *"--output-format json"*)
+    printf '{"type":"result","result":"fake advisory finding","usage":{"input_tokens":1,"output_tokens":2,"cache_creation_input_tokens":3,"cache_read_input_tokens":4}}\\n'
     ;;
 esac
 # The closing sequence hands the same binary a lens call and an audit call, each identified by
