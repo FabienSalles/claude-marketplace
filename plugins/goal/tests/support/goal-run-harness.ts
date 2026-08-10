@@ -129,6 +129,9 @@ fi
 # fixture's plain prose for a quota window, so emitting JSON unconditionally would break the
 # frozen reference's own tests. Both branches carry usage in the same four classes the real CLI
 # answers with, per its own probe.
+# Opt-in noise on stderr, beside whatever the case below still answers on stdout: proves a
+# caller that captures the two streams separately never lets this leak into the parsed envelope.
+[ -n "$FAKE_CLAUDE_STDERR_NOISE" ] && printf '%s\n' "$FAKE_CLAUDE_STDERR_NOISE" >&2
 case "$*" in
   *"stream-json"*)
     sid="\${FAKE_CLAUDE_SESSION_ID:-fake-session-id}"

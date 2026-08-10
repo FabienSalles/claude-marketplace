@@ -449,6 +449,67 @@ test('the reviewer never runs when the publisher\'s own state says blocked', () 
   }
 });
 
+// stderr noise loses nothing — an envelope on stdout still yields its stage's token line and
+// extracted text intact, the noise recorded separately as diagnostics rather than dropped or
+// mixed into the parsed result.
+test('an envelope beside stderr noise still yields the token line and text, noise nowhere in the result', () => {
+  const fixture = repo({ planText: PLAN_PR, remote: true });
+  const originalCwd = process.cwd();
+  const originalPath = process.env.PATH;
+
+  process.chdir(fixture.dir);
+  process.env.PATH = `${fixture.bin}:${originalPath ?? ''}`;
+  process.env.FAKE_CLAUDE_STDERR_NOISE = 'npm warn deprecated some-noisy-package@1.0.0';
+
+  try {
+    const messages: string[] = [];
+    const records: string[] = [];
+    const reporter: Reporter = {
+      say: (message) => {
+        messages.push(message);
+      },
+      stop: () => {
+        throw new Error('unexpected stop');
+      },
+      record: (text) => {
+        records.push(text);
+      },
+      setLog: () => {},
+    };
+
+    const code = close(
+      fixture.plan,
+      join(fixture.bin, 'fake-gate'),
+      HASH,
+      'origin',
+      { publish: () => {}, state: { publishes: true, prOpen: true, blocked: false } },
+      ['1'],
+      'run-dir',
+      reporter,
+    );
+
+    assert.equal(code, LANDED);
+    assert.match(
+      messages.join('\n'),
+      /^RUN tokens stage=lens input_tokens=1 output_tokens=2 cache_creation_input_tokens=3 cache_read_input_tokens=4$/m,
+      `the lens's token line never survived the stderr noise:\n${messages.join('\n')}`,
+    );
+    assert.ok(records.includes('fake advisory finding'), `the lens's extracted text never reached record():\n${records.join('\n')}`);
+    assert.ok(
+      !records.some((text) => text.includes('npm warn deprecated')),
+      `stderr noise leaked into the parsed result:\n${records.join('\n')}`,
+    );
+    assert.ok(
+      messages.some((message) => message.includes('npm warn deprecated')),
+      `stderr noise was dropped entirely, never recorded as diagnostics:\n${messages.join('\n')}`,
+    );
+  } finally {
+    process.chdir(originalCwd);
+    process.env.PATH = originalPath;
+    delete process.env.FAKE_CLAUDE_STDERR_NOISE;
+  }
+});
+
 // one advisory duration — the lens and reviewer run concurrently, so their sleeps overlap in
 // time rather than the reviewer only starting once the lens has finished.
 test('the lens and reviewer run concurrently rather than one after the other', () => {
