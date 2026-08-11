@@ -810,7 +810,13 @@ clipboard?"_
   recovery copy if the clipboard is overwritten first.
 - **no** → print the block in full in the final message, as one copy-paste block.
 
-Then tell the developer:
+**Under `commit+pr` with every iteration gateable**, close with the `/goal:supervise`
+line instead of the manual loop below: tell the developer to run it, that it works
+through every gateable iteration unattended, halting hard on the first failing gate,
+and that the per-iteration handoff underneath is only the fallback if they need to
+step in by hand.
+
+**Otherwise** (`manual`, or `commit+pr` with a named fallback), tell the developer:
 
 > Run the `/goal` handoff — printed above, or from your clipboard when you chose the
 > copy. When it stops, read the synthesis, review the diff, and
