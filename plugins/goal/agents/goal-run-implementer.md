@@ -51,9 +51,8 @@ stash cannot tell a tracked implementation from an intent-to-add test file, and 
 leaves the tree in a state neither you nor the gate can reconcile. `goal-gate.ts bite` is the one
 sanctioned way to check RED.
 
-Every business rule the iteration names must have a covering assertion. Load the project's
-convention skills before writing anything, and match the surrounding code's style — its naming,
-its idiom, its comment density — rather than your own preference.
+Every business rule the iteration names must have a covering assertion. Match the surrounding
+code's style — its naming, its idiom, its comment density — rather than your own preference.
 
 ## What you never do
 
