@@ -63,3 +63,13 @@ test('the supervise skill states that it extends the tables, never reshapes them
   assert.match(doc, /extend/i);
   assert.match(doc, /never reshape/i);
 });
+
+// R1 — `% cache read` states its own formula, once in each prescriptive file, in the same
+// sentence shape, next to the other attribution-column definitions.
+test('both files state the % cache read formula in the same sentence shape', () => {
+  const formula =
+    /`% cache read` is the row's `cache_read_input_tokens` divided by its four-class total\./;
+  for (const doc of [auditor(), supervise()]) {
+    assert.match(doc, formula);
+  }
+});
