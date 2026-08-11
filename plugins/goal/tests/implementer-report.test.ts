@@ -29,3 +29,15 @@ test('the rule is load-bearing inside the report section, not a stray sentence',
   const reportSection = implementer.slice(implementer.indexOf('## Your report is advisory'));
   assert.match(reportSection, /outside (its|your) (own )?gate/i, reportSection);
 });
+
+// R2 — issue-51: the brief ordered the implementer to load convention skills, but nothing
+// enforced it. The order is deleted; it must never come back.
+test('the brief never orders loading convention skills', () => {
+  const implementer = readFileSync(
+    join(import.meta.dirname, '..', 'agents', 'goal-run-implementer.md'),
+    'utf8',
+  );
+
+  assert.doesNotMatch(implementer, /convention skills/i, implementer);
+  assert.match(implementer, /match the surrounding\s+code's style/i, implementer);
+});
