@@ -74,6 +74,8 @@ the table (`Effective window: <model> <n> tokens`), together with the run's own 
 `0` stated rather than left blank, rather than repeated cell by cell — a model absent from that
 note shows its tokens instead of a percentage. `Cost (list)` is priced at the model's list rate,
 computed by you, the writer, from the four token classes — never read off the transcript. The
+rates themselves never appear under the table — the column already carries them applied, and
+the window-and-compactions line is the attribution table's only note. The
 `Runner subtotal` row sums the `implementer` rows above it — what driving the plan itself cost —
 and is not summed again into `Total`, which sums every other displayed row.
 

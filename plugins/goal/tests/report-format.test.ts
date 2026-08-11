@@ -36,6 +36,15 @@ test("the auditor's attribution table carries its modifiers", () => {
   assert.match(doc, /0.{0,20}stated rather than left blank/);
 });
 
+// R1 — the validated format carries exactly one note line under the attribution table (window +
+// compactions). The per-model rate list was reviewed out; both prescriptive files forbid it so
+// it never comes back.
+test('neither file lets the per-model rates reappear under the table', () => {
+  for (const doc of [auditor(), supervise()]) {
+    assert.match(doc, /rates themselves never appear under the table/);
+  }
+});
+
 // R1 — the supervise fold instructions carry the same two shapes as the auditor, so the
 // supervisor's own rows (the runner subtotal, the supervising session) extend those tables
 // instead of building a differently-shaped one of its own.

@@ -185,7 +185,7 @@ highlights stay in this session's own final message instead.
 
 The same fold completes the PR's attribution table: the auditor wrote it before its own tokens
 existed, so append the `Auditor` row (off its `RUN tokens` line) and the `Supervising session`
-row, and rewrite the `Total` row and the per-class line so they cover every row. A PR whose
+row, and rewrite the `Total` row so it covers every row. A PR whose
 total leaves out two of the sessions that produced it is not a total.
 
 ## Duration table
@@ -239,11 +239,10 @@ note under the table (`Effective window: <model> <n> tokens`) together with the 
 compaction count, `0` stated rather than left blank, rather than repeated cell by cell — a model
 absent from that note shows its tokens instead of a percentage. `Cost (list)` is priced at the
 model's list rate, computed by you, the writer, from the four token classes — never read off the
-transcript. The `Runner subtotal` row sums the `implementer` rows above it — what driving the
+transcript. The rates themselves never appear under the table — the column already carries them
+applied, and the window-and-compactions line is the attribution table's only note. The
+`Runner subtotal` row sums the `implementer` rows above it — what driving the
 plan itself cost — and is not summed again into `Total`, which sums every other displayed row.
-Under the table, one line naming the run's own per-class totals, summed straight off the `RUN
-tokens` lines: `Input: <n> · Output: <n> · Cache creation: <n> · Cache read: <n>` — enough to
-price the run without opening `.run.jsonl`.
 
 **The supervising session counts itself.** Everything above measures what `goal-run.ts` spawned;
 it never measures the session reading this skill and watching it. After the run ends, locate
@@ -255,9 +254,9 @@ rule, `max` is immune to a repeated value. Sum the per-class usage that survives
 across the transcript, and add the `Supervising session` row to the attribution table with those
 four numbers, and — read the same way off that transcript's own events — its served model, its
 context peak (percentage against the note's effective window, or tokens if the model is
-unknown), and its compaction count folded into the note alongside the rest. `Total`, and the
-per-class totals line beneath the attribution table, include that row like any other — a token
-total that leaves out the session that spent them is not a total.
+unknown), and its compaction count folded into the note alongside the rest. `Total` includes
+that row like any other — a token total that leaves out the session that spent them is not a
+total.
 
 ## Closing paths
 
