@@ -36,23 +36,48 @@ What happened and what recurs, in that order:
 
 ### Technical
 
-The cost table, then short notes underneath it — modeled on the validated reference, never a
-wall of prose. **What it cost.** Read the stage events from the JSONL path you were given, and
-build the cost table with one row per counted stage (`preflight`, `implementer` and `gate` per
-iteration, `push`/`pull-request-update` collapsed into `publication`, `dod`, `lens`, `reviewer`,
-`auditor` — whichever the log carries). Show durations in minutes once they pass 60 s, and
-print an exit code only on the rows whose stage failed — a row that landed carries no exit
-code. The total row is the sum of the displayed rows, not a re-scan of the JSONL file. Give
-the table a `Tokens` column: the four classes summed for every row backed by a `tokens
-stage=<name>` line, a dash for every row that is not a Claude session, and the sum of the
-displayed rows in the total row. Under the table, one line naming the run's own per-class totals,
-summed straight off the `tokens` lines. Give the table a `Model` column (the served model read off
-that same line's `model=` field, dash for a non-session row), a `Context peak` column showing the
-percentage only — never the token count, and never the effective window itself, which is named
-once in a note under the table rather than repeated cell by cell, with a model absent from that
-note showing its tokens instead of a percentage, and a `Compactions` column showing the count,
-`0` stated rather than left blank. Name the slowest stage and say whether its time matches
-its size — read the commit it produced if you need to.
+Two tables, then short notes underneath — modeled on the validated reference, never a wall of
+prose. Read the stage events from the JSONL path you were given.
+
+**Durations**, one row per step of the run (`Preflight`, one row per iteration in order, `Dod`),
+each step's own duration under the stage that ran it — a step that did not run a given stage is
+a dash, never a blank cell:
+
+| Step | Implementer | Gate | Push |
+|---|---|---|---|
+| Preflight | — | — | — |
+| 1 | `<duration>` | `<duration>` | — |
+| … | … | … | … |
+| Dod | — | — | — |
+| **Total** | `<sum>` | `<sum>` | `<sum>` |
+
+`Push` collapses `push` and `pull-request-update` into the one publication figure, on the row of
+the iteration that triggered it. Show every duration in minutes once it passes 60 s, and print an
+exit code only on the rows whose stage failed — a row that landed carries no exit code. `Total`
+is the sum of the displayed rows, not a re-scan of the JSONL file.
+
+**Attribution**, one row per Claude-session stage (`implementer` per iteration, `lens`,
+`reviewer`, `auditor` — whichever the log carries), read off that stage's own `tokens
+stage=<name>` line:
+
+| Stage | Model | Context peak | Total tokens | % cache read | Cost (list) |
+|---|---|---|---|---|---|
+| … | `<model>` | `<pct>` | `<n>` | `<pct>` | `<$>` |
+| **Runner subtotal** | — | — | `<sum>` | — | `<sum>` |
+| … | … | … | … | … | … |
+| **Total** | — | — | `<sum>` | — | `<sum>` |
+
+`Context peak` is the percentage only, never the token count and never the effective window
+itself, which is named once in a note under the table (`Effective window: <model> <n> tokens`),
+together with the run's own compaction count, `0` stated rather than left blank, rather than
+repeated cell by cell — a model absent from that note shows its tokens instead of a percentage.
+`Cost (list)` is priced at the model's list rate, computed by you, the writer, from the four
+token classes — never read off the transcript. The `Runner subtotal` row sums the `implementer`
+rows above it — what driving the plan itself cost — and is not summed again into `Total`, which
+sums every other displayed row.
+
+Name the slowest stage and say whether its time matches its size — read the commit it produced
+if you need to.
 
 Keep it short enough to read at breakfast.
 

@@ -185,53 +185,57 @@ highlights stay in this session's own final message instead.
 ## Duration table
 
 Every final report — Phase 3, 4, or the end of Phase 5/6 — that attempted at least one
-iteration prints a duration table, built from the run's own `.run.jsonl` (one JSON line per
-`RUN stage=<name> duration_ms=<n> exit=<n>` event `goal-run.ts` already emits). Skip it only on
-exit `2`: Phase 4 already covers that case, and there is no per-iteration row to print when
-nothing was attempted.
+iteration prints the same two tables the auditor writes into `report.md`, built from the run's
+own `.run.jsonl` (one JSON line per `RUN stage=<name> duration_ms=<n> exit=<n>` event
+`goal-run.ts` already emits): extend those tables with this session's own rows, never reshape
+them into a differently-shaped one of your own. Skip both only on exit `2`: Phase 4 already
+covers that case, and there is no per-iteration row to print when nothing was attempted.
 
-Read every `stage=` line and give each counted stage its own row: `preflight` and the
-base-must-already-be-green sweep stand alone at the top (they run once, before any iteration);
-`implementer` and `gate` are one row per iteration, in order; `push` and
-`pull-request-update` collapse into one `publication` row; `dod`, `lens`, `reviewer`, and
-`auditor` each get their own row when the log carries them. Show every duration in minutes once
-it passes 60 s (`1m 12s`, not `72000`); below that, milliseconds are fine. The total row is the
-sum of the displayed rows, not a re-scan of every `duration_ms` in the file — a stage this table
-does not show never enters the total. Print an exit code only on the rows whose stage failed; a
-row that landed carries no exit code at all.
+**Durations**, one row per step: `preflight` and the base-must-already-be-green sweep stand alone
+at the top (they run once, before any iteration); one row per iteration, in order; `dod` at the
+end. Each step's own duration goes under the stage that ran it, `push` collapsing `push` and
+`pull-request-update` into one publication figure on the row of the iteration that triggered it:
 
-Every stage that is a Claude session — `implementer`, `lens`, `reviewer`, `auditor` — also
-carries a `RUN tokens stage=<name> input_tokens=<n> output_tokens=<n>
-cache_creation_input_tokens=<n> cache_read_input_tokens=<n>` line right after its `stage=` line.
-Give the table a `Tokens` column: that stage's total (the four classes summed), a dash for every
-row that is not a Claude session (`gate`, `publication`, `dod`), and the sum of the displayed
-rows in the total row, same rule as `Duration`. Under the table, one line naming the run's own
-per-class totals, summed straight off the `RUN tokens` lines: `Input: <n> · Output: <n> · Cache
-creation: <n> · Cache read: <n>` — enough to price the run without opening `.run.jsonl`.
+| Step | Implementer | Gate | Push |
+|---|---|---|---|
+| Preflight/sweep | — | — | — |
+| 1 | `<duration>` | `<duration>` | — |
+| … | … | … | … |
+| Dod | — | — | — |
+| **Total** | `<sum>` | `<sum>` | `<sum>` |
 
-| Stage | Duration | Tokens | Model | Context peak | Compactions | Exit |
-|---|---|---|---|---|---|---|
-| Preflight/sweep | `<duration>` | — | — | — | — | |
-| Iteration 1 — Implementer | `<duration>` | `<tokens>` | `<model>` | `<pct>` | `<n>` | |
-| Iteration 1 — Gate | `<duration>` | — | — | — | — | |
-| … | … | … | … | … | … | |
-| Publication | `<duration>` | — | — | — | — | |
-| Dod | `<duration>` | — | — | — | — | |
-| Lens | `<duration>` | `<tokens>` | `<model>` | `<pct>` | `<n>` | |
-| Reviewer | `<duration>` | `<tokens>` | `<model>` | `<pct>` | `<n>` | |
-| Auditor | `<duration>` | `<tokens>` | `<model>` | `<pct>` | `<n>` | |
-| **Total** | **`<sum of the rows above>`** | **`<sum of the rows above>`** | — | — | — | |
+Show every duration in minutes once it passes 60 s (`1m 12s`, not `72000`); below that,
+milliseconds are fine. Print an exit code only on the rows whose stage failed; a row that landed
+carries no exit code at all. `Total` sums the displayed rows, not a re-scan of every
+`duration_ms` in the file — a step this table does not show never enters the total.
 
-Input: `<n>` · Output: `<n>` · Cache creation: `<n>` · Cache read: `<n>`
+**Attribution**, one row per Claude-session stage — `implementer` per iteration, `lens`,
+`reviewer`, `auditor` — read off that stage's own `RUN tokens stage=<name> input_tokens=<n>
+output_tokens=<n> cache_creation_input_tokens=<n> cache_read_input_tokens=<n>` line, right after
+its `stage=` line:
 
-Every row backed by a `RUN tokens` line also carries the served model, the context peak, and the
-compaction count, read off that same line's `model=`, `context_pct=` (or `context_tokens=` when
-the model is unknown), and `compactions=` fields. Give the table a `Model` column (the served
-model, dash for a non-session row), a `Context peak` column showing the percentage only — never
-the token count, and never the effective window itself, which is named once in a note under the
-table (`Effective window: <model> <n> tokens`) rather than repeated cell by cell — with a model
-absent from that note showing its tokens instead of a percentage, and a `Compactions` column
-showing the count, `0` stated rather than left blank.
+| Stage | Model | Context peak | Total tokens | % cache read | Cost (list) |
+|---|---|---|---|---|---|
+| Iteration 1 — Implementer | `<model>` | `<pct>` | `<n>` | `<pct>` | `<$>` |
+| … | … | … | … | … | … |
+| **Runner subtotal** | — | — | `<sum>` | — | `<sum>` |
+| Lens | `<model>` | `<pct>` | `<n>` | `<pct>` | `<$>` |
+| Reviewer | `<model>` | `<pct>` | `<n>` | `<pct>` | `<$>` |
+| Auditor | `<model>` | `<pct>` | `<n>` | `<pct>` | `<$>` |
+| Supervising session | `<model>` | `<pct>` | `<n>` | `<pct>` | `<$>` |
+| **Total** | — | — | `<sum>` | — | `<sum>` |
+
+`Total tokens` is the four token classes summed for the row. `Context peak` is the percentage
+only, never the token count, and never the effective window itself, which is named once in a
+note under the table (`Effective window: <model> <n> tokens`) together with the run's own
+compaction count, `0` stated rather than left blank, rather than repeated cell by cell — a model
+absent from that note shows its tokens instead of a percentage. `Cost (list)` is priced at the
+model's list rate, computed by you, the writer, from the four token classes — never read off the
+transcript. The `Runner subtotal` row sums the `implementer` rows above it — what driving the
+plan itself cost — and is not summed again into `Total`, which sums every other displayed row.
+Under the table, one line naming the run's own per-class totals, summed straight off the `RUN
+tokens` lines: `Input: <n> · Output: <n> · Cache creation: <n> · Cache read: <n>` — enough to
+price the run without opening `.run.jsonl`.
 
 **The supervising session counts itself.** Everything above measures what `goal-run.ts` spawned;
 it never measures the session reading this skill and watching it. After the run ends, locate
@@ -240,11 +244,12 @@ with every `/` turned into a `-`). A transcript repeats one message's `usage` on
 content-block entry it produced, so before summing, deduplicate by message id — keep one usage
 per id — to land on the envelope-exact figure rather than an inflated one; the peak needs no such
 rule, `max` is immune to a repeated value. Sum the per-class usage that survives deduplication
-across the transcript, and add a `Supervising session` row to the table with those four numbers,
-and — read the same way off that transcript's own events — its served model, its context peak
-(percentage against the note's effective window, or tokens if the model is unknown), and its
-compaction count. The total row, and the per-class totals line beneath it, include that row like
-any other — a token total that leaves out the session that spent them is not a total.
+across the transcript, and add the `Supervising session` row to the attribution table with those
+four numbers, and — read the same way off that transcript's own events — its served model, its
+context peak (percentage against the note's effective window, or tokens if the model is
+unknown), and its compaction count folded into the note alongside the rest. `Total`, and the
+per-class totals line beneath the attribution table, include that row like any other — a token
+total that leaves out the session that spent them is not a total.
 
 ## Closing paths
 
