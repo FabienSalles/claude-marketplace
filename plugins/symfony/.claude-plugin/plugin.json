@@ -1,6 +1,6 @@
 {
   "name": "symfony",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Personal Symfony conventions — FormType design (data_class as single source of truth, DataTransformer placement), Twig component patterns (trans_default_domain isolation), Post/Redirect/Get for HTML controllers, and testing anything that boots a Symfony kernel (WebTestCase built-in assertions, TypeTestCase, container doubles). Use alongside php (language) and phpunit (framework-agnostic testing). Distinct from atournayre/symfony — these are personal overlays.",
   "author": { "name": "FabienSalles" },
   "license": "MIT",

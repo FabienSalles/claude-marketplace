@@ -1,6 +1,6 @@
 {
   "name": "marketing-analytics",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Marketing analytics — tracking setup (GA4/GTM/UTM/tracking plan), Google Analytics Data API reporting, Google Search Console reporting.",
   "author": { "name": "FabienSalles" },
   "license": "MIT",

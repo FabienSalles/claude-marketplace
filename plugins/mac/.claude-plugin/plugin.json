@@ -1,6 +1,6 @@
 {
   "name": "mac",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "macOS / BSD platform discipline — shell/bash 3.2 vs Homebrew bash 5+, BSD vs GNU command portability, common macOS pitfalls",
   "author": { "name": "FabienSalles" },
   "license": "MIT",

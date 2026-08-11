@@ -1,6 +1,6 @@
 {
   "name": "tooling",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Docker, Drizzle ORM, pnpm workspaces, Zod schemas, Claude Code plugin conventions, npx skills conventions",
   "author": {
     "name": "FabienSalles"

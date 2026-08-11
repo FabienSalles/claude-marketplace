@@ -1,6 +1,6 @@
 {
   "name": "audit",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Audit hub — personal overrides for upstream audit skills + stack-specific code patterns (security for TS/NestJS, PHP planned). Loads in parallel with netresearch/security-audit.",
   "author": { "name": "FabienSalles" },
   "license": "MIT",

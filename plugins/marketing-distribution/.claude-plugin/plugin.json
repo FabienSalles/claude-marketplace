@@ -1,6 +1,6 @@
 {
   "name": "marketing-distribution",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Distribution channels — multi-platform social posts (Reddit/Twitter/X/LinkedIn/IG/FB/TikTok), Twitter threads and long Reddit posts, email subject lines, newsletter growth.",
   "author": { "name": "FabienSalles" },
   "license": "MIT",

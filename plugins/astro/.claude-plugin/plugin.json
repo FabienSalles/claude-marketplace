@@ -1,6 +1,6 @@
 {
   "name": "astro",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Astro 5.x — components, routing, collections, i18n, SEO, Tailwind, React islands, transitions",
   "author": {
     "name": "FabienSalles"
