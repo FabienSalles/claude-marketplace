@@ -782,9 +782,9 @@ Read `Policy:` from the spec header and check every iteration for a `gate` block
 line what it will do: how many iterations it covers, and that it halts hard on the first
 failing gate.
 
-Under `commit+pr` with every iteration gateable, do not print the full per-iteration
-`/goal` block below the `/goal:supervise` line — the block below applies to `manual` and
-to the named-fallback case only. Emit the canonical `/goal` handoff from
+Under `commit+pr` with every iteration gateable, the full per-iteration `/goal` block is
+still built, but it is emitted below the `/goal:supervise` line as the fallback the
+closing below describes — not as the primary instruction. Emit the canonical `/goal` handoff from
 `templates/goal-handoff.template`, filled
 per that file's **"How to fill it"** section: `<plan path>` =
 `.claude/plans/<work-id>-spec.md`, the spec's real test/lint commands, `<policy>` =
