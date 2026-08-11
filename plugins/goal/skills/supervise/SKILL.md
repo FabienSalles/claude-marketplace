@@ -236,12 +236,15 @@ showing the count, `0` stated rather than left blank.
 **The supervising session counts itself.** Everything above measures what `goal-run.ts` spawned;
 it never measures the session reading this skill and watching it. After the run ends, locate
 this session's own transcript under `~/.claude/projects/<encoded-cwd>/` (the working directory
-with every `/` turned into a `-`), sum its per-class usage across every entry in that transcript,
-and add a `Supervising session` row to the table with those four numbers, and — read the same way
-off that transcript's own events — its served model, its context peak (percentage against the
-note's effective window, or tokens if the model is unknown), and its compaction count. The total
-row, and the per-class totals line beneath it, include that row like any other — a token total
-that leaves out the session that spent them is not a total.
+with every `/` turned into a `-`). A transcript repeats one message's `usage` on every
+content-block entry it produced, so before summing, deduplicate by message id — keep one usage
+per id — to land on the envelope-exact figure rather than an inflated one; the peak needs no such
+rule, `max` is immune to a repeated value. Sum the per-class usage that survives deduplication
+across the transcript, and add a `Supervising session` row to the table with those four numbers,
+and — read the same way off that transcript's own events — its served model, its context peak
+(percentage against the note's effective window, or tokens if the model is unknown), and its
+compaction count. The total row, and the per-class totals line beneath it, include that row like
+any other — a token total that leaves out the session that spent them is not a total.
 
 ## Closing paths
 
