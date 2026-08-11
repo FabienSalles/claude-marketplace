@@ -280,6 +280,16 @@
       "category": "marketing",
       "license": "MIT",
       "keywords": ["marketing", "analytics", "ga4", "gtm", "search-console", "tracking"]
+    },
+    {
+      "name": "release",
+      "source": "./plugins/release",
+      "description": "Automatic semver release discipline for this marketplace — every PR that touches a plugin's shipped content bumps its version (major.minor.patch) in plugin.json and marketplace.json, classified from the conventional commits since the plugin's last bump.",
+      "version": "1.0.0",
+      "author": { "name": "FabienSalles" },
+      "category": "development",
+      "license": "MIT",
+      "keywords": ["release", "semver", "version-bump", "marketplace", "plugins"]
     }
   ]
 }

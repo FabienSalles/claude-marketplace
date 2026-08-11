@@ -1,0 +1,9 @@
+{
+  "name": "release",
+  "version": "1.0.0",
+  "description": "Automatic semver release discipline for this marketplace — every PR that touches a plugin's shipped content bumps its version (major.minor.patch) in plugin.json and marketplace.json, classified from the conventional commits since the plugin's last bump.",
+  "author": { "name": "FabienSalles" },
+  "license": "MIT",
+  "keywords": ["release", "semver", "version-bump", "marketplace", "plugins"],
+  "skills": "./skills/"
+}
