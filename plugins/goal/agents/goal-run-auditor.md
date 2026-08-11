@@ -72,7 +72,7 @@ durations appear, since they have no iteration row above. `Context peak` is the 
 never the token count and never the effective window itself, which is named once in a note under
 the table (`Effective window: <model> <n> tokens`), together with the run's own compaction count,
 `0` stated rather than left blank, rather than repeated cell by cell — a model absent from that
-note shows its tokens instead of a percentage. `Cost (list)` is priced at the model's list rate,
+note shows its tokens instead of a percentage. `% cache read` is the row's `cache_read_input_tokens` divided by its four-class total. `Cost (list)` is priced at the model's list rate,
 computed by you, the writer, from the four token classes — never read off the transcript. The
 rates themselves never appear under the table — the column already carries them applied, and
 the window-and-compactions line is the attribution table's only note. The

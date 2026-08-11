@@ -45,6 +45,15 @@ test('neither file lets the per-model rates reappear under the table', () => {
   }
 });
 
+// The supervising session's row measures this run's supervision window, not the session's
+// lifetime — a session that supervised an earlier run would otherwise report hours for
+// minutes (observed on report-prose-coherence: 3h41 reported for a 13-minute supervision).
+test("the supervising row is scoped to the run's window, never the whole transcript", () => {
+  const doc = supervise();
+  assert.match(doc, /never the whole transcript/);
+  assert.match(doc, /timestamped between this run's `goal-run\.ts` launch and the fold/);
+});
+
 // R1 — the supervise fold instructions carry the same two shapes as the auditor, so the
 // supervisor's own rows (the runner subtotal, the supervising session) extend those tables
 // instead of building a differently-shaped one of its own.
@@ -62,4 +71,14 @@ test('the supervise skill states that it extends the tables, never reshapes them
   const doc = supervise();
   assert.match(doc, /extend/i);
   assert.match(doc, /never reshape/i);
+});
+
+// R1 — `% cache read` states its own formula, once in each prescriptive file, in the same
+// sentence shape, next to the other attribution-column definitions.
+test('both files state the % cache read formula in the same sentence shape', () => {
+  const formula =
+    /`% cache read` is the row's `cache_read_input_tokens` divided by its four-class total\./;
+  for (const doc of [auditor(), supervise()]) {
+    assert.match(doc, formula);
+  }
 });

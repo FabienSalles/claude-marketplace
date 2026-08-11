@@ -232,12 +232,13 @@ its `stage=` line:
 | **Total** | `<sum>` | — | — | `<sum>` | — | `<sum>` |
 
 `Duration` is the stage's own `duration_ms` — this table is the only place the lens, reviewer
-and auditor durations appear; the supervising session's is its transcript's first-to-last
-timestamp span. `Total tokens` is the four token classes summed for the row. `Context peak` is the percentage
+and auditor durations appear; the supervising session's is the span from this run's
+`goal-run.ts` launch to the fold, never the whole transcript — a session that supervised an
+earlier run or did other work would otherwise report hours for minutes. `Total tokens` is the four token classes summed for the row. `Context peak` is the percentage
 only, never the token count, and never the effective window itself, which is named once in a
 note under the table (`Effective window: <model> <n> tokens`) together with the run's own
 compaction count, `0` stated rather than left blank, rather than repeated cell by cell — a model
-absent from that note shows its tokens instead of a percentage. `Cost (list)` is priced at the
+absent from that note shows its tokens instead of a percentage. `% cache read` is the row's `cache_read_input_tokens` divided by its four-class total. `Cost (list)` is priced at the
 model's list rate, computed by you, the writer, from the four token classes — never read off the
 transcript. The rates themselves never appear under the table — the column already carries them
 applied, and the window-and-compactions line is the attribution table's only note. The
@@ -251,7 +252,9 @@ with every `/` turned into a `-`). A transcript repeats one message's `usage` on
 content-block entry it produced, so before summing, deduplicate by message id — keep one usage
 per id — to land on the envelope-exact figure rather than an inflated one; the peak needs no such
 rule, `max` is immune to a repeated value. Sum the per-class usage that survives deduplication
-across the transcript, and add the `Supervising session` row to the attribution table with those
+across the transcript entries timestamped between this run's `goal-run.ts` launch and the fold
+— the same window as the row's duration, and for the same reason: the transcript may carry
+earlier runs and unrelated work — and add the `Supervising session` row to the attribution table with those
 four numbers, and — read the same way off that transcript's own events — its served model, its
 context peak (percentage against the note's effective window, or tokens if the model is
 unknown), and its compaction count folded into the note alongside the rest. `Total` includes

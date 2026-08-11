@@ -35,3 +35,19 @@ test('the manual closing (clipboard offer + per-iteration loop) stays as the fal
   assert.match(phase5, /Then run \*\*`\/goal:next`\*\*/, phase5);
   assert.match(phase5, /Repeat until the spec has no unchecked iterations left/, phase5);
 });
+
+// rule: no "do not print the per-iteration block" order survives in Phase 5
+test('Phase 5 no longer orders the per-iteration /goal block withheld, and instead agrees with the closing that it is emitted below the /goal:supervise line as the fallback', () => {
+  const plan = readFileSync(
+    join(import.meta.dirname, '..', 'skills', 'plan', 'SKILL.md'),
+    'utf8',
+  );
+
+  const phase5 = plan.slice(plan.indexOf('## Phase 5 — Hand off to Session 2'));
+  assert.doesNotMatch(phase5, /do not print the full per-iteration/);
+  assert.match(
+    phase5,
+    /emitted below the `\/goal:supervise` line as the fallback/,
+    phase5,
+  );
+});
