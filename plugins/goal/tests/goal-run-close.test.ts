@@ -606,18 +606,18 @@ test('a Definition of Done refusal still leaves the draft pull request open from
   assert.match(calls, /pr\ncreate/, `expected a draft pull request opened once the first iteration landed:\n${calls}`);
 });
 
-// One report format everywhere — the auditor's brief names the same `### Functional` /
-// `### Technical` skeleton the agent's own prose is written against, so the two cannot diverge
+// One report format everywhere — the auditor's brief names the same `### Outcome` /
+// `### Cost` skeleton the agent's own prose is written against, so the two cannot diverge
 // silently.
-test('the auditor is briefed with the ### Functional / ### Technical skeleton', () => {
+test('the auditor is briefed with the ### Outcome / ### Cost skeleton', () => {
   const fixture = repo();
 
   const { code, output } = land(fixture);
 
   assert.equal(code, 0, output);
   const args = readFileSync(fixture.claudeLog, 'utf8');
-  assert.match(args, /### Functional/, `the audit brief never names the ### Functional section:\n${args}`);
-  assert.match(args, /### Technical/, `the audit brief never names the ### Technical section:\n${args}`);
+  assert.match(args, /### Outcome/, `the audit brief never names the ### Outcome section:\n${args}`);
+  assert.match(args, /### Cost/, `the audit brief never names the ### Cost section:\n${args}`);
 });
 
 // One report format everywhere — close() folds report.md into the pull request body without
@@ -626,7 +626,7 @@ test('the auditor is briefed with the ### Functional / ### Technical skeleton', 
 test('close folds the report untransformed and ends the pull request body with the plan and run-directory paths', () => {
   const fixture = repo({ planText: PLAN_PR, remote: true });
   const dir = tmpDir('goal-run-report-footer-');
-  const reportText = '# Report\n\n### Functional\n\nNothing recurs.\n\n### Technical\n\nCosts: 1 iteration.\n';
+  const reportText = '# Report\n\n### Outcome\n\nNothing recurs.\n\n### Cost\n\nCosts: 1 iteration.\n';
   writeFileSync(join(dir, 'report.md'), reportText);
 
   const originalCwd = process.cwd();

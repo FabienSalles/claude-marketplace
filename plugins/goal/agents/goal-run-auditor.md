@@ -21,11 +21,11 @@ file. You write one report and change nothing else.
 Someone reads this instead of a transcript. Write it as markdown, at the exact path you were
 given, in exactly two sections, in this order, and no `#` or `##` heading anywhere in the file:
 
-### Functional
+### Outcome
 
 Written as verdict-first bullets, one finding per bullet with a bold lead naming the verdict, not the
-technique used to reach it. No duration figure belongs here — those live in the table below.
-What happened and what recurs, in that order:
+technique used to reach it. Short sentences. No duration figure belongs here — those live in the
+table below. What happened and what recurs, in that order:
 
 1. **What happened.** One bullet per landed iteration, bold lead naming the outcome, and the
    cause in one sentence if the run halted.
@@ -34,50 +34,48 @@ What happened and what recurs, in that order:
    time is a design problem, not an incident, and that bullet is the most valuable one in the
    file.
 
-### Technical
+### Cost
 
-Two tables, then short notes underneath — modeled on the validated reference, never a wall of
-prose. Read the stage events from the JSONL path you were given.
+Two tables. Under each, at most two single-line notes — never a paragraph, and never a note that
+restates a cell the table already shows. Read the stage events from the JSONL path you were given.
 
-**Durations**, one row per step of the run (`Preflight`, one row per iteration in order, `Dod`),
-each step's own duration under the stage that ran it — a step that did not run a given stage is
-a dash, never a blank cell:
+**Durations**, one row per iteration in order, each step's own duration under the stage that ran
+it — a step that did not run a given stage is a dash, never a blank cell:
 
 | Step | Implementer | Gate | Push |
 |---|---|---|---|
-| Preflight | — | — | — |
 | 1 | `<duration>` | `<duration>` | — |
 | … | … | … | … |
-| Dod | — | — | — |
 | **Total** | `<sum>` | `<sum>` | `<sum>` |
 
 `Push` collapses `push` and `pull-request-update` into the one publication figure, on the row of
-the iteration that triggered it. Show every duration in minutes once it passes 60 s, and print an
-exit code only on the rows whose stage failed — a row that landed carries no exit code. `Total`
-is the sum of the displayed rows, not a re-scan of the JSONL file.
+the iteration that triggered it. `Preflight` and `Dod` run once, outside any iteration: their two
+durations go in one note line under the table (`Preflight: <d> · Dod: <d>`), never in all-dash
+rows. Show every duration in minutes once it passes 60 s, and print an exit code only on the rows
+whose stage failed — a row that landed carries no exit code. `Total` is the sum of the displayed
+rows, not a re-scan of the JSONL file.
 
-**Attribution**, one row per Claude-session stage (`implementer` per iteration, `lens`,
-`reviewer`, `auditor` — whichever the log carries), read off that stage's own `tokens
-stage=<name>` line:
+**Attribution**, one row per Claude-session stage the log carries when you write (`implementer`
+per iteration, `lens`, `reviewer`), read off that stage's own `tokens stage=<name>` line —
+your own row and the supervising session's cannot exist yet and are added by the supervisor when
+it folds the report:
 
-| Stage | Model | Context peak | Total tokens | % cache read | Cost (list) |
-|---|---|---|---|---|---|
-| … | `<model>` | `<pct>` | `<n>` | `<pct>` | `<$>` |
-| **Runner subtotal** | — | — | `<sum>` | — | `<sum>` |
-| … | … | … | … | … | … |
-| **Total** | — | — | `<sum>` | — | `<sum>` |
+| Stage | Duration | Model | Context peak | Total tokens | % cache read | Cost (list) |
+|---|---|---|---|---|---|---|
+| … | `<duration>` | `<model>` | `<pct>` | `<n>` | `<pct>` | `<$>` |
+| **Runner subtotal** | `<sum>` | — | — | `<sum>` | — | `<sum>` |
+| … | … | … | … | … | … | … |
+| **Total** | `<sum>` | — | — | `<sum>` | — | `<sum>` |
 
-`Context peak` is the percentage only, never the token count and never the effective window
-itself, which is named once in a note under the table (`Effective window: <model> <n> tokens`),
-together with the run's own compaction count, `0` stated rather than left blank, rather than
-repeated cell by cell — a model absent from that note shows its tokens instead of a percentage.
-`Cost (list)` is priced at the model's list rate, computed by you, the writer, from the four
-token classes — never read off the transcript. The `Runner subtotal` row sums the `implementer`
-rows above it — what driving the plan itself cost — and is not summed again into `Total`, which
-sums every other displayed row.
-
-Name the slowest stage and say whether its time matches its size — read the commit it produced
-if you need to.
+`Duration` is the stage's own `duration_ms` — this table is the only place the lens and reviewer
+durations appear, since they have no iteration row above. `Context peak` is the percentage only,
+never the token count and never the effective window itself, which is named once in a note under
+the table (`Effective window: <model> <n> tokens`), together with the run's own compaction count,
+`0` stated rather than left blank, rather than repeated cell by cell — a model absent from that
+note shows its tokens instead of a percentage. `Cost (list)` is priced at the model's list rate,
+computed by you, the writer, from the four token classes — never read off the transcript. The
+`Runner subtotal` row sums the `implementer` rows above it — what driving the plan itself cost —
+and is not summed again into `Total`, which sums every other displayed row.
 
 Keep it short enough to read at breakfast.
 

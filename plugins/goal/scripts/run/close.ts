@@ -211,8 +211,8 @@ Every stage this run timed is recorded as a JSON event in ${jsonl}: read it for 
 what each stage cost, per iteration.
 
 Read the other reports already under ${dirname(dir)}/ and say which failures recur across runs
-rather than describing this one twice. Write it in two sections, \`### Functional\` then
-\`### Technical\`, no other heading anywhere in the file. Do not edit a single line of code, do
+rather than describing this one twice. Write it in two sections, \`### Outcome\` then
+\`### Cost\`, no other heading anywhere in the file. Do not edit a single line of code, do
 not stage anything, and do not judge whether the work was correct — the gate already did that.`;
 
   const auditStart = Date.now();

@@ -10,14 +10,15 @@ const supervise = () =>
 
 const DURATIONS_HEADER = '| Step | Implementer | Gate | Push |';
 const ATTRIBUTION_HEADER =
-  '| Stage | Model | Context peak | Total tokens | % cache read | Cost (list) |';
+  '| Stage | Duration | Model | Context peak | Total tokens | % cache read | Cost (list) |';
 
-// R1 — the goal names the Technical section's exact shape: two tables, not the single wide one
+// R1 — the goal names the Cost section's exact shape: two tables, not the single wide one
 // the auditor used to build. A report born in any other shape is rework for the supervisor that
 // folds it.
-test("the auditor's Technical section prescribes the two validated tables verbatim", () => {
+test("the auditor's Cost section prescribes the two validated tables verbatim", () => {
   const doc = auditor();
-  assert.match(doc, /### Technical/);
+  assert.match(doc, /### Outcome/);
+  assert.match(doc, /### Cost/);
   assert.ok(doc.includes(DURATIONS_HEADER), 'missing the durations table header');
   assert.ok(doc.includes(ATTRIBUTION_HEADER), 'missing the attribution table header');
 });
