@@ -16,7 +16,5 @@ ${section}
 Work test-first, and show the RED: the gate sets your implementation aside and requires gate1 to
 fail without it, so a test that passes either way halts the slice.
 
-Load the project convention skills before writing anything.
-
 You do not commit, do not push, do not stage, do not tick a checkbox and do not edit the plan.
 The gate does all of that, after it has verified.`;

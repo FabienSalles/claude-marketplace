@@ -195,6 +195,17 @@ test('narrate reads the context peak as the max, not the sum, over assistant usa
   assert.equal(extraction.peakTokens, 100);
 });
 
+// R21 — a partial usage block (an absent class, not merely a zero one) still yields a peak, never
+// NaN: each usage-class read defaults the missing class to 0.
+test('narrate reads the context peak as a number, never NaN, when a usage class is absent', () => {
+  const reporter = createReporter();
+  const stdout = JSON.stringify({ type: 'assistant', message: { usage: { input_tokens: 100 } } });
+
+  const extraction = narrate(stdout, reporter);
+
+  assert.equal(extraction.peakTokens, 100);
+});
+
 // R21 — both verified compaction marker shapes are counted: a `compact_boundary` system event,
 // and a `isCompactSummary` flag on the summary message it produces.
 test('narrate counts both verified compaction marker shapes', () => {

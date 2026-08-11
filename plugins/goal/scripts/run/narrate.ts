@@ -71,7 +71,7 @@ const peakOf = (event: StreamEvent, current: number | undefined): number | undef
   }
 
   const { input_tokens, cache_read_input_tokens, cache_creation_input_tokens } = event.message.usage;
-  const total = input_tokens + cache_read_input_tokens + cache_creation_input_tokens;
+  const total = (input_tokens ?? 0) + (cache_read_input_tokens ?? 0) + (cache_creation_input_tokens ?? 0);
 
   return current === undefined ? total : Math.max(current, total);
 };
