@@ -34,6 +34,35 @@ test('a fixture with one pass and one skip is refused, not silently accepted', (
   assert.match(output, /skipped/i, output);
 });
 
+// R7 — a fixture test that fails halts the wrapper, and the halt names the exit code the suite
+// itself returned rather than reporting the failure some other way.
+test('a fixture with a failing test halts, naming the exit', () => {
+  const root = tmpDir('goal-suite-wrapper-fail-');
+  fixture(
+    root,
+    "import { test } from 'node:test';\nimport assert from 'node:assert/strict';\ntest('a fixture test fails', () => { assert.equal(1, 2); });",
+  );
+
+  const { code, output } = runWith({ GOAL_TESTS_ROOT: root });
+
+  assert.equal(code, 1, output);
+  assert.match(output, /HALT: the suite exited/, output);
+});
+
+// R7 — a suite that exits 0 with no `ℹ pass/fail/skipped` line is a result the wrapper cannot
+// read, so it is refused exactly as a failure rather than counted as a silent pass. NODE_OPTIONS
+// forces node's own reporter to TAP here, which is untouched by run.sh's guards and prints its
+// counts as `# pass` rather than `ℹ pass`, reproducing the shape a caller cannot parse.
+test('a fixture whose summary the wrapper cannot read is refused, not passed', () => {
+  const root = tmpDir('goal-suite-wrapper-nosummary-');
+  fixture(root, "import { test } from 'node:test';\ntest('a fixture test passes', () => {});");
+
+  const { code, output } = runWith({ GOAL_TESTS_ROOT: root, NODE_OPTIONS: '--test-reporter=tap' });
+
+  assert.equal(code, 1, output);
+  assert.match(output, /no pass\/fail\/skipped summary/, output);
+});
+
 // R1 — the suite must run once per runner in the list: a fixture test that records a marker
 // proves the runner actually ran by reading the record back.
 test('the suite runs once per runner, recorded', () => {

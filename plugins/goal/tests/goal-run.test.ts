@@ -214,6 +214,27 @@ test('it releases the lock when the run is killed mid-implementation', () => {
   assert.ok(!existsSync(lockOf(fixture)), 'the lock survived a killed run');
 });
 
+// R7 — SIGINT is what a developer at the keyboard sends, distinct from SIGTERM above, and lock.ts
+// maps it to exit 130 (128+2, the POSIX shape a caller greps for) rather than letting a bare
+// signal death report something else. Driven straight at createLock() via a fixture, not through
+// a full run: goal-run.ts's own retry path calls process.exit() synchronously the moment an
+// implementer attempt fails, which races and starves the signal handler before it is ever
+// dispatched — a race the lock module itself, idling on nothing but a timer, does not have.
+test('SIGINT releases the lock createLock() holds and exits 130', () => {
+  const fixture = repo();
+  const gate = join(fixture.bin, 'fake-gate');
+  const script = resolve(import.meta.dirname, 'fixtures', 'sigint-lock.ts');
+
+  const result = spawnSync(
+    'bash',
+    ['-c', `node "${script}" "${gate}" "${fixture.plan}" & pid=$!; sleep 0.5; kill -INT $pid; wait $pid; echo $?`],
+    { cwd: fixture.dir, encoding: 'utf8' },
+  );
+
+  assert.ok(!existsSync(lockOf(fixture)), 'the lock survived a SIGINT');
+  assert.match(result.stdout, /^130$/m, `SIGINT did not exit 130:\n${result.stdout}`);
+});
+
 // R7 — the gate command is interpolated unquoted into five `shell: true` strings, so a checkout
 // under a directory holding a space is split by the shell and every iteration is refused over a
 // gate that never ran. The real gate is used here: the fixture's own one is named by GOAL_GATE,
