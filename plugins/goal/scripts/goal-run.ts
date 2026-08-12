@@ -15,6 +15,7 @@
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
 
+import { HaltError, MisuseError, haltText } from '../src/gate/halt.ts';
 import { createReporter, runDir, type Reporter } from '../src/run/report.ts';
 import { preflight, REFUSED } from '../src/run/preflight.ts';
 import { createLock } from '../src/run/lock.ts';
@@ -129,4 +130,18 @@ const main = async (): Promise<void> => {
   process.exit(exitCode);
 };
 
-await main();
+try {
+  await main();
+} catch (error) {
+  if (error instanceof HaltError) {
+    process.stdout.write(haltText(error));
+    process.exit(1);
+  }
+
+  if (error instanceof MisuseError) {
+    process.stderr.write(`${error.message}\n`);
+    process.exit(2);
+  }
+
+  throw error;
+}
