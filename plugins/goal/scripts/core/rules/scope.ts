@@ -4,7 +4,7 @@
 import { err, ok, type Result } from '../result.ts';
 import { halt, type Halt } from '../verdict.ts';
 
-export const shapeDecision = (paths: readonly string[], iteration: string): Result<void, Halt> => {
+export const shapedPaths = (paths: readonly string[], iteration: string): Result<void, Halt> => {
   const unusable = paths.filter((path) => /[`()*?[\]]/.test(path));
 
   if (unusable.length > 0) {
@@ -17,7 +17,7 @@ export const shapeDecision = (paths: readonly string[], iteration: string): Resu
   return ok(undefined);
 };
 
-export const ignoredDecision = (ignored: readonly string[], iteration: string): Result<void, Halt> => {
+export const noIgnoredPaths = (ignored: readonly string[], iteration: string): Result<void, Halt> => {
   if (ignored.length > 0) {
     return err(halt(
       `Iteration ${iteration} declares a gitignored path.`,
@@ -28,7 +28,7 @@ export const ignoredDecision = (ignored: readonly string[], iteration: string): 
   return ok(undefined);
 };
 
-export const leakDecision = (
+export const noScopeLeak = (
   undeclared: readonly string[],
   iteration: string,
   paths: readonly string[],

@@ -6,7 +6,7 @@ import { halt, type Halt } from '../verdict.ts';
 
 // `locked` undefined skips the check entirely — the shape a caller that never carries it (the
 // frozen bash runner) leaves this in, so it is unaffected by construction.
-export const monotonicityDecision = (
+export const monotonicTicks = (
   iteration: string,
   locked: string | undefined,
   now: string,

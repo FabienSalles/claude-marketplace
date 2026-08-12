@@ -25,7 +25,7 @@ export const selectReplay = (
   return { replay, origin };
 };
 
-export const resolvabilityDecision = (iteration: string, unresolvable: readonly string[]): Result<void, Halt> => {
+export const resolvablePaths = (iteration: string, unresolvable: readonly string[]): Result<void, Halt> => {
   if (unresolvable.length > 0) {
     return err(halt(
       `Iteration ${iteration} leaves a path the plan still declares unresolvable.`,

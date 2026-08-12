@@ -4,7 +4,7 @@ import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 
 import { git } from '../adapters/git.ts';
 import { ok, type Result } from '../core/result.ts';
-import { ignoredDecision, leakDecision, shapeDecision } from '../core/rules/scope.ts';
+import { noIgnoredPaths, noScopeLeak, shapedPaths } from '../core/rules/scope.ts';
 import type { Halt } from '../core/verdict.ts';
 import { halt, heldLocks } from './halt.ts';
 import { neverVersionedCheck } from './never.ts';
@@ -17,14 +17,14 @@ export const scopeCheck = (
   iteration: string,
   incidental: string[] = [],
 ): Result<Set<string>, Halt> => {
-  const shape = shapeDecision([...paths, ...incidental], iteration);
+  const shape = shapedPaths([...paths, ...incidental], iteration);
 
   if (!shape.ok) {
     return shape;
   }
 
   const ignored = paths.filter((path) => git('check-ignore', '-q', path).status === 0);
-  const ignoredResult = ignoredDecision(ignored, iteration);
+  const ignoredResult = noIgnoredPaths(ignored, iteration);
 
   if (!ignoredResult.ok) {
     return ignoredResult;
@@ -73,7 +73,7 @@ export const scopeCheck = (
   // otherwise exactly what the plan asked for.
   const allowed = [...paths, ...incidental];
   const undeclared = [...changed].filter((path) => !allowed.some((entry) => covers(entry, path)));
-  const leak = leakDecision(undeclared, iteration, paths, incidental, git('status', '--short', '-uall').stdout);
+  const leak = noScopeLeak(undeclared, iteration, paths, incidental, git('status', '--short', '-uall').stdout);
 
   if (!leak.ok) {
     return leak;

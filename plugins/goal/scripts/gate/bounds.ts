@@ -1,7 +1,7 @@
 // The two bounds a slice is held to, both measured against HEAD.
 
 import { git } from '../adapters/git.ts';
-import { budgetDecision, removalDecision } from '../core/rules/bounds.ts';
+import { noBcBreak, withinBudget } from '../core/rules/bounds.ts';
 import type { Result } from '../core/result.ts';
 import type { Halt } from '../core/verdict.ts';
 import { halt } from './halt.ts';
@@ -34,7 +34,7 @@ export const budgetCheck = (declared: Map<string, string>, paths: string[], iter
           return total + (Number(added) || 0) + (Number(removed) || 0);
         }, 0);
 
-  return budgetDecision(budget, written, paths, iteration);
+  return withinBudget(budget, written, paths, iteration);
 };
 
 export const removalCheck = (source: string, paths: string[], iteration: string): Result<void, Halt> => {
@@ -43,5 +43,5 @@ export const removalCheck = (source: string, paths: string[], iteration: string)
   const removals =
     mode === 'allow-bc-break' ? [] : headDiff('--name-status', paths, iteration).filter((line) => /^[DR]/.test(line));
 
-  return removalDecision(mode, removals, iteration);
+  return noBcBreak(mode, removals, iteration);
 };

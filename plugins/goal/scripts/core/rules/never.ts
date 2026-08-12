@@ -15,7 +15,7 @@ export const NEVER_VERSIONED = [
   /\.(pem|p12|pfx|jks|keystore)$/,
 ];
 
-export const neverVersionedDecision = (candidates: readonly string[], subject: string): Result<void, Halt> => {
+export const noNeverVersionedPaths = (candidates: readonly string[], subject: string): Result<void, Halt> => {
   const refused = [...new Set(candidates)].filter((path) => NEVER_VERSIONED.some((pattern) => pattern.test(path)));
 
   if (refused.length > 0) {

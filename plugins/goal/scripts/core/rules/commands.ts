@@ -5,7 +5,7 @@
 import { err, ok, type Result } from '../result.ts';
 import { halt, type Halt } from '../verdict.ts';
 
-export const gateFailureDecision = (
+export const gatePassed = (
   key: string,
   command: string,
   status: number | null,
@@ -27,7 +27,7 @@ export const gateFailureDecision = (
   return err(halt(`Acceptance command ${key} failed for iteration ${iteration}.`, detail));
 };
 
-export const determinismFailureDecision = (
+export const determinismHeld = (
   run: number,
   totalRuns: number,
   command: string,

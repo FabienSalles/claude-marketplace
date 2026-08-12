@@ -2,16 +2,16 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-  behindBaseDecision,
-  branchDecision,
-  cleanTreeDecision,
-  cleanupIterationDecision,
-  goalRunsIgnoredDecision,
-  lockDecision,
-  metadataDecision,
-  planDirIgnoredDecision,
-  policyDecision,
-  remoteDecision,
+  caughtUpWithBase,
+  featureBranch,
+  cleanTree,
+  noCleanupIteration,
+  goalRunsIgnored,
+  freeLock,
+  metadataDeclared,
+  planDirIgnored,
+  runnablePolicy,
+  remoteDeclared,
 } from '../scripts/core/preflight.ts';
 import { detectTamper, type TreeState } from '../scripts/core/tamper.ts';
 import { HALTED, LANDED, PAUSED, REFUSED } from '../scripts/core/verdict.ts';
@@ -23,94 +23,94 @@ import { classifyQuotaFailure } from '../scripts/run/quota.ts';
 
 const CTX = { plan: '/tmp/demo/plan.md', workId: 'demo', gate: 'node goal-gate.ts' };
 
-test('metadataDecision refuses a plan with no --- block, carrying the legacy lines to paste back', () => {
-  const missing = metadataDecision(false, ['Policy: commit', 'Remote: origin']);
+test('metadataDeclared refuses a plan with no --- block, carrying the legacy lines to paste back', () => {
+  const missing = metadataDeclared(false, ['Policy: commit', 'Remote: origin']);
   assert.equal(missing.ok, false);
   assert.match(missing.error, /no `---`-delimited metadata block/);
   assert.match(missing.error, /Policy: commit/);
 
-  const present = metadataDecision(true, []);
+  const present = metadataDeclared(true, []);
   assert.equal(present.ok, true);
 });
 
-test('policyDecision refuses an absent Policy line and a manual one, passes anything else through', () => {
-  assert.equal(policyDecision(undefined).ok, false);
-  assert.match((policyDecision(undefined) as { error: string }).error, /no Policy line/);
+test('runnablePolicy refuses an absent Policy line and a manual one, passes anything else through', () => {
+  assert.equal(runnablePolicy(undefined).ok, false);
+  assert.match((runnablePolicy(undefined) as { error: string }).error, /no Policy line/);
 
-  const manual = policyDecision('manual');
+  const manual = runnablePolicy('manual');
   assert.equal(manual.ok, false);
   assert.match((manual as { error: string }).error, /nothing may be committed/);
 
-  const result = policyDecision('commit');
+  const result = runnablePolicy('commit');
   assert.equal(result.ok, true);
   assert.equal((result as { value: string }).value, 'commit');
 });
 
-test('remoteDecision refuses an absent Remote line, passes a declared one through', () => {
-  assert.equal(remoteDecision(undefined).ok, false);
-  assert.equal(remoteDecision('').ok, false);
+test('remoteDeclared refuses an absent Remote line, passes a declared one through', () => {
+  assert.equal(remoteDeclared(undefined).ok, false);
+  assert.equal(remoteDeclared('').ok, false);
 
-  const result = remoteDecision('origin');
+  const result = remoteDeclared('origin');
   assert.equal(result.ok, true);
   assert.equal((result as { value: string }).value, 'origin');
 });
 
-test('branchDecision refuses outside a git repository and off the plan\'s own branch', () => {
-  const notGit = branchDecision(false, 'main', CTX.workId);
+test('featureBranch refuses outside a git repository and off the plan\'s own branch', () => {
+  const notGit = featureBranch(false, 'main', CTX.workId);
   assert.equal(notGit.ok, false);
   assert.match((notGit as { error: string }).error, /not a git repository/);
 
-  const wrongBranch = branchDecision(true, 'main', CTX.workId);
+  const wrongBranch = featureBranch(true, 'main', CTX.workId);
   assert.equal(wrongBranch.ok, false);
   assert.match((wrongBranch as { error: string }).error, /stands on main, not feature\/demo/);
 
-  assert.equal(branchDecision(true, 'feature/demo', CTX.workId).ok, true);
-  assert.equal(branchDecision(true, 'feature/demo-more', CTX.workId).ok, true);
+  assert.equal(featureBranch(true, 'feature/demo', CTX.workId).ok, true);
+  assert.equal(featureBranch(true, 'feature/demo-more', CTX.workId).ok, true);
 });
 
-test('goalRunsIgnoredDecision and planDirIgnoredDecision refuse a directory git can see', () => {
-  const visible = goalRunsIgnoredDecision(false, '.claude/goal-runs');
+test('goalRunsIgnored and planDirIgnored refuse a directory git can see', () => {
+  const visible = goalRunsIgnored(false, '.claude/goal-runs');
   assert.equal(visible.ok, false);
   assert.match((visible as { error: string }).error, /\.claude\/goal-runs is visible to git/);
-  assert.equal(goalRunsIgnoredDecision(true, '.claude/goal-runs').ok, true);
+  assert.equal(goalRunsIgnored(true, '.claude/goal-runs').ok, true);
 
-  const planDir = planDirIgnoredDecision(false, '.claude/plans');
+  const planDir = planDirIgnored(false, '.claude/plans');
   assert.equal(planDir.ok, false);
   assert.match((planDir as { error: string }).error, /plan's directory is visible to git: \.claude\/plans/);
-  assert.equal(planDirIgnoredDecision(true, '.claude/plans').ok, true);
+  assert.equal(planDirIgnored(true, '.claude/plans').ok, true);
 });
 
-test('cleanTreeDecision refuses uncommitted work, carrying the git status', () => {
-  const dirty = cleanTreeDecision('?? stray.txt');
+test('cleanTree refuses uncommitted work, carrying the git status', () => {
+  const dirty = cleanTree('?? stray.txt');
   assert.equal(dirty.ok, false);
   assert.match((dirty as { error: string }).error, /the tree is not clean:\n\?\? stray\.txt/);
-  assert.equal(cleanTreeDecision('').ok, true);
+  assert.equal(cleanTree('').ok, true);
 });
 
-test('cleanupIterationDecision refuses a Trigger line inside a feature plan, spares a cleanup plan', () => {
-  const leaked = cleanupIterationDecision(false, true);
+test('noCleanupIteration refuses a Trigger line inside a feature plan, spares a cleanup plan', () => {
+  const leaked = noCleanupIteration(false, true);
   assert.equal(leaked.ok, false);
   assert.match((leaked as { error: string }).error, /cleanup iteration \(a Trigger: line\) inside a feature plan/);
 
-  assert.equal(cleanupIterationDecision(true, true).ok, true);
-  assert.equal(cleanupIterationDecision(false, false).ok, true);
+  assert.equal(noCleanupIteration(true, true).ok, true);
+  assert.equal(noCleanupIteration(false, false).ok, true);
 });
 
-test('lockDecision refuses a plan another run already holds, naming the unlock command', () => {
-  const held = lockDecision(true, `${CTX.plan}.run.lock`, `${CTX.gate} unlock ${CTX.plan}`);
+test('freeLock refuses a plan another run already holds, naming the unlock command', () => {
+  const held = freeLock(true, `${CTX.plan}.run.lock`, `${CTX.gate} unlock ${CTX.plan}`);
   assert.equal(held.ok, false);
   assert.match((held as { error: string }).error, /another run holds this plan: .*\.run\.lock/);
   assert.match((held as { error: string }).error, /free it with: node goal-gate\.ts unlock/);
 
-  assert.equal(lockDecision(false, `${CTX.plan}.run.lock`, 'unlock hint').ok, true);
+  assert.equal(freeLock(false, `${CTX.plan}.run.lock`, 'unlock hint').ok, true);
 });
 
-test('behindBaseDecision refuses a branch behind its base, carrying the missing commits', () => {
-  const behind = behindBaseDecision(false, 'origin/main', 'abc123 ahead commit');
+test('caughtUpWithBase refuses a branch behind its base, carrying the missing commits', () => {
+  const behind = caughtUpWithBase(false, 'origin/main', 'abc123 ahead commit');
   assert.equal(behind.ok, false);
   assert.match((behind as { error: string }).error, /the branch is behind origin\/main:\nabc123 ahead commit/);
 
-  assert.equal(behindBaseDecision(true, 'origin/main', '').ok, true);
+  assert.equal(caughtUpWithBase(true, 'origin/main', '').ok, true);
 });
 
 // P9 — quota classification is a declarative table, not a chain of if/else: the same fact

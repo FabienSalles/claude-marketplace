@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process';
 import { appendFileSync } from 'node:fs';
 
 import { ok, type Result } from '../core/result.ts';
-import { determinismFailureDecision, gateFailureDecision } from '../core/rules/commands.ts';
+import { determinismHeld, gatePassed } from '../core/rules/commands.ts';
 import type { Halt } from '../core/verdict.ts';
 import { bounded, spawnOptions } from './bounded.ts';
 
@@ -49,7 +49,7 @@ export const runGates = (
 
     emitCommand(wall ? `wall:${key}` : key, command, Date.now() - start, run.status);
 
-    const decision = gateFailureDecision(key, command, run.status, `${run.stdout}${run.stderr}`, iteration, origin?.get(command));
+    const decision = gatePassed(key, command, run.status, `${run.stdout}${run.stderr}`, iteration, origin?.get(command));
 
     if (!decision.ok) return decision;
   }
@@ -71,7 +71,7 @@ export const determinismCheck = (declared: Map<string, string>, iteration: strin
 
     emitCommand(`determinism${run}`, command, Date.now() - start, result.status);
 
-    const decision = determinismFailureDecision(run, DETERMINISM_RUNS, command, result.status, `${result.stdout}${result.stderr}`, iteration);
+    const decision = determinismHeld(run, DETERMINISM_RUNS, command, result.status, `${result.stdout}${result.stderr}`, iteration);
 
     if (!decision.ok) return decision;
   }

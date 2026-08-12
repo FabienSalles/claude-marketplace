@@ -4,7 +4,7 @@
 import { err, ok, type Result } from '../result.ts';
 import { halt, type Halt } from '../verdict.ts';
 
-export const budgetDecision = (
+export const withinBudget = (
   budget: string,
   written: number,
   paths: readonly string[],
@@ -29,7 +29,7 @@ export const budgetDecision = (
   return ok(undefined);
 };
 
-export const removalDecision = (
+export const noBcBreak = (
   deliveryMode: string,
   removals: readonly string[],
   iteration: string,
