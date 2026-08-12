@@ -1,5 +1,5 @@
 // The one refusal a plan cannot opt out of, proven in-process as a Result — the message it
-// refuses with is carried as a value until gate/never.ts's caller prints and exits on it.
+// refuses with is carried as a value until a root turns it into printed output and an exit.
 
 import { err, ok, type Result } from '../result.ts';
 import { halt, type Halt } from '../verdict.ts';

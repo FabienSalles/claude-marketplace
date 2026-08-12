@@ -103,35 +103,35 @@ Ordered by **what it costs to lose**, not by effort. The competitive reading beh
 - **Why:** the single largest gap, and the cheapest to close. `gate/bounded.ts` puts a 900s SIGKILL clock on every *declared command*, but the implementer session is spawned with no timeout, no turn cap and no iteration ceiling. A session circling an impossible slice circles until the usage allowance runs out — and `templates/done-criteria.template` already promises "maximum 15 turns per iteration", which nothing enforces. `SwarmOps` caps everything numerically; `Rel(AI)Build` ships a hard 3-iteration auto-fix cap; Anthropic's own `ralph-wiggum` says to "always rely on a maximum iteration count as the primary safety mechanism".
 - **Effort:** ~1 h. `spawnSync` already accepts `timeout` + `killSignal` — `run/iteration.ts` simply does not pass them. The turn cap needs `--max-turns` on the `claude -p` call; verify it exists before promising it.
 - **Trigger:** now. Every unattended run without this is unbounded.
-- **Path:** `scripts/run/iteration.ts`, plus a `GOAL_RUN_IMPLEMENTER_TIMEOUT` beside the existing env knobs.
+- **Path:** `src/run/iteration.ts`, plus a `GOAL_RUN_IMPLEMENTER_TIMEOUT` beside the existing env knobs.
 
 ### 2. Detect a weakened pre-existing test
 - **Why:** this protects the one differentiator nobody else has. The bite check proves the *new* test bites; it does not prove that a pre-existing test living inside the same declared files was not gutted. Three assertions removed of four, keeping the one that fails without the implementation, passes every check today and fits under any diff budget. The failure mode has a stable taxonomy — assertions deleted, tolerances widened, tests marked skip, snapshots regenerated — and the formula worth keeping is *in an agent's PR the tests are part of the claim, not part of the proof*.
 - **Effort:** ~2 h. `greenproof` (<https://github.com/zxyasfas/greenproof>) is a working implementation of exactly half of this in ~200 lines: snapshot the test files before the slice, then re-run the **originals** against the new code. Same shape as the bite check, opposite direction, and it composes rather than competes.
 - **Trigger:** now, and before any further competitive claim rests on the bite check.
-- **Path:** a new `scripts/gate/` module, run beside `bite.ts` in `verify`.
+- **Path:** a new `src/gate/` module, run beside `bite.ts` in `verify`.
 
 ### 3. A run report for a halted run
 - **Why:** a structural blind spot in the evidence base. `run/iteration.ts` exits at `:195`/`:199` before `close()`, and `close()` is the only caller that spawns the auditor — so **no report can exist for a run that halted.** The six reports on disk are successful-runs-only by construction, and the auditor's brief promises it a halt input that never arrives. That is the opposite of what you want: the runs worth auditing are the ones that stopped.
 - **Effort:** ~1 h. Call the auditor on the halt path too, briefed that the run stopped.
 - **Trigger:** the next halt.
-- **Path:** `scripts/run/iteration.ts` halt/pause paths, `scripts/run/close.ts`.
+- **Path:** `src/run/iteration.ts` halt/pause paths, `src/run/close.ts`.
 
 ### 4. Make the run's own records survive
 - **Why:** every run report lives under a fully git-ignored `.claude/`, and reports **have already been lost** — `e39e66d.md` cites six earlier reports (`a7289c3`, `bf532d1`, `c767072`, `b843981`, `fdc8928`, `ea236ba`) that are no longer on disk, including the one holding half the evidence for the closing-iteration-halt pattern. Not one `.run.jsonl` or `.run.log` survives anywhere, so no figure in any of the six reports can be re-derived. Separately: the current records layout (`<work-id>/<run-id>/`) has never been exercised by a real run — all six reports are still flat `<sha>.md` files — so the first auditor to run under it will find zero prior reports rather than "the other reports".
 - **Effort:** ~1 h.
 - **Trigger:** before the next run, or the next comparison is against nothing.
-- **Path:** decide a retention rule; `scripts/run/report.ts` and the auditor brief in `scripts/run/close.ts`.
+- **Path:** decide a retention rule; `src/run/report.ts` and the auditor brief in `src/run/close.ts`.
 
 ### 5. Finish the structured-events work the plan claimed
 - **Why:** `goal-run-remaining-events-spec.md` is ticked and its stated payoff never arrived. It promised that "iteration 7 took 3044s" would become "implementer 2610s, gate 380s, push 54s". Every runner-level stage still folds its timings into a formatted string handed to `reporter.say`, so they land as prose inside a `message` field — exactly the parsing problem the plan says it exists to remove. The lens caught this at the time and it was recorded as advisory. Its own acceptance test asserts a regex over concatenated `message` strings, so it passes on precisely the shape the rule forbids. No per-`dodN` event is emitted at all.
 - **Why it matters beyond tidiness:** *"a run's first entered iteration costs far more than its diff explains"* has now hit three runs across three plans, and the instrumentation cannot separate setup cost from implementation cost — so a recurring finding stays undiagnosable.
 - **Effort:** ~1 h.
 - **Trigger:** now — it is the only open item that a previous plan already claimed as delivered.
-- **Path:** `scripts/run/report.ts`, `scripts/run/close.ts`, `scripts/gate/ship.ts`, and the test at `tests/goal-run-events.test.ts:124`.
+- **Path:** `src/run/report.ts`, `src/run/close.ts`, `src/gate/ship.ts`, and the test at `tests/goal-run-events.test.ts:124`.
 
 ### 6. Close the test-coverage holes in the harness itself
-- **Why:** eleven of the 25 modules under `scripts/gate/` and `scripts/run/` have no test file of their own, including `gate/scope.ts`, `gate/commands.ts`, `run/iteration.ts` and `run/report.ts` — and the README's "each with its own test file" is written as though they all did. Worse, four of `tests/run.sh`'s five refusals are untested, including the missing-summary halt; and the skip guard that *is* tested is blind to any skip nested inside a `describe()` or a subtest, because its pattern is anchored at column 0 and node indents those. `run/shell.ts`'s `quote()` is the only shell-injection barrier for four command strings and has zero tests.
+- **Why:** eleven of the 25 modules under `src/gate/` and `src/run/` have no test file of their own, including `gate/scope.ts`, `gate/commands.ts`, `run/iteration.ts` and `run/report.ts` — and the README's "each with its own test file" is written as though they all did. Worse, four of `tests/run.sh`'s five refusals are untested, including the missing-summary halt; and the skip guard that *is* tested is blind to any skip nested inside a `describe()` or a subtest, because its pattern is anchored at column 0 and node indents those. `run/shell.ts`'s `quote()` is the only shell-injection barrier for four command strings and has zero tests.
 - **Effort:** ~3 h.
 - **Trigger:** the next change to any of those modules.
 - **Path:** `plugins/goal/tests/`.
@@ -146,19 +146,19 @@ Ordered by **what it costs to lose**, not by effort. The competitive reading beh
 - **Why:** the plan is hashed once, at plan time. *Proof-or-Stop* (<https://arxiv.org/abs/2607.14890>) binds a `materialHash` over the live tracked source tree at **every** gate, which is strictly stronger. Related measured result: using a stale verification trace against current code broke 34 of 135 otherwise-correct attempts, against 4 of 135 with a fresh one.
 - **Effort:** ~2 h.
 - **Trigger:** after items 1–3.
-- **Path:** `scripts/gate/plan.ts`, extending `lockedHash`.
+- **Path:** `src/gate/plan.ts`, extending `lockedHash`.
 
 ### 9. An observe mode
 - **Why:** there is currently no way to try a new refusal without it being able to stop a run. `axiom` installs every rule recording-only — "it records what it *would* have blocked and blocks nothing" — and enforcement is turned on per rule once its findings have earned it. That is how items 2 and 9 should ship rather than going straight to blocking.
 - **Effort:** ~1 h.
 - **Trigger:** together with item 2.
-- **Path:** `scripts/gate/halt.ts`, plus a `GOAL_GATE_OBSERVE` list.
+- **Path:** `src/gate/halt.ts`, plus a `GOAL_GATE_OBSERVE` list.
 
 ### 10. Exportable proof
 - **Why:** "every claim is a command that ran" is a promise about how the code is written; no artefact exists that a third party could verify without re-running everything. `Bernstein` keeps a signed audit chain checkable offline, `axiom` a custody chain, `HORKOS` a receipt ledger. The `.run.jsonl` stream is most of the raw material already — it needs a stable schema and a signature, not a new mechanism.
 - **Effort:** ~2 h.
 - **Trigger:** the first time someone other than the author needs to trust a run.
-- **Path:** `scripts/run/report.ts`.
+- **Path:** `src/run/report.ts`.
 
 ### 11. A machine critic of the plan, before it freezes
 - **Why:** Google's `Jules` added a critic reading self-approved plans before any code, for a measured 9.5% drop in failure rate. Keeping the *human* grill is deliberate and well supported; having **nothing** mechanical read a plan before freezing is a separate decision that was never actually taken. A plan defect is also the most common thing `/goal:supervise`'s classifier has to handle — and both halts on record were plan-vs-implementation calls.

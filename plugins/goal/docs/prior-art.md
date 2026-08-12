@@ -89,8 +89,8 @@ ship the loop that would use it: the issue asking for `--verify`, `--max-iterati
 code contract on `claude -p` was closed "not planned".[^issue28489] This harness fills a hole its
 own vendor has described and not tooled.
 
-**Where it is behind its own claim.** `gate/halt.ts` prints the `HALT` block (`REASON:` and
-`DETAIL:`) to the gate's stdout, the runner concatenates it with stderr into `reporter.record()`
+**Where it is behind its own claim.** `gate/halt.ts` formats the `HALT` block (`REASON:` and
+`DETAIL:`) that a root writes to the gate's stdout, the runner concatenates it with stderr into `reporter.record()`
 (`run/iteration.ts:184`) and it lands in the run's own log,
 `.claude/goal-runs/<work-id>/<run-id>/.run.log` (`run/report.ts:20-25`, `:80-84`), which is
 exactly the evidence `/goal:supervise` Phase 5 is told to read back. What is missing is one rung

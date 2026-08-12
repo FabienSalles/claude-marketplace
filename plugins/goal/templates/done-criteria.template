@@ -21,22 +21,25 @@ gate2=pnpm test tests/quantity.test.ts
 
 ## Always required (the baseline, language-agnostic)
 
-Two of these go in the `gate` block, and only two:
+Three of these go in the `gate` block, and only three:
 
 1. **Project test command for this scope exits 0** — run it with the
    exact path/filter scope listed in the spec, not the whole suite,
    unless the spec explicitly asks for whole-suite.
-2. **Project lint / static-analysis command exits 0.**
+2. **Project typecheck command exits 0** (when the project has one —
+   `tsc --noEmit`, `phpstan`, `mypy`): the one whole-scope command
+   every gate block carries, a type break being cross-file by nature.
+3. **Project lint / static-analysis command exits 0.**
 
 The rest hold structurally and must **not** be written as gate commands,
 because they would be lines that always exit 0:
 
-3. **The diff holds only the iteration's files** — the Karpathy trace
+4. **The diff holds only the iteration's files** — the Karpathy trace
    test. The gate derives this from `test_files` + `impl_files` and
    halts on a scope leak.
-4. **No untracked artifact** (build cache, `.DS_Store`, `*.bak`, scratch
+5. **No untracked artifact** (build cache, `.DS_Store`, `*.bak`, scratch
    files). The gate script halts on a parasitic artifact.
-5. **Commit / push / PR follow the chosen policy** — `manual` (Claude
+6. **Commit / push / PR follow the chosen policy** — `manual` (Claude
    touches nothing; you commit each iteration) or `commit+pr` (commit +
    push, plus a draft PR opened at the first commit and updated by every
    iteration after it). Under `commit+pr`, commit messages carry **no
@@ -51,7 +54,7 @@ because they would be lines that always exit 0:
 | PHP / Symfony | `make php/tests` or `docker compose exec php ./vendor/bin/phpunit <path>` | `make php/qa` (phpcs + phpstan + php-cs-fixer) |
 | Astro | `pnpm build` (catches type + content collection errors) | `pnpm check` |
 
-## Karpathy "trace test" — implicit in criterion #3
+## Karpathy "trace test" — implicit in criterion #4
 
 Every line of the diff must trace back to:
 - A "Files to touch" entry in the spec, OR

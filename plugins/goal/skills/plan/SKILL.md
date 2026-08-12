@@ -475,12 +475,13 @@ Four things the block's shape asks of you, all mechanical downstream. `test_file
 `impl_files` are separate because the gate sets the second aside and requires `gate1` to fail
 without it: a slice whose test passes either way is refused. `gate1` is therefore the one
 acceptance criterion — it is bitten, and it must pass three times in a row — where `gate2..N`
-are supporting lints. `max_diff` is the line ceiling you set while awake, enforced while you
+are supporting checks: the typecheck, the lint. `max_diff` is the line ceiling you set while awake, enforced while you
 are not — and where the granularity from `Policy:` lands as a number: fine under `manual`,
 fatter under `commit+pr`, never past one functional outcome. And a slice with
 nothing to test declares `test_files=` empty, which skips the bite rather than faking it.
 
-**Scope every `gateN` to the slice it verifies, never to the whole project.** `gate1` runs
+**Scope every `gateN` to the slice it verifies, never to the whole project** — with one
+exception, the typecheck, ruled below. `gate1` runs
 three times per iteration (the bite, then twice more), and `/goal:supervise`'s preflight
 replays the whole gate block again before the next iteration starts — so a `gate1` written as
 the full suite pays for that suite five times across a five-slice plan instead of once. Point
@@ -498,8 +499,11 @@ every later slice inherits a red base its gates never read, and the failure surf
 terminal DoD — not hypothetical: a `tsc --noEmit` left DoD-only surfaced a type error written at
 iteration 1 of a nine-slice run after eight red-CI pushes. A typechecker runs in seconds and
 writes no state, so the replay cost the scoping rule exists to avoid does not apply. When the
-project has one (`tsc --noEmit`, `phpstan`, `mypy`), write it as its own `gate2..N` line in
-**every** iteration's block, and keep it in the DoD.
+project has one (`tsc --noEmit`, `phpstan`, `mypy`), write it into **every** iteration's block
+as a `gate2..N` line — its own line, or combined with the lint under the grouped-runner rule
+from the grill — and keep it in the DoD. The preflight base sweep replays `gate2..N` against
+the base, so a base that no longer typechecks refuses the run at preflight: that is the point —
+the breach halts before any slice builds on it.
 
 **A slice proving the absence of more than one obsolete form writes one `gate1`, not several.**
 The bite check only ever sets aside the implementation and re-runs `gate1`; `gate2..N` are never
@@ -677,7 +681,8 @@ impl_files=<bare space-separated repo-relative paths, a subtree as a trailing sl
 max_diff=<added+removed line ceiling for this slice>
 commit_msg=<conventional message, no Co-Authored-By trailer>
 gate1=<test command scoped to this slice — the one criterion, bitten without the implementation>
-gate2=<project lint/QA>
+gate2=<project typecheck>
+gate3=<project lint/QA>
 ```
 
 ### Iteration 2 — <name>
@@ -699,7 +704,8 @@ max_diff=<added+removed line ceiling for this slice>
 commit_msg=<conventional message>
 gate1=! grep -rq <flag name> <src dirs>
 gate2=<test command>
-gate3=<project lint/QA>
+gate3=<project typecheck>
+gate4=<project lint/QA>
 ```
 
 ## Out-of-band decisions captured during grill
