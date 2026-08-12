@@ -6,6 +6,7 @@
 import { basename } from 'node:path';
 
 import { err, ok, type Result } from './result.ts';
+import { NEVER_VERSIONED } from './rules/never.ts';
 import { halt, type Halt } from './verdict.ts';
 
 export type DeliveryMode = 'allow-bc-break' | 'no-bc-break';
@@ -22,17 +23,6 @@ export type Plan = {
 
 const ALLOWED_KEY = /^(test_files|impl_files|max_diff|commit_msg|gate[1-9][0-9]*)$/;
 const REQUIRED_KEYS = ['gate1', 'impl_files', 'commit_msg'] as const;
-
-// Anchored on a path segment, duplicated from gate/never.ts on purpose: that module sits outside
-// this iteration's declared files, and a plan naming a secret must be refused before any tree
-// exists to scan it against — not only once the tree-scanning check runs downstream.
-const NEVER_VERSIONED = [
-  /(^|\/)\.env$/,
-  /(^|\/)\.env\.(?!example$|sample$|template$|dist$)/,
-  /(^|\/)node_modules\//,
-  /(^|\/)id_(rsa|dsa|ecdsa|ed25519)$/,
-  /\.(pem|p12|pfx|jks|keystore)$/,
-];
 
 const split = (value: string | undefined): string[] =>
   (value ?? '').split(/\s+/).filter((path) => path !== '');
