@@ -9,23 +9,12 @@
 
 import { spawnSync } from 'node:child_process';
 
+import { doneSection, gateFence } from '../core/plan.ts';
 import { bounded, spawnOptions } from '../gate/bounded.ts';
 import { declaredKeys, iterationNumbers, iterationSection } from '../gate/plan.ts';
 import type { Reporter } from './report.ts';
 
 export const REFUSED = 2;
-
-// The same fence `gate/plan.ts`'s `gateBlock` looks for, but tolerant of a section carrying
-// none: an iteration not yet fleshed out, or the plan's own Definition of Done heading with
-// nothing under it, sweeps as zero commands rather than halting the run over a slice this sweep
-// was never asked to judge.
-const fenceIn = (section: string[]): string[] => {
-  const open = section.findIndex((line) => line.trim() === '```gate');
-  const body = section.slice(open + 1);
-  const close = body.findIndex((line) => line.trim() === '```');
-
-  return open === -1 || close === -1 ? [] : body.slice(0, close);
-};
 
 const swept = (block: string[], subject: string): string[] =>
   [...declaredKeys(block, subject)].filter(([key]) => {
@@ -38,27 +27,13 @@ const swept = (block: string[], subject: string): string[] =>
     return gate !== null && Number(gate[1]) >= 2;
   }).map(([, command]) => command);
 
-// The same "## Definition of Done" heading and section boundary `gate/ship.ts:17` locates.
-const doneSection = (source: string): string[] => {
-  const lines = source.split('\n');
-  const start = lines.findIndex((line) => /^## Definition of Done\b/.test(line));
-
-  if (start === -1) {
-    return [];
-  }
-
-  const next = lines.slice(start + 1).findIndex((line) => /^#{2,3} /.test(line));
-
-  return lines.slice(start + 1, next === -1 ? lines.length : start + 1 + next);
-};
-
 const sweepCommands = (source: string): string[] => {
   const numbers = [...new Set([...iterationNumbers(source, true), ...iterationNumbers(source, false)])];
   const iterations = numbers.flatMap((iteration) =>
-    swept(fenceIn(iterationSection(source, iteration)), `Iteration ${iteration}`),
+    swept(gateFence(iterationSection(source, iteration)) ?? [], `Iteration ${iteration}`),
   );
 
-  return [...iterations, ...swept(fenceIn(doneSection(source)), "the plan's Definition of Done")];
+  return [...iterations, ...swept(gateFence(doneSection(source) ?? []) ?? [], "the plan's Definition of Done")];
 };
 
 export const sweep = (source: string, reporter: Reporter): void => {

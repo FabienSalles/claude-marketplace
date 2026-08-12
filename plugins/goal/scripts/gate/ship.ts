@@ -2,6 +2,7 @@
 
 import { spawnSync } from 'node:child_process';
 
+import { doneSection } from '../core/plan.ts';
 import { bounded, spawnOptions } from './bounded.ts';
 import { halt } from './halt.ts';
 import { declaredKeys, gateBlock } from './plan.ts';
@@ -13,18 +14,15 @@ export const SCANNERS = ['betterleaks', 'gitleaks'];
 // so a run that pushed on the strength of those alone would never have run the whole suite
 // against the whole branch.
 export const dodCheck = (source: string): void => {
-  const lines = source.split('\n');
-  const start = lines.findIndex((line) => /^## Definition of Done\b/.test(line));
+  const section = doneSection(source);
 
-  if (start === -1) {
+  if (section === undefined) {
     halt(
       'The plan declares no global Definition of Done.',
       'No "## Definition of Done" heading found.\n\nThe DoD is the last barrier before anything is pushed: without it a run would ship on the strength of its per-slice gates alone, each of which only ever judged its own slice against its own commands.',
     );
   }
 
-  const next = lines.slice(start + 1).findIndex((line) => /^#{2,3} /.test(line));
-  const section = lines.slice(start + 1, next === -1 ? lines.length : start + 1 + next);
   const declared = declaredKeys(
     gateBlock(section, "The plan's Definition of Done"),
     "The plan's Definition of Done",

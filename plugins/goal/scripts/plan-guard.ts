@@ -16,39 +16,17 @@
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 
+import { doneSection, gateFence } from './core/plan.ts';
 import { halt, misuse } from './gate/halt.ts';
 import { iterationNumbers, iterationSection } from './gate/plan.ts';
 
 const GUARDED_LINE = /^(gate[1-9][0-9]*|dod[1-9][0-9]*)=.*$/;
 
-// The same fence `gate/plan.ts`'s `gateBlock` looks for, tolerant of a section carrying none.
-const fenceIn = (section: string[]): string[] | undefined => {
-  const open = section.findIndex((line) => line.trim() === '```gate');
-  const body = section.slice(open + 1);
-  const close = body.findIndex((line) => line.trim() === '```');
-
-  return open === -1 || close === -1 ? undefined : body.slice(0, close);
-};
-
-// The same "## Definition of Done" heading and section boundary `gate/ship.ts:17` locates.
-const doneSection = (source: string): string[] => {
-  const lines = source.split('\n');
-  const start = lines.findIndex((line) => /^## Definition of Done\b/.test(line));
-
-  if (start === -1) {
-    return [];
-  }
-
-  const next = lines.slice(start + 1).findIndex((line) => /^#{2,3} /.test(line));
-
-  return lines.slice(start + 1, next === -1 ? lines.length : start + 1 + next);
-};
-
 const resolvedBlocks = (source: string): string[][] => {
   const numbers = [...new Set([...iterationNumbers(source, true), ...iterationNumbers(source, false)])];
-  const sections = [...numbers.map((n) => iterationSection(source, n)), doneSection(source)];
+  const sections = [...numbers.map((n) => iterationSection(source, n)), doneSection(source) ?? []];
 
-  return sections.map(fenceIn).filter((block): block is string[] => block !== undefined);
+  return sections.map(gateFence).filter((block): block is string[] => block !== undefined);
 };
 
 export const guardedLines = (source: string): string[] =>

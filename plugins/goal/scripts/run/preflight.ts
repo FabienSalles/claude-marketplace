@@ -14,6 +14,7 @@
 import { existsSync } from 'node:fs';
 import { basename, dirname, resolve } from 'node:path';
 
+import { workIdOf } from '../core/plan.ts';
 import { frontmatter, header, iterationNumbers, topRegion } from '../gate/plan.ts';
 import { autoUpdaterWarning } from './advisory.ts';
 import type { Reporter } from './report.ts';
@@ -22,27 +23,15 @@ import { REFUSED, sweep } from './sweep.ts';
 
 export { REFUSED } from './sweep.ts';
 
+// Re-exported for anything that needs a plan's work-id ahead of a full preflight() call — a
+// test fixture asserting on the run directory it names, chief among them.
+export { workIdOf };
+
 export type PreflightResult = {
   policy: string;
   remote: string;
   workId: string;
   cleanup: boolean;
-};
-
-// A plan's work-id from its filename, shared with anything that needs it ahead of a full
-// preflight() call — a test fixture asserting on the run directory it names, chief among them.
-export const workIdOf = (plan: string): string => {
-  const planBase = basename(plan);
-
-  if (planBase.endsWith('-cleanup-spec.md')) {
-    return planBase.slice(0, -'-cleanup-spec.md'.length);
-  }
-
-  if (planBase.endsWith('-spec.md')) {
-    return planBase.slice(0, -'-spec.md'.length);
-  }
-
-  return planBase.replace(/\.md$/, '');
 };
 
 export const preflight = (plan: string, source: string, reporter: Reporter, gate: string): PreflightResult => {

@@ -14,7 +14,7 @@
 
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, statSync } from 'node:fs';
-import { basename, resolve } from 'node:path';
+import { resolve } from 'node:path';
 
 import { createReporter, runDir, type Reporter } from './run/report.ts';
 import { preflight, REFUSED } from './run/preflight.ts';
@@ -23,24 +23,8 @@ import { runIteration } from './run/iteration.ts';
 import { blockedNote, createPublisher } from './run/publish.ts';
 import { close, LANDED } from './run/close.ts';
 import { quote } from './run/shell.ts';
+import { workIdOf } from './core/plan.ts';
 import { iterationNumbers } from './gate/plan.ts';
-
-// Mirrors preflight.ts's own derivation of a plan's work-id from its filename, needed here
-// before preflight runs: the run's own log directory has to exist first, or none of preflight's
-// own checks are narrated anywhere but stdout.
-const workIdOf = (plan: string): string => {
-  const base = basename(plan);
-
-  if (base.endsWith('-cleanup-spec.md')) {
-    return base.slice(0, -'-cleanup-spec.md'.length);
-  }
-
-  if (base.endsWith('-spec.md')) {
-    return base.slice(0, -'-spec.md'.length);
-  }
-
-  return base.replace(/\.md$/, '');
-};
 
 const main = (): void => {
   const [plan, iteration] = process.argv.slice(2);

@@ -3,6 +3,8 @@
 // of these rules holds. gate/plan.ts is the sole adapter that reads a file and calls makePlan;
 // everything below takes values in and hands a value back.
 
+import { basename } from 'node:path';
+
 import { err, ok, type Result } from './result.ts';
 import { halt, type Halt } from './verdict.ts';
 
@@ -175,4 +177,92 @@ export const makePlan = (
       deliveryMode,
     }),
   );
+};
+
+// A plan's work-id from its filename: everything before the -spec.md / -cleanup-spec.md suffix,
+// or before .md when neither applies. Every consumer that names a run's own directory or checks
+// the branch a plan expects reads it from here rather than repeating the suffix stripping.
+export const workIdOf = (plan: string): string => {
+  const base = basename(plan);
+
+  if (base.endsWith('-cleanup-spec.md')) {
+    return base.slice(0, -'-cleanup-spec.md'.length);
+  }
+
+  if (base.endsWith('-spec.md')) {
+    return base.slice(0, -'-spec.md'.length);
+  }
+
+  return base.replace(/\.md$/, '');
+};
+
+// The bounds of an iteration's own section — from just after its "### Iteration N" heading to the
+// next "##"/"###" heading — undefined when the plan declares no such iteration. Distinct from
+// gate/plan.ts's sectionBounds, which halts on the same absence: a caller building a pull request
+// body from whichever iterations already landed needs to read past one the plan never had.
+export const iterationBounds = (lines: readonly string[], iteration: string): [number, number] | undefined => {
+  const heading = new RegExp(`^### Iteration ${iteration}\\b`);
+  const start = lines.findIndex((line) => heading.test(line));
+
+  if (start === -1) {
+    return undefined;
+  }
+
+  const next = lines.slice(start + 1).findIndex((line) => /^#{2,3} /.test(line));
+
+  return [start + 1, next === -1 ? lines.length : start + 1 + next];
+};
+
+// The "## Definition of Done" section, boundary-matched the same way — undefined when the plan
+// declares none.
+export const doneSection = (source: string): string[] | undefined => {
+  const lines = source.split('\n');
+  const start = lines.findIndex((line) => /^## Definition of Done\b/.test(line));
+
+  if (start === -1) {
+    return undefined;
+  }
+
+  const next = lines.slice(start + 1).findIndex((line) => /^#{2,3} /.test(line));
+
+  return lines.slice(start + 1, next === -1 ? lines.length : start + 1 + next);
+};
+
+// The ```gate fence inside a resolved section, tolerant of a section carrying none — an iteration
+// not yet fleshed out, or a heading with nothing under it.
+export const gateFence = (section: readonly string[]): string[] | undefined => {
+  const open = section.findIndex((line) => line.trim() === '```gate');
+  const body = section.slice(open + 1);
+  const close = body.findIndex((line) => line.trim() === '```');
+
+  return open === -1 || close === -1 ? undefined : body.slice(0, close);
+};
+
+// An iteration's own **Goal:** bullet, folded from its continuation lines into one sentence —
+// undefined when the plan declares no such iteration or the bullet is absent.
+export const goalOf = (source: string, iteration: string): string | undefined => {
+  const lines = source.split('\n');
+  const bounds = iterationBounds(lines, iteration);
+
+  if (bounds === undefined) {
+    return undefined;
+  }
+
+  const section = lines.slice(bounds[0], bounds[1]);
+  const goalStart = section.findIndex((line) => /^- \*\*Goal:\*\*/.test(line));
+
+  if (goalStart === -1) {
+    return undefined;
+  }
+
+  // Continuation lines fold into the same sentence: a `**Goal:**` bullet reads as one paragraph
+  // up to the next `- **` bullet or blank line, never as a truncated first line.
+  const goalRest = section.slice(goalStart + 1).findIndex((line) => /^- \*\*/.test(line) || line.trim() === '');
+  const goalEnd = goalRest === -1 ? section.length : goalStart + 1 + goalRest;
+
+  return section
+    .slice(goalStart, goalEnd)
+    .map((line) => line.trim())
+    .join(' ')
+    .replace(/^- \*\*Goal:\*\* */, '');
 };

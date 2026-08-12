@@ -11,26 +11,13 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { basename, join } from 'node:path';
 
+import { workIdOf } from './core/plan.ts';
+
 const PROJECTS_ROOT = join(homedir(), '.claude', 'projects');
 
 // Claude Code keys a project's transcripts by its absolute cwd with every `/` and `.` turned into a `-`.
 export const projectDir = (cwd: string, root: string = PROJECTS_ROOT): string =>
   join(root, cwd.replace(/[/.]/g, '-'));
-
-// Mirrors preflight.ts's own derivation of a plan's work-id from its filename.
-const workIdOf = (plan: string): string => {
-  const base = basename(plan);
-
-  if (base.endsWith('-cleanup-spec.md')) {
-    return base.slice(0, -'-cleanup-spec.md'.length);
-  }
-
-  if (base.endsWith('-spec.md')) {
-    return base.slice(0, -'-spec.md'.length);
-  }
-
-  return base.replace(/\.md$/, '');
-};
 
 export const recordedTranscripts = (plan: string, dir: string, cwd: string): string[] => {
   const runsRoot = join(cwd, '.claude', 'goal-runs', workIdOf(plan));

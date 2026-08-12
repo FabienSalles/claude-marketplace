@@ -6,6 +6,7 @@
 import { spawnSync } from 'node:child_process';
 import { basename } from 'node:path';
 
+import { goalOf } from '../core/plan.ts';
 import { header } from '../gate/plan.ts';
 import type { Reporter } from './report.ts';
 import type { PublishState } from './close.ts';
@@ -50,35 +51,6 @@ export const createPublisher = (
   const shas = new Map<string, string>();
   const state: PublishState = { publishes, prOpen: false, blocked: false };
 
-  const goalOf = (iteration: string): string | undefined => {
-    const lines = source.split('\n');
-    const start = lines.findIndex((line) => new RegExp(`^### Iteration ${iteration}\\b`).test(line));
-
-    if (start === -1) {
-      return undefined;
-    }
-
-    const next = lines.slice(start + 1).findIndex((line) => /^#{2,3} /.test(line));
-    const section = lines.slice(start + 1, next === -1 ? lines.length : start + 1 + next);
-
-    const goalStart = section.findIndex((line) => /^- \*\*Goal:\*\*/.test(line));
-
-    if (goalStart === -1) {
-      return undefined;
-    }
-
-    // Continuation lines fold into the same sentence: a `**Goal:**` bullet reads as one
-    // paragraph up to the next `- **` bullet or blank line, never as a truncated first line.
-    const goalRest = section.slice(goalStart + 1).findIndex((line) => /^- \*\*/.test(line) || line.trim() === '');
-    const goalEnd = goalRest === -1 ? section.length : goalStart + 1 + goalRest;
-
-    return section
-      .slice(goalStart, goalEnd)
-      .map((line) => line.trim())
-      .join(' ')
-      .replace(/^- \*\*Goal:\*\* */, '');
-  };
-
   // Iteration 1 of the supervised-PR plan `issue-<N>-spec.md`: a single-issue, single-PR run
   // names its issue in the plan's own filename, so the PR body can close it without guessing
   // an issue number out of the plan's prose.
@@ -87,7 +59,7 @@ export const createPublisher = (
   const prBody = (): string => {
     const bullets = landed
       .map((n, i) => {
-        const goal = goalOf(n);
+        const goal = goalOf(source, n);
 
         return goal === undefined ? undefined : `${i + 1}. ${goal} ${shas.get(n) ?? ''}`;
       })
