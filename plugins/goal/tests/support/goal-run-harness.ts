@@ -1,7 +1,8 @@
 import { spawnSync } from 'node:child_process';
 import { chmodSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs';
-import { basename, join, resolve } from 'node:path';
+import { join, resolve } from 'node:path';
 
+import { workIdOf } from '../../scripts/run/preflight.ts';
 import { tmpDir } from './tmp.ts';
 
 export const RUN_NODE = resolve(import.meta.dirname, '..', '..', 'scripts', 'goal-run.ts');
@@ -92,6 +93,7 @@ export const repo = (options: FixtureOptions = {}): Fixture => {
     join(bin, 'claude'),
     `#!/bin/sh
 printf '%s\\n' "$@" >> ${claudeLog}
+printf 'env DISABLE_AUTOUPDATER=%s\\n' "$DISABLE_AUTOUPDATER" >> ${claudeLog}
 # Fails quota-shaped for the first FAKE_CLAUDE_QUOTA_UNTIL calls, tracked in a counter file
 # because each call is a fresh process. Lets a test prove a bounded number of relaunches
 # without waiting on a real 5-hour window.
@@ -296,20 +298,7 @@ export const run = (fixture: Fixture, args: string[], env: Record<string, string
 
 export const lockOf = (fixture: Fixture) => `${fixture.plan}.run.lock`;
 
-// Mirrors preflight.ts's own derivation of a plan's work-id from its filename.
-export const workIdOf = (plan: string): string => {
-  const base = basename(plan);
-
-  if (base.endsWith('-cleanup-spec.md')) {
-    return base.slice(0, -'-cleanup-spec.md'.length);
-  }
-
-  if (base.endsWith('-spec.md')) {
-    return base.slice(0, -'-spec.md'.length);
-  }
-
-  return base.replace(/\.md$/, '');
-};
+export { workIdOf };
 
 // The one run directory a fixture's single launch wrote under `.claude/goal-runs/<work-id>/`.
 export const runDirOf = (fixture: Fixture): string => {

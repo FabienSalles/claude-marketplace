@@ -147,9 +147,14 @@ test('the shutdown retry bound defaults to 5 and honours GOAL_RUN_SHUTDOWN_MAX_R
 // R18 — self-update disabled: the claude spawn env carries DISABLE_AUTOUPDATER so an update
 // under way is never what an implementer call's exit 143 turns out to mean.
 test('the claude spawn env disables the autoupdater', () => {
-  const source = readFileSync(join(import.meta.dirname, '..', 'scripts', 'run', 'iteration.ts'), 'utf8');
+  const fixture = repo();
 
-  assert.match(source, /DISABLE_AUTOUPDATER:\s*'1'/, source);
+  const { code, output } = run(fixture, [fixture.plan, '1'], {
+    FAKE_CLAUDE_WRITES: join(fixture.dir, 'a.txt'),
+  });
+
+  assert.equal(code, 0, output);
+  assert.match(readFileSync(fixture.claudeLog, 'utf8'), /^env DISABLE_AUTOUPDATER=1$/m, output);
 });
 
 // R17 — the two shapes are distinct, escaped classes: a bare 429 or the literal

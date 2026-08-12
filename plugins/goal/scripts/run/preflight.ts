@@ -29,21 +29,26 @@ export type PreflightResult = {
   cleanup: boolean;
 };
 
-export const preflight = (plan: string, source: string, reporter: Reporter, gate: string): PreflightResult => {
+// A plan's work-id from its filename, shared with anything that needs it ahead of a full
+// preflight() call — a test fixture asserting on the run directory it names, chief among them.
+export const workIdOf = (plan: string): string => {
   const planBase = basename(plan);
-  let workId: string;
-  let cleanup: boolean;
 
   if (planBase.endsWith('-cleanup-spec.md')) {
-    workId = planBase.slice(0, -'-cleanup-spec.md'.length);
-    cleanup = true;
-  } else if (planBase.endsWith('-spec.md')) {
-    workId = planBase.slice(0, -'-spec.md'.length);
-    cleanup = false;
-  } else {
-    workId = planBase.replace(/\.md$/, '');
-    cleanup = false;
+    return planBase.slice(0, -'-cleanup-spec.md'.length);
   }
+
+  if (planBase.endsWith('-spec.md')) {
+    return planBase.slice(0, -'-spec.md'.length);
+  }
+
+  return planBase.replace(/\.md$/, '');
+};
+
+export const preflight = (plan: string, source: string, reporter: Reporter, gate: string): PreflightResult => {
+  const planBase = basename(plan);
+  const workId = workIdOf(plan);
+  const cleanup = planBase.endsWith('-cleanup-spec.md');
 
   // 0. Metadata block — every Key: line the plan declares belongs in one `---`-delimited block
   // at the top of the file, or the checks below silently read nothing. Refused before any of
