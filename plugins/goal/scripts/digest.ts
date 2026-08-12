@@ -5,44 +5,24 @@
 
 import { readFileSync } from 'node:fs';
 
-type Block = {
-  type?: string;
-  id?: string;
-  name?: string;
-  input?: { file_path?: string; command?: string };
-  tool_use_id?: string;
-  is_error?: boolean;
-};
-type Entry = { message?: { content?: Block[] } };
+import { parseEvents } from './core/events.ts';
 
 export const digest = (transcriptPath: string): string[] => {
   const calls = new Map<string, { line: number; name: string; target: string }>();
   const outcomes = new Map<string, boolean>();
   const order: string[] = [];
 
-  readFileSync(transcriptPath, 'utf8').split('\n').forEach((raw, index) => {
-    if (raw.trim() === '') {
-      return;
-    }
-
-    let entry: Entry;
-
-    try {
-      entry = JSON.parse(raw) as Entry;
-    } catch {
-      return;
-    }
-
-    for (const block of entry.message?.content ?? []) {
+  for (const { line, event } of parseEvents(readFileSync(transcriptPath, 'utf8'))) {
+    for (const block of event.message?.content ?? []) {
       if (block.type === 'tool_use' && block.id && block.name) {
         const target = block.input?.file_path ?? block.input?.command ?? '';
-        calls.set(block.id, { line: index + 1, name: block.name, target });
+        calls.set(block.id, { line, name: block.name, target });
         order.push(block.id);
       } else if (block.type === 'tool_result' && block.tool_use_id) {
         outcomes.set(block.tool_use_id, block.is_error === true);
       }
     }
-  });
+  }
 
   return order.map((id) => {
     const call = calls.get(id);

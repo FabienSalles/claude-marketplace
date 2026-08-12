@@ -9,7 +9,7 @@ import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 
-import { projectDir } from '../transcripts.ts';
+import { lastSessionId, projectDir } from '../core/events.ts';
 import type { Reporter } from './report.ts';
 
 // Overridable the same way advisory.ts's defaultSettingsPath() is: a test points it at a tmp
@@ -42,29 +42,6 @@ const persistAttemptOutput = (dir: string, attempt: number, output: string): voi
   } catch {
     // An unwritable run directory degrades to less evidence, never to a crash.
   }
-};
-
-// The last session id any stream-json event of the dying attempt carried.
-const sessionIdFrom = (stdout: string): string | undefined => {
-  let found: string | undefined;
-
-  for (const line of stdout.split('\n')) {
-    if (line.trim() === '') {
-      continue;
-    }
-
-    try {
-      const event = JSON.parse(line) as { session_id?: string };
-
-      if (event.session_id) {
-        found = event.session_id;
-      }
-    } catch {
-      continue;
-    }
-  }
-
-  return found;
 };
 
 const transcriptTail = (sessionId: string | undefined, cwd: string, lines = 20): string[] => {
@@ -105,7 +82,7 @@ export const postmortem = (
   persistAttemptOutput(dir, attempt, `${stdout}${stderr}`);
   reporter.say(`RUN postmortem: attempt ${attempt} exited ${status}, output saved to implementer-attempt-${attempt}.out`);
 
-  const tail = transcriptTail(sessionIdFrom(stdout), cwd);
+  const tail = transcriptTail(lastSessionId(stdout), cwd);
 
   if (tail.length === 0) {
     reporter.say('RUN postmortem: no transcript found for the dying session, evidence degrades to output and binary mtime alone');

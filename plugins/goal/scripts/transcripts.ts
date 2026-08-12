@@ -11,13 +11,12 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { basename, join } from 'node:path';
 
+import { projectDir } from './core/events.ts';
 import { workIdOf } from './core/plan.ts';
 
-const PROJECTS_ROOT = join(homedir(), '.claude', 'projects');
+export { projectDir } from './core/events.ts';
 
-// Claude Code keys a project's transcripts by its absolute cwd with every `/` and `.` turned into a `-`.
-export const projectDir = (cwd: string, root: string = PROJECTS_ROOT): string =>
-  join(root, cwd.replace(/[/.]/g, '-'));
+const PROJECTS_ROOT = join(homedir(), '.claude', 'projects');
 
 export const recordedTranscripts = (plan: string, dir: string, cwd: string): string[] => {
   const runsRoot = join(cwd, '.claude', 'goal-runs', workIdOf(plan));
