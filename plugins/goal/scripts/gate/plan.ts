@@ -4,6 +4,7 @@
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 
+import { makePlan, type Plan } from '../core/plan.ts';
 import { halt, misuse } from './halt.ts';
 
 // The region above the plan's first `##`/`###` heading — title and metadata, nothing else —
@@ -163,11 +164,28 @@ export const incidentalPaths = (source: string): string[] =>
 export const deliveryMode = (source: string): string =>
   /^Delivery mode:\s*allow-bc-break\s*$/m.test(source) ? 'allow-bc-break' : 'no-bc-break';
 
-export const blockOf = (source: string, iteration: string): Map<string, string> =>
-  declaredKeys(
+// The core aggregate for an iteration: parsing the markdown stays here, in the adapter, because
+// only this layer may halt on a plan malformed enough that there is no gate block to read
+// invariants out of. Once a `declared` map exists, every invariant it must hold — legal keys,
+// overlap, path shape, a declared secret, a numeric max_diff — is proven by makePlan alone, so
+// this is the one place a Halt value crosses into the process exit gate/halt.ts owns.
+export const planOf = (source: string, iteration: string): Plan => {
+  const declared = declaredKeys(
     gateBlock(iterationSection(source, iteration), `Iteration ${iteration}`),
     `Iteration ${iteration}`,
   );
+
+  const plan = makePlan(iteration, declared, incidentalPaths(source), deliveryMode(source));
+
+  if (!plan.ok) {
+    halt(plan.error.reason, plan.error.detail);
+  }
+
+  return plan.value;
+};
+
+export const blockOf = (source: string, iteration: string): Map<string, string> =>
+  new Map(planOf(source, iteration).declared);
 
 export const iterationNumbers = (source: string, ticked: boolean): string[] => {
   const lines = source.split('\n');

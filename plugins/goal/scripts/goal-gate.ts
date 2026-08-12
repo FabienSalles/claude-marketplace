@@ -13,8 +13,8 @@
 //
 // Exit codes: 0 the iteration is runnable · 1 HALT, with a reason · 2 misuse.
 
-import { halt, misuse } from './gate/halt.ts';
-import { blockOf, covers, declaredPaths, incidentalPaths, lockedHash, readPlan } from './gate/plan.ts';
+import { misuse } from './gate/halt.ts';
+import { blockOf, declaredPaths, incidentalPaths, lockedHash, readPlan } from './gate/plan.ts';
 import { determinismCheck, runGates } from './gate/commands.ts';
 import { commitAndTick, runLock, scopeCheck } from './gate/scope.ts';
 import { budgetCheck, removalCheck } from './gate/bounds.ts';
@@ -27,68 +27,6 @@ const USAGE =
   'usage: goal-gate.ts check|verify|commit <plan> <iteration> [plan_hash] [ticked]\n       goal-gate.ts bite <plan> <iteration>\n       goal-gate.ts dod <plan> [plan_hash]\n       goal-gate.ts scan\n       goal-gate.ts lock|unlock <plan>';
 
 const SUBCOMMANDS = ['check', 'verify', 'commit', 'bite', 'dod', 'lock', 'unlock'];
-
-const ALLOWED_KEY = /^(test_files|impl_files|max_diff|commit_msg|gate[1-9][0-9]*)$/;
-const REQUIRED_KEYS = ['gate1', 'impl_files', 'commit_msg'] as const;
-
-// An iteration may only set the terms it is judged on for itself. Anything else belongs to the
-// run — the plan hash, the global DoD, whether anything ships — and a slice that could set them
-// would be rewriting its own contract.
-const keysAreLegal = (declared: Map<string, string>, iteration: string): void => {
-  const forbidden = [...declared.keys()].filter((key) => !ALLOWED_KEY.test(key));
-
-  if (forbidden.length > 0) {
-    halt(
-      `Iteration ${iteration} declares a key it may not set.`,
-      `Refused: ${forbidden.join(' ')}\n\nAn iteration gate block sets only test_files, impl_files, max_diff, commit_msg and gate1..N. Any other key either belongs to the run rather than the slice — the plan hash, the global DoD, whether anything ships — or is not a key at all. A slice that could set them would be rewriting the terms it is judged by.`,
-    );
-  }
-
-  const missing = REQUIRED_KEYS.filter((key) => (declared.get(key) ?? '') === '');
-
-  if (missing.length > 0) {
-    halt(
-      `Iteration ${iteration} is not runnable unattended.`,
-      `Missing or empty: ${missing.join(' ')}\n\ngate1 is the acceptance criterion — without it the iteration exits 0 having proved nothing, which is exactly what the loop must never advance on. impl_files is the reference the scope check is made against. commit_msg is the message the slice is committed under. Write them into the gate block, or halt and report that this slice cannot be verified unattended.`,
-    );
-  }
-};
-
-// A bite check sets impl_files aside and reruns gate1: if impl_files also covers a test_files
-// path, that test vanishes along with the implementation, and gate1 fails for the wrong reason
-// or not at all. Refused for every verb, before any of them spend a command on it. An iteration
-// with no test_files is exempt: there is nothing gate1 could stop covering.
-const overlapCheck = (declared: Map<string, string>, iteration: string): void => {
-  const tests = (declared.get('test_files') ?? '').split(/\s+/).filter((path) => path !== '');
-
-  if (tests.length === 0) {
-    return;
-  }
-
-  const impls = (declared.get('impl_files') ?? '').split(/\s+/).filter((path) => path !== '');
-  const overlapping = new Set<string>();
-  const pairs: string[] = [];
-
-  for (const impl of impls) {
-    for (const path of tests) {
-      if (covers(impl, path)) {
-        pairs.push(`${impl} covers ${path}`);
-        overlapping.add(impl);
-      }
-    }
-  }
-
-  if (pairs.length === 0) {
-    return;
-  }
-
-  const fix = impls.filter((impl) => !overlapping.has(impl));
-
-  halt(
-    `Iteration ${iteration} declares impl_files that covers its own test_files.`,
-    `Overlapping: ${pairs.join(', ')}\n\nA bite check sets impl_files aside and reruns gate1: an impl_files path that also covers the test removes the test along with the implementation, so gate1 cannot fail for the right reason. Declare impl_files as: ${fix.join(' ') || '(none — every declared impl file covers a test)'}`,
-  );
-};
 
 // The order is the contract. Everything cheap and mechanical runs before any command is spawned,
 // so a slice that already broke its budget does not spend the wall-clock of a suite it will halt
@@ -150,10 +88,10 @@ const main = (): void => {
 
   const source = readPlan(plan);
   const hash = lockedHash(plan, source, `iteration ${iteration}`, locked);
+  // Every construction invariant — legal keys, overlap, path shape, a declared secret, a
+  // numeric max_diff — is proven inside blockOf(), which halts on the first one a plan fails:
+  // an invalid-by-construction plan never reaches `check`, let alone the gates `verify` spawns.
   const declared = blockOf(source, iteration);
-
-  keysAreLegal(declared, iteration);
-  overlapCheck(declared, iteration);
 
   // The sanctioned RED check: sets impl_files aside, reruns gate1, requires it to fail, restores
   // by overwrite — the same mechanism `verify` runs last, invocable on demand so an implementer
