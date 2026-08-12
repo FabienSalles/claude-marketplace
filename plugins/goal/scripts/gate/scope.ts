@@ -95,14 +95,13 @@ export const takeLock = (path: string, iteration: string): void => {
   heldLocks.push(path);
 };
 
-export const runLock = (subcommand: string, plan: string): void => {
+export const runLock = (subcommand: string, plan: string): string => {
   const path = `${plan}.run.lock`;
 
   if (subcommand === 'unlock') {
     rmSync(path, { recursive: true, force: true });
-    process.stdout.write(`OK: run lock released.\n`);
 
-    return;
+    return `OK: run lock released.\n`;
   }
 
   try {
@@ -114,7 +113,7 @@ export const runLock = (subcommand: string, plan: string): void => {
     );
   }
 
-  process.stdout.write(`OK: run lock taken.\n`);
+  return `OK: run lock taken.\n`;
 };
 
 export const commitAndTick = (
@@ -125,7 +124,7 @@ export const commitAndTick = (
   paths: string[],
   changed: Set<string>,
   incidental: string[] = [],
-): void => {
+): string => {
   const lines = source.split('\n');
   const [start, end] = sectionBounds(lines, iteration);
   const box = lines.slice(start, end).findIndex((line) => line.startsWith('- [ ]'));
@@ -161,5 +160,5 @@ export const commitAndTick = (
   lines[start + box] = lines[start + box]!.replace('- [ ]', '- [x]');
   writeFileSync(plan, lines.join('\n'));
 
-  process.stdout.write(`OK: iteration ${iteration} committed and ticked.\n`);
+  return `OK: iteration ${iteration} committed and ticked.\n`;
 };

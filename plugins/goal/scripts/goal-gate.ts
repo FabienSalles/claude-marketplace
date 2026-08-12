@@ -13,50 +13,20 @@
 //
 // Exit codes: 0 the iteration is runnable · 1 HALT, with a reason · 2 misuse.
 
-import type { Result } from './core/result.ts';
-import type { Halt } from './core/verdict.ts';
-import { halt, misuse } from './gate/halt.ts';
-import { blockOf, declaredPaths, incidentalPaths, lockedHash, readPlan } from './gate/plan.ts';
-import { determinismCheck, runGates } from './gate/commands.ts';
-import { commitAndTick, runLock, scopeCheck } from './gate/scope.ts';
-import { budgetCheck, removalCheck } from './gate/bounds.ts';
-import { regressionWall, resolvabilityCheck } from './gate/cross-iteration.ts';
 import { biteCheck } from './gate/bite.ts';
+import { HaltError, MisuseError, haltText, misuse, unwrap, type Say } from './gate/halt.ts';
+import { blockOf, declaredPaths, incidentalPaths, lockedHash, readPlan } from './gate/plan.ts';
+import { commitAndTick, runLock, scopeCheck } from './gate/scope.ts';
 import { dodCheck, secretScan } from './gate/ship.ts';
-import { monotonicityCheck, tickedSet } from './gate/ticked.ts';
+import { monotonicityCheck } from './gate/ticked.ts';
+import { check, verify } from './gate/verbs.ts';
 
-// The sole caller of halt()'s print-and-exit for every check this iteration turned into a Result.
-const unwrap = <T>(result: Result<T, Halt>): T =>
-  result.ok ? result.value : halt(result.error.reason, result.error.detail);
+const say: Say = (chunk) => void process.stdout.write(chunk);
 
 const USAGE =
   'usage: goal-gate.ts check|verify|commit <plan> <iteration> [plan_hash] [ticked]\n       goal-gate.ts bite <plan> <iteration>\n       goal-gate.ts dod <plan> [plan_hash]\n       goal-gate.ts scan\n       goal-gate.ts lock|unlock <plan>';
 
 const SUBCOMMANDS = ['check', 'verify', 'commit', 'bite', 'dod', 'lock', 'unlock'];
-
-// The order is the contract. Everything cheap and mechanical runs before any command is spawned,
-// so a slice that already broke its budget does not spend the wall-clock of a suite it will halt
-// on anyway; the bite check runs last because it is the only one that touches the tree.
-const verify = (source: string, iteration: string, declared: Map<string, string>) => {
-  const paths = declaredPaths(declared);
-  const incidental = incidentalPaths(source);
-  const changed = unwrap(scopeCheck(paths, iteration, incidental));
-
-  // The two bounds stay measured against the declared paths alone: generated tooling is not
-  // authored work, so counting a lockfile against max_diff would blow every budget, and a
-  // regenerated file is not the deletion removalCheck exists to catch.
-  unwrap(budgetCheck(declared, paths, iteration));
-  unwrap(removalCheck(source, paths, iteration));
-  unwrap(resolvabilityCheck(source, iteration));
-
-  const passed = unwrap(runGates(declared, iteration));
-
-  unwrap(determinismCheck(declared, iteration));
-  unwrap(regressionWall(source, iteration, declared));
-  biteCheck(declared, iteration, changed);
-
-  return { paths, incidental, changed, passed };
-};
 
 const main = (): void => {
   // The ticked set travels by argument only. It used to fall back to GOAL_RUN_TICKED, and a
@@ -65,7 +35,7 @@ const main = (): void => {
   const [subcommand, plan, iteration, locked, ticked] = process.argv.slice(2);
 
   if (subcommand === 'scan') {
-    return secretScan();
+    return void process.stdout.write(secretScan());
   }
 
   if (plan === undefined || !SUBCOMMANDS.includes(subcommand ?? '')) {
@@ -73,7 +43,7 @@ const main = (): void => {
   }
 
   if (subcommand === 'lock' || subcommand === 'unlock') {
-    return runLock(subcommand, plan);
+    return void process.stdout.write(runLock(subcommand, plan));
   }
 
   if (subcommand === 'dod') {
@@ -81,7 +51,7 @@ const main = (): void => {
 
     lockedHash(plan, source, 'the Definition of Done replay', iteration);
 
-    return dodCheck(source);
+    return void process.stdout.write(dodCheck(source));
   }
 
   if (iteration === undefined) {
@@ -92,11 +62,17 @@ const main = (): void => {
     misuse(`${USAGE}\niteration must be a number, got: ${iteration}`);
   }
 
+  if (subcommand === 'check') {
+    return void process.stdout.write(check(plan, iteration, locked));
+  }
+
   const source = readPlan(plan);
-  const hash = lockedHash(plan, source, `iteration ${iteration}`, locked);
+
+  lockedHash(plan, source, `iteration ${iteration}`, locked);
+
   // Every construction invariant — legal keys, overlap, path shape, a declared secret, a
   // numeric max_diff — is proven inside blockOf(), which halts on the first one a plan fails:
-  // an invalid-by-construction plan never reaches `check`, let alone the gates `verify` spawns.
+  // an invalid-by-construction plan never reaches the gates `verify` spawns.
   const declared = blockOf(source, iteration);
 
   // The sanctioned RED check: sets impl_files aside, reruns gate1, requires it to fail, restores
@@ -107,22 +83,12 @@ const main = (): void => {
     const incidental = incidentalPaths(source);
     const changed = unwrap(scopeCheck(paths, iteration, incidental));
 
-    biteCheck(declared, iteration, changed);
+    biteCheck(declared, iteration, changed, say);
 
     return;
   }
 
-  if (subcommand === 'check') {
-    const commands = [...declared.keys()].filter((key) => key.startsWith('gate')).length;
-
-    process.stdout.write(
-      `OK: iteration ${iteration} is runnable (${commands} acceptance command(s)).\nplan_hash=${hash}\nticked=${tickedSet(source)}\n`,
-    );
-
-    return;
-  }
-
-  const { paths, incidental, changed, passed } = verify(source, iteration, declared);
+  const { paths, incidental, changed, passed } = verify(source, iteration, declared, say);
 
   if (subcommand === 'verify') {
     process.stdout.write(
@@ -134,7 +100,21 @@ const main = (): void => {
 
   unwrap(monotonicityCheck(source, iteration, ticked));
 
-  commitAndTick(plan, source, iteration, declared, paths, changed, incidental);
+  process.stdout.write(commitAndTick(plan, source, iteration, declared, paths, changed, incidental));
 };
 
-main();
+try {
+  main();
+} catch (error) {
+  if (error instanceof HaltError) {
+    process.stdout.write(haltText(error));
+    process.exit(1);
+  }
+
+  if (error instanceof MisuseError) {
+    process.stderr.write(`${error.message}\n`);
+    process.exit(2);
+  }
+
+  throw error;
+}

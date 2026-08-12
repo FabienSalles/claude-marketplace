@@ -13,7 +13,7 @@ export const SCANNERS = ['betterleaks', 'gitleaks'];
 // The barrier replayed once before anything ships. Every slice gate only ever saw its own slice,
 // so a run that pushed on the strength of those alone would never have run the whole suite
 // against the whole branch.
-export const dodCheck = (source: string): void => {
+export const dodCheck = (source: string): string => {
   const section = doneSection(source);
 
   if (section === undefined) {
@@ -55,7 +55,7 @@ export const dodCheck = (source: string): void => {
     }
   }
 
-  process.stdout.write(`OK: the global Definition of Done passed ${declared.size} command(s).\n`);
+  return `OK: the global Definition of Done passed ${declared.size} command(s).\n`;
 };
 
 // betterleaks first, gitleaks second, and a refusal if neither is installed: a push nobody
@@ -72,7 +72,7 @@ export const dodCheck = (source: string): void => {
 // The trade-off is deliberate: `git` reads the branch's history, so a secret committed three
 // slices ago still refuses. That is the correct answer, because pushing the branch publishes
 // that commit too, and a scan of the current tree alone would wave it through.
-export const secretScan = (): void => {
+export const secretScan = (): string => {
   const scanner = SCANNERS.find(
     (name) => spawnSync(`command -v ${name}`, { shell: true }).status === 0,
   );
@@ -94,5 +94,5 @@ export const secretScan = (): void => {
     );
   }
 
-  process.stdout.write(`OK: ${scanner} found no secret.\n`);
+  return `OK: ${scanner} found no secret.\n`;
 };

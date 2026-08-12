@@ -8,7 +8,7 @@ import { dirname, join } from 'node:path';
 import { git } from '../adapters/git.ts';
 import { bounded, spawnOptions } from './bounded.ts';
 import { emitCommand } from './commands.ts';
-import { halt, heldLocks, restorers } from './halt.ts';
+import { halt, heldLocks, restorers, type Say } from './halt.ts';
 import { covers } from './plan.ts';
 
 export const gitDir = (): string => {
@@ -51,11 +51,9 @@ export const fingerprint = (paths: string[]): string => {
 // the tree back by overwrite. gate1 alone is bitten: R2 makes it the one mandatory command, so
 // it is the acceptance criterion by construction, where gate2..N are supporting lints that pass
 // with or without the implementation.
-export const biteCheck = (declared: Map<string, string>, iteration: string, changed: Set<string>): void => {
+export const biteCheck = (declared: Map<string, string>, iteration: string, changed: Set<string>, say: Say): void => {
   if ((declared.get('test_files') ?? '') === '') {
-    process.stdout.write(
-      `SKIP: iteration ${iteration} declares no test_files, so there is nothing to set aside.\n`,
-    );
+    say(`SKIP: iteration ${iteration} declares no test_files, so there is nothing to set aside.\n`);
 
     return;
   }
@@ -110,7 +108,7 @@ export const biteCheck = (declared: Map<string, string>, iteration: string, chan
     }
   }
 
-  process.stdout.write(`BACKUP: iteration ${iteration}'s implementation is set aside in ${backup}\n`);
+  say(`BACKUP: iteration ${iteration}'s implementation is set aside in ${backup}\n`);
 
   const command = declared.get('gate1') ?? '';
   const start = Date.now();
@@ -135,5 +133,5 @@ export const biteCheck = (declared: Map<string, string>, iteration: string, chan
     );
   }
 
-  process.stdout.write(`OK: gate1 fails without iteration ${iteration}'s implementation.\n`);
+  say(`OK: gate1 fails without iteration ${iteration}'s implementation.\n`);
 };
