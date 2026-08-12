@@ -26,7 +26,7 @@ import { quote } from './run/shell.ts';
 import { workIdOf } from './core/plan.ts';
 import { iterationNumbers } from './gate/plan.ts';
 
-const main = (): void => {
+const main = async (): Promise<void> => {
   const [plan, iteration] = process.argv.slice(2);
   const reporter: Reporter = createReporter();
 
@@ -102,7 +102,7 @@ const main = (): void => {
   const landed: string[] = [];
 
   for (const n of iterations) {
-    runIteration(plan, source, n, hashes.get(n)!, tickedSets.get(n) ?? '', gate, dir, reporter, publisher);
+    await runIteration(plan, source, n, hashes.get(n)!, tickedSets.get(n) ?? '', gate, dir, reporter, publisher);
     landed.push(n);
 
     // Every iteration but the last publishes here, as it lands. The last one's push waits for
@@ -123,4 +123,4 @@ const main = (): void => {
   process.exit(exitCode);
 };
 
-main();
+await main();

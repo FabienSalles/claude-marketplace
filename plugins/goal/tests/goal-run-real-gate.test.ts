@@ -1,11 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { chmodSync, readFileSync, writeFileSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { join } from 'node:path';
 
 import { git, logOf, repo, run } from './support/goal-run-harness.ts';
-
-const GATE = resolve(import.meta.dirname, '..', 'scripts', 'goal-gate.ts');
 
 // Every discipline this suite otherwise proves against the fake gate, proved once more here
 // against the real one, on the default path a run actually takes: `GOAL_GATE` unset, so

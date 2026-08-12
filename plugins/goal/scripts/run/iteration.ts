@@ -22,7 +22,15 @@ import { git, quote } from './shell.ts';
 
 export { HALTED, PAUSED } from '../core/verdict.ts';
 
-export const runIteration = (
+// A SIGINT that lands while a spawnSync call blocks the process is queued by the OS, not
+// delivered: Node only runs the registered handler on a turn of the event loop, and a bare
+// spawnSync never gives it one. Awaited right after each call this loop cannot make responsive
+// on its own, so a queued signal's own exit (lock.ts's handler, releasing the lock before it)
+// gets first refusal at deciding this process's fate, ahead of whatever this loop was about to
+// do next.
+const yieldToLoop = (): Promise<void> => new Promise((resolve) => setImmediate(resolve));
+
+export const runIteration = async (
   plan: string,
   source: string,
   iteration: string,
@@ -32,7 +40,7 @@ export const runIteration = (
   dir: string,
   reporter: Reporter,
   publisher: Publisher,
-): void => {
+): Promise<void> => {
   reporter.say(`RUN iteration ${iteration} of ${basename(plan)}, in ${process.cwd()}`);
 
   const section = iterationSection(source, iteration).join('\n');
@@ -85,6 +93,8 @@ export const runIteration = (
       ],
       { encoding: 'utf8', env: { ...process.env, DISABLE_AUTOUPDATER: '1' } },
     );
+
+    await yieldToLoop();
 
     const extraction = narrate(implemented.stdout, reporter);
     reporter.say(`RUN stage=implementer duration_ms=${Date.now() - implementerStart} exit=${implemented.status ?? 1}`);
@@ -168,6 +178,8 @@ export const runIteration = (
     env: { ...process.env, GOAL_RUN_JSONL: join(dir, '.run.jsonl') },
   });
   const gateExit = verdict.status ?? 1;
+
+  await yieldToLoop();
 
   reporter.record(`${verdict.stdout}${verdict.stderr}`);
   reporter.say(`RUN stage=gate duration_ms=${Date.now() - gateStart} exit=${gateExit}`);

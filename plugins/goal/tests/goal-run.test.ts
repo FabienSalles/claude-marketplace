@@ -235,6 +235,33 @@ test('SIGINT releases the lock createLock() holds and exits 130', () => {
   assert.match(result.stdout, /^130$/m, `SIGINT did not exit 130:\n${result.stdout}`);
 });
 
+// P7 — the real path, not the isolated fixture above: goal-run.ts itself, mid-implementation,
+// sent the same SIGINT a developer's Ctrl+C sends. A signal that arrives while the implementer's
+// spawnSync is blocked is queued rather than delivered, so the exit code this reports is decided
+// by whatever runs first once that call returns — process.exit(PAUSED) from the retry loop's own
+// failure handling used to win that race every time; 130 has to win it now.
+test('SIGINT sent to goal-run.ts mid-implementation exits 130 and releases the lock', () => {
+  const fixture = repo();
+
+  const result = spawnSync(
+    'bash',
+    ['-c', `node "${RUN_NODE}" "${fixture.plan}" 1 & pid=$!; sleep 1; kill -INT $pid; wait $pid; echo EXIT:$?`],
+    {
+      cwd: fixture.dir,
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        PATH: `${fixture.bin}:${process.env.PATH ?? ''}`,
+        GOAL_GATE: join(fixture.bin, 'fake-gate'),
+        FAKE_CLAUDE_SLEEPS: '2',
+      },
+    },
+  );
+
+  assert.ok(!existsSync(lockOf(fixture)), 'the lock survived a SIGINT mid-implementation');
+  assert.match(result.stdout, /^EXIT:130$/m, `SIGINT mid-implementation did not exit 130:\n${result.stdout}`);
+});
+
 // R7 — the gate command is interpolated unquoted into five `shell: true` strings, so a checkout
 // under a directory holding a space is split by the shell and every iteration is refused over a
 // gate that never ran. The real gate is used here: the fixture's own one is named by GOAL_GATE,
