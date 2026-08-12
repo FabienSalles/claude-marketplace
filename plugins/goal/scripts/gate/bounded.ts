@@ -11,7 +11,9 @@
 // grandchild the command forked and detached from it is not in that process group and survives
 // the clock. That gap is scope, not a bug to gate on.
 
-import { spawnSync, type SpawnSyncOptions } from 'node:child_process';
+import type { SpawnSyncOptions } from 'node:child_process';
+
+import { command as runner } from '../adapters/command.ts';
 
 const HEADROOM = Number(process.env.GOAL_PROC_HEADROOM ?? '400');
 const TIMEOUT_SECONDS = Number(process.env.GOAL_CMD_TIMEOUT ?? '900');
@@ -19,13 +21,22 @@ const TIMEOUT_SECONDS = Number(process.env.GOAL_CMD_TIMEOUT ?? '900');
 // `ulimit -u` is a bash extension. `spawnSync({ shell: true })` runs `/bin/sh`, which is bash in
 // POSIX mode on macOS and dash on Debian and Ubuntu — where the option does not exist and the
 // shell answers "Illegal option -u", failing every command the prefix was attached to. That is how
-// this guard turned CI red on two commits. Probed once, and where the shell cannot express the
-// ceiling none is emitted: the incident this exists for happened on a developer's workstation, and
-// a CI runner is a disposable container its host already bounds.
-const shellBoundsProcesses = spawnSync('/bin/sh', ['-c', 'ulimit -u'], { encoding: 'utf8' }).status === 0;
+// this guard turned CI red on two commits. Probed once and cached, on first use rather than at
+// module load — a `require`/import of this module is not itself licence to spawn a process — and
+// where the shell cannot express the ceiling none is emitted: the incident this exists for
+// happened on a developer's workstation, and a CI runner is a disposable container its host
+// already bounds.
+let shellBoundsProcessesCache: boolean | undefined;
+const shellBoundsProcesses = (): boolean => {
+  if (shellBoundsProcessesCache === undefined) {
+    shellBoundsProcessesCache = runner.run('/bin/sh', ['-c', 'ulimit -u']).status === 0;
+  }
+
+  return shellBoundsProcessesCache;
+};
 
 const liveProcesses = (uid: number): number => {
-  const ps = spawnSync('ps', ['-u', String(uid), '-o', 'pid='], { encoding: 'utf8' });
+  const ps = runner.run('ps', ['-u', String(uid), '-o', 'pid=']);
 
   if (ps.status !== 0) {
     return 0;
@@ -54,7 +65,7 @@ export const ceilingFor = (live: number, inherited: number): string => {
 export const ceiling = (): string => {
   const uid = process.getuid?.();
 
-  if (uid === undefined || !shellBoundsProcesses) {
+  if (uid === undefined || !shellBoundsProcesses()) {
     return '';
   }
 
