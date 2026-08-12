@@ -15,7 +15,7 @@ import { narrate, tokensLine } from './narrate.ts';
 import { claudeBinaryMtime, claudeBinaryPath, postmortem } from './postmortem.ts';
 import { REFUSED } from './preflight.ts';
 import { blockedNote, type Publisher } from './publish.ts';
-import { burstBackoffSeconds, classifyFailure, SHUTDOWN_BACKOFF_SECONDS, shutdownMaxRetries, sleepInSlices } from './quota.ts';
+import { burstBackoffSeconds, classifyFailure, shutdownBackoffSeconds, shutdownMaxRetries, sleepInSlices } from './quota.ts';
 import type { Reporter } from './report.ts';
 import { git, quote } from './shell.ts';
 
@@ -122,8 +122,9 @@ export const runIteration = (
     attempt += 1;
 
     if (quotaClass === 'shutdown') {
-      reporter.say(`RUN the implementer exited 143 (shutdown), backing off ${SHUTDOWN_BACKOFF_SECONDS}s before relaunching iteration ${iteration} (attempt ${attempt} of ${maxRetries})`);
-      spawnSync('sleep', [String(SHUTDOWN_BACKOFF_SECONDS)]);
+      const seconds = shutdownBackoffSeconds();
+      reporter.say(`RUN the implementer exited 143 (shutdown), backing off ${seconds}s before relaunching iteration ${iteration} (attempt ${attempt} of ${maxRetries})`);
+      spawnSync('sleep', [String(seconds)]);
     } else if (quotaClass === 'burst') {
       const seconds = burstBackoffSeconds(attempt - 1);
       reporter.say(`RUN the implementer hit a burst rate limit, backing off ${seconds}s before relaunching iteration ${iteration} (attempt ${attempt} of ${maxRetries})`);
