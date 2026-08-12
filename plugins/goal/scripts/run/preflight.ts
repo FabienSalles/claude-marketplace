@@ -14,6 +14,7 @@
 import { existsSync } from 'node:fs';
 import { basename, dirname, resolve } from 'node:path';
 
+import { git } from '../adapters/git.ts';
 import {
   behindBaseDecision,
   branchDecision,
@@ -31,7 +32,7 @@ import { REFUSED } from '../core/verdict.ts';
 import { frontmatter, header, iterationNumbers, topRegion } from '../gate/plan.ts';
 import { autoUpdaterWarning } from './advisory.ts';
 import type { Reporter } from './report.ts';
-import { git, quote } from './shell.ts';
+import { quote } from './shell.ts';
 import { sweep } from './sweep.ts';
 
 export { REFUSED } from '../core/verdict.ts';
@@ -178,22 +179,27 @@ export const preflight = (plan: string, source: string, reporter: Reporter, gate
   // the plan declares neither, or declares a base this checkout has not fetched.
   git('fetch', '--prune', '--quiet');
   const prBase = header(source, 'PR base:');
-  let base: string | undefined;
+  const candidates = [...(prBase ? [`${remote}/${prBase}`] : []), `${remote}/HEAD`, 'origin/HEAD'];
 
-  if (prBase) {
-    const prBaseOut = git('rev-parse', '--abbrev-ref', `${remote}/${prBase}`);
-    base = prBaseOut.status === 0 ? prBaseOut.stdout.trim() : undefined;
+  // Tried batched first: one process for every candidate, in priority order, is enough whenever
+  // they all resolve — the common case. A single one of them failing makes git abort the whole
+  // batch without finishing the others, so that failure alone is not proof they all did; only
+  // the sequential fallback below, one candidate at a time, still tells which one first resolves.
+  const batched = git('rev-parse', '--abbrev-ref', ...candidates);
+  let base: string | undefined = batched.status === 0 ? batched.stdout.split('\n')[0]?.trim() : undefined;
+
+  if (base === undefined) {
+    for (const candidate of candidates) {
+      const out = git('rev-parse', '--abbrev-ref', candidate);
+
+      if (out.status === 0) {
+        base = out.stdout.trim();
+        break;
+      }
+    }
   }
 
-  if (!base) {
-    const remoteHeadOut = git('rev-parse', '--abbrev-ref', `${remote}/HEAD`);
-    base = remoteHeadOut.status === 0 ? remoteHeadOut.stdout.trim() : undefined;
-  }
-
-  if (!base) {
-    const originHeadOut = git('rev-parse', '--abbrev-ref', 'origin/HEAD');
-    base = originHeadOut.status === 0 ? originHeadOut.stdout.trim() : branch;
-  }
+  base ??= branch;
 
   const isAncestor = git('merge-base', '--is-ancestor', base, 'HEAD').status === 0;
   const missing = git('log', '--oneline', `HEAD..${base}`).stdout.replace(/\n$/, '');

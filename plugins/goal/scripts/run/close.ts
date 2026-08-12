@@ -9,12 +9,13 @@ import { tmpdir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
 
 import { gateAdapterOf, type GateAdapter } from '../adapters/gate.ts';
+import { git } from '../adapters/git.ts';
 import { header, iterationNumbers, readPlan } from '../gate/plan.ts';
 import { HALTED, LANDED, PAUSED } from '../core/verdict.ts';
 import { resultEnvelope, tokensLine } from './narrate.ts';
 import { blockedNote, type Publisher } from './publish.ts';
 import type { Reporter } from './report.ts';
-import { git, quote } from './shell.ts';
+import { quote } from './shell.ts';
 
 export { HALTED, LANDED } from '../core/verdict.ts';
 

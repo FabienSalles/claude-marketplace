@@ -7,10 +7,10 @@ import { spawnSync } from 'node:child_process';
 import { basename } from 'node:path';
 
 import { gateAdapterOf, type GateAdapter } from '../adapters/gate.ts';
+import { git } from '../adapters/git.ts';
 import { goalOf } from '../core/plan.ts';
 import { header } from '../gate/plan.ts';
 import type { Reporter } from './report.ts';
-import { git } from './shell.ts';
 
 // What run/close.ts reads instead of asking `gh` for the pull request's own state: whether this
 // run's policy publishes at all, whether this run opened or found one, and whether publication

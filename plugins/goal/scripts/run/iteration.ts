@@ -8,6 +8,7 @@ import { spawnSync } from 'node:child_process';
 import { basename, join } from 'node:path';
 
 import type { GateAdapter } from '../adapters/gate.ts';
+import { git } from '../adapters/git.ts';
 import { ceiling } from '../gate/bounded.ts';
 import { iterationSection } from '../gate/plan.ts';
 import { detectTamper } from '../core/tamper.ts';
@@ -19,7 +20,6 @@ import { claudeBinaryMtime, claudeBinaryPath, postmortem } from './postmortem.ts
 import { blockedNote, type Publisher } from './publish.ts';
 import { burstBackoffSeconds, classifyFailure, shutdownBackoffSeconds, shutdownMaxRetries, sleepInSlices } from './quota.ts';
 import type { Reporter } from './report.ts';
-import { git } from './shell.ts';
 
 export { HALTED, PAUSED } from '../core/verdict.ts';
 

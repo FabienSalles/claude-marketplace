@@ -4,11 +4,11 @@
 import { dirname } from 'node:path';
 import { existsSync } from 'node:fs';
 
+import { git } from '../adapters/git.ts';
 import { ok, type Result } from '../core/result.ts';
 import { resolvabilityDecision, selectReplay } from '../core/rules/cross-iteration.ts';
 import type { Halt } from '../core/verdict.ts';
 import { gateCommands, runGates } from './commands.ts';
-import { git } from './halt.ts';
 import { blockOf, declaredPaths, iterationNumbers } from './plan.ts';
 
 // The checked iterations' commands, deduplicated by command string and replayed, so a slice that

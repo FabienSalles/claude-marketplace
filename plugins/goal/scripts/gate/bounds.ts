@@ -1,9 +1,10 @@
 // The two bounds a slice is held to, both measured against HEAD.
 
+import { git } from '../adapters/git.ts';
 import { budgetDecision, removalDecision } from '../core/rules/bounds.ts';
 import type { Result } from '../core/result.ts';
 import type { Halt } from '../core/verdict.ts';
-import { git, halt } from './halt.ts';
+import { halt } from './halt.ts';
 import { deliveryMode } from './plan.ts';
 
 // Both bounds are measured against HEAD: `git diff --numstat` with no revision misses a

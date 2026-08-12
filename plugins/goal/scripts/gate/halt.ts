@@ -3,8 +3,6 @@
 
 import { rmSync } from 'node:fs';
 
-export { git } from '../adapters/git.ts';
-
 export const halt: (reason: string, detail: string) => never = (reason, detail) => {
   process.stdout.write(`HALT\n\nREASON: ${reason}\n\nDETAIL:\n${detail}\n`);
   process.exit(1);

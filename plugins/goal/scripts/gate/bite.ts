@@ -5,9 +5,10 @@ import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync,
 import { createHash } from 'node:crypto';
 import { dirname, join } from 'node:path';
 
+import { git } from '../adapters/git.ts';
 import { bounded, spawnOptions } from './bounded.ts';
 import { emitCommand } from './commands.ts';
-import { git, halt, heldLocks, restorers } from './halt.ts';
+import { halt, heldLocks, restorers } from './halt.ts';
 import { covers } from './plan.ts';
 
 export const gitDir = (): string => {

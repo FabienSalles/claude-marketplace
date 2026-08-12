@@ -2,10 +2,11 @@
 
 import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 
+import { git } from '../adapters/git.ts';
 import { ok, type Result } from '../core/result.ts';
 import { ignoredDecision, leakDecision, shapeDecision } from '../core/rules/scope.ts';
 import type { Halt } from '../core/verdict.ts';
-import { git, halt, heldLocks } from './halt.ts';
+import { halt, heldLocks } from './halt.ts';
 import { neverVersionedCheck } from './never.ts';
 import { covers, sectionBounds } from './plan.ts';
 

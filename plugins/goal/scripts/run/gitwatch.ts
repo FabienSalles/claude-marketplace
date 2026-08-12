@@ -9,7 +9,7 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
-import { git } from './shell.ts';
+import { git } from '../adapters/git.ts';
 
 const read = (path: string): string | null => {
   try {
@@ -49,8 +49,9 @@ export type GitDirSnapshot = {
 };
 
 export const snapshotGitDir = (): GitDirSnapshot => {
-  const common = resolve(git('rev-parse', '--git-common-dir').stdout.trim());
-  const absolute = git('rev-parse', '--absolute-git-dir').stdout.trim();
+  const [commonLine = '', absoluteLine = ''] = git('rev-parse', '--git-common-dir', '--absolute-git-dir').stdout.split('\n');
+  const common = resolve(commonLine.trim());
+  const absolute = absoluteLine.trim();
   const hooksDir = join(common, 'hooks');
 
   const fixed = [join(common, 'config'), join(common, 'info', 'exclude'), join(absolute, 'config.worktree')];
