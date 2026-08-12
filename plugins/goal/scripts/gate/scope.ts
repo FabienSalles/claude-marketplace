@@ -2,6 +2,9 @@
 
 import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 
+import { ok, type Result } from '../core/result.ts';
+import { ignoredDecision, leakDecision, shapeDecision } from '../core/rules/scope.ts';
+import type { Halt } from '../core/verdict.ts';
 import { git, halt, heldLocks } from './halt.ts';
 import { neverVersionedCheck } from './never.ts';
 import { covers, sectionBounds } from './plan.ts';
@@ -12,23 +15,18 @@ export const scopeCheck = (
   paths: string[],
   iteration: string,
   incidental: string[] = [],
-): Set<string> => {
-  const unusable = [...paths, ...incidental].filter((path) => /[`()*?[\]]/.test(path));
+): Result<Set<string>, Halt> => {
+  const shape = shapeDecision([...paths, ...incidental], iteration);
 
-  if (unusable.length > 0) {
-    halt(
-      `Iteration ${iteration} does not declare a list of paths.`,
-      `Unusable: ${unusable.join(' ')}\n\ntest_files and impl_files hold bare, space-separated, repo-relative paths and nothing else: no glob, no backtick, no markdown annotation. A whole subtree is declared by a trailing slash (plugins/goal/).`,
-    );
+  if (!shape.ok) {
+    return shape;
   }
 
   const ignored = paths.filter((path) => git('check-ignore', '-q', path).status === 0);
+  const ignoredResult = ignoredDecision(ignored, iteration);
 
-  if (ignored.length > 0) {
-    halt(
-      `Iteration ${iteration} declares a gitignored path.`,
-      `Ignored: ${ignored.join(' ')}\n\nA write to an ignored path is invisible to git, so the scope check would pass and the commit would carry none of it. The iteration would be green and incomplete at the same time.`,
-    );
+  if (!ignoredResult.ok) {
+    return ignoredResult;
   }
 
   const status = git('-c', 'core.quotepath=false', 'status', '--porcelain', '-z', '-uall');
@@ -60,7 +58,11 @@ export const scopeCheck = (
     }
   }
 
-  neverVersionedCheck([...changed, ...paths, ...incidental], `Iteration ${iteration}`);
+  const neverResult = neverVersionedCheck([...changed, ...paths, ...incidental], `Iteration ${iteration}`);
+
+  if (!neverResult.ok) {
+    return neverResult;
+  }
 
   // The porcelain code is not evidence: the git-add-empty hook runs `git add -N` on every
   // created file, so a parasite shows up as " A" and never as "??".
@@ -70,15 +72,13 @@ export const scopeCheck = (
   // otherwise exactly what the plan asked for.
   const allowed = [...paths, ...incidental];
   const undeclared = [...changed].filter((path) => !allowed.some((entry) => covers(entry, path)));
+  const leak = leakDecision(undeclared, iteration, paths, incidental, git('status', '--short', '-uall').stdout);
 
-  if (undeclared.length > 0) {
-    halt(
-      `Scope leak on iteration ${iteration}.`,
-      `Changed but not declared: ${undeclared.join(' ')}\n\nDeclared: ${paths.join(' ')}\n\nIncidental (plan header): ${incidental.length > 0 ? incidental.join(' ') : '(none)'}\n\ngit status --short -uall:\n${git('status', '--short', '-uall').stdout}\n\nGenerated tooling a project cannot help producing — a lockfile, a tsconfig — belongs on the plan's "Incidental:" header line, declared once for the whole plan. Anything else here is either out of this slice's scope or should not be versioned at all.`,
-    );
+  if (!leak.ok) {
+    return leak;
   }
 
-  return changed;
+  return ok(changed);
 };
 
 export const takeLock = (path: string, iteration: string): void => {

@@ -1,5 +1,8 @@
 // The two bounds a slice is held to, both measured against HEAD.
 
+import { budgetDecision, removalDecision } from '../core/rules/bounds.ts';
+import type { Result } from '../core/result.ts';
+import type { Halt } from '../core/verdict.ts';
 import { git, halt } from './halt.ts';
 import { deliveryMode } from './plan.ts';
 
@@ -18,45 +21,26 @@ export const headDiff = (flag: string, paths: string[], iteration: string): stri
   return run.stdout.split('\n').filter((line) => line !== '');
 };
 
-export const budgetCheck = (declared: Map<string, string>, paths: string[], iteration: string): void => {
+export const budgetCheck = (declared: Map<string, string>, paths: string[], iteration: string): Result<void, Halt> => {
   const budget = declared.get('max_diff') ?? '';
 
-  if (budget === '') {
-    return;
-  }
+  const written =
+    budget === ''
+      ? 0
+      : headDiff('--numstat', paths, iteration).reduce((total, line) => {
+          const [added, removed] = line.split('\t');
 
-  if (!/^[0-9]+$/.test(budget)) {
-    halt(
-      `Iteration ${iteration} declares a max_diff that is not a number.`,
-      `Found: ${budget}\n\nA budget nothing can compare against is a budget nobody is held to: the slice would run unbounded while the plan claims otherwise. Write a plain line count.`,
-    );
-  }
+          return total + (Number(added) || 0) + (Number(removed) || 0);
+        }, 0);
 
-  const written = headDiff('--numstat', paths, iteration).reduce((total, line) => {
-    const [added, removed] = line.split('\t');
-
-    return total + (Number(added) || 0) + (Number(removed) || 0);
-  }, 0);
-
-  if (written > Number(budget)) {
-    halt(
-      `Iteration ${iteration} exceeds its declared diff budget.`,
-      `Written: ${written} line(s) across ${paths.join(' ')}\nBudget: ${budget}\n\nA slice that outgrows its own estimate is no longer the slice that was reviewed and frozen. Split it, or raise max_diff in the plan deliberately — before the halt, not after it.`,
-    );
-  }
+  return budgetDecision(budget, written, paths, iteration);
 };
 
-export const removalCheck = (source: string, paths: string[], iteration: string): void => {
-  if (deliveryMode(source) === 'allow-bc-break') {
-    return;
-  }
+export const removalCheck = (source: string, paths: string[], iteration: string): Result<void, Halt> => {
+  const mode = deliveryMode(source);
 
-  const removals = headDiff('--name-status', paths, iteration).filter((line) => /^[DR]/.test(line));
+  const removals =
+    mode === 'allow-bc-break' ? [] : headDiff('--name-status', paths, iteration).filter((line) => /^[DR]/.test(line));
 
-  if (removals.length > 0) {
-    halt(
-      `Iteration ${iteration} deletes or renames a pre-existing file under no-bc-break.`,
-      `${removals.join('\n')}\n\nThe plan header declares no-bc-break — or declares no delivery mode at all, which reads the same way — so every consumer of these paths must keep working. Add beside the old path and leave it standing, or change the plan header to allow-bc-break and name what breaks.`,
-    );
-  }
+  return removalDecision(mode, removals, iteration);
 };

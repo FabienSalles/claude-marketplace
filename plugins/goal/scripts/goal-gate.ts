@@ -13,7 +13,9 @@
 //
 // Exit codes: 0 the iteration is runnable · 1 HALT, with a reason · 2 misuse.
 
-import { misuse } from './gate/halt.ts';
+import type { Result } from './core/result.ts';
+import type { Halt } from './core/verdict.ts';
+import { halt, misuse } from './gate/halt.ts';
 import { blockOf, declaredPaths, incidentalPaths, lockedHash, readPlan } from './gate/plan.ts';
 import { determinismCheck, runGates } from './gate/commands.ts';
 import { commitAndTick, runLock, scopeCheck } from './gate/scope.ts';
@@ -22,6 +24,10 @@ import { regressionWall, resolvabilityCheck } from './gate/cross-iteration.ts';
 import { biteCheck } from './gate/bite.ts';
 import { dodCheck, secretScan } from './gate/ship.ts';
 import { monotonicityCheck, tickedSet } from './gate/ticked.ts';
+
+// The sole caller of halt()'s print-and-exit for every check this iteration turned into a Result.
+const unwrap = <T>(result: Result<T, Halt>): T =>
+  result.ok ? result.value : halt(result.error.reason, result.error.detail);
 
 const USAGE =
   'usage: goal-gate.ts check|verify|commit <plan> <iteration> [plan_hash] [ticked]\n       goal-gate.ts bite <plan> <iteration>\n       goal-gate.ts dod <plan> [plan_hash]\n       goal-gate.ts scan\n       goal-gate.ts lock|unlock <plan>';
@@ -34,19 +40,19 @@ const SUBCOMMANDS = ['check', 'verify', 'commit', 'bite', 'dod', 'lock', 'unlock
 const verify = (source: string, iteration: string, declared: Map<string, string>) => {
   const paths = declaredPaths(declared);
   const incidental = incidentalPaths(source);
-  const changed = scopeCheck(paths, iteration, incidental);
+  const changed = unwrap(scopeCheck(paths, iteration, incidental));
 
   // The two bounds stay measured against the declared paths alone: generated tooling is not
   // authored work, so counting a lockfile against max_diff would blow every budget, and a
   // regenerated file is not the deletion removalCheck exists to catch.
-  budgetCheck(declared, paths, iteration);
-  removalCheck(source, paths, iteration);
-  resolvabilityCheck(source, iteration);
+  unwrap(budgetCheck(declared, paths, iteration));
+  unwrap(removalCheck(source, paths, iteration));
+  unwrap(resolvabilityCheck(source, iteration));
 
-  const passed = runGates(declared, iteration);
+  const passed = unwrap(runGates(declared, iteration));
 
-  determinismCheck(declared, iteration);
-  regressionWall(source, iteration, declared);
+  unwrap(determinismCheck(declared, iteration));
+  unwrap(regressionWall(source, iteration, declared));
   biteCheck(declared, iteration, changed);
 
   return { paths, incidental, changed, passed };
@@ -99,7 +105,7 @@ const main = (): void => {
   if (subcommand === 'bite') {
     const paths = declaredPaths(declared);
     const incidental = incidentalPaths(source);
-    const changed = scopeCheck(paths, iteration, incidental);
+    const changed = unwrap(scopeCheck(paths, iteration, incidental));
 
     biteCheck(declared, iteration, changed);
 
@@ -126,7 +132,7 @@ const main = (): void => {
     return;
   }
 
-  monotonicityCheck(source, iteration, ticked);
+  unwrap(monotonicityCheck(source, iteration, ticked));
 
   commitAndTick(plan, source, iteration, declared, paths, changed, incidental);
 };

@@ -7,30 +7,13 @@
 // git. The secret scanner does not close the gap either — it runs at push, which is after the
 // commit, and a secret committed is already in the local history whatever happens next.
 
-import { halt } from './halt.ts';
+import { NEVER_VERSIONED, neverVersionedDecision } from '../core/rules/never.ts';
+import type { Result } from '../core/result.ts';
+import type { Halt } from '../core/verdict.ts';
 
-// Anchored on a path segment so `src/.env.ts` is left alone while `.env` and `config/.env.local`
-// are not. The `.env.example` family is the documented counter-example every project ships, so
-// it is excluded by name rather than by hoping nobody writes one.
-export const NEVER_VERSIONED = [
-  /(^|\/)\.env$/,
-  /(^|\/)\.env\.(?!example$|sample$|template$|dist$)/,
-  /(^|\/)node_modules\//,
-  /(^|\/)id_(rsa|dsa|ecdsa|ed25519)$/,
-  /\.(pem|p12|pfx|jks|keystore)$/,
-];
+export { NEVER_VERSIONED };
 
 // Reads both what the tree holds and what the plan declared: a plan naming `.env` is refused
 // before the file exists, which is the moment it is cheapest to fix.
-export const neverVersionedCheck = (candidates: string[], subject: string): void => {
-  const refused = [...new Set(candidates)].filter((path) =>
-    NEVER_VERSIONED.some((pattern) => pattern.test(path)),
-  );
-
-  if (refused.length > 0) {
-    halt(
-      `${subject} would version a file that must never be committed.`,
-      `Refused: ${refused.join(' ')}\n\nThese paths carry credentials or vendored dependencies, so no declaration makes them committable — this check runs before the scope check and ignores what the gate block says. Add them to .gitignore. If one is already committed, treat whatever it holds as disclosed and rotate it: a later deletion does not remove it from history.`,
-    );
-  }
-};
+export const neverVersionedCheck = (candidates: string[], subject: string): Result<void, Halt> =>
+  neverVersionedDecision(candidates, subject);
