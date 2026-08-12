@@ -78,8 +78,10 @@ export type FixtureOptions = {
 // how "what was handed to the implementer" is asserted rather than assumed.
 //
 // The fake gate mimics the real one where it matters to this suite: `check` publishes a
-// plan_hash on stdout, `lock` creates the same `<plan>.run.lock` directory, `unlock` removes it.
-// That makes the lock assertions real rather than a stand-in.
+// plan_hash and a ticked= line on stdout (empty unless FAKE_GATE_TICKED says otherwise), `lock`
+// creates the same `<plan>.run.lock` directory, `unlock` removes it. That makes the lock
+// assertions, and the ticked set a caller wires from `check` through to `commit`, real rather
+// than a stand-in.
 export const repo = (options: FixtureOptions = {}): Fixture => {
   const dir = tmpDir('goal-run-');
   const bin = join(dir, 'fake-bin');
@@ -163,7 +165,7 @@ exit \${FAKE_CLAUDE_EXIT:-0}
     `#!/bin/sh
 printf '%s\\n' "$@" >> ${gateLog}
 case "$1" in
-  check)  printf 'OK\\nplan_hash=${HASH}\\n'; [ -n "$FAKE_GATE_CHECK_FAIL_N" ] && [ "$3" = "$FAKE_GATE_CHECK_FAIL_N" ] && exit 1; exit \${FAKE_GATE_CHECK_EXIT:-0} ;;
+  check)  printf 'OK\\nplan_hash=${HASH}\\nticked=%s\\n' "$FAKE_GATE_TICKED"; [ -n "$FAKE_GATE_CHECK_FAIL_N" ] && [ "$3" = "$FAKE_GATE_CHECK_FAIL_N" ] && exit 1; exit \${FAKE_GATE_CHECK_EXIT:-0} ;;
   lock)   mkdir "$2.run.lock" 2>/dev/null; exit 0 ;;
   unlock) rm -rf "$2.run.lock"; exit 0 ;;
   scan)   exit \${FAKE_GATE_SCAN_EXIT:-0} ;;
@@ -281,7 +283,9 @@ exit 0
   return { dir, bin, claudeLog, gateLog, ghLog, plan: join(dir, planDir, planFile) };
 };
 
-export const run = (fixture: Fixture, args: string[], env: Record<string, string> = {}) => {
+// `undefined` in `env` deletes the default it would otherwise override — GOAL_GATE, chiefly, so
+// a caller can drop back to the gate goal-run.ts resolves on its own rather than the fixture's.
+export const run = (fixture: Fixture, args: string[], env: Record<string, string | undefined> = {}) => {
   const result = spawnSync('node', [RUN_NODE, ...args], {
     cwd: fixture.dir,
     encoding: 'utf8',
