@@ -6,8 +6,8 @@ import { join, resolve } from 'node:path';
 
 import { HASH, PAUSED, RUN_NODE, lockOf, logOf, repo, run, sessionOf } from './support/goal-run-harness.ts';
 import { tmpDir } from './support/tmp.ts';
-import { narrate } from '../scripts/run/narrate.ts';
-import { HALTED } from '../scripts/run/iteration.ts';
+import { narrate } from '../src/run/narrate.ts';
+import { HALTED } from '../src/run/iteration.ts';
 
 // R4 — the plan lives in a gitignored directory outside the run's tree, and handing its path to
 // the implementer is what made a real run write its whole iteration into another checkout. The
@@ -235,14 +235,43 @@ test('SIGINT releases the lock createLock() holds and exits 130', () => {
   assert.match(result.stdout, /^130$/m, `SIGINT did not exit 130:\n${result.stdout}`);
 });
 
+// P7 — the real path, not the isolated fixture above: goal-run.ts itself, mid-implementation,
+// sent the same SIGINT a developer's Ctrl+C sends. A signal that arrives while the implementer's
+// spawnSync is blocked is queued rather than delivered, so the exit code this reports is decided
+// by whatever runs first once that call returns — process.exit(PAUSED) from the retry loop's own
+// failure handling used to win that race every time; 130 has to win it now.
+test('SIGINT sent to goal-run.ts mid-implementation exits 130 and releases the lock', () => {
+  const fixture = repo();
+
+  const result = spawnSync(
+    'bash',
+    ['-c', `node "${RUN_NODE}" "${fixture.plan}" 1 & pid=$!; sleep 1; kill -INT $pid; wait $pid; echo EXIT:$?`],
+    {
+      cwd: fixture.dir,
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        PATH: `${fixture.bin}:${process.env.PATH ?? ''}`,
+        GOAL_GATE: join(fixture.bin, 'fake-gate'),
+        FAKE_CLAUDE_SLEEPS: '2',
+      },
+    },
+  );
+
+  assert.ok(!existsSync(lockOf(fixture)), 'the lock survived a SIGINT mid-implementation');
+  assert.match(result.stdout, /^EXIT:130$/m, `SIGINT mid-implementation did not exit 130:\n${result.stdout}`);
+});
+
 // R7 — the gate command is interpolated unquoted into five `shell: true` strings, so a checkout
 // under a directory holding a space is split by the shell and every iteration is refused over a
 // gate that never ran. The real gate is used here: the fixture's own one is named by GOAL_GATE,
 // which is the path this default never takes.
 test('a gate installed under a path holding a space still runs', () => {
   const fixture = repo();
-  const scripts = join(tmpDir('goal run install '), 'scripts');
+  const installed = tmpDir('goal run install ');
+  const scripts = join(installed, 'scripts');
   cpSync(resolve(import.meta.dirname, '..', 'scripts'), scripts, { recursive: true });
+  cpSync(resolve(import.meta.dirname, '..', 'src'), join(installed, 'src'), { recursive: true });
 
   const env: NodeJS.ProcessEnv = { ...process.env, PATH: `${fixture.bin}:${process.env.PATH ?? ''}` };
   delete env.GOAL_GATE;

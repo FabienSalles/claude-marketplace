@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { projectDir, runTranscripts } from '../scripts/transcripts.ts';
+import { projectDir, runTranscripts } from '../src/transcripts.ts';
 import { tmpDir } from './support/tmp.ts';
 
 const projectRoot = (): string => tmpDir('transcripts-');

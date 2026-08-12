@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { PAUSED, repo, run } from './support/goal-run-harness.ts';
-import { burstBackoffSeconds, classifyFailure, classifyQuotaFailure, shutdownBackoffSeconds, shutdownMaxRetries, sleepInSlices } from '../scripts/run/quota.ts';
+import { burstBackoffSeconds, classifyFailure, classifyQuotaFailure, shutdownBackoffSeconds, shutdownMaxRetries, sleepInSlices } from '../src/run/quota.ts';
 
 // One line per argv entry (see the fake `claude` binary), and the agent name is a whole
 // argument on its own line, once per call — a reliable count of how many times the

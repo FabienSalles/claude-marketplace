@@ -87,8 +87,8 @@ Two decisions in it are worth more than the procedure:
   refusal: *"an agent that keeps relaunching optimizes for the run continuing, not for the work
   being right."*
 
-It has never been executed. Neither has anything it is the sole caller of: `scripts/plan-guard.ts`,
-`scripts/transcripts.ts` and `agents/goal-session-auditor.md` are referenced by `supervise.md` and
+It has never been executed. Neither has anything it is the sole caller of: `src/plan-guard.ts`,
+`src/transcripts.ts` and `agents/goal-session-auditor.md` are referenced by `supervise.md` and
 by their own tests, and by nothing else.
 
 The evidence it classifies from is written. `supervise.md:63-65` says to read the gate's own
@@ -144,7 +144,7 @@ class it is recovering from is a token furnace.**
 Nothing ever learns whether CI went red. A run no longer stops at PR creation (`close()` replays
 the Definition of Done, marks the pull request ready, and invokes a reviewer, a lens and an auditor),
 but every one of those happens inside the process, and no `gh pr checks` is called anywhere in
-`scripts/`. The run exits, and nothing outside it ever asks. `Monitor` is the shape that fits: a
+`scripts/` or `src/`. The run exits, and nothing outside it ever asks. `Monitor` is the shape that fits: a
 background script whose every stdout line becomes a notification.
 
 Coverage rule that matters more than it looks, and that the exit codes already respect: **the

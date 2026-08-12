@@ -271,7 +271,7 @@ from the half that did not.
 
 Two earlier generations preceded the one that runs today: a Workflow (941 lines) and a bash script
 (594 lines), both since deleted. `scripts/goal-run.ts` +
-`scripts/run/*.ts`, 1514 lines over 15 files, is what runs now.
+`src/run/*.ts`, 1639 lines over 15 files, is what runs now.
 
 **What survived.** The published guidance warns against Claude generating an orchestration
 script on the fly, per run: genuinely wasteful for a repeatable task, since you pay a model to
@@ -320,7 +320,7 @@ that was going to run anyway, and A ended up adding no agent at all.
 
 ## What this changes in what already exists
 
-- The gate is `scripts/goal-gate.ts` and the rules under `scripts/gate/`, one module per group
+- The gate is `scripts/goal-gate.ts` and the rules under `src/gate/`, one module per group
   of business rules. It is the single authority and the only thing that commits.
 - The plan's `gate` block gained `test_files`, `impl_files` and `max_diff`.
 - The per-iteration body is: implementer → gate → publish (`goal-run.ts:120-131`). There is no

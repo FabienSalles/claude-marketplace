@@ -13,12 +13,12 @@ beats a complete one that costs more than the work it audits.
 
 ## Find the transcripts
 
-`node ${CLAUDE_PLUGIN_ROOT}/scripts/transcripts.ts <cwd> <plan>` prints, one per line, every
+`node ${CLAUDE_PLUGIN_ROOT}/src/transcripts.ts <cwd> <plan>` prints, one per line, every
 transcript under `~/.claude/projects/` whose own content names the plan you were given. No
 session id is recorded anywhere for this — every session that ever worked on this run, including
 your own, opened with a prompt that names the plan, so that is the only anchor there is.
 
-For each path it prints, run `node ${CLAUDE_PLUGIN_ROOT}/scripts/digest.ts <path>` and read the
+For each path it prints, run `node ${CLAUDE_PLUGIN_ROOT}/src/digest.ts <path>` and read the
 digest, not the raw transcript: one line per tool call, carrying its result and the JSONL line
 number it sits on. Reopen the transcript itself with `Read` only at that specific line, and only
 when a finding needs the actual payload quoted. A transcript's opening prompt (near the top of

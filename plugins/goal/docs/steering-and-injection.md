@@ -1,7 +1,7 @@
 # Steering a run remotely, without opening an injection channel
 
 **The channel this document designs was never built.** Nothing in the current runner reads a
-remote instruction. Every `gh` call `scripts/goal-run.ts` and `scripts/run/` make is about one
+remote instruction. Every `gh` call `scripts/goal-run.ts` and `src/run/` make is about one
 pull request, this run's own: create, edit, view, mark ready. There is no control panel, no
 label kill switch, no reader agent in the path. A run launched by `node goal-run.ts <plan>` is
 steerable by nothing except killing the process, which `run/lock.ts:36-44` makes safe by
@@ -168,10 +168,10 @@ from any of them is not addressed anywhere: that is a sandbox question, not an o
 `skills/supervise/SKILL.md` introduces the one actor allowed to **edit the plan between two runs**,
 inside a closed set: an entry in `test_files` or `impl_files`, `max_diff`, a mistyped path, or
 prose (`supervise.md:72-75`). It asks the same question this document asks of a remote verb
-(*can this edit only subtract?*) and answers it with `scripts/plan-guard.ts`, which hashes the
+(*can this edit only subtract?*) and answers it with `src/plan-guard.ts`, which hashes the
 plan's acceptance commands before and after and refuses if the hash moved.
 
-**Name the seam before crediting the mechanism.** Nothing under `scripts/` imports or spawns
+**Name the seam before crediting the mechanism.** Nothing under `scripts/` or `src/` imports or spawns
 `plan-guard.ts`; its only callers are prose steps in `skills/supervise/SKILL.md:86-90`, which ask a
 model to run it and to read what it printed. So this is a sentence asking for a mechanism, not a
 mechanism: the same shape this document rejects everywhere else, and it is worth saying plainly

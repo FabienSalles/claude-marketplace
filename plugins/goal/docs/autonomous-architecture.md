@@ -102,8 +102,8 @@ refused it, and the pull request body stayed empty for six iterations.
 **A command that launches a node script that launches `claude -p`.** What each part buys:
 
 - **the script**, against the workflow: `git status` is a system call, not a model call.
-- **node**, against bash: `goal-run.ts` plus fourteen modules under `run/`, 1514 lines measured
-  today, none of them over 200 (where the bash original was 594 in one file and the abandoned
+- **node**, against bash: `goal-run.ts` plus fourteen modules under `run/`, 1639 lines measured
+  today, the largest at 250 (where the bash original was 594 in one file and the abandoned
   Workflow 941), and whole classes of bug disappear structurally, since `landed: string[]`
   (`run/publish.ts:44`) cannot produce bash's empty alternative.
 - **`claude -p`**, against a subagent: one fresh, bounded session per iteration, no context

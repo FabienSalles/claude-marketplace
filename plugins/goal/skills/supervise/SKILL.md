@@ -96,7 +96,7 @@ always theirs to fix, and relaunching blind repeats the same refusal.
 ## Phase 5 — `1`: classify before repairing
 
 Read the log tail back to the gate's own `HALT` block — `REASON:` and `DETAIL:`, written by
-`plugins/goal/scripts/gate/halt.ts`. That text is the only evidence there is; do not re-run the
+`plugins/goal/src/gate/halt.ts`. That text is the only evidence there is; do not re-run the
 gate to get a second opinion; it will say the same thing.
 
 Sort what it names into exactly one bucket:
@@ -118,11 +118,11 @@ Sort what it names into exactly one bucket:
 
 ### Plan fault → repair, prove it, relaunch
 
-1. Hash the plan before touching it: `node ${CLAUDE_PLUGIN_ROOT}/scripts/plan-guard.ts <plan>` →
+1. Hash the plan before touching it: `node ${CLAUDE_PLUGIN_ROOT}/src/plan-guard.ts <plan>` →
    keep `guard_hash`.
 2. Make the smallest edit inside the closed set above. Nothing else in the plan moves — no
    rewording a goal, no reordering iterations, no touching a checkbox.
-3. Prove it: `node ${CLAUDE_PLUGIN_ROOT}/scripts/plan-guard.ts <plan> <guard_hash>` must print
+3. Prove it: `node ${CLAUDE_PLUGIN_ROOT}/src/plan-guard.ts <plan> <guard_hash>` must print
    `OK: no gate or dod line moved.` and exit 0. If it halts instead, the edit reached a guarded
    line — revert it (`git checkout -- <plan>`) and fall through to unknown.
 4. Have the gate re-judge the preserved tree **directly**: `node
