@@ -3,19 +3,15 @@
 // blocks the next launch. INT and TERM are what a developer and a supervisor send; the process
 // 'exit' event covers everything else, including an uncaught throw.
 
-import { spawnSync } from 'node:child_process';
-
-import { quote } from './shell.ts';
-
-const gateCall = (gate: string, subcommand: string, plan: string): number =>
-  spawnSync(`${gate} ${subcommand} ${quote(plan)}`, { shell: true, stdio: 'ignore' }).status ?? 1;
+import { gateAdapterOf, type GateAdapter } from '../adapters/gate.ts';
 
 export type Lock = {
   acquire: () => boolean;
   release: () => void;
 };
 
-export const createLock = (gate: string, plan: string): Lock => {
+export const createLock = (gateArg: GateAdapter | string, plan: string): Lock => {
+  const gate = gateAdapterOf(gateArg);
   let held = false;
 
   const release = (): void => {
@@ -24,11 +20,11 @@ export const createLock = (gate: string, plan: string): Lock => {
     }
 
     held = false;
-    gateCall(gate, 'unlock', plan);
+    gate.unlock(plan);
   };
 
   const acquire = (): boolean => {
-    held = gateCall(gate, 'lock', plan) === 0;
+    held = gate.lock(plan).status === 0;
 
     return held;
   };

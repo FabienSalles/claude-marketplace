@@ -7,6 +7,7 @@
 import { spawnSync } from 'node:child_process';
 import { basename, join } from 'node:path';
 
+import type { GateAdapter } from '../adapters/gate.ts';
 import { ceiling } from '../gate/bounded.ts';
 import { iterationSection } from '../gate/plan.ts';
 import { detectTamper } from '../core/tamper.ts';
@@ -18,7 +19,7 @@ import { claudeBinaryMtime, claudeBinaryPath, postmortem } from './postmortem.ts
 import { blockedNote, type Publisher } from './publish.ts';
 import { burstBackoffSeconds, classifyFailure, shutdownBackoffSeconds, shutdownMaxRetries, sleepInSlices } from './quota.ts';
 import type { Reporter } from './report.ts';
-import { git, quote } from './shell.ts';
+import { git } from './shell.ts';
 
 export { HALTED, PAUSED } from '../core/verdict.ts';
 
@@ -36,7 +37,7 @@ export const runIteration = async (
   iteration: string,
   hash: string,
   ticked: string,
-  gate: string,
+  gate: GateAdapter,
   dir: string,
   reporter: Reporter,
   publisher: Publisher,
@@ -172,12 +173,8 @@ export const runIteration = async (
   reporter.say('RUN the tree moved, asking the gate for a verdict');
 
   const gateStart = Date.now();
-  const verdict = spawnSync(`${gate} commit ${quote(plan)} ${quote(iteration)} ${quote(hash)} ${quote(ticked)}`, {
-    shell: true,
-    encoding: 'utf8',
-    env: { ...process.env, GOAL_RUN_JSONL: join(dir, '.run.jsonl') },
-  });
-  const gateExit = verdict.status ?? 1;
+  const verdict = gate.commit(plan, iteration, hash, ticked, join(dir, '.run.jsonl'));
+  const gateExit = verdict.status;
 
   await yieldToLoop();
 

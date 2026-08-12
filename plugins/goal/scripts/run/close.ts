@@ -8,6 +8,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
 
+import { gateAdapterOf, type GateAdapter } from '../adapters/gate.ts';
 import { header, iterationNumbers, readPlan } from '../gate/plan.ts';
 import { HALTED, LANDED, PAUSED } from '../core/verdict.ts';
 import { resultEnvelope, tokensLine } from './narrate.ts';
@@ -64,7 +65,7 @@ const runConcurrently = (jobs: AgentJob[]): { name: string; output: string; stde
 
 export const close = (
   plan: string,
-  gate: string,
+  gateArg: GateAdapter | string,
   hash: string,
   remote: string,
   publisher: Publisher,
@@ -72,11 +73,12 @@ export const close = (
   dir: string,
   reporter: Reporter,
 ): number => {
+  const gate = gateAdapterOf(gateArg);
   const jsonl = join(dir, '.run.jsonl');
   const dodStart = Date.now();
-  const dod = spawnSync(`${gate} dod ${quote(plan)} ${quote(hash)}`, { shell: true, encoding: 'utf8' });
+  const dod = gate.dod(plan, hash);
   const dodOut = `${dod.stdout}${dod.stderr}`;
-  const dodExit = dod.status ?? 1;
+  const dodExit = dod.status;
   reporter.say(`RUN stage=dod duration_ms=${Date.now() - dodStart} exit=${dodExit}`);
 
   // The plan on disk, re-read here rather than trusted from before this run started: every box

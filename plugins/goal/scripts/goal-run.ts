@@ -12,7 +12,6 @@
 //   2 — refused: the run never started, and nothing needs undoing
 //   3 — paused: a clean boundary, relaunch resumes here
 
-import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
 
@@ -25,6 +24,7 @@ import { close, LANDED } from './run/close.ts';
 import { quote } from './run/shell.ts';
 import { workIdOf } from './core/plan.ts';
 import { iterationNumbers } from './gate/plan.ts';
+import { inProcessGateAdapter, spawnGateAdapter, type GateAdapter } from './adapters/gate.ts';
 
 const main = async (): Promise<void> => {
   const [plan, iteration] = process.argv.slice(2);
@@ -46,11 +46,17 @@ const main = async (): Promise<void> => {
   reporter.setLog(dir);
   reporter.say(`RUN writing this run's records to ${dir}`);
 
-  const gate = process.env.GOAL_GATE ?? `node ${quote(resolve(import.meta.dirname, 'goal-gate.ts'))}`;
+  // The channel this run gets its verdicts through: in-process by default — no subprocess spawned
+  // for the CLI verbs at all — and the spawn+scrape channel a run has always driven, kept intact,
+  // the moment GOAL_GATE names a command to drive instead. `gateLabel` stays a plain string:
+  // nothing but the unlock hint below reads it, and that hint names the CLI a developer can still
+  // run by hand whichever channel this run itself took.
+  const gateLabel = process.env.GOAL_GATE ?? `node ${quote(resolve(import.meta.dirname, 'goal-gate.ts'))}`;
+  const gate: GateAdapter = process.env.GOAL_GATE !== undefined ? spawnGateAdapter(gateLabel) : inProcessGateAdapter();
   const source = readFileSync(plan, 'utf8');
 
   const preflightStart = Date.now();
-  const { policy, remote } = preflight(plan, source, reporter, gate);
+  const { policy, remote } = preflight(plan, source, reporter, gateLabel);
   reporter.say(`RUN stage=preflight duration_ms=${Date.now() - preflightStart} exit=0`);
 
   const iterations = iteration !== undefined ? [iteration] : iterationNumbers(source, false);
@@ -63,10 +69,10 @@ const main = async (): Promise<void> => {
   const tickedSets = new Map<string, string>();
 
   for (const n of iterations) {
-    const checked = spawnSync(`${gate} check ${quote(plan)} ${quote(n)}`, { shell: true, encoding: 'utf8' });
+    const checked = gate.check(plan, n);
     const output = `${checked.stdout}${checked.stderr}`;
 
-    if ((checked.status ?? 1) !== 0) {
+    if (checked.status !== 0) {
       reporter.say(`STOP the gate will not run iteration ${n}, so nothing was attempted:`);
       reporter.say(output);
       process.exit(REFUSED);
@@ -94,7 +100,7 @@ const main = async (): Promise<void> => {
   // Taken once, before the first iteration, and released only when this process exits — see
   // lock.ts's process.once('exit') handler, which runs on every path out of here, landed or not.
   if (!lock.acquire()) {
-    reporter.stop(`another run holds this plan. Wait for it, or free it with: ${gate} unlock ${quote(plan)}`, REFUSED);
+    reporter.stop(`another run holds this plan. Wait for it, or free it with: ${gateLabel} unlock ${quote(plan)}`, REFUSED);
   }
 
   const publisher = createPublisher(plan, source, policy, remote, reporter, gate);

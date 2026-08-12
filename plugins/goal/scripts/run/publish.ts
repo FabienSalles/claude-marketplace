@@ -6,6 +6,7 @@
 import { spawnSync } from 'node:child_process';
 import { basename } from 'node:path';
 
+import { gateAdapterOf, type GateAdapter } from '../adapters/gate.ts';
 import { goalOf } from '../core/plan.ts';
 import { header } from '../gate/plan.ts';
 import type { Reporter } from './report.ts';
@@ -48,8 +49,9 @@ export const createPublisher = (
   policy: string,
   remote: string,
   reporter: Reporter,
-  gate: string,
+  gateArg: GateAdapter | string,
 ): Publisher => {
+  const gate = gateAdapterOf(gateArg);
   const publishes = policy === 'commit+pr';
 
   const rawPrBase = header(source, 'PR base:');
@@ -118,9 +120,9 @@ export const createPublisher = (
       }
     }
 
-    const scan = spawnSync(`${gate} scan`, { shell: true, encoding: 'utf8' });
+    const scan = gate.scan();
 
-    if ((scan.status ?? 1) !== 0) {
+    if (scan.status !== 0) {
       blocked = `The secret scanner refused this tree, so nothing was pushed:\n${scan.stdout}${scan.stderr}`;
       state.blocked = true;
       state.blockedReason = blocked;
