@@ -27,8 +27,10 @@ export const classifyQuotaFailure = (output: string): QuotaClass => {
 };
 
 // Capped exponential backoff in seconds, independent of GOAL_RUN_QUOTA_SLEEP: a burst clears on
-// the order of seconds, not the multi-minute window an exhausted quota needs.
-export const burstBackoffSeconds = (attempt: number): number => Math.min(2 ** (attempt - 1), 8);
+// the order of seconds, not the multi-minute window an exhausted quota needs. The cap is read
+// from GOAL_RUN_BURST_CAP, defaulting to the 8 it used to hardcode.
+export const burstBackoffSeconds = (attempt: number): number =>
+  Math.min(2 ** (attempt - 1), Number(process.env.GOAL_RUN_BURST_CAP ?? '8'));
 
 export type FailureClass = 'shutdown' | QuotaClass;
 
@@ -39,8 +41,9 @@ export const classifyFailure = (status: number | null, output: string): FailureC
   status === 143 ? 'shutdown' : classifyQuotaFailure(output);
 
 // Fixed, not exponential like a burst: a shutdown is not a load signal to back off from, just a
-// process that needs a moment to exit before the same iteration is handed to it again.
-export const SHUTDOWN_BACKOFF_SECONDS = 5;
+// process that needs a moment to exit before the same iteration is handed to it again. Read from
+// GOAL_RUN_SHUTDOWN_BACKOFF, defaulting to the 5s the constant used to pin.
+export const shutdownBackoffSeconds = (): number => Number(process.env.GOAL_RUN_SHUTDOWN_BACKOFF ?? '5');
 
 export const shutdownMaxRetries = (): number => Number(process.env.GOAL_RUN_SHUTDOWN_MAX_RETRIES ?? '5');
 

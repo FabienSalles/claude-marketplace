@@ -5,6 +5,7 @@ import { join } from 'node:path';
 
 import { PLAN, git, lockOf, repo, run } from './support/goal-run-harness.ts';
 import { tmpDir } from './support/tmp.ts';
+import { REFUSED } from '../scripts/run/preflight.ts';
 
 // R8 — the twelve preflight conditions run before the lock is taken, as refusals rather than
 // warnings. A run that would have burned a night on a red base, a stale branch or an absent
@@ -66,6 +67,16 @@ test('it refuses when the checkout stands on the wrong branch', () => {
   assert.notEqual(code, 0);
   assert.match(output, /STOP the checkout stands on main, not feature\/demo \(or feature\/demo-\.\.\.\)/, output);
   assert.ok(!existsSync(fixture.claudeLog), 'an implementer was spawned on a refusal');
+});
+
+// R2 — a preflight refusal exits exactly 2 (REFUSED), not merely non-zero: the run never
+// started, so its exit code has to read distinctly from a gate halt (1) or a pause (3).
+test('a preflight refusal exits exactly 2', () => {
+  const fixture = repo({ branch: null });
+
+  const { code } = run(fixture, [fixture.plan, '1']);
+
+  assert.equal(code, REFUSED);
 });
 
 test("it refuses when .claude/goal-runs is visible to git, naming the directory and the gitignore line, before the clean-tree check", () => {
@@ -203,6 +214,24 @@ test('the base sweep is skipped while the Bootstrap iteration is still unchecked
   assert.ok(existsSync(fixture.claudeLog), 'the run never reached the implementer under an exempted sweep');
 });
 
+// R2 hole — once the Bootstrap iteration is ticked (built), the carve-out no longer applies:
+// the base sweep runs normally against the untouched tree.
+test('the base sweep runs once the Bootstrap iteration is ticked', () => {
+  const planText = PLAN.replace('Policy: commit\n', 'Policy: commit\nBootstrap: 1\n').replace(
+    '### Iteration 1 — the first one\n- [ ] Not done yet',
+    '### Iteration 1 — the first one\n- [x] Not done yet',
+  );
+  const fixture = repo({ planText });
+
+  const { code, output } = run(fixture, [fixture.plan, '2'], {
+    FAKE_CLAUDE_WRITES: join(fixture.dir, 'b.txt'),
+  });
+
+  assert.equal(code, 0, output);
+  assert.doesNotMatch(output, /base sweep skipped/, output);
+  assert.match(output, /RUN base sweep: \d+ distinct commands? run, \d+ declared/, output);
+});
+
 test('it refuses when the branch is behind the base it forked from', () => {
   const fixture = repo({ staleOrigin: true });
 
@@ -211,6 +240,18 @@ test('it refuses when the branch is behind the base it forked from', () => {
   assert.notEqual(code, 0);
   assert.match(output, /STOP the branch is behind origin\/main:\n.*ahead commit\n\nFetch and rebase before relaunching\./s, output);
   assert.ok(!existsSync(fixture.claudeLog), 'an implementer was spawned on a refusal');
+});
+
+// R4 hole — with no remote configured at all (no `<remote>/HEAD`, no `origin/HEAD`), the
+// branch-behind check falls all the way back to comparing the branch against itself, so a
+// checkout that never pushed anywhere still runs rather than refusing over a base it cannot see.
+test('it falls back to comparing the branch against itself when no remote exists at all', () => {
+  const fixture = repo();
+
+  const { code, output } = run(fixture, [fixture.plan, '1'], { FAKE_CLAUDE_WRITES: join(fixture.dir, 'a.txt') });
+
+  assert.equal(code, 0, output);
+  assert.match(output, /RUN preflight: branch is caught up with feature\/demo/, output);
 });
 
 // R4 — the branch-behind check is verified against the base the plan declares, not always

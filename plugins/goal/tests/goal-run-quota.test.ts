@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { PAUSED, repo, run } from './support/goal-run-harness.ts';
-import { burstBackoffSeconds, classifyFailure, classifyQuotaFailure, shutdownMaxRetries, sleepInSlices } from '../scripts/run/quota.ts';
+import { burstBackoffSeconds, classifyFailure, classifyQuotaFailure, shutdownBackoffSeconds, shutdownMaxRetries, sleepInSlices } from '../scripts/run/quota.ts';
 
 // One line per argv entry (see the fake `claude` binary), and the agent name is a whole
 // argument on its own line, once per call — a reliable count of how many times the
@@ -66,6 +66,22 @@ test('a quota that never reopens pauses the run after a bounded number of relaun
   assert.equal(implementerCalls(fixture.claudeLog), 2, `expected exactly two implementer calls (bounded):\n${readFileSync(fixture.claudeLog, 'utf8')}`);
 });
 
+// R16 hole — the quota retry bound defaults to 3 when GOAL_RUN_QUOTA_MAX_RETRIES is unset, the
+// same boundary shutdownMaxRetries() pins for the shutdown class.
+test('a quota that never reopens pauses after the default bound of 3 relaunches, with no override', () => {
+  const fixture = repo();
+
+  const { code, output } = run(fixture, [fixture.plan, '1'], {
+    FAKE_CLAUDE_QUOTA_UNTIL: '999',
+    FAKE_CLAUDE_QUOTA_COUNTER: join(fixture.dir, 'quota-counter'),
+    GOAL_RUN_QUOTA_SLEEP: '0',
+  });
+
+  assert.equal(code, PAUSED, output);
+  assert.match(output, /quota/i, output);
+  assert.equal(implementerCalls(fixture.claudeLog), 3, `expected exactly three implementer calls (default bound):\n${readFileSync(fixture.claudeLog, 'utf8')}`);
+});
+
 // R16 — an ordinary failure (no quota shape in the output) must not be swallowed into a retry:
 // it pauses immediately, on the first call, the way it always has.
 test('a failure with no quota shape pauses immediately, without a retry', () => {
@@ -90,6 +106,7 @@ test('an implementer that keeps exiting 143 relaunches on a short fixed backoff,
     FAKE_CLAUDE_EXIT: '143',
     GOAL_RUN_SHUTDOWN_MAX_RETRIES: '2',
     GOAL_RUN_QUOTA_SLEEP: '999999',
+    GOAL_RUN_SHUTDOWN_BACKOFF: '0',
   });
 
   assert.equal(code, PAUSED, output);
@@ -97,6 +114,61 @@ test('an implementer that keeps exiting 143 relaunches on a short fixed backoff,
   assert.match(output, /shutdown/i, output);
   assert.doesNotMatch(output, /quota sleep continues/i, output);
   assert.equal(implementerCalls(fixture.claudeLog), 2, `expected exactly two implementer calls (bounded):\n${readFileSync(fixture.claudeLog, 'utf8')}`);
+});
+
+// R6 (I5) — the shutdown backoff is an injectable seam: GOAL_RUN_SHUTDOWN_BACKOFF=0 relaunches
+// with no measurable wait, so a suite exercising the shutdown-retry path stops paying the
+// default 5s per attempt.
+test('GOAL_RUN_SHUTDOWN_BACKOFF=0 relaunches with no measurable wait', () => {
+  const fixture = repo();
+  const start = Date.now();
+
+  const { code } = run(fixture, [fixture.plan, '1'], {
+    FAKE_CLAUDE_EXIT: '143',
+    GOAL_RUN_SHUTDOWN_MAX_RETRIES: '2',
+    GOAL_RUN_SHUTDOWN_BACKOFF: '0',
+  });
+
+  const elapsedMs = Date.now() - start;
+
+  assert.equal(code, PAUSED);
+  assert.ok(elapsedMs < 3000, `expected no measurable wait, took ${elapsedMs}ms`);
+});
+
+// R6 (I5) — shutdownBackoffSeconds() defaults to the same 5s the constant used to pin, and
+// GOAL_RUN_SHUTDOWN_BACKOFF overrides it.
+test('shutdownBackoffSeconds defaults to 5 and honours GOAL_RUN_SHUTDOWN_BACKOFF', () => {
+  const previous = process.env.GOAL_RUN_SHUTDOWN_BACKOFF;
+  delete process.env.GOAL_RUN_SHUTDOWN_BACKOFF;
+
+  assert.equal(shutdownBackoffSeconds(), 5);
+
+  process.env.GOAL_RUN_SHUTDOWN_BACKOFF = '2';
+  assert.equal(shutdownBackoffSeconds(), 2);
+
+  if (previous === undefined) {
+    delete process.env.GOAL_RUN_SHUTDOWN_BACKOFF;
+  } else {
+    process.env.GOAL_RUN_SHUTDOWN_BACKOFF = previous;
+  }
+});
+
+// R6 (I5) — burstBackoffSeconds' cap defaults to the same 8 it used to hardcode, and
+// GOAL_RUN_BURST_CAP overrides it.
+test('burstBackoffSeconds caps at 8 by default and honours GOAL_RUN_BURST_CAP', () => {
+  const previous = process.env.GOAL_RUN_BURST_CAP;
+  delete process.env.GOAL_RUN_BURST_CAP;
+
+  assert.equal(burstBackoffSeconds(10), 8);
+
+  process.env.GOAL_RUN_BURST_CAP = '3';
+  assert.equal(burstBackoffSeconds(10), 3);
+
+  if (previous === undefined) {
+    delete process.env.GOAL_RUN_BURST_CAP;
+  } else {
+    process.env.GOAL_RUN_BURST_CAP = previous;
+  }
 });
 
 // R18 — exit 143 is classified as `shutdown` before the quota regex ever runs against the
@@ -131,9 +203,14 @@ test('the shutdown retry bound defaults to 5 and honours GOAL_RUN_SHUTDOWN_MAX_R
 // R18 — self-update disabled: the claude spawn env carries DISABLE_AUTOUPDATER so an update
 // under way is never what an implementer call's exit 143 turns out to mean.
 test('the claude spawn env disables the autoupdater', () => {
-  const source = readFileSync(join(import.meta.dirname, '..', 'scripts', 'run', 'iteration.ts'), 'utf8');
+  const fixture = repo();
 
-  assert.match(source, /DISABLE_AUTOUPDATER:\s*'1'/, source);
+  const { code, output } = run(fixture, [fixture.plan, '1'], {
+    FAKE_CLAUDE_WRITES: join(fixture.dir, 'a.txt'),
+  });
+
+  assert.equal(code, 0, output);
+  assert.match(readFileSync(fixture.claudeLog, 'utf8'), /^env DISABLE_AUTOUPDATER=1$/m, output);
 });
 
 // R17 — the two shapes are distinct, escaped classes: a bare 429 or the literal
