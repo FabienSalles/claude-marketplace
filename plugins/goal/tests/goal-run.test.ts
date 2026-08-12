@@ -6,6 +6,8 @@ import { join, resolve } from 'node:path';
 
 import { HASH, PAUSED, RUN_NODE, lockOf, logOf, repo, run, sessionOf } from './support/goal-run-harness.ts';
 import { tmpDir } from './support/tmp.ts';
+import { narrate } from '../scripts/run/narrate.ts';
+import { HALTED } from '../scripts/run/iteration.ts';
 
 // R4 — the plan lives in a gitignored directory outside the run's tree, and handing its path to
 // the implementer is what made a real run write its whole iteration into another checkout. The
@@ -62,6 +64,21 @@ test('it renders each of the implementer tool uses as one line', () => {
   });
 
   assert.match(output, /^RUN implementer: Edit run\/publish\.ts$/m, output);
+});
+
+// R4 hole — a tool_use block with no file_path (a Bash call, addressed by its command rather
+// than a path) still renders a target: narrate() falls back to input.command.
+test('a tool use with no file_path renders its command as the target', () => {
+  const seen: string[] = [];
+  const reporter = { say: (message: string) => seen.push(message), record: () => {}, stop: () => { throw new Error('unexpected stop'); }, setLog: () => {} };
+  const stdout = `${JSON.stringify({
+    type: 'assistant',
+    message: { content: [{ type: 'tool_use', name: 'Bash', input: { command: 'npm test' } }] },
+  })}\n`;
+
+  narrate(stdout, reporter);
+
+  assert.ok(seen.includes('RUN implementer: Bash npm test'), `no command fallback rendered:\n${seen.join('\n')}`);
 });
 
 // R5 — the session_id the stream reports is recorded beside the run, so the full transcript
@@ -143,6 +160,19 @@ test('a gate that refuses the work halts the run and says so', () => {
 
   assert.notEqual(code, 0);
   assert.match(output, /refused/i, output);
+});
+
+// R2 — a gate refusal exits exactly 1 (HALTED), not merely non-zero: the run's own exit code
+// mapping is a contract a supervisor reads, and any other non-zero value would misclassify it.
+test('a gate that refuses the work exits exactly 1', () => {
+  const fixture = repo();
+
+  const { code } = run(fixture, [fixture.plan, '1'], {
+    FAKE_CLAUDE_WRITES: join(fixture.dir, 'a.txt'),
+    FAKE_GATE_COMMIT_EXIT: '1',
+  });
+
+  assert.equal(code, HALTED);
 });
 
 // R1 — the lock is the gate's, and a run that keeps it after dying blocks every later launch on

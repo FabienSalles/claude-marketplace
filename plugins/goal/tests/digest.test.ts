@@ -76,3 +76,15 @@ test('digest anchors each call to the JSONL line the tool_use sits on', () => {
   assert.equal(lines[0]?.split(':')[0], '2');
   assert.equal(lines[1]?.split(':')[0], '6');
 });
+
+// R10 hole — a tool_use with no matching tool_result anywhere in the transcript (the call was
+// still in flight when the session ended) reads as pending, distinct from both ok and error.
+test('digest marks a tool_use with no matching tool_result as pending, and a resolved one as ok', () => {
+  const path = fixture([toolUse('t1', 'Bash', 'ls'), toolUse('t2', 'Bash', 'pwd'), toolResult('t2', false)]);
+
+  const lines = digest(path);
+
+  assert.equal(lines.length, 2);
+  assert.ok(lines[0]?.endsWith('-> pending'), `expected pending, got: ${lines[0]}`);
+  assert.ok(lines[1]?.endsWith('-> ok'), `expected ok, got: ${lines[1]}`);
+});

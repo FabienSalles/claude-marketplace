@@ -66,6 +66,22 @@ test('a quota that never reopens pauses the run after a bounded number of relaun
   assert.equal(implementerCalls(fixture.claudeLog), 2, `expected exactly two implementer calls (bounded):\n${readFileSync(fixture.claudeLog, 'utf8')}`);
 });
 
+// R16 hole — the quota retry bound defaults to 3 when GOAL_RUN_QUOTA_MAX_RETRIES is unset, the
+// same boundary shutdownMaxRetries() pins for the shutdown class.
+test('a quota that never reopens pauses after the default bound of 3 relaunches, with no override', () => {
+  const fixture = repo();
+
+  const { code, output } = run(fixture, [fixture.plan, '1'], {
+    FAKE_CLAUDE_QUOTA_UNTIL: '999',
+    FAKE_CLAUDE_QUOTA_COUNTER: join(fixture.dir, 'quota-counter'),
+    GOAL_RUN_QUOTA_SLEEP: '0',
+  });
+
+  assert.equal(code, PAUSED, output);
+  assert.match(output, /quota/i, output);
+  assert.equal(implementerCalls(fixture.claudeLog), 3, `expected exactly three implementer calls (default bound):\n${readFileSync(fixture.claudeLog, 'utf8')}`);
+});
+
 // R16 — an ordinary failure (no quota shape in the output) must not be swallowed into a retry:
 // it pauses immediately, on the first call, the way it always has.
 test('a failure with no quota shape pauses immediately, without a retry', () => {

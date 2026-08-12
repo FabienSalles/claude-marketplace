@@ -229,6 +229,18 @@ esac
   }
 });
 
+// R7 hole — a pull request `gh` still resolves by branch name after it was closed without
+// merging is not this run's open one either: a new one is opened instead of editing the closed
+// one.
+test('a pull request already closed is not treated as open, and a new one is opened instead of edited', () => {
+  const fixture = repo({ planText: PLAN_PR, remote: true });
+  const { calls } = publishAgainstPrView(fixture, '{"number":9,"state":"CLOSED"}', '1');
+
+  assert.match(calls, /pr view/, `the closed pull request was never looked up:\n${calls}`);
+  assert.match(calls, /pr create/, `a closed pull request was edited instead of opening a new one:\n${calls}`);
+  assert.ok(!calls.includes('pr edit'), `a closed pull request was edited as though it were still open:\n${calls}`);
+});
+
 // R7 — a pull request `gh` reports under a state this code does not recognize (a future value
 // neither MERGED, CLOSED nor OPEN) is not treated as this run's open one: only OPEN keeps it
 // that way, everything else opens a new one instead of editing.

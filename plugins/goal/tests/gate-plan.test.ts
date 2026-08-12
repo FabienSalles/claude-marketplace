@@ -225,6 +225,17 @@ test('an unreadable plan exits 2 rather than reporting a bad plan', () => {
   assert.equal(code, 2);
 });
 
+// R2 hole — an iteration argument that is not a number is misuse (2), not a plan judged and
+// refused (1): the run never even asks which iteration to check.
+test('a non-numeric iteration argument exits 2 rather than being judged', () => {
+  const plan = writePlan(planWith(VALID_GATE));
+
+  const { code, output } = runGate(['check', plan, 'one']);
+
+  assert.equal(code, 2, output);
+  assert.match(output, /iteration must be a number/);
+});
+
 // R3 — the plan is read by absolute path, so the gate judges the tree it stands in and not
 // the one it was launched from. This is what lets a run live in a directory that has no
 // `.claude/` of its own.
