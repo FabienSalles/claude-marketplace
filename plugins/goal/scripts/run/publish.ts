@@ -9,8 +9,20 @@ import { basename } from 'node:path';
 import { goalOf } from '../core/plan.ts';
 import { header } from '../gate/plan.ts';
 import type { Reporter } from './report.ts';
-import type { PublishState } from './close.ts';
 import { git } from './shell.ts';
+
+// What run/close.ts reads instead of asking `gh` for the pull request's own state: whether this
+// run's policy publishes at all, whether this run opened or found one, and whether publication
+// ever blocked.
+export type PublishState = {
+  publishes: boolean;
+  prOpen: boolean;
+  blocked: boolean;
+  // The reason `blocked` stuck, named at the run's terminal line, whatever the exit, rather than
+  // left to whoever reads the middle of the log. Optional so a caller that never blocks can omit
+  // it.
+  blockedReason?: string;
+};
 
 // `gh` needs owner/name, git gives a URL: SSH, HTTPS, with or without the `.git` suffix.
 const repoOf = (remote: string): string =>

@@ -10,11 +10,10 @@
 import { spawnSync } from 'node:child_process';
 
 import { doneSection, gateFence } from '../core/plan.ts';
+import { REFUSED } from '../core/verdict.ts';
 import { bounded, spawnOptions } from '../gate/bounded.ts';
 import { declaredKeys, iterationNumbers, iterationSection } from '../gate/plan.ts';
 import type { Reporter } from './report.ts';
-
-export const REFUSED = 2;
 
 const swept = (block: string[], subject: string): string[] =>
   [...declaredKeys(block, subject)].filter(([key]) => {

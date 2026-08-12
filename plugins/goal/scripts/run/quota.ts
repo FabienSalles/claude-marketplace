@@ -8,23 +8,17 @@ import { spawnSync } from 'node:child_process';
 
 export type QuotaClass = 'burst' | 'exhausted' | null;
 
-// `usage limit` checked first: an explicit usage-limit message takes the long sleep even if a
-// 429 also shows up somewhere in the same output. `\b429\b` keeps a bare status code from
-// matching inside an unrelated number such as "14290".
-const EXHAUSTED = /usage limit/i;
-const BURST = /\b429\b|rate_limit_error/i;
+// The quota policy as data, checked top to bottom: an explicit usage-limit message takes the
+// long sleep even if a 429 also shows up somewhere in the same output, so `exhausted` is listed
+// before `burst`. `\b429\b` keeps a bare status code from matching inside an unrelated number
+// such as "14290".
+const QUOTA_POLICY: readonly { class: Exclude<QuotaClass, null>; pattern: RegExp }[] = [
+  { class: 'exhausted', pattern: /usage limit/i },
+  { class: 'burst', pattern: /\b429\b|rate_limit_error/i },
+];
 
-export const classifyQuotaFailure = (output: string): QuotaClass => {
-  if (EXHAUSTED.test(output)) {
-    return 'exhausted';
-  }
-
-  if (BURST.test(output)) {
-    return 'burst';
-  }
-
-  return null;
-};
+export const classifyQuotaFailure = (output: string): QuotaClass =>
+  QUOTA_POLICY.find((rule) => rule.pattern.test(output))?.class ?? null;
 
 // Capped exponential backoff in seconds, independent of GOAL_RUN_QUOTA_SLEEP: a burst clears on
 // the order of seconds, not the multi-minute window an exhausted quota needs. The cap is read

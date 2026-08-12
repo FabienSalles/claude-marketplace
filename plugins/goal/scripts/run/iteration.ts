@@ -9,19 +9,18 @@ import { basename, join } from 'node:path';
 
 import { ceiling } from '../gate/bounded.ts';
 import { iterationSection } from '../gate/plan.ts';
+import { detectTamper } from '../core/tamper.ts';
+import { HALTED, PAUSED, REFUSED } from '../core/verdict.ts';
 import { brief } from './brief.ts';
 import { changedGitDirPaths, changedRefs, snapshotGitDir, snapshotRefs } from './gitwatch.ts';
 import { narrate, tokensLine } from './narrate.ts';
 import { claudeBinaryMtime, claudeBinaryPath, postmortem } from './postmortem.ts';
-import { REFUSED } from './preflight.ts';
 import { blockedNote, type Publisher } from './publish.ts';
 import { burstBackoffSeconds, classifyFailure, shutdownBackoffSeconds, shutdownMaxRetries, sleepInSlices } from './quota.ts';
 import type { Reporter } from './report.ts';
 import { git, quote } from './shell.ts';
 
-export const LANDED = 0;
-export const HALTED = 1;
-export const PAUSED = 3;
+export { HALTED, PAUSED } from '../core/verdict.ts';
 
 export const runIteration = (
   plan: string,
@@ -135,43 +134,23 @@ export const runIteration = (
     }
   }
 
-  const headAfter = git('rev-parse', 'HEAD').stdout.trim();
-  const touched = git('status', '--porcelain').stdout;
-
-  if (headAfter !== headBefore) {
-    reporter.stop(`the implementer committed on its own, which only the gate may do. HEAD moved from ${headBefore} to ${headAfter}. Nothing was gate-verified: review that commit before relaunching.${blockedNote(publisher)}`, PAUSED);
-  }
-
-  // Checked before the empty-tree case below: an implementer that writes only into `.git/`
-  // leaves `git status` empty, so this has to run first or the diagnosis reads as "wrote
-  // nothing" rather than naming the git directory itself as the artifact.
-  const gitDirChanges = changedGitDirPaths(gitDirBefore);
-
-  if (gitDirChanges.length > 0) {
-    reporter.stop(
-      `the implementer changed the git directory: ${gitDirChanges.join(', ')}. \`git status\` will not show this: the artifact is still in .git/, not in the tree. Review it before relaunching.${blockedNote(publisher)}`,
-      PAUSED,
-    );
-  }
-
+  // Read exactly once, after the loop settles: every fact detectTamper decides over comes from
+  // this one pass, rather than a fresh git call per case it might report.
   const refChanges = changedRefs(refsBefore);
-  const remoteRefChanges = refChanges.filter((ref) => ref.startsWith('refs/remotes/'));
+  const after = {
+    head: git('rev-parse', 'HEAD').stdout.trim(),
+    gitDirChanges: changedGitDirPaths(gitDirBefore),
+    remoteRefChanges: refChanges.filter((ref) => ref.startsWith('refs/remotes/')),
+    otherRefChanges: refChanges.filter((ref) => !ref.startsWith('refs/remotes/')),
+  };
+  const before = { head: headBefore, gitDirChanges: [], remoteRefChanges: [], otherRefChanges: [] };
+  const tamper = detectTamper(before, after);
 
-  if (remoteRefChanges.length > 0) {
-    reporter.stop(
-      `the implementer pushed: ${remoteRefChanges.join(', ')} moved. Only the gate may publish. Review it before relaunching.${blockedNote(publisher)}`,
-      PAUSED,
-    );
+  if (!tamper.ok) {
+    reporter.stop(`${tamper.error}${blockedNote(publisher)}`, PAUSED);
   }
 
-  const otherRefChanges = refChanges.filter((ref) => !ref.startsWith('refs/remotes/'));
-
-  if (otherRefChanges.length > 0) {
-    reporter.stop(
-      `the implementer moved ${otherRefChanges.join(', ')}. \`git status\` will not show this: review it before relaunching.${blockedNote(publisher)}`,
-      PAUSED,
-    );
-  }
+  const touched = git('status', '--porcelain').stdout;
 
   if (touched.trim() === '') {
     reporter.stop(

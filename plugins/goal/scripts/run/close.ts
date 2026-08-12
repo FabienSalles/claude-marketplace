@@ -9,14 +9,13 @@ import { tmpdir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
 
 import { header, iterationNumbers, readPlan } from '../gate/plan.ts';
-import { PAUSED } from './iteration.ts';
+import { HALTED, LANDED, PAUSED } from '../core/verdict.ts';
 import { resultEnvelope, tokensLine } from './narrate.ts';
 import { blockedNote, type Publisher } from './publish.ts';
 import type { Reporter } from './report.ts';
 import { git, quote } from './shell.ts';
 
-export const LANDED = 0;
-export const HALTED = 1;
+export { HALTED, LANDED } from '../core/verdict.ts';
 
 // `gh` needs owner/name, git gives a URL: SSH, HTTPS, with or without the `.git` suffix.
 const repoOf = (remote: string): string =>
@@ -24,19 +23,6 @@ const repoOf = (remote: string): string =>
     .stdout.trim()
     .replace(/\.git$/, '')
     .replace(/^.*[:/]([^/]+\/[^/]+)$/, '$1');
-
-// What close() reads instead of asking `gh` for the pull request's own state: whether this run's
-// policy publishes at all, whether this run opened or found one, and whether publication ever
-// blocked — threaded from run/publish.ts's own bookkeeping.
-export type PublishState = {
-  publishes: boolean;
-  prOpen: boolean;
-  blocked: boolean;
-  // The reason `blocked` stuck, named at the run's terminal line, whatever the exit, rather than
-  // left to whoever reads the middle of the log. Optional so a caller that never blocks can omit
-  // it.
-  blockedReason?: string;
-};
 
 type AgentJob = { name: string; args: string[] };
 

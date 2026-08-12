@@ -14,14 +14,27 @@
 import { existsSync } from 'node:fs';
 import { basename, dirname, resolve } from 'node:path';
 
+import {
+  behindBaseDecision,
+  branchDecision,
+  cleanTreeDecision,
+  cleanupIterationDecision,
+  goalRunsIgnoredDecision,
+  lockDecision,
+  metadataDecision,
+  planDirIgnoredDecision,
+  policyDecision,
+  remoteDecision,
+} from '../core/preflight.ts';
 import { workIdOf } from '../core/plan.ts';
+import { REFUSED } from '../core/verdict.ts';
 import { frontmatter, header, iterationNumbers, topRegion } from '../gate/plan.ts';
 import { autoUpdaterWarning } from './advisory.ts';
 import type { Reporter } from './report.ts';
 import { git, quote } from './shell.ts';
-import { REFUSED, sweep } from './sweep.ts';
+import { sweep } from './sweep.ts';
 
-export { REFUSED } from './sweep.ts';
+export { REFUSED } from '../core/verdict.ts';
 
 // Re-exported for anything that needs a plan's work-id ahead of a full preflight() call — a
 // test fixture asserting on the run directory it names, chief among them.
@@ -42,71 +55,65 @@ export const preflight = (plan: string, source: string, reporter: Reporter, gate
   // 0. Metadata block — every Key: line the plan declares belongs in one `---`-delimited block
   // at the top of the file, or the checks below silently read nothing. Refused before any of
   // them runs, with the plan's own header lines already wrapped so the fix is a straight paste.
-  if (frontmatter(source) === undefined) {
-    const legacy = topRegion(source)
-      .split('\n')
-      .filter((line) => /^[A-Z][\w -]*: .*$/.test(line));
+  const legacy = topRegion(source)
+    .split('\n')
+    .filter((line) => /^[A-Z][\w -]*: .*$/.test(line));
+  const metadata = metadataDecision(frontmatter(source) !== undefined, legacy);
 
-    reporter.stop(
-      `the plan declares no \`---\`-delimited metadata block. Paste this at the top of the plan, right after the title:\n\n---\n${legacy.join('\n')}\n---`,
-      REFUSED,
-    );
+  if (!metadata.ok) {
+    reporter.stop(metadata.error, REFUSED);
   }
 
   reporter.say('RUN preflight: the plan carries a --- metadata block');
 
   // 1. Policy — unattended execution needs somewhere to put the work; manual means nothing may
   // be committed, so there is nothing here to chain.
-  const policy = header(source, 'Policy:');
+  const policyResult = policyDecision(header(source, 'Policy:'));
 
-  if (policy === undefined) {
-    reporter.stop('the plan declares no Policy line', REFUSED);
+  if (!policyResult.ok) {
+    reporter.stop(policyResult.error, REFUSED);
   }
 
-  if (policy === 'manual') {
-    reporter.stop(
-      'Policy is manual, so nothing may be committed and there is nothing to run unattended. Change the Policy line in the spec, or run the manual loop with /goal and /goal:next.',
-      REFUSED,
-    );
-  }
+  const policy = policyResult.value;
 
   // 2. Remote — never defaulted to origin. A bare push on a fork lands on the fork; guessing
   // here means a run pushes and opens its pull request on somebody else's repository, unattended.
-  const remote = header(source, 'Remote:');
+  const remoteResult = remoteDecision(header(source, 'Remote:'));
 
-  if (!remote) {
-    reporter.stop('the plan declares no Remote line', REFUSED);
+  if (!remoteResult.ok) {
+    reporter.stop(remoteResult.error, REFUSED);
   }
+
+  const remote = remoteResult.value;
 
   // 3. Branch — the checkout must stand on the branch this run is meant to advance, or it
   // publishes the wrong one.
   const branchOut = git('rev-parse', '--abbrev-ref', 'HEAD');
+  const branchResult = branchDecision(branchOut.status === 0, branchOut.stdout.trim(), workId);
 
-  if (branchOut.status !== 0) {
-    reporter.stop('not a git repository', REFUSED);
+  if (!branchResult.ok) {
+    reporter.stop(branchResult.error, REFUSED);
   }
 
-  const branch = branchOut.stdout.trim();
-
-  if (branch !== `feature/${workId}` && !branch.startsWith(`feature/${workId}-`)) {
-    reporter.stop(`the checkout stands on ${branch}, not feature/${workId} (or feature/${workId}-...)`, REFUSED);
-  }
+  const branch = branchResult.value;
 
   // 4. The run's own log directory must be out of git's sight before the tree is judged clean,
   // or that check fires on this run's fresh records with "the tree is not clean" — the symptom,
   // not the cause. Held before check 5, since the run's log directory is created before preflight
   // runs. The check holds before the directory exists: check-ignore evaluates patterns, not files.
   const goalRunsDir = '.claude/goal-runs';
+  const goalRunsResult = goalRunsIgnoredDecision(git('check-ignore', '-q', goalRunsDir).status === 0, goalRunsDir);
 
-  if (git('check-ignore', '-q', goalRunsDir).status !== 0) {
-    reporter.stop(`${goalRunsDir} is visible to git. Add it to .gitignore:\n${goalRunsDir}`, REFUSED);
+  if (!goalRunsResult.ok) {
+    reporter.stop(goalRunsResult.error, REFUSED);
   }
 
   // 5. Clean tree — uncommitted work would end up in the first iteration's commit, unreviewed.
   const dirty = git('status', '--short').stdout.replace(/\n$/, '');
+  const cleanTreeResult = cleanTreeDecision(dirty);
 
-  if (dirty !== '') {
-    reporter.stop(`the tree is not clean:\n${dirty}`, REFUSED);
+  if (!cleanTreeResult.ok) {
+    reporter.stop(cleanTreeResult.error, REFUSED);
   }
 
   // 6. What the run writes must be out of git's sight, or the spec, the ticked box and this
@@ -114,12 +121,10 @@ export const preflight = (plan: string, source: string, reporter: Reporter, gate
   // narrates before this point: a line written ahead of this check would itself dirty the
   // tree check 5 just ran, on the very tree this check exists to catch as untracked.
   const planDir = dirname(plan);
+  const planDirResult = planDirIgnoredDecision(git('check-ignore', '-q', planDir).status === 0, planDir);
 
-  if (git('check-ignore', '-q', planDir).status !== 0) {
-    reporter.stop(
-      `the plan's directory is visible to git: ${planDir}. Ignore it, untracking any spec already committed.`,
-      REFUSED,
-    );
+  if (!planDirResult.ok) {
+    reporter.stop(planDirResult.error, REFUSED);
   }
 
   reporter.say(`RUN preflight: Policy is ${policy}`);
@@ -131,11 +136,10 @@ export const preflight = (plan: string, source: string, reporter: Reporter, gate
   // 7. No cleanup iteration hiding inside a feature plan: its Trigger asserts something about
   // production this run cannot observe, and running it here deletes the fallback in the same PR
   // that introduces what falls back to it.
-  if (!cleanup && source.includes('**Trigger:**')) {
-    reporter.stop(
-      'the plan carries a cleanup iteration (a Trigger: line) inside a feature plan. Move it out with /goal:run-issue, or run the *-cleanup-spec.md plan directly.',
-      REFUSED,
-    );
+  const cleanupResult = cleanupIterationDecision(cleanup, source.includes('**Trigger:**'));
+
+  if (!cleanupResult.ok) {
+    reporter.stop(cleanupResult.error, REFUSED);
   }
 
   reporter.say(
@@ -143,11 +147,11 @@ export const preflight = (plan: string, source: string, reporter: Reporter, gate
   );
 
   // 8. No run already holds the plan.
-  if (existsSync(`${plan}.run.lock`)) {
-    reporter.stop(
-      `another run holds this plan: ${plan}.run.lock. Wait for it, or free it with: ${gate} unlock ${quote(plan)}`,
-      REFUSED,
-    );
+  const lockPath = `${plan}.run.lock`;
+  const lockResult = lockDecision(existsSync(lockPath), lockPath, `${gate} unlock ${quote(plan)}`);
+
+  if (!lockResult.ok) {
+    reporter.stop(lockResult.error, REFUSED);
   }
 
   reporter.say('RUN preflight: no other run holds the lock');
@@ -191,9 +195,12 @@ export const preflight = (plan: string, source: string, reporter: Reporter, gate
     base = originHeadOut.status === 0 ? originHeadOut.stdout.trim() : branch;
   }
 
-  if (git('merge-base', '--is-ancestor', base, 'HEAD').status !== 0) {
-    const missing = git('log', '--oneline', `HEAD..${base}`).stdout.replace(/\n$/, '');
-    reporter.stop(`the branch is behind ${base}:\n${missing}\n\nFetch and rebase before relaunching.`, REFUSED);
+  const isAncestor = git('merge-base', '--is-ancestor', base, 'HEAD').status === 0;
+  const missing = git('log', '--oneline', `HEAD..${base}`).stdout.replace(/\n$/, '');
+  const behindResult = behindBaseDecision(isAncestor, base, missing);
+
+  if (!behindResult.ok) {
+    reporter.stop(behindResult.error, REFUSED);
   }
 
   reporter.say(`RUN preflight: branch is caught up with ${base}`);
