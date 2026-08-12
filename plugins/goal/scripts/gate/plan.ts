@@ -4,7 +4,7 @@
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 
-import { makePlan, type Plan } from '../core/plan.ts';
+import { makePlan, type DeliveryMode, type Plan } from '../core/plan.ts';
 import { halt, misuse } from './halt.ts';
 
 // The region above the plan's first `##`/`###` heading — title and metadata, nothing else —
@@ -161,7 +161,7 @@ export const covers = (entry: string, path: string): boolean =>
 export const incidentalPaths = (source: string): string[] =>
   (/^Incidental:(.*)$/m.exec(source)?.[1] ?? '').split(/\s+/).filter((path) => path !== '');
 
-export const deliveryMode = (source: string): string =>
+export const deliveryMode = (source: string): DeliveryMode =>
   /^Delivery mode:\s*allow-bc-break\s*$/m.test(source) ? 'allow-bc-break' : 'no-bc-break';
 
 // The core aggregate for an iteration: parsing the markdown stays here, in the adapter, because
