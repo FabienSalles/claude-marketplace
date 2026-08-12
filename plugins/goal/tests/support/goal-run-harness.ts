@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { chmodSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
-import { workIdOf } from '../../scripts/run/preflight.ts';
+import { workIdOf } from '../../src/run/preflight.ts';
 import { tmpDir } from './tmp.ts';
 
 export const RUN_NODE = resolve(import.meta.dirname, '..', '..', 'scripts', 'goal-run.ts');

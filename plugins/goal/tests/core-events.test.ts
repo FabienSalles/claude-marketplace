@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { join } from 'node:path';
 
-import { extract, lastSessionId, parseEvents, projectDir } from '../scripts/core/events.ts';
+import { extract, lastSessionId, parseEvents, projectDir } from '../src/core/events.ts';
 
 // P3 — the one stream-json parser: a blank and a malformed line are dropped, a well-formed line
 // keeps the 1-indexed position it sits on so a caller (digest) can anchor a finding back to it.

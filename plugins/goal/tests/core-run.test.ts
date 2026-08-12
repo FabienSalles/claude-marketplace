@@ -12,10 +12,10 @@ import {
   planDirIgnored,
   runnablePolicy,
   remoteDeclared,
-} from '../scripts/core/preflight.ts';
-import { detectTamper, type TreeState } from '../scripts/core/tamper.ts';
-import { HALTED, LANDED, PAUSED, REFUSED } from '../scripts/core/verdict.ts';
-import { classifyQuotaFailure } from '../scripts/run/quota.ts';
+} from '../src/core/preflight.ts';
+import { detectTamper, type TreeState } from '../src/core/tamper.ts';
+import { HALTED, LANDED, PAUSED, REFUSED } from '../src/core/verdict.ts';
+import { classifyQuotaFailure } from '../src/run/quota.ts';
 
 // P9/J8 — the runner's decisions are pure functions proven in-process: no spawn, no filesystem,
 // no exit code. The ten preflight checks, the quota classification and the tamper detection
@@ -197,10 +197,10 @@ test('the four outcomes are unified in core/verdict.ts, distinct and stable', ()
 // all resolve back to core/verdict.ts's constants.
 test('run/preflight.ts, run/iteration.ts and run/close.ts all resolve outcomes back to core/verdict.ts', async () => {
   const [preflight, iteration, close, verdict] = await Promise.all([
-    import('../scripts/run/preflight.ts'),
-    import('../scripts/run/iteration.ts'),
-    import('../scripts/run/close.ts'),
-    import('../scripts/core/verdict.ts'),
+    import('../src/run/preflight.ts'),
+    import('../src/run/iteration.ts'),
+    import('../src/run/close.ts'),
+    import('../src/core/verdict.ts'),
   ]);
 
   assert.equal(preflight.REFUSED, verdict.REFUSED);

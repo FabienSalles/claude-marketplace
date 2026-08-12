@@ -6,7 +6,7 @@ import { join, resolve } from 'node:path';
 
 import { tmpDir } from './support/tmp.ts';
 
-const GUARD = resolve(import.meta.dirname, '..', 'scripts', 'plan-guard.ts');
+const GUARD = resolve(import.meta.dirname, '..', 'src', 'plan-guard.ts');
 
 const PLAN = [
   '### Iteration 1 — A slice',

@@ -1,4 +1,4 @@
-import { createLock } from '../../scripts/run/lock.ts';
+import { createLock } from '../../src/run/lock.ts';
 
 const [, , gate, plan] = process.argv;
 const lock = createLock(gate!, plan!);

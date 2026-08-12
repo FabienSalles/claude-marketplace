@@ -194,8 +194,8 @@ More, including the axes that are entirely empty: [`docs/comparison.md`](docs/co
 | [`/goal:next`](skills/next/SKILL.md) | `skills/` | Manual-loop checkpoint: replay the DoD, reconcile plan against code, emit the next handoff |
 | `goal-run.ts` + `run/*.ts` | `scripts/` | The runner: 1,514 lines over 15 modules (preflight, sweep, lock, iteration, publish, close, report) |
 | `goal-gate.ts` + `gate/*.ts` | `scripts/` | The judge, and the only committer: 1,134 lines over 12 modules. Exit 0 runnable · 1 `HALT` with a reason · 2 misuse |
-| `transcripts.ts` · `digest.ts` | `scripts/` | Resolve a run's transcripts and compress them to a tool-call digest. `transcripts.ts` runs on every failed implementer attempt |
-| `plan-guard.ts` | `scripts/` | Hashes every `gateN=`/`dodN=` line, plus whether each iteration's `test_files` is empty, so a supervised repair can prove it disarmed nothing. Nothing under `scripts/` calls it; only `/goal:supervise`'s prose asks a model to. **Never run** |
+| `transcripts.ts` · `digest.ts` | `src/` | Resolve a run's transcripts and compress them to a tool-call digest. `transcripts.ts` runs on every failed implementer attempt |
+| `plan-guard.ts` | `src/` | Hashes every `gateN=`/`dodN=` line, plus whether each iteration's `test_files` is empty, so a supervised repair can prove it disarmed nothing. Nothing under `src/` calls it; only `/goal:supervise`'s prose asks a model to. **Never run** |
 | `goal-run-implementer` · `goal-run-lens` · `goal-run-auditor` | `agents/` | Spawned by the runner: one implementer per slice, then an advisory lens and an auditor at close |
 | `goal-run-reviewer` · `goal-session-auditor` | `agents/` | Post-publication review and transcript audit. **Never fired** |
 | [`grill-adversarial`](skills/grill-adversarial/SKILL.md) | `skills/` | Opt-in, loaded during `/goal:spec`'s grill |

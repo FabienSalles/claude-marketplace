@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
 import { tmpDir } from './support/tmp.ts';
-import { header } from '../scripts/gate/plan.ts';
+import { header } from '../src/gate/plan.ts';
 
 const GATE = resolve(import.meta.dirname, '..', 'scripts', 'goal-gate.ts');
 

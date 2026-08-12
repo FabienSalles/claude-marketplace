@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
-import { inProcessGateAdapter, spawnGateAdapter, type GateAdapter } from '../scripts/adapters/gate.ts';
+import { inProcessGateAdapter, spawnGateAdapter, type GateAdapter } from '../src/adapters/gate.ts';
 import { tmpDir } from './support/tmp.ts';
 
 const GATE = resolve(import.meta.dirname, '..', 'scripts', 'goal-gate.ts');

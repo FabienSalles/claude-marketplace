@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { chain, err, map, ok, pipe } from '../scripts/core/result.ts';
+import { chain, err, map, ok, pipe } from '../src/core/result.ts';
 
 // P11 — the socle proves itself in-process: ok/err tag a value, map/chain thread a pipeline
 // through a success and short-circuit on a failure, pipe composes plain functions.

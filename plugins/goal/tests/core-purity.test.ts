@@ -8,7 +8,7 @@ import { join, resolve } from 'node:path';
 // node:child_process) nor for an adapter that does. gate/ and run/ are the only callers allowed
 // to cross that line.
 
-const CORE_DIR = resolve(import.meta.dirname, '..', 'scripts', 'core');
+const CORE_DIR = resolve(import.meta.dirname, '..', 'src', 'core');
 
 const FORBIDDEN = [/from ['"]node:fs['"]/, /from ['"]node:child_process['"]/, /from ['"].*adapters\//];
 

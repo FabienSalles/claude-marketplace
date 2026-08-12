@@ -13,13 +13,13 @@
 //
 // Exit codes: 0 the iteration is runnable · 1 HALT, with a reason · 2 misuse.
 
-import { biteCheck } from './gate/bite.ts';
-import { HaltError, MisuseError, haltText, misuse, unwrap, type Say } from './gate/halt.ts';
-import { blockOf, declaredPaths, incidentalPaths, lockedHash, readPlan } from './gate/plan.ts';
-import { commitAndTick, runLock, scopeCheck } from './gate/scope.ts';
-import { dodCheck, secretScan } from './gate/ship.ts';
-import { monotonicityCheck } from './gate/ticked.ts';
-import { check, verify } from './gate/verbs.ts';
+import { biteCheck } from '../src/gate/bite.ts';
+import { HaltError, MisuseError, haltText, misuse, unwrap, type Say } from '../src/gate/halt.ts';
+import { blockOf, declaredPaths, incidentalPaths, lockedHash, readPlan } from '../src/gate/plan.ts';
+import { commitAndTick, runLock, scopeCheck } from '../src/gate/scope.ts';
+import { dodCheck, secretScan } from '../src/gate/ship.ts';
+import { monotonicityCheck } from '../src/gate/ticked.ts';
+import { check, verify } from '../src/gate/verbs.ts';
 
 const say: Say = (chunk) => void process.stdout.write(chunk);
 

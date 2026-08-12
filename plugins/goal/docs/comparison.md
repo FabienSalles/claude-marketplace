@@ -66,7 +66,7 @@ falsifies it in a minute.
 **What it is.** `goal-gate.ts` runs the slice's declared command against the tree it is standing
 in, and stages, commits and ticks the plan in that same process. Nothing else in the codebase
 commits. One grep proves it: `gate/scope.ts:136` and `:142` are the only `git add` and
-`git commit` calls in the whole `scripts/` tree.
+`git commit` calls in the whole `scripts/` + `src/` tree.
 
 **Why it is not a model.** Measured agreement between an LLM judge and human ground truth on code
 correctness sits at Kappa ≈ 0.21 (Java) and ≈ 0.10 (Python), and one systematic study saw half the

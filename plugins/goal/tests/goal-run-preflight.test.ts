@@ -5,7 +5,7 @@ import { join } from 'node:path';
 
 import { PLAN, git, lockOf, repo, run } from './support/goal-run-harness.ts';
 import { tmpDir } from './support/tmp.ts';
-import { REFUSED } from '../scripts/run/preflight.ts';
+import { REFUSED } from '../src/run/preflight.ts';
 
 // R8 — the twelve preflight conditions run before the lock is taken, as refusals rather than
 // warnings. A run that would have burned a night on a red base, a stale branch or an absent

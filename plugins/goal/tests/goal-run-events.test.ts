@@ -4,8 +4,8 @@ import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
-import { narrate, resultEnvelope, tokensLine } from '../scripts/run/narrate.ts';
-import { createReporter } from '../scripts/run/report.ts';
+import { narrate, resultEnvelope, tokensLine } from '../src/run/narrate.ts';
+import { createReporter } from '../src/run/report.ts';
 import { tmpDir } from './support/tmp.ts';
 import { jsonlOf, PLAN, repo, run } from './support/goal-run-harness.ts';
 
@@ -70,7 +70,7 @@ test('record ignores blank text on both artifacts', () => {
 // JSON line carrying the exit code.
 test('stop writes one JSON line carrying the exit code, and exits with it', () => {
   const target = dir();
-  const modulePath = resolve(import.meta.dirname, '..', 'scripts', 'run', 'report.ts');
+  const modulePath = resolve(import.meta.dirname, '..', 'src', 'run', 'report.ts');
   const script = `
     import { createReporter } from ${JSON.stringify(modulePath)};
     const reporter = createReporter();

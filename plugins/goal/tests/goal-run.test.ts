@@ -6,8 +6,8 @@ import { join, resolve } from 'node:path';
 
 import { HASH, PAUSED, RUN_NODE, lockOf, logOf, repo, run, sessionOf } from './support/goal-run-harness.ts';
 import { tmpDir } from './support/tmp.ts';
-import { narrate } from '../scripts/run/narrate.ts';
-import { HALTED } from '../scripts/run/iteration.ts';
+import { narrate } from '../src/run/narrate.ts';
+import { HALTED } from '../src/run/iteration.ts';
 
 // R4 — the plan lives in a gitignored directory outside the run's tree, and handing its path to
 // the implementer is what made a real run write its whole iteration into another checkout. The
@@ -268,8 +268,10 @@ test('SIGINT sent to goal-run.ts mid-implementation exits 130 and releases the l
 // which is the path this default never takes.
 test('a gate installed under a path holding a space still runs', () => {
   const fixture = repo();
-  const scripts = join(tmpDir('goal run install '), 'scripts');
+  const installed = tmpDir('goal run install ');
+  const scripts = join(installed, 'scripts');
   cpSync(resolve(import.meta.dirname, '..', 'scripts'), scripts, { recursive: true });
+  cpSync(resolve(import.meta.dirname, '..', 'src'), join(installed, 'src'), { recursive: true });
 
   const env: NodeJS.ProcessEnv = { ...process.env, PATH: `${fixture.bin}:${process.env.PATH ?? ''}` };
   delete env.GOAL_GATE;

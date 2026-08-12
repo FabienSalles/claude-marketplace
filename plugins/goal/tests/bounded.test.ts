@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { resolve } from 'node:path';
 
-import { bounded, ceilingFor, spawnOptions } from '../scripts/gate/bounded.ts';
+import { bounded, ceilingFor, spawnOptions } from '../src/gate/bounded.ts';
 
 const RUN = resolve(import.meta.dirname, 'run.sh');
 
@@ -130,7 +130,7 @@ test('spawnOptions defaults to a 900 second wall clock and kills with SIGKILL', 
 // GOAL_CMD_TIMEOUT is read once, at module load, exactly as GOAL_PROC_HEADROOM is — so the override
 // is exercised out of process, the same way the ceiling tests above exercise GOAL_PROC_HEADROOM.
 test('GOAL_CMD_TIMEOUT overrides the default the same way GOAL_PROC_HEADROOM overrides the ceiling', () => {
-  const modulePath = resolve(import.meta.dirname, '../scripts/gate/bounded.ts');
+  const modulePath = resolve(import.meta.dirname, '../src/gate/bounded.ts');
   const script = `import { spawnOptions } from ${JSON.stringify(modulePath)}; process.stdout.write(String(spawnOptions().timeout));`;
 
   const run = spawnSync(process.execPath, ['--input-type=module', '-e', script], {
@@ -145,7 +145,7 @@ test('GOAL_CMD_TIMEOUT overrides the default the same way GOAL_PROC_HEADROOM ove
 // gate forever. A killed run reports no exit code — `status` is null — so the caller's plain
 // `run.status !== 0` check still halts on it, instead of reading a stalled process as a pass.
 test('a command that outlives the wall clock is killed rather than left hanging', () => {
-  const modulePath = resolve(import.meta.dirname, '../scripts/gate/bounded.ts');
+  const modulePath = resolve(import.meta.dirname, '../src/gate/bounded.ts');
   const script = `
     import { spawnSync } from 'node:child_process';
     import { bounded, spawnOptions } from ${JSON.stringify(modulePath)};

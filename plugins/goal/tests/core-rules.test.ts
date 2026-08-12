@@ -1,12 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { noNeverVersionedPaths } from '../scripts/core/rules/never.ts';
-import { monotonicTicks } from '../scripts/core/rules/ticked.ts';
-import { withinBudget, noBcBreak } from '../scripts/core/rules/bounds.ts';
-import { resolvablePaths, selectReplay } from '../scripts/core/rules/cross-iteration.ts';
-import { determinismHeld, gatePassed } from '../scripts/core/rules/commands.ts';
-import { noIgnoredPaths, noScopeLeak, shapedPaths } from '../scripts/core/rules/scope.ts';
+import { noNeverVersionedPaths } from '../src/core/rules/never.ts';
+import { monotonicTicks } from '../src/core/rules/ticked.ts';
+import { withinBudget, noBcBreak } from '../src/core/rules/bounds.ts';
+import { resolvablePaths, selectReplay } from '../src/core/rules/cross-iteration.ts';
+import { determinismHeld, gatePassed } from '../src/core/rules/commands.ts';
+import { noIgnoredPaths, noScopeLeak, shapedPaths } from '../src/core/rules/scope.ts';
 
 // P2 — each gate rule proves itself in-process as a Result<_, Halt>, with no process to exit and
 // no command to spawn: every case below is a plain value in, a plain value out.

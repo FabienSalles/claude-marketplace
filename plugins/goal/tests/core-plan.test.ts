@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { makePlan } from '../scripts/core/plan.ts';
+import { makePlan } from '../src/core/plan.ts';
 
 // P8/J3 — a Plan is a value that exists only when every construction rule holds: makePlan is
 // the one place those rules are proven, in-process, with no process to exit and no filesystem

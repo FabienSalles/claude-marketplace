@@ -47,8 +47,8 @@ working. Nothing reaches the developer.
 
 **The gap is wider than this question first stated it.** *"The workflow already posts a halt report
 to the GitHub issue when one exists"* was true of the abandoned Workflow and of nothing else. The
-current runner's only GitHub calls are `pr view`, `pr edit`, `pr create` (`scripts/run/publish.ts`)
-and `pr ready` (`scripts/run/close.ts`). It never comments on an issue, and on a halt it never
+current runner's only GitHub calls are `pr view`, `pr edit`, `pr create` (`src/run/publish.ts`)
+and `pr ready` (`src/run/close.ts`). It never comments on an issue, and on a halt it never
 reaches the closing stage at all (§15). Its entire account of itself is a log file under
 `.claude/goal-runs/<work-id>/<run-id>/` and an exit code.
 
@@ -95,7 +95,7 @@ settings files, which reflects neither a CLI flag nor a `Shift+Tab` override, so
 mode it is running under and falls back to asking.
 
 **Answered by a third option nobody proposed here.** The current preflight is ten refusals and not
-one of them inspects a permission mode (`scripts/run/preflight.ts`). The runner states the mode
+one of them inspects a permission mode (`src/run/preflight.ts`). The runner states the mode
 instead, at every single agent invocation. A check that *sets* the condition it wanted to verify
 does not need to verify it, and that is strictly better than both candidates this question weighed
 (read a variable the launcher exported, or keep asking). The question survived only on the
@@ -121,7 +121,7 @@ checking whether a pull request already existed. And under `commit+pr` one alway
 iteration 1 onward, since that policy opens the draft PR at the first commit. So after any first
 iteration, the two commands contradicted each other by construction.
 
-**Settled.** The abandoned command is deleted, `scripts/run/publish.ts` asks `gh` whether a pull
+**Settled.** The abandoned command is deleted, `src/run/publish.ts` asks `gh` whether a pull
 request exists before creating one and adopts it rather than retrying blindly, and
 `skills/next/SKILL.md` now offers `/goal:supervise` (whose preflight has no such check) instead.
 
@@ -141,9 +141,9 @@ publication, the quota wait and the closing stage, against a gate split one modu
 business rules, each with its matching test file, a convention `goal-gate.ts` states in its own
 header and that the bash script was the one place in the plugin unable to follow.
 
-**What it cost, re-measured.** `scripts/goal-run.ts` + `scripts/run/` now stands at 1514 lines
-over 15 files, against `scripts/goal-gate.ts` + `scripts/gate/` at 1134 over 12; all of
-`scripts/` is 2921 lines over 30 `.ts` files, covered by 31 test files and 271 passing tests.
+**What it cost, re-measured.** `scripts/goal-run.ts` + `src/run/` now stands at 1514 lines
+over 15 files, against `scripts/goal-gate.ts` + `src/gate/` at 1134 over 12; all of
+`scripts/` + `src/` is 2921 lines over 30 `.ts` files, covered by 31 test files and 271 passing tests.
 Most of the distance from the 594-line bash original is not the split: it is the mechanisms
 added since (`gitwatch.ts`, `postmortem.ts`, `quota.ts`), each of which is one of the modules the
 convention asked for. The second defect this question named (the orchestrator re-reading
@@ -171,9 +171,9 @@ preflight that printed nothing at all unless it refused, and an implementer whos
 captured by command substitution and therefore could not stream by construction.
 
 **Both were answered, in the expensive variant, and the wait is unchanged.** The preflight now
-narrates each check as it passes (`scripts/run/preflight.ts`), and `narrate()` renders one line per
+narrates each check as it passes (`src/run/preflight.ts`), and `narrate()` renders one line per
 tool use (`RUN implementer: Edit run/publish.ts`) from `--output-format stream-json`
-(`scripts/run/iteration.ts`), which was the right choice: it shows what the agent *does* rather
+(`src/run/iteration.ts`), which was the right choice: it shows what the agent *does* rather
 than what it says, so the developer's output style stops mattering. But the implementer is spawned
 with `spawnSync`, which returns only when the child exits, so every narrated line is printed after
 the fact. The log is complete; the minutes of silence are exactly as long as before.
@@ -211,7 +211,7 @@ supervisor that deletes the rules.
 **The guardrail was built, and it closes the sharpest version of the hole.** `plan-guard.ts`
 hashes the `gateN=` and `dodN=` lines of every block it resolves, and beside them, per block,
 whether `test_files` is empty (`:59-76`). An empty `test_files=` makes the gate skip the bite
-check outright (`scripts/gate/bite.ts`, *"declares no test_files, so there is nothing to set
+check outright (`src/gate/bite.ts`, *"declares no test_files, so there is nothing to set
 aside"*), so that is the one edit inside the closed repair set that could disarm the invariant
 that a test must fail without its implementation, and it now moves the hash. `supervise.md:74-76`
 forbids it in prose as well: *"It may never touch a `gateN=` or `dodN=` line, nor empty
@@ -225,7 +225,7 @@ outside the two halts are indistinguishable, so the doctor's first act must be t
 repair. It classifies from the run log, which does carry the gate's verdict (§15). What it does
 not carry is any synthesis around that verdict, because a halt never reaches the closing stage.
 
-**Built, never run.** `skills/supervise/SKILL.md` and `scripts/plan-guard.ts` shipped in one commit and
+**Built, never run.** `skills/supervise/SKILL.md` and `src/plan-guard.ts` shipped in one commit and
 have not been exercised once. The measurement this question demanded (*what share of real halts
 fall inside the closed repair set*) was never taken; `supervise.md` says so in its own header
 (*"two prior halts are the whole evidence"*). Building before measuring is a defensible choice on a
@@ -243,7 +243,7 @@ surfaced because a human was reading. The run's own auditor measures elapsed tim
 failures and is explicitly told not to judge the work. Nothing looked at the *session*: the
 instructions given, what the assistant did with them, where it guessed wrong.
 
-**Built, never run.** `agents/goal-session-auditor.md` exists, `scripts/transcripts.ts` locates a
+**Built, never run.** `agents/goal-session-auditor.md` exists, `src/transcripts.ts` locates a
 run's transcripts, and `skills/supervise/SKILL.md` invokes the auditor once per invocation, with the
 bar this question called the hard part actually written down (a finding must be anchored to a
 tool-call sequence). None of it has executed once, and it shows: no run has ever produced the
@@ -272,7 +272,7 @@ having read a line (the intended economy), leaving the review debt where attenti
 
 **Built and decided, never fired.** `agents/goal-run-reviewer.md` is invoked at the one moment
 publication can no longer be blocked behind it: right after the pull request goes ready
-(`scripts/run/close.ts`). Both open sub-questions were settled in the code and its brief: inline
+(`src/run/close.ts`). Both open sub-questions were settled in the code and its brief: inline
 comments rather than one summary, and never `REQUEST_CHANGES`: pushed work is already shipped, so
 a review that cannot block would only add friction to clear by hand. The reviewer has not run once:
 the run that added it could not use it (§12), and no run has closed since.
@@ -292,7 +292,7 @@ stage entirely, and the relaunch starts the accumulator empty. So the coverage o
 step in the harness was inversely proportional to how much the plan resisted.
 
 **Settled, by two of the three candidates at once.** The lens is now briefed from the plan re-read
-on disk: every box the gate ticked, this run's or an earlier run's (`scripts/run/close.ts`). So
+on disk: every box the gate ticked, this run's or an earlier run's (`src/run/close.ts`). So
 the last run of a plan reviews the whole plan. And the review also moved to the pull request, where
 the diff is the whole branch and the question of which run landed what disappears (§10). The third
 candidate, firing per landing, was not taken: it multiplies the calls to solve a problem the first
@@ -414,7 +414,7 @@ Tokens are what the legacy counted and are the wrong unit for a harness whose it
 order of magnitude in size. Wall-clock is honest and punishes a slow machine. Turns are cheap to
 cap and easy to game by an agent that does more per turn. And whatever the unit, hitting the
 ceiling has to leave a signal §8's classifier can act on. The gate already collapses every
-refusal it makes into one exit code whatever caused it (`scripts/gate/halt.ts`), so a fifth
+refusal it makes into one exit code whatever caused it (`src/gate/halt.ts`), so a fifth
 stopping reason joins a contract that already conflates two.
 
 **To measure before deciding:** the real distribution. No run on record was instrumented: the

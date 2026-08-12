@@ -242,7 +242,7 @@ measurement was not. And no project in the panel kept both orchestrators alive: 
 replaced. This one kept both alive for a while and has now replaced: the Workflow generation stayed
 checked in at 941 lines long after `goal-run.ts` superseded it, and because Claude Code registers a
 plugin's `workflows/*.js` as invokable skills, it remained typeable by name the whole time,
-calling nothing in `scripts/`, dispatching to six agent types that no longer existed as files, and
+calling nothing in `scripts/` or `src/`, dispatching to six agent types that no longer existed as files, and
 advertising a command that had been deleted. It was removed on 2026-08-06. The lesson the panel
 teaches is that the old orchestrator has to go, not merely stop being called.
 

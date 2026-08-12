@@ -15,16 +15,16 @@
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-import { createReporter, runDir, type Reporter } from './run/report.ts';
-import { preflight, REFUSED } from './run/preflight.ts';
-import { createLock } from './run/lock.ts';
-import { runIteration } from './run/iteration.ts';
-import { blockedNote, createPublisher } from './run/publish.ts';
-import { close, LANDED } from './run/close.ts';
-import { quote } from './run/shell.ts';
-import { workIdOf } from './core/plan.ts';
-import { iterationNumbers } from './gate/plan.ts';
-import { inProcessGateAdapter, spawnGateAdapter, type GateAdapter } from './adapters/gate.ts';
+import { createReporter, runDir, type Reporter } from '../src/run/report.ts';
+import { preflight, REFUSED } from '../src/run/preflight.ts';
+import { createLock } from '../src/run/lock.ts';
+import { runIteration } from '../src/run/iteration.ts';
+import { blockedNote, createPublisher } from '../src/run/publish.ts';
+import { close, LANDED } from '../src/run/close.ts';
+import { quote } from '../src/run/shell.ts';
+import { workIdOf } from '../src/core/plan.ts';
+import { iterationNumbers } from '../src/gate/plan.ts';
+import { inProcessGateAdapter, spawnGateAdapter, type GateAdapter } from '../src/adapters/gate.ts';
 
 const main = async (): Promise<void> => {
   const [plan, iteration] = process.argv.slice(2);

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { digest } from '../scripts/digest.ts';
+import { digest } from '../src/digest.ts';
 import { tmpDir } from './support/tmp.ts';
 
 const fixture = (lines: string[]): string => {

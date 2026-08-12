@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process';
 import { appendFileSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
-import { bounded } from '../scripts/gate/bounded.ts';
+import { bounded } from '../src/gate/bounded.ts';
 import { tmpDir } from './support/tmp.ts';
 
 const RUN = resolve(import.meta.dirname, 'run.sh');
