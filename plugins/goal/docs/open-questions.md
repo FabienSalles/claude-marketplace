@@ -155,7 +155,7 @@ and `survey` verbs.
 `## Landed` section that was empty for all six of its landed iterations: `landed` accumulated from
 an empty string, carried a leading space, and the resulting regex alternation had an empty branch
 BSD `grep` refuses outright. The Node run listed all seven of its own, because the body is built
-from an array of iteration numbers looked up through `iterationHeading()` rather than from a
+from an array of iteration numbers resolved through `run/publish.ts#goalOf` rather than from a
 string spliced into a grep alternation. One observed defect, in the one place where the two
 languages' handling of a list actually differed, found on the first real use of either runner.
 
@@ -194,9 +194,10 @@ narration landed printed no narration at all, for the reason §12 gives.
 **Observed.** A run halted at iteration 5. The developer pasted the output into a session, which
 diagnosed it in one pass: the plan was at fault, iteration 3's `gate1` asserted
 `! grep -rq '### Iteration' …` while publication legitimately needs that literal, and `gate/plan.ts`
-published no accessor for an iteration heading. The repair (add `iterationHeading` to `gate/plan.ts#iterationHeading`,
-declare it in iteration 5's `impl_files`) was mechanical once stated, and so was everything after
-it. None of it needed a human except to authorize destroying the implementer's partial work.
+published no accessor for an iteration heading. The repair (add an `iterationHeading` accessor to
+`gate/plan.ts`, declare it in iteration 5's `impl_files`) was mechanical once stated, and so was
+everything after it. None of it needed a human except to authorize destroying the implementer's
+partial work.
 
 **The loop is obvious**: run, and on a non-zero exit hand the exit code and the log tail to a
 doctor which classifies, repairs, cleans and relaunches.

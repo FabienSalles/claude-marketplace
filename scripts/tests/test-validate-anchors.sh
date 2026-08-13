@@ -69,8 +69,8 @@ mutate_renamed_source() {
 
 mutate_symbol_renamed() {
   local tmp="$1"
-  local src="$tmp/plugins/goal/src/gate/plan.ts"
-  sed -i.bak 's/iterationHeading/sectionHeading/g' "$src" && rm "$src.bak"
+  local src="$tmp/plugins/goal/src/gate/bounded.ts"
+  sed -i.bak 's/GOAL_CMD_TIMEOUT/GOAL_COMMAND_TIMEOUT/g' "$src" && rm "$src.bak"
 }
 
 mutate_doc_deleted_reference_kept() {
@@ -81,7 +81,7 @@ mutate_doc_deleted_reference_kept() {
 run_case "unmodified tree passes"                    mutate_none                        0
 run_case "line-numbered anchor fails"                 mutate_line_number                 1  "line number"
 run_case "renamed source fails, naming the file"      mutate_renamed_source              1  "plan-guard.ts"
-run_case "renamed symbol fails, naming the symbol"    mutate_symbol_renamed              1  "iterationHeading"
+run_case "renamed symbol fails, naming the symbol"    mutate_symbol_renamed              1  "GOAL_CMD_TIMEOUT"
 run_case "deleted doc leaves a dangling link"         mutate_doc_deleted_reference_kept  1  "0001-shape-of-the-autonomous-loop.md"
 
 echo ""

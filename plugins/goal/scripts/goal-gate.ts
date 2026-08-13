@@ -14,7 +14,7 @@
 // Exit codes: 0 the iteration is runnable · 1 HALT, with a reason · 2 misuse.
 
 import { biteCheck } from '../src/gate/bite.ts';
-import { HaltError, MisuseError, haltText, misuse, unwrap, type Say } from '../src/gate/halt.ts';
+import { misuse, rootCatch, unwrap, type Say } from '../src/gate/halt.ts';
 import { blockOf, declaredPaths, incidentalPaths, lockedHash, readPlan } from '../src/gate/plan.ts';
 import { commitAndTick, runLock, scopeCheck } from '../src/gate/scope.ts';
 import { dodCheck, secretScan } from '../src/gate/ship.ts';
@@ -106,15 +106,5 @@ const main = (): void => {
 try {
   main();
 } catch (error) {
-  if (error instanceof HaltError) {
-    process.stdout.write(haltText(error));
-    process.exit(1);
-  }
-
-  if (error instanceof MisuseError) {
-    process.stderr.write(`${error.message}\n`);
-    process.exit(2);
-  }
-
-  throw error;
+  rootCatch(error);
 }

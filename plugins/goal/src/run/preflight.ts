@@ -12,7 +12,7 @@
 // detection in run/iteration.ts, which is executed.
 
 import { existsSync } from 'node:fs';
-import { basename, dirname, resolve } from 'node:path';
+import { basename, dirname } from 'node:path';
 
 import { git } from '../adapters/git.ts';
 import {

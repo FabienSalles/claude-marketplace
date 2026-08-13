@@ -7,6 +7,7 @@ import { basename } from 'node:path';
 
 import { err, ok, type Result } from './result.ts';
 import { NEVER_VERSIONED } from './rules/never.ts';
+import { numericBudget } from './rules/bounds.ts';
 import { halt, type Halt } from './verdict.ts';
 
 export type DeliveryMode = 'allow-bc-break' | 'no-bc-break';
@@ -111,25 +112,6 @@ const declaredSecrets = (paths: readonly string[], iteration: string): Halt | un
   );
 };
 
-const numericMaxDiff = (declared: ReadonlyMap<string, string>, iteration: string): Result<number | undefined, Halt> => {
-  const budget = declared.get('max_diff') ?? '';
-
-  if (budget === '') {
-    return ok(undefined);
-  }
-
-  if (!/^[0-9]+$/.test(budget)) {
-    return err(
-      halt(
-        `Iteration ${iteration} declares a max_diff that is not a number.`,
-        `Found: ${budget}\n\nA budget nothing can compare against is a budget nobody is held to: the slice would run unbounded while the plan claims otherwise. Write a plain line count.`,
-      ),
-    );
-  }
-
-  return ok(Number(budget));
-};
-
 export const makePlan = (
   iteration: string,
   declared: ReadonlyMap<string, string>,
@@ -150,7 +132,7 @@ export const makePlan = (
     return err(refusal);
   }
 
-  const maxDiff = numericMaxDiff(declared, iteration);
+  const maxDiff = numericBudget(declared.get('max_diff') ?? '', iteration);
 
   if (!maxDiff.ok) {
     return maxDiff;
@@ -188,9 +170,9 @@ export const workIdOf = (plan: string): string => {
 
 // The bounds of an iteration's own section — from just after its "### Iteration N" heading to the
 // next "##"/"###" heading — undefined when the plan declares no such iteration. Distinct from
-// gate/plan.ts's sectionBounds, which halts on the same absence: a caller building a pull request
-// body from whichever iterations already landed needs to read past one the plan never had.
-export const iterationBounds = (lines: readonly string[], iteration: string): [number, number] | undefined => {
+// gate/plan.ts's sectionBounds, which halts on the same absence: goalOf below needs to read past
+// an iteration the plan never had.
+const iterationBounds = (lines: readonly string[], iteration: string): [number, number] | undefined => {
   const heading = new RegExp(`^### Iteration ${iteration}\\b`);
   const start = lines.findIndex((line) => heading.test(line));
 

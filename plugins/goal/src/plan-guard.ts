@@ -17,7 +17,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 
 import { doneSection, gateFence } from './core/plan.ts';
-import { HaltError, MisuseError, halt, haltText, misuse } from './gate/halt.ts';
+import { halt, misuse, rootCatch } from './gate/halt.ts';
 import { iterationNumbers, iterationSection } from './gate/plan.ts';
 
 const GUARDED_LINE = /^(gate[1-9][0-9]*|dod[1-9][0-9]*)=.*$/;
@@ -93,15 +93,5 @@ const main = (): void => {
 try {
   main();
 } catch (error) {
-  if (error instanceof HaltError) {
-    process.stdout.write(haltText(error));
-    process.exit(1);
-  }
-
-  if (error instanceof MisuseError) {
-    process.stderr.write(`${error.message}\n`);
-    process.exit(2);
-  }
-
-  throw error;
+  rootCatch(error);
 }

@@ -3,12 +3,13 @@
 import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 
 import { git } from '../adapters/git.ts';
+import { covers } from '../core/plan.ts';
 import { ok, type Result } from '../core/result.ts';
+import { noNeverVersionedPaths } from '../core/rules/never.ts';
 import { noIgnoredPaths, noScopeLeak, shapedPaths } from '../core/rules/scope.ts';
 import type { Halt } from '../core/verdict.ts';
 import { halt, heldLocks } from './halt.ts';
-import { neverVersionedCheck } from './never.ts';
-import { covers, sectionBounds } from './plan.ts';
+import { sectionBounds } from './plan.ts';
 
 // Returns the paths git reports as changed, so the commit stages what the tree really holds
 // rather than what the plan hoped for.
@@ -59,7 +60,7 @@ export const scopeCheck = (
     }
   }
 
-  const neverResult = neverVersionedCheck([...changed, ...paths, ...incidental], `Iteration ${iteration}`);
+  const neverResult = noNeverVersionedPaths([...changed, ...paths, ...incidental], `Iteration ${iteration}`);
 
   if (!neverResult.ok) {
     return neverResult;

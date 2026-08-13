@@ -11,8 +11,6 @@
 import { extract, type Extraction } from '../core/events.ts';
 import type { Reporter } from './report.ts';
 
-export type { Extraction, Usage } from '../core/events.ts';
-
 // Claude Code's own effective context windows, not the documented API limits: this tool truncates
 // a transcript before the API would refuse it, so a peak read against the API figure would still
 // call a session comfortable that Claude Code was already about to compact. Maintained data, not
