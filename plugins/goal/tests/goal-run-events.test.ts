@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { chmodSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
 import { narrate, resultEnvelope, tokensLine } from '../src/run/narrate.ts';
@@ -334,4 +334,116 @@ test('a driven iteration and close land a token line carrying model, peak and co
   for (const stage of ['implementer', 'lens', 'reviewer', 'auditor']) {
     assert.match(messages, tokens(stage), `no full token line for stage=${stage}:\n${messages}`);
   }
+});
+
+// R3 — the seven `STOP ...` lines goal-run.ts, iteration.ts and close.ts write themselves, ahead
+// of a bare process.exit(...), never go through reporter.stop(): each still lands on .run.jsonl
+// as a plain 'say' event, carrying no 'exit' field, exactly like every other reporter.say() call.
+const sayEvent = (fixture: ReturnType<typeof repo>, prefix: string): { event: string; message: string } => {
+  const lines = readFileSync(jsonlOf(fixture), 'utf8').trim().split('\n');
+  const events = lines.map((line) => JSON.parse(line) as { event: string; message?: string });
+  const found = events.find((event) => (event.message ?? '').startsWith(prefix));
+
+  assert.ok(found, `no event found for prefix "${prefix}":\n${events.map((event) => event.message).join('\n')}`);
+
+  return found as { event: string; message: string };
+};
+
+const assertPlainSay = (event: object): void => {
+  assert.equal((event as { event: string }).event, 'say');
+  assert.equal('exit' in event, false, JSON.stringify(event));
+};
+
+test('the "gate will not run iteration" STOP (goal-run.ts) stays a say event with no exit field', () => {
+  const fixture = repo();
+
+  const { code } = run(fixture, [fixture.plan, '1'], { FAKE_GATE_CHECK_EXIT: '1' });
+
+  assert.equal(code, 2);
+  assertPlainSay(sayEvent(fixture, 'STOP the gate will not run iteration'));
+});
+
+test('the "gate published no plan_hash" STOP (goal-run.ts) stays a say event with no exit field', () => {
+  const fixture = repo();
+  const gate = join(fixture.bin, 'no-hash-gate');
+
+  writeFileSync(
+    gate,
+    `#!/bin/sh
+case "$1" in
+  check)  printf 'OK\\n'; exit 0 ;;
+  lock)   mkdir "$2.run.lock" 2>/dev/null; exit 0 ;;
+  unlock) rm -rf "$2.run.lock"; exit 0 ;;
+esac
+exit 2
+`,
+  );
+  chmodSync(gate, 0o755);
+
+  const { code } = run(fixture, [fixture.plan, '1'], { GOAL_GATE: gate });
+
+  assert.equal(code, 2);
+  assertPlainSay(sayEvent(fixture, 'STOP the gate published no plan_hash'));
+});
+
+test('the "iteration(s) landed" STOP (goal-run.ts) stays a say event with no exit field', () => {
+  const fixture = repo();
+
+  const { code } = run(fixture, [fixture.plan, '1'], {
+    FAKE_GATE_COMMITS: '1',
+    FAKE_CLAUDE_WRITES: join(fixture.dir, 'a.txt'),
+  });
+
+  assert.equal(code, 0);
+  assertPlainSay(sayEvent(fixture, 'STOP 1 iteration(s) landed'));
+});
+
+test('the "gate could not be run" STOP (iteration.ts) stays a say event with no exit field', () => {
+  const fixture = repo();
+
+  const { code } = run(fixture, [fixture.plan, '1'], {
+    FAKE_CLAUDE_WRITES: join(fixture.dir, 'a.txt'),
+    FAKE_GATE_COMMIT_EXIT: '2',
+  });
+
+  assert.equal(code, 3);
+  assertPlainSay(sayEvent(fixture, 'STOP the gate could not be run'));
+});
+
+test('the "refused by the gate" STOP (iteration.ts) stays a say event with no exit field', () => {
+  const fixture = repo();
+
+  const { code } = run(fixture, [fixture.plan, '1'], {
+    FAKE_CLAUDE_WRITES: join(fixture.dir, 'a.txt'),
+    FAKE_GATE_COMMIT_EXIT: '1',
+  });
+
+  assert.equal(code, 1);
+  assertPlainSay(sayEvent(fixture, 'STOP iteration 1 was refused by the gate'));
+});
+
+test('the "Definition of Done could not be run" STOP (close.ts) stays a say event with no exit field', () => {
+  const fixture = repo();
+
+  const { code } = run(fixture, [fixture.plan, '1'], {
+    FAKE_GATE_COMMITS: '1',
+    FAKE_CLAUDE_WRITES: join(fixture.dir, 'a.txt'),
+    FAKE_GATE_DOD_EXIT: '2',
+  });
+
+  assert.equal(code, 3);
+  assertPlainSay(sayEvent(fixture, 'STOP the global Definition of Done could not be run'));
+});
+
+test('the "Definition of Done refused this run" STOP (close.ts) stays a say event with no exit field', () => {
+  const fixture = repo();
+
+  const { code } = run(fixture, [fixture.plan, '1'], {
+    FAKE_GATE_COMMITS: '1',
+    FAKE_CLAUDE_WRITES: join(fixture.dir, 'a.txt'),
+    FAKE_GATE_DOD_EXIT: '1',
+  });
+
+  assert.equal(code, 1);
+  assertPlainSay(sayEvent(fixture, 'STOP the global Definition of Done refused this run'));
 });

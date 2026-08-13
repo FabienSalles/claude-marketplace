@@ -1,0 +1,8 @@
+HALT
+
+REASON: The plan declares no iteration 2.
+
+DETAIL:
+No "### Iteration 2" heading found.
+
+The loop asked for an iteration the plan does not contain: either the plan was rewritten or the caller counted wrong. Nothing was run.

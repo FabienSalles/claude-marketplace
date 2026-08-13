@@ -1,0 +1,9 @@
+HALT
+
+REASON: A gate or dod line moved since it was locked.
+
+DETAIL:
+Locked 0000000000000000000000000000000000000000000000000000000000000000
+Found  67fac575f3cc5e8c6aa47873cdba2fa3a0ffca91099781b9146712117055b571
+
+Every gate1..N and dod1..N line in spec.md is hashed together. A rewritten acceptance command is not a smaller iteration, it is a different one, and a run judged against it would have moved the bar it was supposed to clear.
