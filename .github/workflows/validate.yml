@@ -67,6 +67,9 @@ jobs:
       - name: Validate SKILL.md frontmatter and README skill counts
         run: ./scripts/validate-skills.sh
 
+      - name: Validate goal plugin doc anchors
+        run: ./scripts/validate-anchors.sh plugins/goal
+
       - name: Validate marketplace references exist
         run: |
           errors=0

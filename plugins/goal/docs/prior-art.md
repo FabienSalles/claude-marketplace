@@ -41,9 +41,9 @@ quietly leaving the tree changed. SWE-bench never needed that: it throws the con
 **And the off switch, which is guarded by prose.** An iteration declaring an empty `test_files=`
 skips the bite check outright, so that field is the check's input and its off switch at once.
 `plan-guard.ts` hashes it: not the paths, which a repair may legitimately fix, but whether the
-field is empty, per resolved block, beside the `gateN=` and `dodN=` lines (`:59-76`). But nothing
-the machine runs invokes it: its only callers are steps in `skills/supervise/SKILL.md` (`:86-90`) that
-a model is asked to follow, and `supervise.md:74-76` forbids emptying the field in the same
+field is empty, per resolved block, beside the `gateN=` and `dodN=` lines. But nothing
+the machine runs invokes it: its only callers are steps in `skills/supervise/SKILL.md` that
+a model is asked to follow, and `skills/supervise/SKILL.md` forbids emptying the field in the same
 register. So the one check nobody else has is protected from the automated classifier that repairs
 the plan by an instruction, not by a program: the hash is a mechanism only for as long as
 something chooses to run it.
@@ -62,8 +62,8 @@ and the implementer never reaches git at all.
 
 **Where the claim is narrower than it sounds.** "No commit exists that a gate did not verify"
 holds per slice. "Nothing ships unverified" holds only on the shortest plans:
-`goal-run.ts:120-131` publishes each iteration as it lands **except the last**, whose push waits
-inside `close()` for a green global Definition of Done (`run/close.ts:58-67`). So a
+`goal-run.ts` publishes each iteration as it lands **except the last**, whose push waits
+inside `close()` for a green global Definition of Done (`run/close.ts`). So a
 one-iteration run does put the barrier last, exactly as `gate/ship.ts` claims when it calls the
 DoD "the last barrier before anything is published". On a six-iteration run, five slices and a
 draft pull request are on the remote before the barrier runs. The barrier is real; on anything
@@ -91,8 +91,8 @@ own vendor has described and not tooled.
 
 **Where it is behind its own claim.** `gate/halt.ts` formats the `HALT` block (`REASON:` and
 `DETAIL:`) that a root writes to the gate's stdout, the runner concatenates it with stderr into `reporter.record()`
-(`run/iteration.ts:184`) and it lands in the run's own log,
-`.claude/goal-runs/<work-id>/<run-id>/.run.log` (`run/report.ts:20-25`, `:80-84`), which is
+(`run/iteration.ts`) and it lands in the run's own log,
+`.claude/goal-runs/<work-id>/<run-id>/.run.log` (`run/report.ts#record`), which is
 exactly the evidence `/goal:supervise` Phase 5 is told to read back. What is missing is one rung
 up: there is no exit-code taxonomy separating an infrastructure failure from an implementation
 failure: the distinction the closed issue above asked for, and the one the classifier most
@@ -122,7 +122,7 @@ is a set of prefixes read once from a file the implementer can write to, in a pe
 that reads it at session start.
 
 **What this harness does have, and the panel does not:** detection that does not depend on any of
-that. `run/iteration.ts:132-165` reads HEAD before and after every iteration and pauses on a move
+that. `run/iteration.ts` reads HEAD before and after every iteration and pauses on a move
 with the commit named; it snapshots the git directory's executable surface (`config`,
 `config.worktree`, `info/exclude` and every file under `hooks/`, recursively, `.sample` included)
 and pauses naming what changed (`run/gitwatch.ts`); and it snapshots **every** ref with
@@ -179,9 +179,9 @@ other harness treats planning.
 
 One leak left, and it is narrower than it was. The hash still normalises ticked boxes back to
 unticked before digesting, so an untick moves nothing in it. But the untick no longer passes
-unnoticed: `gate/ticked.ts:13-27` compares the ticked set the plan carried when `check` locked
+unnoticed: `gate/ticked.ts` compares the ticked set the plan carried when `check` locked
 the run against the set on disk at `commit`, and halts on any iteration that disappeared
-(`goal-gate.ts:154`). The boundary is the run: that set is captured at check time and carried by
+(`goal-gate.ts`). The boundary is the run: that set is captured at check time and carried by
 argument, so an untick performed *between* two runs is simply the state the next run locks, and
 the regression wall it replays is the smaller one.
 
@@ -192,7 +192,7 @@ the regression wall it replays is the smaller one.
   a completion promise is unreliable and to "always rely on `--max-iterations` as your primary
   safety mechanism". Here the wall clock exists but stops at the wrong boundary: every declared
   command runs under `GOAL_CMD_TIMEOUT`, 900 seconds by default, SIGKILL
-  (`gate/bounded.ts:17`, `:84-90`), while the implementer session is spawned with no timeout and
+  (`gate/bounded.ts`), while the implementer session is spawned with no timeout and
   there is no turn cap and no iteration cap. The only bounded loop in `run/iteration.ts` is the
   quota-window retry. An implementer circling an impossible slice circles until the quota runs
   out.

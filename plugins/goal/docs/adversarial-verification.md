@@ -1,6 +1,6 @@
 # Adversarial verification: design note
 
-One lens is implemented, asked once at the close of a run (`run/close.ts:107`). The rest of
+One lens is implemented, asked once at the close of a run (`run/close.ts`). The rest of
 this note is the reasoning behind it, kept so it is not re-derived from scratch; and, below,
 the record of which questions stopped being asked, which of them a mechanism took over, and
 which the port to a node runner simply dropped.
@@ -48,7 +48,7 @@ expensive (see the next section). One verifier per lens.
 All five are still the design. Only the last one lost its enforcement. The abandoned Workflow
 constrained the answer with a JSON schema (`refuted`, `verdict` and `anchor`, all three
 required), so a verdict without an anchor could not be returned at
-all. `run/close.ts:107` spawns a plain `claude -p` and records whatever text comes back, and
+all. `run/close.ts` spawns a plain `claude -p` and records whatever text comes back, and
 the anchor rule now lives only in the lens's own brief (`agents/goal-run-lens.md`). Nothing
 rejects an unanchored finding any more. That is a prompt where there used to be a schema, and
 it should be read as a regression rather than as a simplification.
@@ -73,14 +73,14 @@ the finding is worth.
 
 Findings are **advisory**, and the code is built so they cannot be anything else: the lens is
 asked inside `close()`, after the global Definition of Done has passed and after the last
-iteration's held-back push has fired (`run/close.ts:58-67`), so under `commit+pr` every slice is
+iteration's held-back push has fired (`run/close.ts`), so under `commit+pr` every slice is
 committed, pushed and carried by an open pull request by then. Nothing about its answer changes
 what the run does next.
 
 Which makes the whole layer dependent on a place to deposit a non-blocking signal, and that is
 the weakest part of it. The findings go to the run's own log, through `reporter.record()` into
-`.claude/goal-runs/<work-id>/<run-id>/.run.log` (`run/report.ts:20-25`, `:80-84`). Not the pull
-request body: that is built from iteration headings alone (`run/publish.ts:47-55`). Not an issue
+`.claude/goal-runs/<work-id>/<run-id>/.run.log` (`run/report.ts#record`). Not the pull
+request body: that is built from iteration headings alone (`run/publish.ts`). Not an issue
 comment: nothing in the runner writes one. A signal produced at 3am and deposited in a per-run
 log file under `.claude/` is a signal whose only reader is whoever thinks to open it.
 
@@ -130,7 +130,7 @@ whole selection rule, and it is why this is the one still being asked.
 Two things about its scope are deliberate and worth stating, because neither is what the
 earlier design assumed.
 
-**It is briefed from the plan's ticked boxes, not from what this run landed.** `run/close.ts:53`
+**It is briefed from the plan's ticked boxes, not from what this run landed.** `run/close.ts`
 re-reads the plan from disk and takes every box that carries an `[x]`, this run's own or an
 earlier run's. The reason is that a plan delivered across several runs would otherwise be
 judged in whatever fragment the last run happened to land: three iterations refuted against
@@ -138,15 +138,15 @@ each other's absence. The cost is that a resumed run re-judges work an earlier l
 looked at.
 
 **It never runs on the runs that would need it most.** The call sits inside the branch taken
-when the global DoD passes (`run/close.ts:55-110`), and a gate refusal exits inside the
-iteration loop without reaching `close()` at all (`run/iteration.ts:191-193`). So a halted run
+when the global DoD passes (`run/close.ts`), and a gate refusal exits inside the
+iteration loop without reaching `close()` at all (`run/iteration.ts`). So a halted run
 gets no lens, no reviewer and no audit report, and a halt is the outcome whose reading is worth
 the most.
 
 ## The reviewer asks a different question
 
 `agents/goal-run-reviewer.md` is a second advisory model in the same closing slot
-(`run/close.ts:80`), and the boundary between the two is the point of having both.
+(`run/close.ts`), and the boundary between the two is the point of having both.
 
 The lens asks one closed question about **intent**: does what landed implement what the plan
 declared. It is explicitly told not to mention style, naming, coverage or architecture, and it
@@ -184,17 +184,17 @@ that survived that cut were lost to the port instead, which is a different and w
 One of those rows has shrunk since it was written: the answering mechanism turned out to run
 less often than the lens would have.
 
-The bite check **skips** an iteration that declares no `test_files` (`gate/bite.ts:54-56`), and
+The bite check **skips** an iteration that declares no `test_files` (`gate/bite.ts`), and
 that exit is guarded only as far as prose goes: `plan-guard.ts` hashes each resolved block's
-`test_files` emptiness beside its `gateN=` and `dodN=` lines (`:59-76`), so a supervised repair
+`test_files` emptiness beside its `gateN=` and `dodN=` lines, so a supervised repair
 that empties the field would move the hash. But nothing the machine runs calls that script. Its
-only callers are steps in `skills/supervise/SKILL.md` (`:86-90`) a model is asked to follow, alongside
-`supervise.md:74-76` forbidding the edit in words. The refusal is real when it runs, and what
+only callers are steps in `skills/supervise/SKILL.md` a model is asked to follow, alongside
+`skills/supervise/SKILL.md` forbidding the edit in words. The refusal is real when it runs, and what
 makes it run is an instruction.
 
-The Definition of Done runs **once, at close** (`run/close.ts:47`), after every iteration has
+The Definition of Done runs **once, at close** (`run/close.ts`), after every iteration has
 already been committed and, under `commit+pr`, after every iteration but the last has been pushed
-(`goal-run.ts:120-131`). So "the existing suite is still green" is answered per branch rather than
+(`goal-run.ts`). So "the existing suite is still green" is answered per branch rather than
 per slice, which is a weaker answer than the retired lens gave, and on a multi-iteration run it
 is answered after the earlier slices are already published.
 

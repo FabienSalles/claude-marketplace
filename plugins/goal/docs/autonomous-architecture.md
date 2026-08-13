@@ -50,7 +50,7 @@ permissions are read at session start, so it described a future session and neve
 The earlier bash runner enforced it and has since been deleted.
 
 What holds the anchor now is detection rather than denial, and it is wider than HEAD.
-`run/iteration.ts:132-165` snapshots three things around the implementer and halts on any of
+`run/iteration.ts` snapshots three things around the implementer and halts on any of
 them: HEAD, which catches the case the rule was written for; the git directory's executable
 surface (`config`, `config.worktree`, `info/exclude` and every file under `hooks/`) via
 `run/gitwatch.ts`; and every ref, read with `for-each-ref`, so a `refs/remotes/` move is named as
@@ -69,7 +69,7 @@ Four forms of the loop were tried. Each is named here by what it made impossible
 
 **`/goal` on its own.** There is no judge: the model decides when the work is done. That is why
 `/goal:next` exists: it is "the only step that replays the acceptance commands independently"
-(`skills/plan/SKILL.md:731`), and skipping it means a green iteration is only ever
+(`skills/plan/SKILL.md`), and skipping it means a green iteration is only ever
 self-certified. Everything below is an answer to that one hole.
 
 **A dynamic Workflow, the abandoned generation.** It takes a subagent to run `git status`. Its
@@ -105,7 +105,7 @@ refused it, and the pull request body stayed empty for six iterations.
 - **node**, against bash: `goal-run.ts` plus fourteen modules under `run/`, 1639 lines measured
   today, the largest at 250 (where the bash original was 594 in one file and the abandoned
   Workflow 941), and whole classes of bug disappear structurally, since `landed: string[]`
-  (`run/publish.ts:44`) cannot produce bash's empty alternative.
+  (`run/publish.ts`) cannot produce bash's empty alternative.
 - **`claude -p`**, against a subagent: one fresh, bounded session per iteration, no context
   leaking from one slice into the next, each one persisted separately, which is what makes a
   session auditor possible at all.
@@ -131,7 +131,7 @@ hypothetical.[^overcorrect]
 The three agents are invoked at the close, after everything is committed and pushed, which makes
 that rule structural rather than a promise: none of them can undo what the gate already
 verified. Their answers land in the run's own log,
-`.claude/goal-runs/<work-id>/<run-id>/.run.log` (`run/close.ts:108`) and, for the auditor, in
+`.claude/goal-runs/<work-id>/<run-id>/.run.log` (`run/close.ts`) and, for the auditor, in
 `.claude/goal-runs/<work-id>/<run-id>/report.md`. The developer adjudicates them awake.
 
 ## Layer 4: what survives the process
@@ -145,18 +145,18 @@ in a context window.[^memory]
 **The quota wait moved down.** It used to sit here, on the grounds that a workflow script has no
 sleep. It now lives in the runner, which detects the window from the shape of a failed call,
 sleeps, retries the same iteration and gives up into a pause rather than spinning
-(`run/iteration.ts:104-152`). That is this page's own rule applied to itself.
+(`run/iteration.ts`). That is this page's own rule applied to itself.
 
 **What is left at layer 4 is the part that is not mechanical**: reading a non-zero exit and
 saying which of two very different things happened: the plan's contract was wrong, or the
 implementation was. The runner's four exit codes exist for that call and no other
-(`goal-run.ts:13-17`), and `/goal:supervise` makes it. It says so itself: the rule was written
+(`goal-run.ts`), and `/goal:supervise` makes it. It says so itself: the rule was written
 from two halts, and it is a hypothesis rather than a proven procedure.
 
 The evidence that call runs on is on disk. On a gate refusal the runner concatenates the gate's
-stdout and stderr and hands them to `reporter.record()` (`run/iteration.ts:184`), which appends
+stdout and stderr and hands them to `reporter.record()` (`run/iteration.ts`), which appends
 them to the run's own log, `.claude/goal-runs/<work-id>/<run-id>/.run.log`
-(`run/report.ts:20-25`, `:80-84`), before exiting. The HALT block the classifier
+(`run/report.ts#record`), before exiting. The HALT block the classifier
 is told to read is therefore in the log the classifier reads, and
 `tests/goal-run-halt-log.test.ts` asserts it, including the case where the gate splits the block
 across both streams.
@@ -170,23 +170,23 @@ is entirely on disk.
 ## Layer 5: the remote surface, and the security invariant that shapes it
 
 The run maps onto GitHub as a single object: **a draft pull request, opened at the first landed
-iteration and its body rewritten by every one after it** (`run/publish.ts:57-60`), so a run that
+iteration and its body rewritten by every one after it** (`run/publish.ts`), so a run that
 halts at 3 of 15 still leaves something a human can read instead of a local branch nobody can
 see. The last iteration is the exception: it lands locally and is published only inside
 `close()`, behind a green global Definition of Done, after which that pull request is marked
-ready and reviewed (`run/close.ts:57-80`). Nothing is ever written to an issue.
+ready and reviewed (`run/close.ts`). Nothing is ever written to an issue.
 
 Pushing is no longer something that happens *on* a halt: it has already happened, at every landed
-iteration but the last (`goal-run.ts:120-131`). The final one's push is held inside `close()`
-until the global Definition of Done comes back green (`run/close.ts:58-67`), so a one-iteration
+iteration but the last (`goal-run.ts`). The final one's push is held inside `close()`
+until the global Definition of Done comes back green (`run/close.ts`), so a one-iteration
 run still publishes nothing until the whole-branch barrier passes. The old rule that nothing is
 pushed on failure was first reversed, then narrowed to that one case.
 
 That ordering costs one guarantee, and it is the sharpest layering fault on this page.
-`gate/ship.ts:11` describes the global Definition of Done as the barrier replayed once before
+`gate/ship.ts` describes the global Definition of Done as the barrier replayed once before
 anything ships, because every slice gate only ever saw its own slice. But the runner publishes
-inside the loop (`goal-run.ts:95`) and only calls that barrier at the close
-(`goal-run.ts:100`). Per slice the invariant holds: no commit exists that a gate did not
+inside the loop (`goal-run.ts`) and only calls that barrier at the close
+(`goal-run.ts`). Per slice the invariant holds: no commit exists that a gate did not
 verify. At run level, the last barrier guards nothing it could still stop.
 
 ### The autonomous run is write-only towards GitHub
@@ -202,11 +202,11 @@ injection away from using them.
 So:
 
 - **The loop never reads issue or PR text.** The one thing it reads back from GitHub is a
-  number, `gh pr view --json number` (`run/publish.ts:129`), and it reads it only to decide
+  number, `gh pr view --json number` (`run/publish.ts`), and it reads it only to decide
   whether to create a pull request or edit the one that exists. Reading a source happens once,
   in `/goal:spec`, under a human's eyes, and its output is the local plan.
 - **The plan is the only instruction source**, it is gitignored (a plan directory visible to
-  git is a refusal, not a warning, `run/preflight.ts:93`) and its hash is checked at every
+  git is a refusal, not a warning, `run/preflight.ts`) and its hash is checked at every
   iteration. An instruction that is not in the plan is not an instruction.
 - **Gate commands come from the plan**, frozen by a human at lock time. The run installs
   nothing and resolves no dependency it was not told to.
@@ -231,7 +231,7 @@ text authored by anyone else ever crosses.
 ## What is deliberately not a program
 
 The grill is. `/goal:spec` and `/goal:plan` ask one question at a time and a human answers
-(`skills/spec/SKILL.md:96`, `skills/plan/SKILL.md:110`), and that is the step that decides what is being built. Nothing
+(`skills/spec/SKILL.md`, `skills/plan/SKILL.md`), and that is the step that decides what is being built. Nothing
 downstream can recover from a plan that is wrong, because every mechanism below it checks the
 plan against itself. Automating it would move the one judgment with no fallback into the layer
 with the weakest guarantees.
