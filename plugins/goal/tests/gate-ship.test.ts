@@ -143,3 +143,19 @@ test('no scanner installed refuses the push, naming what it looked for', () => {
   assert.match(output, /betterleaks/);
   assert.match(output, /gitleaks/);
 });
+
+// ADR-0002 — a pre-push scan judges committed content, not the working directory
+test('a pre-push scan judges committed content, not the working directory', () => {
+  const calls = join(tmpDir('goal-gate-scan-calls-'), 'calls');
+  const bin = tmpDir('goal-gate-scan-bin-');
+  writeFileSync(join(bin, 'betterleaks'), `#!/bin/sh\necho "$@" >> ${calls}\nexit 0\n`, { mode: 0o755 });
+
+  const { code, output } = runScan(bin);
+
+  assert.equal(code, 0, output);
+  assert.equal(
+    readFileSync(calls, 'utf8').trim(),
+    'git . --redact',
+    'the scan read something other than the branch it is about to push',
+  );
+});

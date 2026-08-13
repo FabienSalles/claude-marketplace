@@ -157,6 +157,26 @@ test('GOAL_CMD_TIMEOUT overrides the default the same way GOAL_PROC_HEADROOM ove
 // The wall clock's actual job: a command that outlives it is killed rather than left to hang the
 // gate forever. A killed run reports no exit code — `status` is null — so the caller's plain
 // `run.status !== 0` check still halts on it, instead of reading a stalled process as a pass.
+// ADR-0003 — the gate spawns commands it does not trust
+test('the gate spawns commands it does not trust', () => {
+  process.env.GOAL_RUN_JSONL = '/nowhere/run.jsonl';
+
+  try {
+    const probe = 'echo "state=${GOAL_RUN_JSONL:-none}"; ulimit -u 99999 2>/dev/null; ulimit -u';
+    const run = spawnSync(bounded(probe), spawnOptions());
+    const [state, raisedTo] = run.stdout.trim().split('\n');
+
+    assert.equal(state, 'state=none', 'the gate trusted a declared command with its own run state');
+    assert.notEqual(
+      Number(raisedTo),
+      99999,
+      'the gate trusted a declared command not to raise the ceiling it set',
+    );
+  } finally {
+    delete process.env.GOAL_RUN_JSONL;
+  }
+});
+
 test('a command that outlives the wall clock is killed rather than left hanging', () => {
   const modulePath = resolve(import.meta.dirname, '../src/gate/bounded.ts');
   const script = `
