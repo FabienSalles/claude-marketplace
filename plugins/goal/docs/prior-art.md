@@ -64,8 +64,8 @@ and the implementer never reaches git at all.
 holds per slice. "Nothing ships unverified" holds only on the shortest plans:
 `goal-run.ts` publishes each iteration as it lands **except the last**, whose push waits
 inside `close()` for a green global Definition of Done (`run/close.ts`). So a
-one-iteration run does put the barrier last, exactly as `gate/ship.ts` claims when it calls the
-DoD "the last barrier before anything is published". On a six-iteration run, five slices and a
+one-iteration run does put `gate/ship.ts`'s `dodCheck`, the last barrier before anything is
+published, last. On a six-iteration run, five slices and a
 draft pull request are on the remote before the barrier runs. The barrier is real; on anything
 longer than one slice it is not last.
 

@@ -1,5 +1,3 @@
-// What the tree really holds against what the slice declared, then the commit and the tick.
-
 import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 
 import { git } from '../adapters/git.ts';

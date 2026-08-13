@@ -1,12 +1,3 @@
-// The base sweep the plan holds every iteration to: every gate/dod command it declares, run once
-// per distinct command against the untouched tree rather than once per declaration — a
-// six-iteration plan repeating the same commands across iterations sweeps 4 commands, not 15.
-//
-// What is declared is read from the blocks `gate/plan.ts` resolves for a real iteration or the
-// plan's own Definition of Done, never from a ```gate fence scanned out of the raw text — a
-// fence quoted in prose as a template or an example has no iteration section to belong to and
-// stays unreachable.
-
 import { spawnSync } from 'node:child_process';
 
 import { doneSection, gateFence } from '../core/plan.ts';

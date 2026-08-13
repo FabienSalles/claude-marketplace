@@ -183,8 +183,8 @@ run still publishes nothing until the whole-branch barrier passes. The old rule 
 pushed on failure was first reversed, then narrowed to that one case.
 
 That ordering costs one guarantee, and it is the sharpest layering fault on this page.
-`gate/ship.ts` describes the global Definition of Done as the barrier replayed once before
-anything ships, because every slice gate only ever saw its own slice. But the runner publishes
+`gate/ship.ts`'s `dodCheck` replays the global Definition of Done once, because every slice gate
+only ever saw its own slice. But the runner publishes
 inside the loop (`goal-run.ts`) and only calls that barrier at the close
 (`goal-run.ts`). Per slice the invariant holds: no commit exists that a gate did not
 verify. At run level, the last barrier guards nothing it could still stop.

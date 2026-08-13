@@ -137,7 +137,7 @@ authorization bypass. It is one layer, and it only ever raises cost.
 `run/sweep.ts` runs each distinct `gate2..N` and `dodN` command with `shell: true`, before a
 byte is written, as preflight check 8. A ` ```gate ` fence in an appendix, a worked example, a
 quoted snippet of somebody else's plan: none of it is reached, because none of it belongs to a
-section the plan declares. The module says so in its own header.
+section the plan declares.
 
 Two things survive that scoping, and both are the same fact from different sides.
 

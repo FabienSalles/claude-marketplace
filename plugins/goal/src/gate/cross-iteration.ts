@@ -1,6 +1,3 @@
-// The two checks that read the whole plan rather than one slice: what earlier iterations proved,
-// and what later ones still declare.
-
 import { dirname } from 'node:path';
 import { existsSync } from 'node:fs';
 

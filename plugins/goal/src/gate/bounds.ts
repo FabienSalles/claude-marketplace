@@ -1,5 +1,3 @@
-// The two bounds a slice is held to, both measured against HEAD.
-
 import { git } from '../adapters/git.ts';
 import { noBcBreak, withinBudget } from '../core/rules/bounds.ts';
 import type { Result } from '../core/result.ts';

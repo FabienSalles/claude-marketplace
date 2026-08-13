@@ -31,10 +31,11 @@ Two properties of the loop body are easy to read backwards, so state them plainl
 - **The global Definition of Done runs after the loop, and the last push waits behind it.**
   `goal-run.ts` calls `close()`, `run/close.ts#close` replays `gate dod` against the whole branch,
   and only on a green verdict does `run/close.ts` publish the iteration held back.
-  `gate/ship.ts` describes that check as *"the barrier replayed once before anything ships"*.
-  On a one-iteration plan that is literally true. On a longer one it is a barrier in front of the
-  last slice and behind all the others, which is a real decision (a halt leaves something
-  readable rather than an invisible branch), but not the one the barrier's own words claim.
+  `gate/ship.ts`'s `dodCheck` replays the whole suite once, against the whole branch, after every
+  slice gate has only ever seen its own slice. On a one-iteration plan that barrier sits in front
+  of the only slice there is. On a longer one it is a barrier in front of the last slice and
+  behind all the others, which is a real decision (a halt leaves something readable rather than
+  an invisible branch), but not the same guarantee a one-iteration plan gets.
 
 ## The loop that proves the work first: `goal-run.ts`
 

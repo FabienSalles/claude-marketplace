@@ -1,5 +1,3 @@
-// Setting the implementation aside to find out whether the tests were asserting anything.
-
 import { spawnSync } from 'node:child_process';
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';

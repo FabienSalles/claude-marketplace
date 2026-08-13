@@ -228,8 +228,8 @@ not carry is any synthesis around that verdict, because a halt never reaches the
 
 **Built, never run.** `skills/supervise/SKILL.md` and `src/plan-guard.ts` shipped in one commit and
 have not been exercised once. The measurement this question demanded (*what share of real halts
-fall inside the closed repair set*) was never taken; `skills/supervise/SKILL.md` says so in its own header
-(*"two prior halts are the whole evidence"*). Building before measuring is a defensible choice on a
+fall inside the closed repair set*) was never taken; `skills/supervise/SKILL.md` opens, verbatim,
+with (*"two prior halts are the whole evidence"*). Building before measuring is a defensible choice on a
 cheap component; recording that it was made is not optional.
 
 **Still unresolved:** whether the doctor may discard an implementer's partial work without asking,
