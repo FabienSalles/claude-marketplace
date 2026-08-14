@@ -34,6 +34,23 @@ const mutations = [
 ];
 
 let failed = false;
+let live;
+
+const restore = () => {
+  if (live !== undefined) {
+    writeFileSync(live.file, live.original);
+    live = undefined;
+  }
+};
+
+process.on('exit', restore);
+
+for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP']) {
+  process.on(signal, () => {
+    restore();
+    process.exit(1);
+  });
+}
 
 for (const { name, file, find, replacement } of mutations) {
   const original = readFileSync(file, 'utf8');
@@ -44,6 +61,7 @@ for (const { name, file, find, replacement } of mutations) {
     continue;
   }
 
+  live = { file, original };
   writeFileSync(file, original.replace(find, replacement));
 
   const result = spawnSync(process.execPath, ['--test', testFile], {
@@ -51,7 +69,7 @@ for (const { name, file, find, replacement } of mutations) {
     env: { ...process.env, FORCE_COLOR: '0', NO_COLOR: '1' },
   });
 
-  writeFileSync(file, original);
+  restore();
 
   if (result.status === 0) {
     console.error(`mutate.sh: mutation "${name}" did NOT turn gate-captures.test.ts red`);
