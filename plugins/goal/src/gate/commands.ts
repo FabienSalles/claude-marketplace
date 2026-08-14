@@ -1,7 +1,6 @@
-import { appendFileSync } from 'node:fs';
-
 import { command as runner } from '../adapters/command.ts';
 import { clock } from '../adapters/clock.ts';
+import { fs } from '../adapters/fs.ts';
 import { ok, type Result } from '../core/result.ts';
 import { determinismHeld, gatePassed } from '../core/rules/commands.ts';
 import type { Halt } from '../core/verdict.ts';
@@ -20,7 +19,7 @@ export const emitCommand = (key: string, command: string, durationMs: number, ex
   // Bookkeeping, never the verdict's hostage: a stale or unwritable path loses the event, not
   // the judgement.
   try {
-    appendFileSync(
+    fs.appendFile(
       jsonl,
       `${JSON.stringify({ v: 1, ts: new Date().toISOString(), event: 'gate-command', key, command, duration_ms: durationMs, exit })}\n`,
     );

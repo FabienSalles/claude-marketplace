@@ -2,8 +2,7 @@
 // throwing, and only a root — goal-gate.ts, plan-guard.ts, the in-process adapter — turns one
 // into printed output and an exit status.
 
-import { rmSync } from 'node:fs';
-
+import { fs } from '../adapters/fs.ts';
 import type { Result } from '../core/result.ts';
 import type { Halt } from '../core/verdict.ts';
 
@@ -63,7 +62,7 @@ export const restorers: (() => void)[] = [];
 // exit released them; the in-process adapter calls this after every verb for the same reason.
 export const release = (): void => {
   restorers.splice(0).forEach((restore) => restore());
-  heldLocks.splice(0).forEach((path) => rmSync(path, { recursive: true, force: true }));
+  heldLocks.splice(0).forEach((path) => fs.removeTree(path));
 };
 
 process.on('exit', release);

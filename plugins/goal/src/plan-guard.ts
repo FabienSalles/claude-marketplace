@@ -14,8 +14,8 @@
 // Exit codes: 0 unchanged (or nothing to compare against) · 1 a gate or dod line moved · 2 misuse.
 
 import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
 
+import { fs } from './adapters/fs.ts';
 import { doneSection, gateFence } from './core/plan.ts';
 import { halt, misuse, rootCatch } from './gate/halt.ts';
 import { iterationNumbers, iterationSection } from './gate/plan.ts';
@@ -64,7 +64,7 @@ const main = (): void => {
   let source: string;
 
   try {
-    source = readFileSync(plan, 'utf8');
+    source = fs.readFile(plan);
   } catch {
     misuse(`plan not readable: ${plan}`);
     return;

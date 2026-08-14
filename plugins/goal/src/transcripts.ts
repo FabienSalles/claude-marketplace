@@ -7,53 +7,54 @@
 // found by its content naming the plan. The scan alone would also match every earlier run of the
 // same plan, so the recorded ids are what make this run's own sessions identifiable among them.
 
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
-import { homedir } from 'node:os';
 import { basename, join } from 'node:path';
 
+import { fs } from './adapters/fs.ts';
 import { projectDir } from './core/events.ts';
 import { workIdOf } from './core/plan.ts';
 
 export { projectDir } from './core/events.ts';
 
-const PROJECTS_ROOT = join(homedir(), '.claude', 'projects');
+const PROJECTS_ROOT = join(fs.homeDir(), '.claude', 'projects');
 
 export const recordedTranscripts = (plan: string, dir: string, cwd: string): string[] => {
   const runsRoot = join(cwd, '.claude', 'goal-runs', workIdOf(plan));
 
-  if (!existsSync(runsRoot)) {
+  if (!fs.exists(runsRoot)) {
     return [];
   }
 
-  const ids = readdirSync(runsRoot).flatMap((runId) => {
+  const ids = fs.readDir(runsRoot).flatMap((runId) => {
     const recorded = join(runsRoot, runId, '.run.session');
 
-    if (!existsSync(recorded)) {
+    if (!fs.exists(recorded)) {
       return [];
     }
 
-    return readFileSync(recorded, 'utf8')
+    return fs
+      .readFile(recorded)
       .split('\n')
       .map((id) => id.trim())
       .filter((id) => id !== '');
   });
 
-  return ids.map((id) => join(dir, `${id}.jsonl`)).filter((path) => existsSync(path));
+  return ids.map((id) => join(dir, `${id}.jsonl`)).filter((path) => fs.exists(path));
 };
 
 export const runTranscripts = (cwd: string, plan: string, root: string = PROJECTS_ROOT): string[] => {
   const dir = projectDir(cwd, root);
 
-  if (!existsSync(dir)) {
+  if (!fs.exists(dir)) {
     return [];
   }
 
   const needle = basename(plan);
 
-  const scanned = readdirSync(dir)
+  const scanned = fs
+    .readDir(dir)
     .filter((entry) => entry.endsWith('.jsonl'))
     .map((entry) => join(dir, entry))
-    .filter((path) => readFileSync(path, 'utf8').includes(needle));
+    .filter((path) => fs.readFile(path).includes(needle));
 
   return [...new Set([...recordedTranscripts(plan, dir, cwd), ...scanned])];
 };

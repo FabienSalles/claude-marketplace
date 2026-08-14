@@ -2,7 +2,6 @@
 // and postmortem() all walk the same JSONL shape through parseEvents(), so a parsing rule fixed
 // once is fixed for all three rather than once per file.
 
-import { homedir } from 'node:os';
 import { join } from 'node:path';
 
 export type Usage = {
@@ -107,8 +106,5 @@ export const lastSessionId = (raw: string): string | undefined => {
   return found;
 };
 
-const PROJECTS_ROOT = join(homedir(), '.claude', 'projects');
-
 // Claude Code keys a project's transcripts by its absolute cwd with every `/` and `.` turned into a `-`.
-export const projectDir = (cwd: string, root: string = PROJECTS_ROOT): string =>
-  join(root, cwd.replace(/[/.]/g, '-'));
+export const projectDir = (cwd: string, root: string): string => join(root, cwd.replace(/[/.]/g, '-'));

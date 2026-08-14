@@ -28,8 +28,28 @@ export interface CommandRunner {
   runBinary(command: string, args: string[], options?: CommandOptions): BinaryResult;
 }
 
+export interface DirEntry {
+  name: string;
+  isDirectory(): boolean;
+}
+
 export interface FileSystem {
   removeTree(path: string): void;
+  removeFile(path: string): void;
+  exists(path: string): boolean;
+  readFile(path: string): string;
+  readFileBuffer(path: string): Buffer;
+  readDir(path: string): string[];
+  readDirEntries(path: string): DirEntry[];
+  writeFile(path: string, content: string | Buffer): void;
+  appendFile(path: string, content: string): void;
+  mkdir(path: string, options?: { recursive?: boolean }): void;
+  copyFile(src: string, dest: string): void;
+  mkdtemp(prefix: string): string;
+  mtime(path: string): number;
+  isFile(path: string): boolean;
+  homeDir(): string;
+  tmpDir(): string;
 }
 
 export interface Clock {

@@ -3,12 +3,11 @@
 // belong to an earlier run — and the advisory lens and the auditor are invoked either way,
 // neither able to undo work the gate already verified and shipped.
 
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
 
 import { command } from '../adapters/command.ts';
 import { clock } from '../adapters/clock.ts';
+import { fs } from '../adapters/fs.ts';
 import { gateAdapterOf, type GateAdapter } from '../adapters/gate.ts';
 import { git } from '../adapters/git.ts';
 import { header, iterationNumbers, readPlan } from '../gate/plan.ts';
@@ -35,7 +34,7 @@ type AgentJob = { name: string; args: string[] };
 // separate, so the envelope `resultEnvelope` parses off stdout is never a warning on stderr away
 // from failing to parse at all.
 const runConcurrently = (jobs: AgentJob[]): { name: string; output: string; stderr: string; status: number }[] => {
-  const dir = mkdtempSync(join(tmpdir(), 'goal-close-'));
+  const dir = fs.mkdtemp(join(fs.tmpDir(), 'goal-close-'));
 
   try {
     const starts = jobs
@@ -55,13 +54,13 @@ const runConcurrently = (jobs: AgentJob[]): { name: string; output: string; stde
 
       return {
         name: job.name,
-        output: existsSync(outFile) ? readFileSync(outFile, 'utf8') : '',
-        stderr: existsSync(errFile) ? readFileSync(errFile, 'utf8') : '',
+        output: fs.exists(outFile) ? fs.readFile(outFile) : '',
+        stderr: fs.exists(errFile) ? fs.readFile(errFile) : '',
         status: status !== undefined ? Number(status) : 1,
       };
     });
   } finally {
-    rmSync(dir, { recursive: true, force: true });
+    fs.removeTree(dir);
   }
 };
 
@@ -227,8 +226,8 @@ not stage anything, and do not judge whether the work was correct — the gate a
 
   // Folded into the pull request body the auditor's report has just been written to, never as a
   // comment: the reviewer reads costs, halts and recurrences on the pull request itself.
-  if (existsSync(reportPath)) {
-    publisher.foldReport?.(readFileSync(reportPath, 'utf8'), plan, dir);
+  if (fs.exists(reportPath)) {
+    publisher.foldReport?.(fs.readFile(reportPath), plan, dir);
   }
 
   if (dodExit !== 0) {
