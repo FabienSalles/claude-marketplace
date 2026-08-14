@@ -70,6 +70,9 @@ jobs:
       - name: Validate goal plugin doc anchors
         run: ./scripts/validate-anchors.sh plugins/goal
 
+      - name: Validate goal plugin doc counts
+        run: ./scripts/check-doc-counts.sh plugins/goal
+
       - name: Validate marketplace references exist
         run: |
           errors=0
