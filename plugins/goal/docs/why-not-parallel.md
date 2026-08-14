@@ -14,8 +14,8 @@ splits becomes several plan files, and the developer launches one run per file.
 
 **What a run is, as of today.** A run is one `node goal-run.ts <plan>` process
 (`scripts/goal-run.ts` plus `src/run/*.ts`), which is what `/goal:supervise` launches
-(`skills/supervise/SKILL.md:31`). It surveys the plan's unchecked boxes, then implements them one at a
-time in a single `for` loop (`goal-run.ts:92-98`). The harness that carried tracks is the
+(`skills/supervise/SKILL.md`). It surveys the plan's unchecked boxes, then implements them one at a
+time in a single `for` loop (`goal-run.ts`). The harness that carried tracks is the
 abandoned Workflow runtime this loop used to run on (still checked in, orchestrating nothing
 that ships), and the sections below describe it in the past tense on purpose.
 
@@ -53,7 +53,7 @@ most of at 3am.
 This used to be an argument about the `Workflow` runtime's per-workflow concurrency cap: five
 invocations got five caps, so nothing was surrendered by moving the parallelism up. There is no
 runtime to appeal to now. A run is an ordinary Node process that spawns one `claude -p` per
-iteration (`run/iteration.ts:111`), and nothing inside it bounds concurrency, tokens or
+iteration (`run/iteration.ts`), and nothing inside it bounds concurrency, tokens or
 wall-clock: the 80k floor the Workflow used to declare was the only cost ceiling any generation
 ever had, it was inert unless a directive armed a budget, and neither runner since has carried
 anything in its place.
@@ -103,8 +103,8 @@ handing over a path to the wrong one.
 
 The rule that came out of it is now the first thing the current runner's iteration module states,
 and the shape of the brief enforces it: the section travels as text and the plan's path does not
-travel at all (`run/iteration.ts:1-5`, `:56-74`). A run whose tree is unchanged says so
-(`iteration.ts:164-169`) instead of letting the gate report a refusal it never earned.
+travel at all (`run/iteration.ts`). A run whose tree is unchanged says so
+(`run/iteration.ts`) instead of letting the gate report a refusal it never earned.
 
 ### Symptom 2: the regression wall assumes one continuous branch
 
@@ -128,7 +128,7 @@ file is one object and four runs disagreed about what it described.
 The audit reports collided the same way. All four wrote `.claude/goal-runs/<base-sha>.md`, and
 the base sha is identical for every track by construction, so they overwrote each other. One
 auditor noticed the file changing under it mid-analysis and said so in what survived. That half
-was never replayed against the current runner: `run/close.ts:112-115` briefs the auditor with a
+was never replayed against the current runner: `run/close.ts` briefs the auditor with a
 relative `.claude/goal-runs/<sha>.md`, so a run launched inside a worktree writes its report into
 that worktree's own gitignored `.claude/`, which disappears with it. One run per plan makes the
 collision impossible; it does not make the path right.
@@ -162,7 +162,7 @@ the file lists, and a mistake costs an edit.
 **Every plan resumes correctly, alone.** With one shared file, each run must be told its scope
 at launch, so the scope lives in the invocation arguments, not in the plan. A relaunch that
 forgets them does not fail: **it does something else, silently.** With one file per part, the
-plan's own boxes are the whole state and a relaunch reads them: `goal-run.ts:56` surveys the
+plan's own boxes are the whole state and a relaunch reads them: `goal-run.ts` surveys the
 unchecked iterations and starts at the first, which is the property the whole "the plan is the
 state" design rests on.
 

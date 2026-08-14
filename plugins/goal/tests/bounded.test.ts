@@ -2,6 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { resolve } from 'node:path';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 
 import { bounded, ceilingFor, spawnOptions } from '../src/gate/bounded.ts';
 
@@ -108,14 +110,25 @@ test('run.sh refuses to re-enter itself', () => {
 // drives it — and that version reads no fixture root, so a caller declaring one is ignored and the
 // real glob runs anyway. An exemption keyed on the caller's word opens the guard in the one case it
 // exists for.
+//
+// The root declared here is a directory made for this test alone, not the machine's shared `/tmp`:
+// a neighbouring session dropping its own `*.test.ts` there makes `/tmp` hold a fixture nobody
+// declared, which reads as an honoured `GOAL_TESTS_ROOT` and lets the real glob run anyway — the
+// exact failure this test exists to catch, from a cause outside this suite entirely.
 test('a caller declaring a fixture root does not earn an exemption from this version', () => {
-  const run = spawnSync(bounded(`GOAL_TESTS_DEPTH=1 GOAL_TESTS_ROOT=/tmp bash "${RUN}"`), {
-    shell: true,
-    encoding: 'utf8',
-  });
+  const root = mkdtempSync(resolve(tmpdir(), 'goal-bounded-'));
 
-  assert.equal(run.status, 1, `a declared fixture root re-opened the guard:\n${run.stdout}${run.stderr}`);
-  assert.match(run.stderr, /Refusing to re-enter/, run.stderr);
+  try {
+    const run = spawnSync(bounded(`GOAL_TESTS_DEPTH=1 GOAL_TESTS_ROOT="${root}" bash "${RUN}"`), {
+      shell: true,
+      encoding: 'utf8',
+    });
+
+    assert.equal(run.status, 1, `a declared fixture root re-opened the guard:\n${run.stdout}${run.stderr}`);
+    assert.match(run.stderr, /Refusing to re-enter/, run.stderr);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 });
 
 // A test waiting on a port or a prompt nobody answers otherwise blocks an unattended run 900
@@ -144,6 +157,26 @@ test('GOAL_CMD_TIMEOUT overrides the default the same way GOAL_PROC_HEADROOM ove
 // The wall clock's actual job: a command that outlives it is killed rather than left to hang the
 // gate forever. A killed run reports no exit code — `status` is null — so the caller's plain
 // `run.status !== 0` check still halts on it, instead of reading a stalled process as a pass.
+// ADR-0003 — the gate spawns commands it does not trust
+test('the gate spawns commands it does not trust', () => {
+  process.env.GOAL_RUN_JSONL = '/nowhere/run.jsonl';
+
+  try {
+    const probe = 'echo "state=${GOAL_RUN_JSONL:-none}"; ulimit -u 99999 2>/dev/null; ulimit -u';
+    const run = spawnSync(bounded(probe), spawnOptions());
+    const [state, raisedTo] = run.stdout.trim().split('\n');
+
+    assert.equal(state, 'state=none', 'the gate trusted a declared command with its own run state');
+    assert.notEqual(
+      Number(raisedTo),
+      99999,
+      'the gate trusted a declared command not to raise the ceiling it set',
+    );
+  } finally {
+    delete process.env.GOAL_RUN_JSONL;
+  }
+});
+
 test('a command that outlives the wall clock is killed rather than left hanging', () => {
   const modulePath = resolve(import.meta.dirname, '../src/gate/bounded.ts');
   const script = `

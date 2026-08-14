@@ -192,15 +192,15 @@ More, including the axes that are entirely empty: [`docs/comparison.md`](docs/co
 | [`/goal:plan`](skills/plan/SKILL.md) | `skills/` | The technical grill → command-mapped DoD, slices, policy, remote → the locked plan on a branch |
 | [`/goal:supervise`](skills/supervise/SKILL.md) | `skills/` | Launches the runner, classifies a halt, repairs or discards once. **Never exercised by a real run** |
 | [`/goal:next`](skills/next/SKILL.md) | `skills/` | Manual-loop checkpoint: replay the DoD, reconcile plan against code, emit the next handoff |
-| `goal-run.ts` + `run/*.ts` | `scripts/` + `src/run/` | The runner: 1,639 lines, the entry point plus 14 modules (preflight, sweep, lock, iteration, publish, close, report) |
-| `goal-gate.ts` + `gate/*.ts` | `scripts/` + `src/gate/` | The judge, and the only committer: 1,153 lines, the entry point plus 12 modules. Exit 0 runnable · 1 `HALT` with a reason · 2 misuse |
+| `goal-run.ts` + `run/*.ts` | `scripts/` + `src/run/` | The runner: 1,618 lines, the entry point plus 14 modules (preflight, sweep, lock, iteration, publish, close, report) |
+| `goal-gate.ts` + `gate/*.ts` | `scripts/` + `src/gate/` | The judge, and the only committer: 1,117 lines, the entry point plus 11 modules. Exit 0 runnable · 1 `HALT` with a reason · 2 misuse |
 | `transcripts.ts` · `digest.ts` | `src/` | Resolve a run's transcripts and compress them to a tool-call digest. `transcripts.ts` runs on every failed implementer attempt |
 | `plan-guard.ts` | `src/` | Hashes every `gateN=`/`dodN=` line, plus whether each iteration's `test_files` is empty, so a supervised repair can prove it disarmed nothing. Nothing under `src/` calls it; only `/goal:supervise`'s prose asks a model to. **Never run** |
 | `goal-run-implementer` · `goal-run-lens` · `goal-run-auditor` | `agents/` | Spawned by the runner: one implementer per slice, then an advisory lens and an auditor at close |
 | `goal-run-reviewer` · `goal-session-auditor` | `agents/` | Post-publication review and transcript audit. **Never fired** |
 | [`grill-adversarial`](skills/grill-adversarial/SKILL.md) | `skills/` | Opt-in, loaded during `/goal:spec`'s grill |
 | [`product:vertical-slice`](../product/skills/vertical-slice/SKILL.md) · [`product:delivery`](../product/skills/delivery/SKILL.md) | *(plugin `product`)* | Loaded by `/goal:plan` to split the work and give each slice a shipping strategy |
-| `tests/run.sh` | `tests/` | 396 tests across 41 files. Wraps `node --test` and additionally refuses a zero-pass run, an undeclared skip, and a missing summary (a bare `node --test` exits 0 on a glob matching nothing) |
+| `tests/run.sh` | `tests/` | 414 tests across 42 files. Wraps `node --test` and additionally refuses a zero-pass run, an undeclared skip, and a missing summary (a bare `node --test` exits 0 on a glob matching nothing) |
 | `done-criteria.template` · `goal-handoff.template` · `post-merge.template` | `templates/` | The DoD baseline, the handoff `/goal:next` fills, and the merge-day checklist. Printed, never executed |
 
 The **work-id** generalises the old issue number: `issue-<N>` for a GitHub issue, the lowercased

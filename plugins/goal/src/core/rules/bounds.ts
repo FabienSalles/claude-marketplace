@@ -4,12 +4,9 @@
 import { err, ok, type Result } from '../result.ts';
 import { halt, type Halt } from '../verdict.ts';
 
-export const withinBudget = (
-  budget: string,
-  written: number,
-  paths: readonly string[],
-  iteration: string,
-): Result<void, Halt> => {
+// The one place a declared max_diff is parsed as a number: makePlan (core/plan.ts) calls this
+// at plan-parse time, gate/bounds.ts's budgetCheck calls it again at measurement time.
+export const numericBudget = (budget: string, iteration: string): Result<number | undefined, Halt> => {
   if (budget === '') return ok(undefined);
 
   if (!/^[0-9]+$/.test(budget)) {
@@ -19,7 +16,26 @@ export const withinBudget = (
     ));
   }
 
-  if (written > Number(budget)) {
+  return ok(Number(budget));
+};
+
+export const withinBudget = (
+  budget: string,
+  written: number,
+  paths: readonly string[],
+  iteration: string,
+): Result<void, Halt> => {
+  const numeric = numericBudget(budget, iteration);
+
+  if (!numeric.ok) {
+    return numeric;
+  }
+
+  if (numeric.value === undefined) {
+    return ok(undefined);
+  }
+
+  if (written > numeric.value) {
     return err(halt(
       `Iteration ${iteration} exceeds its declared diff budget.`,
       `Written: ${written} line(s) across ${paths.join(' ')}\nBudget: ${budget}\n\nA slice that outgrows its own estimate is no longer the slice that was reviewed and frozen. Split it, or raise max_diff in the plan deliberately — before the halt, not after it.`,

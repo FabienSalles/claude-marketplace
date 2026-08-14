@@ -1,0 +1,2 @@
+OK: gate1 fails without iteration 1's implementation.
+OK: iteration 1 passed 1 acceptance command(s), no scope leak.

@@ -1,5 +1,3 @@
-// The last barrier before anything is published, and the guard on the push itself.
-
 import { spawnSync } from 'node:child_process';
 
 import { doneSection } from '../core/plan.ts';
@@ -10,9 +8,6 @@ import { declaredKeys, gateBlock } from './plan.ts';
 export const ALLOWED_DOD_KEY = /^dod[1-9][0-9]*$/;
 export const SCANNERS = ['betterleaks', 'gitleaks'];
 
-// The barrier replayed once before anything ships. Every slice gate only ever saw its own slice,
-// so a run that pushed on the strength of those alone would never have run the whole suite
-// against the whole branch.
 export const dodCheck = (source: string): string => {
   const section = doneSection(source);
 

@@ -145,7 +145,7 @@ The orchestration expressed as a workflow script whose only primitive is spawnin
   index*), and the workflow reduced them to four. One writes those sentences only about things
   that are possible, so that reduction was real. It was not worth its price.
 
-### Option 3: a bash script (`goal-run.sh`, 594 lines)
+### Option 3: a bash script (goal-run.sh, 594 lines)
 
 - **Advantages**: **the right instinct**, and its own header said so: a workflow has no shell, so
   there every `sed` and every `git status` crosses through a subagent, whereas here *a command is

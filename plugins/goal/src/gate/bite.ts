@@ -1,15 +1,13 @@
-// Setting the implementation aside to find out whether the tests were asserting anything.
-
 import { spawnSync } from 'node:child_process';
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { dirname, join } from 'node:path';
 
 import { git } from '../adapters/git.ts';
+import { covers } from '../core/plan.ts';
 import { bounded, spawnOptions } from './bounded.ts';
 import { emitCommand } from './commands.ts';
 import { halt, heldLocks, restorers, type Say } from './halt.ts';
-import { covers } from './plan.ts';
 
 export const gitDir = (): string => {
   const dir = git('rev-parse', '--absolute-git-dir');

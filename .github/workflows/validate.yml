@@ -15,6 +15,13 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      # check-doc-counts.sh recomputes the test count by running the suite, which strips types
+      # at run time: without this the step cannot read a count and refuses.
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+
       - name: Validate marketplace.json exists and is valid JSON
         run: |
           jq empty .claude-plugin/marketplace.json
@@ -66,6 +73,12 @@ jobs:
 
       - name: Validate SKILL.md frontmatter and README skill counts
         run: ./scripts/validate-skills.sh
+
+      - name: Validate goal plugin doc anchors
+        run: ./scripts/validate-anchors.sh plugins/goal
+
+      - name: Validate goal plugin doc counts
+        run: ./scripts/check-doc-counts.sh plugins/goal
 
       - name: Validate marketplace references exist
         run: |

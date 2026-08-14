@@ -1,0 +1,3 @@
+OK: iteration 1 is runnable (1 acceptance command(s)).
+plan_hash=5409577d42bb40693569f6d8c975e88c43438f992b4cbf44b28efa7c3fef728d
+ticked=

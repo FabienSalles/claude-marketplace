@@ -36,7 +36,7 @@ and two arXiv preprints, every individual pillar has an independent implementati
 
 | Pillar | Who else has it |
 |---|---|
-| A program judges by exit code | **NodeProof** (`src/gate.ts`: `pass: exitCode === 0`), **axiom** (`cmd_succeeds`, Python stdlib, no model in the verification path) |
+| A program judges by exit code | **NodeProof** (`pass: exitCode === 0`), **axiom** (`cmd_succeeds`, Python stdlib, no model in the verification path) |
 | The plan is frozen by hash | **planning-with-files** (`/plan-attest` seals the plan with SHA-256; hooks refuse a tampered body), **Rel(AI)Build** (spec content-addressed at approval, HMAC lockfile) |
 | Declared-paths allowlist | **java-harness-agent** (`scope_guard.py` parses `## Allowed Scope`), **Proof-or-Stop** (scope frozen into a contract bound to declared files) |
 | A counterfactual on the tests | **greenproof** (snapshots the tests, re-runs the *originals* against the agent's code) |
@@ -65,7 +65,7 @@ falsifies it in a minute.
 
 **What it is.** `goal-gate.ts` runs the slice's declared command against the tree it is standing
 in, and stages, commits and ticks the plan in that same process. Nothing else in the codebase
-commits. One grep proves it: `src/gate/scope.ts:145` and `:151` are the only `git add` and
+commits. One grep proves it: `src/gate/scope.ts` is the only file with `git add` and
 `git commit` calls in the whole `scripts/` + `src/` tree.
 
 **Why it is not a model.** Measured agreement between an LLM judge and human ground truth on code
@@ -180,7 +180,7 @@ below.
 This is the section that produces work. Ordered by what it would cost to close.
 
 1. **A fuse.** There is no iteration ceiling and no clock on the implementer session. Declared
-   commands are bounded by a 900-second wall clock (`gate/bounded.ts:17`), but the session writing
+   commands are bounded by a 900-second wall clock (`gate/bounded.ts`), but the session writing
    the code is not, so a session circling an impossible slice circles until the usage allowance
    runs out. `SwarmOps` caps everything numerically; `Rel(AI)Build` ships a hard three-iteration
    auto-fix cap; Anthropic's own `ralph-wiggum` plugin says to "always rely on a maximum iteration

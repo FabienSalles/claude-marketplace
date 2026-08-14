@@ -1,5 +1,3 @@
-// Running the commands a gate block declares, and requiring gate1 to hold across replays.
-
 import { spawnSync } from 'node:child_process';
 import { appendFileSync } from 'node:fs';
 

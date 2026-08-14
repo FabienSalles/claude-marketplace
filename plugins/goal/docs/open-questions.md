@@ -141,9 +141,9 @@ publication, the quota wait and the closing stage, against a gate split one modu
 business rules, each with its matching test file, a convention `goal-gate.ts` states in its own
 header and that the bash script was the one place in the plugin unable to follow.
 
-**What it cost, re-measured.** `scripts/goal-run.ts` + `src/run/` now stands at 1639 lines
-over 15 files, against `scripts/goal-gate.ts` + `src/gate/` at 1153 over 13; all of
-`scripts/` + `src/` is 3932 lines over 49 `.ts` files, covered by 41 test files and 396 passing tests.
+**What it cost, re-measured.** `scripts/goal-run.ts` + `src/run/` now stands at 1618 lines
+over 15 files, against `scripts/goal-gate.ts` + `src/gate/` at 1117 over 12; all of
+`scripts/` + `src/` is 3850 lines over 48 `.ts` files, covered by 42 test files and 414 passing tests.
 Most of the distance from the 594-line bash original is not the split: it is the mechanisms
 added since (`gitwatch.ts`, `postmortem.ts`, `quota.ts`), each of which is one of the modules the
 convention asked for. The second defect this question named (the orchestrator re-reading
@@ -155,7 +155,7 @@ and `survey` verbs.
 `## Landed` section that was empty for all six of its landed iterations: `landed` accumulated from
 an empty string, carried a leading space, and the resulting regex alternation had an empty branch
 BSD `grep` refuses outright. The Node run listed all seven of its own, because the body is built
-from an array of iteration numbers looked up through `iterationHeading()` rather than from a
+from an array of iteration numbers resolved through `run/publish.ts#goalOf` rather than from a
 string spliced into a grep alternation. One observed defect, in the one place where the two
 languages' handling of a list actually differed, found on the first real use of either runner.
 
@@ -193,10 +193,11 @@ narration landed printed no narration at all, for the reason §12 gives.
 
 **Observed.** A run halted at iteration 5. The developer pasted the output into a session, which
 diagnosed it in one pass: the plan was at fault, iteration 3's `gate1` asserted
-`! grep -rq '### Iteration' …` while publication legitimately needs that literal, and `plan.ts`
-published no accessor for an iteration heading. The repair (add `iterationHeading` to `plan.ts`,
-declare it in iteration 5's `impl_files`) was mechanical once stated, and so was everything after
-it. None of it needed a human except to authorize destroying the implementer's partial work.
+`! grep -rq '### Iteration' …` while publication legitimately needs that literal, and `gate/plan.ts`
+published no accessor for an iteration heading. The repair (add an `iterationHeading` accessor to
+`gate/plan.ts`, declare it in iteration 5's `impl_files`) was mechanical once stated, and so was
+everything after it. None of it needed a human except to authorize destroying the implementer's
+partial work.
 
 **The loop is obvious**: run, and on a non-zero exit hand the exit code and the log tail to a
 doctor which classifies, repairs, cleans and relaunches.
@@ -210,10 +211,10 @@ supervisor that deletes the rules.
 
 **The guardrail was built, and it closes the sharpest version of the hole.** `plan-guard.ts`
 hashes the `gateN=` and `dodN=` lines of every block it resolves, and beside them, per block,
-whether `test_files` is empty (`:59-76`). An empty `test_files=` makes the gate skip the bite
+whether `test_files` is empty. An empty `test_files=` makes the gate skip the bite
 check outright (`src/gate/bite.ts`, *"declares no test_files, so there is nothing to set
 aside"*), so that is the one edit inside the closed repair set that could disarm the invariant
-that a test must fail without its implementation, and it now moves the hash. `supervise.md:74-76`
+that a test must fail without its implementation, and it now moves the hash. `skills/supervise/SKILL.md`
 forbids it in prose as well: *"It may never touch a `gateN=` or `dodN=` line, nor empty
 `test_files`"*. What is still unhashed is the rest of the set (an `impl_files` entry, `max_diff`,
 prose), each of which can widen what an iteration is judged against without moving anything.
@@ -227,8 +228,8 @@ not carry is any synthesis around that verdict, because a halt never reaches the
 
 **Built, never run.** `skills/supervise/SKILL.md` and `src/plan-guard.ts` shipped in one commit and
 have not been exercised once. The measurement this question demanded (*what share of real halts
-fall inside the closed repair set*) was never taken; `supervise.md` says so in its own header
-(*"two prior halts are the whole evidence"*). Building before measuring is a defensible choice on a
+fall inside the closed repair set*) was never taken; `skills/supervise/SKILL.md` opens, verbatim,
+with (*"two prior halts are the whole evidence"*). Building before measuring is a defensible choice on a
 cheap component; recording that it was made is not optional.
 
 **Still unresolved:** whether the doctor may discard an implementer's partial work without asking,
@@ -359,7 +360,7 @@ were opt-in, and their installer has since been removed.
 
 **Two of the blind spots this question was written around have since been closed by more
 detection, which is worth recording precisely because it is the cheaper answer winning again.**
-`run/iteration.ts:132-165` now fingerprints the git directory's executable surface and every ref
+`run/iteration.ts` now fingerprints the git directory's executable surface and every ref
 around the implementer (`run/gitwatch.ts`), so a planted hook, a rewritten `config` and a push all
 halt the run named for what they are, none of them visible to `git status --porcelain -uall`.
 
@@ -367,7 +368,7 @@ halt the run named for what they are, none of them visible to `git status --porc
 what its author thought to snapshot, and confinement is not:
 
 - nothing denies the implementer anything at run time: the deny-rule installer and the preflight
-  check that read its rules are both gone (`run/preflight.ts:7-12`), detection having replaced
+  check that read its rules are both gone (`run/preflight.ts`), detection having replaced
   them;
 - `docs/steering-and-injection.md` already names network egress from the implementer as untreated,
   and says why it stayed untreated: *"That is a sandbox question, not an orchestration one."*;
@@ -396,11 +397,11 @@ count written into the run's report. Neither survived either port. The current r
 cap, no iteration cap, and no cost measurement at all.
 
 One ceiling did get built, and it covers the wrong half. Every **declared command** (sweep, gate,
-Definition of Done) runs under a wall clock: `gate/bounded.ts:17` reads `GOAL_CMD_TIMEOUT`,
-default 900 seconds, and `:84-90` applies it as `spawnSync`'s `timeout` with
+Definition of Done) runs under a wall clock: `gate/bounded.ts#GOAL_CMD_TIMEOUT` reads `GOAL_CMD_TIMEOUT`,
+default 900 seconds, and applies it as `spawnSync`'s `timeout` with
 `killSignal: 'SIGKILL'`, since the default `SIGTERM` is the signal a hung process is already
 ignoring. A test waiting on a port cannot hold an unattended run open. The **implementer session**
-is spawned with no `timeout` at all (`run/iteration.ts:68-85`), and it is the one that can loop.
+is spawned with no `timeout` at all (`run/iteration.ts`), and it is the one that can loop.
 Its only brake is the quota wait (thirty minutes, three times), which arms only when the output
 matches a rate-limit string.
 
@@ -423,10 +424,10 @@ iteration blocks no decision and is the prerequisite for every version of this q
 
 ## 15. A halt leaves the verdict, and nothing around it
 
-**Settled half.** The gate's own verdict does reach the log. On a refusal `run/iteration.ts:184`
+**Settled half.** The gate's own verdict does reach the log. On a refusal `run/iteration.ts`
 concatenates the gate's stdout and stderr and hands them to `reporter.record()`, which appends
 them to the run's own log, `.claude/goal-runs/<work-id>/<run-id>/.run.log`
-(`run/report.ts:20-25`, `:80-84`); `tests/goal-run-halt-log.test.ts` asserts it,
+(`run/report.ts#record`); `tests/goal-run-halt-log.test.ts` asserts it,
 including the case where the block is split across both streams. The block naming which check
 failed and on what is therefore on disk before the runner exits.
 

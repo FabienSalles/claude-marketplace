@@ -30,6 +30,24 @@ export const misuse: (message: string) => never = (message) => {
 
 export const haltText = (error: HaltError): string => `HALT\n\nREASON: ${error.reason}\n\nDETAIL:\n${error.detail}\n`;
 
+// The one root catch body, shared by goal-gate.ts, plan-guard.ts and goal-run.ts: each keeps its
+// own `try { main() }` — goal-run.ts's is `await main()` — because a helper taking `main` itself
+// would need a call signature loose enough for both, and `tsc --strict` accepts an
+// `async () => Promise<void>` where `() => void` is declared, which would silently drop the await.
+export const rootCatch = (error: unknown): never => {
+  if (error instanceof HaltError) {
+    process.stdout.write(haltText(error));
+    process.exit(1);
+  }
+
+  if (error instanceof MisuseError) {
+    process.stderr.write(`${error.message}\n`);
+    process.exit(2);
+  }
+
+  throw error;
+};
+
 // The channel a long check streams progress through — a root decides whether it reaches stdout
 // live or a buffer. A message that matters if the process dies mid-check (a backup's location)
 // must stream; a verb's final one-liner is returned instead.

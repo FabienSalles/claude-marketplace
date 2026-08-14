@@ -145,7 +145,7 @@ test('close skips marking the pull request ready when the publisher\'s own state
 test('the auditor still runs when the Definition of Done refuses the run', () => {
   const fixture = repo({ planText: PLAN_PR, remote: true });
 
-  const { code, output } = land(fixture, { FAKE_GATE_DOD_EXIT: '1' });
+  const { code } = land(fixture, { FAKE_GATE_DOD_EXIT: '1' });
 
   assert.notEqual(code, 0);
   const args = readFileSync(fixture.claudeLog, 'utf8');

@@ -1,0 +1,1 @@
+OK: gate1 fails without iteration 1's implementation.
