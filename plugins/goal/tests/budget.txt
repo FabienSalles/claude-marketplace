@@ -1,0 +1,3 @@
+wall_total_ms=75000
+longest_file_ms=70000
+longest_test_ms=15000
