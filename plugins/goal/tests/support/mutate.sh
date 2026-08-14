@@ -12,11 +12,16 @@
 set -uo pipefail
 
 node --input-type=module - <<'NODE'
-import { readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { resolve } from 'node:path';
 
 const testFile = resolve('plugins/goal/tests/gate-captures.test.ts');
+
+if (!existsSync(testFile)) {
+  console.error(`mutate.sh: target test file not found: ${testFile}`);
+  process.exit(1);
+}
 
 const mutations = [
   {
