@@ -3,7 +3,7 @@
 # Anchor validation for markdown docs
 #
 # An anchor is a backtick-quoted code reference such as `run/close.ts` or
-# `gate/plan.ts#iterationHeading`. This checks, for every anchor found under
+# `gate/plan.ts#planHash`. This checks, for every anchor found under
 # <root>/docs:
 #   - it carries no line number (`file.ts:NN` or `file.ts:NN-NN`)
 #   - the file it names exists
