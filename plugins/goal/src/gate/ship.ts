@@ -1,5 +1,4 @@
-import { spawnSync } from 'node:child_process';
-
+import { command as runner } from '../adapters/command.ts';
 import { doneSection } from '../core/plan.ts';
 import { bounded, spawnOptions } from './bounded.ts';
 import { halt } from './halt.ts';
@@ -40,7 +39,7 @@ export const dodCheck = (source: string): string => {
   }
 
   for (const [key, command] of [...declared.entries()].sort(([a], [b]) => Number(a.slice(3)) - Number(b.slice(3)))) {
-    const run = spawnSync(bounded(command), spawnOptions());
+    const run = runner.run(bounded(command), [], spawnOptions());
 
     if (run.status !== 0) {
       halt(
@@ -69,7 +68,7 @@ export const dodCheck = (source: string): string => {
 // that commit too, and a scan of the current tree alone would wave it through.
 export const secretScan = (): string => {
   const scanner = SCANNERS.find(
-    (name) => spawnSync(`command -v ${name}`, { shell: true }).status === 0,
+    (name) => runner.run(`command -v ${name}`, [], { shell: true }).status === 0,
   );
 
   if (scanner === undefined) {
@@ -80,7 +79,7 @@ export const secretScan = (): string => {
   }
 
   const command = `${scanner} git . --redact`;
-  const run = spawnSync(bounded(command), spawnOptions());
+  const run = runner.run(bounded(command), [], spawnOptions());
 
   if (run.status !== 0) {
     halt(

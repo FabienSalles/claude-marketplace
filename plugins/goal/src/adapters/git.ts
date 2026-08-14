@@ -1,3 +1,3 @@
-import { spawnSync } from 'node:child_process';
+import { command } from './command.ts';
 
-export const git = (...args: string[]) => spawnSync('git', args, { encoding: 'utf8' });
+export const git = (...args: string[]) => command.run('git', args);

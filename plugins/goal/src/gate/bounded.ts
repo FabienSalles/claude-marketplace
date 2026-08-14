@@ -11,9 +11,8 @@
 // grandchild the command forked and detached from it is not in that process group and survives
 // the clock. That gap is scope, not a bug to gate on.
 
-import type { SpawnSyncOptions } from 'node:child_process';
-
 import { command as runner } from '../adapters/command.ts';
+import type { CommandOptions } from '../ports.ts';
 
 const HEADROOM = Number(process.env.GOAL_PROC_HEADROOM ?? '400');
 const TIMEOUT_SECONDS = Number(process.env.GOAL_CMD_TIMEOUT ?? '900');
@@ -92,7 +91,7 @@ const commandEnv = (): NodeJS.ProcessEnv =>
 // The wall clock every call site runs a declared command under. `killSignal: 'SIGKILL'` is
 // required alongside `timeout`: the default `SIGTERM` is exactly the signal a hung process is
 // already ignoring.
-export const spawnOptions = (): SpawnSyncOptions & { encoding: 'utf8' } => ({
+export const spawnOptions = (): CommandOptions & { encoding: 'utf8' } => ({
   shell: true,
   encoding: 'utf8',
   timeout: TIMEOUT_SECONDS * 1000,

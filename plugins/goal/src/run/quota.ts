@@ -4,7 +4,7 @@
 // the full GOAL_RUN_QUOTA_SLEEP anyway. Kept out of run/iteration.ts to respect its own
 // 200-line ceiling.
 
-import { spawnSync } from 'node:child_process';
+import { command } from '../adapters/command.ts';
 
 export type QuotaClass = 'burst' | 'exhausted' | null;
 
@@ -51,7 +51,7 @@ export const sleepInSlices = (totalSeconds: number, onSlice: (remainingSeconds: 
     const slice = Math.min(sliceSeconds, remaining);
 
     onSlice(remaining);
-    spawnSync('sleep', [String(slice)]);
+    command.run('sleep', [String(slice)]);
     remaining -= slice;
   }
 };

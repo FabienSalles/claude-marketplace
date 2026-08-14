@@ -4,11 +4,11 @@
 // calls postmortem() and narrates nothing itself, to respect its own 200-line ceiling. Every
 // finding below is a prose event line through Reporter.say — the JSONL schema stays untouched.
 
-import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 
+import { command } from '../adapters/command.ts';
 import { lastSessionId, projectDir } from '../core/events.ts';
 import type { Reporter } from './report.ts';
 
@@ -17,7 +17,7 @@ import type { Reporter } from './report.ts';
 const defaultProjectsRoot = (): string => process.env.GOAL_RUN_PROJECTS_ROOT ?? join(homedir(), '.claude', 'projects');
 
 export const claudeBinaryPath = (): string | undefined => {
-  const which = spawnSync('which', ['claude'], { encoding: 'utf8' });
+  const which = command.run('which', ['claude']);
 
   return which.status === 0 ? which.stdout.trim() : undefined;
 };

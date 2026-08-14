@@ -3,11 +3,11 @@
 // belong to an earlier run — and the advisory lens and the auditor are invoked either way,
 // neither able to undo work the gate already verified and shipped.
 
-import { spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
 
+import { command } from '../adapters/command.ts';
 import { gateAdapterOf, type GateAdapter } from '../adapters/gate.ts';
 import { git } from '../adapters/git.ts';
 import { header, iterationNumbers, readPlan } from '../gate/plan.ts';
@@ -44,7 +44,7 @@ const runConcurrently = (jobs: AgentJob[]): { name: string; output: string; stde
       )
       .join('\n');
     const waits = jobs.map((_, i) => `wait $pid${i}; printf 'STATUS${i}=%s\\n' "$?"`).join('\n');
-    const result = spawnSync(`${starts}\n${waits}`, { shell: true, encoding: 'utf8' });
+    const result = command.run(`${starts}\n${waits}`, [], { shell: true });
     const stdout = result.stdout ?? '';
 
     return jobs.map((job, i) => {
@@ -108,7 +108,7 @@ export const close = (
     if (publish.publishes && publish.prOpen && !publish.blocked) {
       branch = git('branch', '--show-current').stdout.trim();
       const readyStart = Date.now();
-      const ready = spawnSync('gh', ['pr', 'ready', '--repo', repo, branch], { encoding: 'utf8' });
+      const ready = command.run('gh', ['pr', 'ready', '--repo', repo, branch]);
       const readyOut = `${ready.stdout}${ready.stderr}`;
       reporter.say(`RUN stage=pull-request-update duration_ms=${Date.now() - readyStart} exit=${ready.status ?? 1}`);
 
@@ -205,11 +205,9 @@ rather than describing this one twice. Write it in two sections, \`### Outcome\`
 not stage anything, and do not judge whether the work was correct — the gate already did that.`;
 
   const auditStart = Date.now();
-  const audit = spawnSync(
-    'claude',
-    ['-p', '--agent', 'goal:goal-run-auditor', '--permission-mode', 'auto', '--output-format', 'stream-json', '--verbose', auditBrief],
-    { encoding: 'utf8' },
-  );
+  const audit = command.run('claude', [
+    '-p', '--agent', 'goal:goal-run-auditor', '--permission-mode', 'auto', '--output-format', 'stream-json', '--verbose', auditBrief,
+  ]);
   const { text: auditText, ...auditExtraction } = resultEnvelope(audit.stdout ?? '');
   reporter.record(auditText);
   reporter.say(`RUN stage=auditor duration_ms=${Date.now() - auditStart} exit=${audit.status ?? 1}`);

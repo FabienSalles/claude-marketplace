@@ -1,8 +1,8 @@
-import { spawnSync } from 'node:child_process';
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { dirname, join } from 'node:path';
 
+import { command as runner } from '../adapters/command.ts';
 import { git } from '../adapters/git.ts';
 import { covers } from '../core/plan.ts';
 import { bounded, spawnOptions } from './bounded.ts';
@@ -23,7 +23,7 @@ export const gitDir = (): string => {
 };
 
 export const headBlob = (path: string): Buffer => {
-  const run = spawnSync('git', ['show', `HEAD:${path}`], { maxBuffer: 512 * 1024 * 1024 });
+  const run = runner.runBinary('git', ['show', `HEAD:${path}`], { maxBuffer: 512 * 1024 * 1024 });
 
   if (run.status !== 0) {
     halt(
@@ -110,7 +110,7 @@ export const biteCheck = (declared: Map<string, string>, iteration: string, chan
 
   const command = declared.get('gate1') ?? '';
   const start = Date.now();
-  const run = spawnSync(bounded(command), spawnOptions());
+  const run = runner.run(bounded(command), [], spawnOptions());
 
   emitCommand('bite', command, Date.now() - start, run.status);
 

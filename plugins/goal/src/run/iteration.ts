@@ -4,9 +4,9 @@
 // wrong tree with a correct cwd throughout. HEAD before and after tells a committed implementer
 // apart from one that wrote nothing, and only a moved tree is handed to the gate for a verdict.
 
-import { spawnSync } from 'node:child_process';
 import { basename, join } from 'node:path';
 
+import { command } from '../adapters/command.ts';
 import type { GateAdapter } from '../adapters/gate.ts';
 import { git } from '../adapters/git.ts';
 import { ceiling } from '../gate/bounded.ts';
@@ -75,7 +75,7 @@ export const runIteration = async (
 
     const binaryBefore = claudeBinaryMtime(claudeBinaryPath());
     const implementerStart = Date.now();
-    const implemented = spawnSync(
+    const implemented = command.run(
       '/bin/sh',
       [
         '-c',
@@ -134,11 +134,11 @@ export const runIteration = async (
     if (quotaClass === 'shutdown') {
       const seconds = shutdownBackoffSeconds();
       reporter.say(`RUN the implementer exited 143 (shutdown), backing off ${seconds}s before relaunching iteration ${iteration} (attempt ${attempt} of ${maxRetries})`);
-      spawnSync('sleep', [String(seconds)]);
+      command.run('sleep', [String(seconds)]);
     } else if (quotaClass === 'burst') {
       const seconds = burstBackoffSeconds(attempt - 1);
       reporter.say(`RUN the implementer hit a burst rate limit, backing off ${seconds}s before relaunching iteration ${iteration} (attempt ${attempt} of ${maxRetries})`);
-      spawnSync('sleep', [String(seconds)]);
+      command.run('sleep', [String(seconds)]);
     } else {
       reporter.say(`RUN the implementer looks quota-exhausted, sleeping ${quotaSleep}s before relaunching iteration ${iteration} (attempt ${attempt} of ${maxRetries})`);
       sleepInSlices(Number(quotaSleep), (remaining) => reporter.say(`RUN quota sleep continues, ${remaining}s remaining`));

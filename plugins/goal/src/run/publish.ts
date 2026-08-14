@@ -3,10 +3,10 @@
 // refusal, a fixup commit, a failed push, or a `gh` error blocks publication stickily for the
 // rest of this run rather than being retried every iteration.
 
-import { spawnSync } from 'node:child_process';
 import { basename } from 'node:path';
 
 import { gateAdapterOf, type GateAdapter } from '../adapters/gate.ts';
+import { command } from '../adapters/command.ts';
 import { git } from '../adapters/git.ts';
 import { goalOf } from '../core/plan.ts';
 import { header } from '../gate/plan.ts';
@@ -153,7 +153,7 @@ export const createPublisher = (
     // iteration has no memory of what an earlier invocation already opened, so whether a pull
     // request exists is read from `gh` itself the first time this process needs to know.
     if (!state.prOpen) {
-      const view = spawnSync('gh', ['pr', 'view', branch, '--repo', repo, '--json', 'number,state'], { encoding: 'utf8' });
+      const view = command.run('gh', ['pr', 'view', branch, '--repo', repo, '--json', 'number,state']);
 
       // A merged, closed, or otherwise-not-open pull request still resolves by branch name, so
       // its state is read too: only one reported as OPEN is edited, or this run's iterations
@@ -169,10 +169,10 @@ export const createPublisher = (
     }
 
     const gh = state.prOpen
-      ? spawnSync('gh', ['pr', 'edit', branch, '--repo', repo, '--body', body], { encoding: 'utf8' })
+      ? command.run('gh', ['pr', 'edit', branch, '--repo', repo, '--body', body])
       : prBase !== undefined
-        ? spawnSync('gh', ['pr', 'create', '--repo', repo, '--draft', '--base', prBase, '--title', planTitle, '--body', body], { encoding: 'utf8' })
-        : spawnSync('gh', ['pr', 'create', '--repo', repo, '--draft', '--title', planTitle, '--body', body], { encoding: 'utf8' });
+        ? command.run('gh', ['pr', 'create', '--repo', repo, '--draft', '--base', prBase, '--title', planTitle, '--body', body])
+        : command.run('gh', ['pr', 'create', '--repo', repo, '--draft', '--title', planTitle, '--body', body]);
 
     if ((gh.status ?? 1) === 0) {
       if (state.prOpen) {
@@ -204,7 +204,7 @@ export const createPublisher = (
     const repo = repoOf(remote);
     const branch = git('branch', '--show-current').stdout.trim();
     const footer = `*Plan and logs (local, gitignored):*\n- \`${plan}\`\n- \`${dir}\`\n`;
-    const gh = spawnSync('gh', ['pr', 'edit', branch, '--repo', repo, '--body', `${prBody()}\n---\n\n## Run report\n\n${text}\n${footer}`], { encoding: 'utf8' });
+    const gh = command.run('gh', ['pr', 'edit', branch, '--repo', repo, '--body', `${prBody()}\n---\n\n## Run report\n\n${text}\n${footer}`]);
 
     if ((gh.status ?? 1) === 0) {
       reporter.say('RUN folded the run report into the pull request body');
