@@ -791,16 +791,23 @@ Read `Policy:` from the spec header and check every iteration for a `gate` block
 | `Policy:` | Iterations | Emit |
 |---|---|---|
 | `manual` | any | the per-iteration handoff **only** — `/goal:supervise` refuses `manual` |
-| `commit+pr` | all gateable | **`/goal:supervise <plan path>` first**, per-iteration handoff below it as the fallback |
+| `commit+pr` | all gateable | the **`/goal:supervise <plan path>` line only** — no per-iteration block |
 | `commit+pr` | one or more not gateable | the per-iteration handoff first, and name the iterations that block a clean autonomous run |
 
 **Always pass the plan path explicitly** in the `/goal:supervise` line, and state in one
 line what it will do: how many iterations it covers, and that it halts hard on the first
 failing gate.
 
-Under `commit+pr` with every iteration gateable, the full per-iteration `/goal` block is
-still built, but it is emitted below the `/goal:supervise` line as the fallback the
-closing below describes — not as the primary instruction. Emit the canonical `/goal` handoff from
+**Under `commit+pr` with every iteration gateable, do not build the per-iteration `/goal`
+block and do not print it.** A developer who chose `commit+pr` chose autonomy, so a
+3000-character prompt for a loop they will not drive buries the one line they actually have
+to run — and it reads as a manual handoff to the very developer who asked for the supervised
+one. Nothing is lost by omitting it: `/goal:next` emits it again the moment a remaining
+iteration stops being gateable, and on request at any time. Say that in one line, and stop
+there.
+
+In the two rows that do call for it — `manual`, and `commit+pr` with a non-gateable
+iteration — emit the canonical `/goal` handoff from
 `templates/goal-handoff.template`, filled
 per that file's **"How to fill it"** section: `<plan path>` =
 `.claude/plans/<work-id>-spec.md`, the spec's real test/lint commands, `<policy>` =
@@ -827,10 +834,9 @@ clipboard?"_
 - **no** → print the block in full in the final message, as one copy-paste block.
 
 **Under `commit+pr` with every iteration gateable**, close with the `/goal:supervise`
-line instead of the manual loop below: tell the developer to run it, that it works
-through every gateable iteration unattended, halting hard on the first failing gate,
-and that the per-iteration handoff underneath is only the fallback if they need to
-step in by hand.
+line and nothing else: tell the developer to run it, that it works through every
+gateable iteration unattended, halting hard on the first failing gate, and that
+`/goal:next` hands them the per-iteration prompt if they ever need to step in by hand.
 
 **Otherwise** (`manual`, or `commit+pr` with a named fallback), tell the developer:
 

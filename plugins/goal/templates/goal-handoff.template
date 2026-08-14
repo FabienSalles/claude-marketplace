@@ -5,6 +5,12 @@ the end of the planning session) and `/next` (between-iteration handoff) emit TH
 text, filled from the plan. `/goal:auto` builds its subagent brief from it too, minus
 the `[x]` step and the policy block. Single source of truth — edit here, all three follow.
 
+**Their routing tables decide WHETHER to emit it; this file only says what to emit and
+how.** Under `commit+pr` with every remaining iteration gateable they emit the
+`/goal:supervise` line alone and never reach this template — a per-iteration prompt for a
+loop nobody will drive by hand buries the one line that matters. Everything below applies
+once an emitter has decided the block is called for.
+
 ## How to fill it
 
 - `<plan path>` = the resolved spec path (e.g. `.claude/plans/<work-id>-spec.md`).

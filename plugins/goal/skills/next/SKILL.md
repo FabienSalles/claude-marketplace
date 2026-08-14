@@ -173,7 +173,7 @@ one.
 | `Policy:` | Remaining iterations | Emit |
 |---|---|---|
 | `manual` | any | the per-iteration handoff **only** — `/goal:supervise` refuses `manual` |
-| `commit+pr` | all gateable | **`/goal:supervise <plan path>` first**, per-iteration handoff below it as the fallback |
+| `commit+pr` | all gateable | the **`/goal:supervise <plan path>` line only** — no per-iteration block |
 | `commit+pr` | one or more not gateable | the per-iteration handoff first, and name the iterations that block a clean autonomous run |
 
 **Always pass the plan path explicitly** in the `/goal:supervise` line. Bare `/goal:supervise`
@@ -186,7 +186,15 @@ that it halts hard on the first failing gate without attempting the rest, and �
 keep updating, so a halt is still reviewable. The developer is choosing to walk away; they
 should know where it stops.
 
-Emit the canonical `/goal` handoff from `templates/goal-handoff.template`, filled
+**Under `commit+pr` with every remaining iteration gateable, do not build the per-iteration
+`/goal` block and do not print it.** That is this phase's own opening rule applied: handing
+them the prompt anyway makes them drive a loop they asked to be driven for them, and a
+3000-character block buries the one line they actually have to run. Nothing is lost by
+omitting it — this same phase emits it again the moment a remaining iteration stops being
+gateable, and on request at any time. Say that in one line, and stop there.
+
+In the two rows that do call for it — `manual`, and `commit+pr` with a non-gateable
+iteration — emit the canonical `/goal` handoff from `templates/goal-handoff.template`, filled
 per that file's **"How to fill it"** section: `<plan path>` = the resolved plan path,
 « Done » line 1 = the **next iteration's** acceptance test command, line 2 = the
 project lint/QA command, `<policy>` = the plan's policy verbatim, `<delivery-mode>` =
@@ -207,7 +215,7 @@ clipboard?"_
   print it again: emit the context-hygiene reminder alone — run `/context`, `/clear` if
   usage is non-trivial, then paste from the clipboard — and name the counter file, the
   recovery copy if the clipboard is overwritten before the paste.
-- **no**, or the policy is not `manual` → print it: prepend the context-hygiene reminder
+- **no**, or the policy is `commit+pr` with a non-gateable iteration → print it: prepend the context-hygiene reminder
   (you cannot run these — the developer does), then the filled template as **one
   copy-paste block**:
 
@@ -234,9 +242,9 @@ Then close, métier first: one line on what the finished iteration **made true**
 domain (its *Goal*, the business rules it covered), one on what the next iteration
 **will make true**. Only then the bookkeeping: the finished iteration is **verified**
 (name it), the plan is **reconciled** (list the edits you made), the tree is **safe**
-(clean / staged — say which), and the next iteration is **cold-start ready** — clear
-and paste the block above or from the clipboard (or run the `/goal:supervise` line,
-when you offered one).
+(clean / staged — say which), and the next iteration is **cold-start ready** — run the
+`/goal:supervise` line when that is what you emitted, otherwise clear and paste the
+block above or from the clipboard.
 
 ## Rules for THIS command
 
