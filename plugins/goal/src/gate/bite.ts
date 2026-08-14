@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { dirname, join } from 'node:path';
 
 import { command as runner } from '../adapters/command.ts';
+import { clock } from '../adapters/clock.ts';
 import { git } from '../adapters/git.ts';
 import { covers } from '../core/plan.ts';
 import { bounded, spawnOptions } from './bounded.ts';
@@ -109,10 +110,10 @@ export const biteCheck = (declared: Map<string, string>, iteration: string, chan
   say(`BACKUP: iteration ${iteration}'s implementation is set aside in ${backup}\n`);
 
   const command = declared.get('gate1') ?? '';
-  const start = Date.now();
+  const start = clock.now();
   const run = runner.run(bounded(command), [], spawnOptions());
 
-  emitCommand('bite', command, Date.now() - start, run.status);
+  emitCommand('bite', command, clock.now() - start, run.status);
 
   restore();
   rmSync(backup, { recursive: true, force: true });

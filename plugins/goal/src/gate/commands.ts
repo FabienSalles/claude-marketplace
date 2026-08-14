@@ -1,6 +1,7 @@
 import { appendFileSync } from 'node:fs';
 
 import { command as runner } from '../adapters/command.ts';
+import { clock } from '../adapters/clock.ts';
 import { ok, type Result } from '../core/result.ts';
 import { determinismHeld, gatePassed } from '../core/rules/commands.ts';
 import type { Halt } from '../core/verdict.ts';
@@ -42,10 +43,10 @@ export const runGates = (
   const commands = gateCommands(declared);
 
   for (const [key, command] of commands) {
-    const start = Date.now();
+    const start = clock.now();
     const run = runner.run(bounded(command), [], spawnOptions());
 
-    emitCommand(wall ? `wall:${key}` : key, command, Date.now() - start, run.status);
+    emitCommand(wall ? `wall:${key}` : key, command, clock.now() - start, run.status);
 
     const decision = gatePassed(key, command, run.status, `${run.stdout}${run.stderr}`, iteration, origin?.get(command));
 
@@ -64,10 +65,10 @@ export const determinismCheck = (declared: Map<string, string>, iteration: strin
   const command = declared.get('gate1') ?? '';
 
   for (let run = 2; run <= DETERMINISM_RUNS; run += 1) {
-    const start = Date.now();
+    const start = clock.now();
     const result = runner.run(bounded(command), [], spawnOptions());
 
-    emitCommand(`determinism${run}`, command, Date.now() - start, result.status);
+    emitCommand(`determinism${run}`, command, clock.now() - start, result.status);
 
     const decision = determinismHeld(run, DETERMINISM_RUNS, command, result.status, `${result.stdout}${result.stderr}`, iteration);
 

@@ -34,4 +34,5 @@ export interface FileSystem {
 
 export interface Clock {
   now(): number;
+  sleepSeconds(seconds: number): void;
 }

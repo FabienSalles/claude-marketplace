@@ -7,6 +7,7 @@
 import { basename, join } from 'node:path';
 
 import { command } from '../adapters/command.ts';
+import { clock } from '../adapters/clock.ts';
 import type { GateAdapter } from '../adapters/gate.ts';
 import { git } from '../adapters/git.ts';
 import { ceiling } from '../gate/bounded.ts';
@@ -74,7 +75,7 @@ export const runIteration = async (
     reporter.say(`RUN handing iteration ${iteration} to the implementer`);
 
     const binaryBefore = claudeBinaryMtime(claudeBinaryPath());
-    const implementerStart = Date.now();
+    const implementerStart = clock.now();
     const implemented = command.run(
       '/bin/sh',
       [
@@ -98,7 +99,7 @@ export const runIteration = async (
     await yieldToLoop();
 
     const extraction = narrate(implemented.stdout, reporter);
-    reporter.say(`RUN stage=implementer duration_ms=${Date.now() - implementerStart} exit=${implemented.status ?? 1}`);
+    reporter.say(`RUN stage=implementer duration_ms=${clock.now() - implementerStart} exit=${implemented.status ?? 1}`);
 
     const tokens = tokensLine('implementer', extraction);
 
@@ -134,11 +135,11 @@ export const runIteration = async (
     if (quotaClass === 'shutdown') {
       const seconds = shutdownBackoffSeconds();
       reporter.say(`RUN the implementer exited 143 (shutdown), backing off ${seconds}s before relaunching iteration ${iteration} (attempt ${attempt} of ${maxRetries})`);
-      command.run('sleep', [String(seconds)]);
+      clock.sleepSeconds(seconds);
     } else if (quotaClass === 'burst') {
       const seconds = burstBackoffSeconds(attempt - 1);
       reporter.say(`RUN the implementer hit a burst rate limit, backing off ${seconds}s before relaunching iteration ${iteration} (attempt ${attempt} of ${maxRetries})`);
-      command.run('sleep', [String(seconds)]);
+      clock.sleepSeconds(seconds);
     } else {
       reporter.say(`RUN the implementer looks quota-exhausted, sleeping ${quotaSleep}s before relaunching iteration ${iteration} (attempt ${attempt} of ${maxRetries})`);
       sleepInSlices(Number(quotaSleep), (remaining) => reporter.say(`RUN quota sleep continues, ${remaining}s remaining`));
@@ -172,14 +173,14 @@ export const runIteration = async (
 
   reporter.say('RUN the tree moved, asking the gate for a verdict');
 
-  const gateStart = Date.now();
+  const gateStart = clock.now();
   const verdict = gate.commit(plan, iteration, hash, ticked, join(dir, '.run.jsonl'));
   const gateExit = verdict.status;
 
   await yieldToLoop();
 
   reporter.record(`${verdict.stdout}${verdict.stderr}`);
-  reporter.say(`RUN stage=gate duration_ms=${Date.now() - gateStart} exit=${gateExit}`);
+  reporter.say(`RUN stage=gate duration_ms=${clock.now() - gateStart} exit=${gateExit}`);
 
   if (gateExit === 0) {
     reporter.say(`RUN iteration ${iteration} landed, gate-verified`);

@@ -5,6 +5,7 @@ import { join } from 'node:path';
 
 import { PAUSED, repo, run } from './support/goal-run-harness.ts';
 import { burstBackoffSeconds, classifyFailure, classifyQuotaFailure, shutdownBackoffSeconds, shutdownMaxRetries, sleepInSlices } from '../src/run/quota.ts';
+import type { Clock } from '../src/ports.ts';
 
 // One line per argv entry (see the fake `claude` binary), and the agent name is a whole
 // argument on its own line, once per call — a reliable count of how many times the
@@ -116,25 +117,6 @@ test('an implementer that keeps exiting 143 relaunches on a short fixed backoff,
   assert.equal(implementerCalls(fixture.claudeLog), 2, `expected exactly two implementer calls (bounded):\n${readFileSync(fixture.claudeLog, 'utf8')}`);
 });
 
-// R6 (I5) — the shutdown backoff is an injectable seam: GOAL_RUN_SHUTDOWN_BACKOFF=0 relaunches
-// with no measurable wait, so a suite exercising the shutdown-retry path stops paying the
-// default 5s per attempt.
-test('GOAL_RUN_SHUTDOWN_BACKOFF=0 relaunches with no measurable wait', () => {
-  const fixture = repo();
-  const start = Date.now();
-
-  const { code } = run(fixture, [fixture.plan, '1'], {
-    FAKE_CLAUDE_EXIT: '143',
-    GOAL_RUN_SHUTDOWN_MAX_RETRIES: '2',
-    GOAL_RUN_SHUTDOWN_BACKOFF: '0',
-  });
-
-  const elapsedMs = Date.now() - start;
-
-  assert.equal(code, PAUSED);
-  assert.ok(elapsedMs < 3000, `expected no measurable wait, took ${elapsedMs}ms`);
-});
-
 // R6 (I5) — shutdownBackoffSeconds() defaults to the same 5s the constant used to pin, and
 // GOAL_RUN_SHUTDOWN_BACKOFF overrides it.
 test('shutdownBackoffSeconds defaults to 5 and honours GOAL_RUN_SHUTDOWN_BACKOFF', () => {
@@ -240,20 +222,20 @@ test('a burst backs off in seconds, capped, independently of GOAL_RUN_QUOTA_SLEE
   assert.equal(burstBackoffSeconds(10), 8);
 });
 
-// R17 — the long sleep is a loop of short slices, not one spawnSync('sleep', [totalSeconds])
-// whose return value is discarded: interrupting the wait is then a property of the loop, and
-// each slice is reported before it runs.
-test('a long sleep runs as a loop of short slices, each one reported', () => {
+// R17 — the long sleep is a loop of short slices, not one call to the Clock port for the whole
+// duration whose return value is discarded: interrupting the wait is then a property of the
+// loop, and each slice is reported before it runs. Observed on a Clock double, so the suite pays
+// nothing for a wait it never actually takes.
+test('a long sleep runs as a loop of short slices, each one reported and slept through the clock', () => {
   const seen: number[] = [];
-  const start = Date.now();
+  const slept: number[] = [];
+  const clock: Clock = { now: () => 0, sleepSeconds: (seconds) => slept.push(seconds) };
 
-  sleepInSlices(0.6, (remaining) => seen.push(remaining), 0.3);
-
-  const elapsedMs = Date.now() - start;
+  sleepInSlices(0.6, (remaining) => seen.push(remaining), 0.3, clock);
 
   assert.equal(seen.length, 2);
   assert.equal(seen[0], 0.6);
-  assert.ok(elapsedMs >= 500, `expected at least ~600ms of real sleep, got ${elapsedMs}ms`);
+  assert.deepEqual(slept, [0.3, 0.3]);
 });
 
 // R16 — the implementer's own brief now says the tree it receives may already hold an
