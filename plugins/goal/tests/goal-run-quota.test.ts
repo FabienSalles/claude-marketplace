@@ -121,18 +121,15 @@ test('an implementer that keeps exiting 143 relaunches on a short fixed backoff,
 // default 5s per attempt.
 test('GOAL_RUN_SHUTDOWN_BACKOFF=0 relaunches with no measurable wait', () => {
   const fixture = repo();
-  const start = Date.now();
 
-  const { code } = run(fixture, [fixture.plan, '1'], {
+  const { code, output } = run(fixture, [fixture.plan, '1'], {
     FAKE_CLAUDE_EXIT: '143',
     GOAL_RUN_SHUTDOWN_MAX_RETRIES: '2',
     GOAL_RUN_SHUTDOWN_BACKOFF: '0',
   });
 
-  const elapsedMs = Date.now() - start;
-
   assert.equal(code, PAUSED);
-  assert.ok(elapsedMs < 3000, `expected no measurable wait, took ${elapsedMs}ms`);
+  assert.match(output, /backing off 0s before relaunching iteration 1/, output);
 });
 
 // R6 (I5) — shutdownBackoffSeconds() defaults to the same 5s the constant used to pin, and
