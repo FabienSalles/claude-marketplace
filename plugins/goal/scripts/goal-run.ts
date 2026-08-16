@@ -24,7 +24,7 @@ import { blockedNote, createPublisher } from '../src/run/publish.ts';
 import { close, LANDED } from '../src/run/close.ts';
 import { quote } from '../src/run/shell.ts';
 import { workIdOf } from '../src/core/plan.ts';
-import { iterationNumbers } from '../src/gate/plan.ts';
+import { iterationNumbers, subHeadings } from '../src/gate/plan.ts';
 import { inProcessGateAdapter, spawnGateAdapter, type GateAdapter } from '../src/adapters/gate.ts';
 
 const main = async (): Promise<void> => {
@@ -61,6 +61,23 @@ const main = async (): Promise<void> => {
   reporter.say(`RUN stage=preflight duration_ms=${Date.now() - preflightStart} exit=0`);
 
   const iterations = iteration !== undefined ? [iteration] : iterationNumbers(source, false);
+
+  // No unchecked iteration means two opposite things, and only one of them is a finished plan.
+  // Every box ticked is done. No heading parsed as an iteration at all is a plan this runner
+  // cannot read — a mistyped or translated heading — and reporting that as landed is a green
+  // that shipped nothing, indistinguishable from success in the exit code and in the log.
+  if (iterations.length === 0 && iterationNumbers(source, true).length === 0) {
+    const found = subHeadings(source);
+
+    reporter.stop(
+      `the plan declares no iteration this runner can read: ${plan}\n` +
+        'An iteration heading must read exactly `### Iteration <n>`, in English, whatever language the rest of the plan is written in.\n' +
+        (found.length === 0
+          ? 'The plan carries no `### ` heading at all.'
+          : `Found instead:\n${found.map((line) => `  ${line}`).join('\n')}`),
+      REFUSED,
+    );
+  }
 
   if (iterations.length === 0) {
     reporter.stop(`no unchecked iteration remains in ${plan}`, LANDED);
