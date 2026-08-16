@@ -1,0 +1,12 @@
+{
+  "name": "legacy",
+  "version": "1.0.0",
+  "description": "Reverse-engineer an unfamiliar or legacy codebase into a versioned knowledge base (shared brain): recon + git archaeology, architecture map, use cases aggregated by actor goal, entity model, risk register. Two depths: onboarding (dev) and audit-prep (security-surface dossier feeding the security-audit skills). Run via the legacy:discovery skill.",
+  "author": {
+    "name": "FabienSalles"
+  },
+  "repository": "https://github.com/FabienSalles/claude-marketplace",
+  "license": "MIT",
+  "keywords": ["legacy", "reverse-engineering", "discovery", "onboarding", "audit"],
+  "skills": "./skills/"
+}
