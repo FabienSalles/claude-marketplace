@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { PAUSED, repo, run } from './support/goal-run-harness.ts';
+import { PAUSED, repo, run, runInProcess } from './support/goal-run-harness.ts';
 import { burstBackoffSeconds, classifyFailure, classifyQuotaFailure, shutdownBackoffSeconds, shutdownMaxRetries, sleepInSlices } from '../src/run/quota.ts';
 import type { Clock } from '../src/ports.ts';
 
@@ -13,6 +13,9 @@ import type { Clock } from '../src/ports.ts';
 const implementerCalls = (claudeLog: string) =>
   (readFileSync(claudeLog, 'utf8').match(/^goal:goal-run-implementer$/gm) ?? []).length;
 
+// The one black-box survivor of this family: everything else in this file drives runIteration()
+// in process, through the harness's own pilot; this test alone still spawns the real CLI end to
+// end, proving the wiring the pilot stands in for still holds.
 // R16 — a quota-shaped failure is not a real error: the script sleeps, relaunches the same
 // iteration against exactly what the last attempt left behind, and lands once the window
 // reopens. The implementer is called twice for the one iteration.
@@ -34,10 +37,10 @@ test('a quota-shaped failure sleeps and relaunches the same iteration until it l
 // R17 — a burst rate limit does not wait on GOAL_RUN_QUOTA_SLEEP: it backs off in seconds and
 // relaunches, so a burst that clears immediately costs seconds, not the long sleep the last run
 // spent on an already-cleared condition.
-test('a burst 429 backs off in seconds and relaunches, ignoring a large GOAL_RUN_QUOTA_SLEEP', () => {
+test('a burst 429 backs off in seconds and relaunches, ignoring a large GOAL_RUN_QUOTA_SLEEP', async () => {
   const fixture = repo();
 
-  const { code, output } = run(fixture, [fixture.plan, '1'], {
+  const { code, output } = await runInProcess(fixture, [fixture.plan, '1'], {
     FAKE_CLAUDE_QUOTA_UNTIL: '1',
     FAKE_CLAUDE_QUOTA_COUNTER: join(fixture.dir, 'quota-counter'),
     FAKE_CLAUDE_QUOTA_MESSAGE: 'HTTP 429 Too Many Requests',
@@ -52,10 +55,10 @@ test('a burst 429 backs off in seconds and relaunches, ignoring a large GOAL_RUN
 
 // R16 — the retry is bounded: a quota that never reopens must not spin the run forever. It
 // pauses (a clean boundary a relaunch resumes) rather than halting like a gate refusal.
-test('a quota that never reopens pauses the run after a bounded number of relaunches, not forever', () => {
+test('a quota that never reopens pauses the run after a bounded number of relaunches, not forever', async () => {
   const fixture = repo();
 
-  const { code, output } = run(fixture, [fixture.plan, '1'], {
+  const { code, output } = await runInProcess(fixture, [fixture.plan, '1'], {
     FAKE_CLAUDE_QUOTA_UNTIL: '999',
     FAKE_CLAUDE_QUOTA_COUNTER: join(fixture.dir, 'quota-counter'),
     GOAL_RUN_QUOTA_SLEEP: '0',
@@ -69,10 +72,10 @@ test('a quota that never reopens pauses the run after a bounded number of relaun
 
 // R16 hole — the quota retry bound defaults to 3 when GOAL_RUN_QUOTA_MAX_RETRIES is unset, the
 // same boundary shutdownMaxRetries() pins for the shutdown class.
-test('a quota that never reopens pauses after the default bound of 3 relaunches, with no override', () => {
+test('a quota that never reopens pauses after the default bound of 3 relaunches, with no override', async () => {
   const fixture = repo();
 
-  const { code, output } = run(fixture, [fixture.plan, '1'], {
+  const { code, output } = await runInProcess(fixture, [fixture.plan, '1'], {
     FAKE_CLAUDE_QUOTA_UNTIL: '999',
     FAKE_CLAUDE_QUOTA_COUNTER: join(fixture.dir, 'quota-counter'),
     GOAL_RUN_QUOTA_SLEEP: '0',
@@ -85,10 +88,10 @@ test('a quota that never reopens pauses after the default bound of 3 relaunches,
 
 // R16 — an ordinary failure (no quota shape in the output) must not be swallowed into a retry:
 // it pauses immediately, on the first call, the way it always has.
-test('a failure with no quota shape pauses immediately, without a retry', () => {
+test('a failure with no quota shape pauses immediately, without a retry', async () => {
   const fixture = repo();
 
-  const { code, output } = run(fixture, [fixture.plan, '1'], {
+  const { code, output } = await runInProcess(fixture, [fixture.plan, '1'], {
     FAKE_CLAUDE_EXIT: '1',
     GOAL_RUN_QUOTA_SLEEP: '0',
   });
@@ -100,10 +103,10 @@ test('a failure with no quota shape pauses immediately, without a retry', () => 
 // R18 — exit 143 (SIGTERM, the shape of a self-update or platform shutdown) is a distinct class
 // from a quota window: it relaunches on its own fixed, short backoff, bounded by
 // GOAL_RUN_SHUTDOWN_MAX_RETRIES, never the GOAL_RUN_QUOTA_SLEEP a quota-shaped failure waits out.
-test('an implementer that keeps exiting 143 relaunches on a short fixed backoff, bounded, never the quota sleep', () => {
+test('an implementer that keeps exiting 143 relaunches on a short fixed backoff, bounded, never the quota sleep', async () => {
   const fixture = repo();
 
-  const { code, output } = run(fixture, [fixture.plan, '1'], {
+  const { code, output } = await runInProcess(fixture, [fixture.plan, '1'], {
     FAKE_CLAUDE_EXIT: '143',
     GOAL_RUN_SHUTDOWN_MAX_RETRIES: '2',
     GOAL_RUN_QUOTA_SLEEP: '999999',
@@ -184,10 +187,10 @@ test('the shutdown retry bound defaults to 5 and honours GOAL_RUN_SHUTDOWN_MAX_R
 
 // R18 — self-update disabled: the claude spawn env carries DISABLE_AUTOUPDATER so an update
 // under way is never what an implementer call's exit 143 turns out to mean.
-test('the claude spawn env disables the autoupdater', () => {
+test('the claude spawn env disables the autoupdater', async () => {
   const fixture = repo();
 
-  const { code, output } = run(fixture, [fixture.plan, '1'], {
+  const { code, output } = await runInProcess(fixture, [fixture.plan, '1'], {
     FAKE_CLAUDE_WRITES: join(fixture.dir, 'a.txt'),
   });
 
