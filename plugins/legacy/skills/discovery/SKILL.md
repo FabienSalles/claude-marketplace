@@ -22,7 +22,10 @@ Five principles govern every phase:
    toolchain and what each one alone can answer. Every figure in every artifact
    carries the command that produced it, or says `not run (<reason>)`. Where no
    tool answers the question, write the analyzer — a script whose output a human
-   can re-run and sample-check — rather than reading files and forming an opinion.
+   can re-run and sample-check — rather than reading files and forming an opinion:
+   [references/write-the-analyzer.md](references/write-the-analyzer.md) is the
+   manual, from the three checks that decide whether the pattern applies at all
+   to the output contract and the sampling protocol that makes a row falsifiable.
    What was measured and what was interpreted are never mixed in one cell.
 3. **Recover intent, not implementation.** Use cases and business rules are written
    at the level a business analyst would have written them before the code existed.
@@ -144,7 +147,11 @@ enums, defaults with policy meaning), and soft-delete/state-machine columns.
 Produce `risk-register.md`. The high-signal intersection is
 **churn hotspot × complexity × no tests** — those files break first and cost most.
 For each risk: what, evidence (file, command output), impact, and the cheapest
-mitigation (characterization test, extraction, upgrade).
+mitigation (characterization test, extraction, upgrade). "Characterization test"
+is the mitigation this register writes most and explains least:
+[references/safety-net.md](references/safety-net.md) turns it into an executable
+order — inventory the observable surface, freeze the inputs, pin the outputs,
+prove the pin with mutation, then change.
 
 Run the deterministic pass before writing a single row: dead code, distance to a
 modern target, type-safety debt, architecture violations, mutation score and
@@ -156,6 +163,12 @@ Always include: EOL/outdated critical dependencies, untested hotspots,
 schema/code drift, dead-code suspicions (entry points nothing references), and
 **safe first changes** — the short list of well-tested, low-coupling areas where
 work can start without fear (the answer to "where do I begin Tuesday morning").
+A module joins that list on four gates, not on a coverage percentage: an
+inventory of its observable surface, a pin that is green on unmodified code, a
+mutation score whose surviving mutants were triaged, and a scrub inventory a
+reviewer has read ([references/safety-net.md](references/safety-net.md)).
+A module missing one of the four stays in the register, with the missing
+artifact named.
 
 Two things the repository cannot tell you, and which are therefore questions
 rather than rows. A hotspot is an ambiguity, not a verdict: a core the product
@@ -173,7 +186,13 @@ false positives.
 In `audit-prep` mode, extend with the security-surface inventory and pre-audit
 dossier from [references/audit-prep.md](references/audit-prep.md), then hand over
 to `security-audit:security-audit` (with `audit:security-overrides` and the
-stack-specific audit skill) for the audit itself.
+stack-specific audit skill) for the audit itself. Before a single CVE row enters
+that dossier, run the free deterministic floor and apply the triage rules in
+[references/reachability-and-triage.md](references/reachability-and-triage.md):
+what "reachable" proves depending on which mechanism printed it, which tools
+compute it for PHP at all, and how a finding list is enumerated by a tool,
+filtered and explained by the model, then confirmed by a human sample — never
+produced by the model.
 
 ## Phase 6 — Assemble the shared brain
 
@@ -184,6 +203,14 @@ Produce `README.md` in the artifact directory (template in
   the folder into a shared brain for future sessions instead of a document dump.
 - A status line per artifact (complete / partial / needs-human-validation).
 - The update discipline (below).
+
+Before writing the index, sort every artifact into **generated**,
+**drift-checkable** or **written**, and record next to it the command that keeps
+it true — the bucket table, the drift gates (`tbls diff`, a Deptrac baseline, a
+route-list diff against `debug:router --format=json`) and the two shell gates to
+run on the knowledge base itself (which artifacts are older than the code they
+describe, and whether every routing-table link still resolves) are in
+[references/knowledge-artifacts.md](references/knowledge-artifacts.md).
 
 Also produce `open-questions.md`: every doubt encountered, phrased as a question a
 team member can answer, ordered by how much of the model depends on the answer.
@@ -203,6 +230,13 @@ any later session: update the one artifact that owns X, append the resolved entr
 to `open-questions.md` (with the answer), and note in the README changelog line
 any plan the new fact invalidates. Never fork the knowledge into new documents —
 route, then update in place.
+
+Cheap updates are not what keeps the base true, though. A written artifact rots
+the moment the code moves, and only a command notices. Re-run the generated
+artifacts rather than editing them (regenerate `security-surface.md` — a stale
+authorization matrix is worse than none), and let the drift gates from
+[references/knowledge-artifacts.md](references/knowledge-artifacts.md) fail the
+run when a checkable artifact stops describing reality.
 
 ## Verification (before declaring done)
 
@@ -232,15 +266,45 @@ Then the internal coherence checks:
 ## Additional resources
 
 - **[references/deterministic-tools.md](references/deterministic-tools.md)** — the
-  toolchain that answers before the model does (PHP/Symfony), what to run first on
-  a takeover, behavioral analysis without a license, the two meanings of
-  "reachable", and how to write the analyzer when nothing answers.
+  toolchain that answers before the model does (PHP/Symfony), tiered by what has
+  to work on the machine: the first hour with git and the project's own binaries,
+  single downloaded binaries when `composer install` fails, the dev-dependency
+  core, and the heavy tier. Also: behavioral analysis without a licence, baselines
+  that make an engagement measurable, the repository identity traps that
+  manufacture false liveness findings, and the tools that are dead, frozen,
+  paywalled or never supported PHP.
+- **[references/write-the-analyzer.md](references/write-the-analyzer.md)** — what
+  to produce when no tool answers: the three checks that gate the pattern (and
+  when it does not apply), the PHPStan Collector skeleton and why it beats a
+  standalone parser script, the output contract (declared schema, `path:line`
+  first, provenance sidecar), the fixture rule, the seeded sampling protocol, and
+  the rule that one step never both authors and applies.
 - **[references/recon-commands.md](references/recon-commands.md)** — BSD/macOS-safe
   command blocks: stack detection, size, entry points, dependency health, git
   archaeology, complexity and coverage proxies.
 - **[references/artifact-templates.md](references/artifact-templates.md)** —
   skeletons for every artifact: recon, architecture, glossary, use case, entity
   model, risk register, open questions, shared-brain README.
+- **[references/safety-net.md](references/safety-net.md)** — how "characterization
+  test" and "safe first changes" get executed: the five-step order and its gates,
+  the Symfony route-inventory plus snapshot recipe, scrubbers and their two silent
+  failure modes, record-replay and differential testing when the code has no
+  seams, mutation testing as the gate on the net itself, and the honest warning
+  about model-generated tests.
 - **[references/audit-prep.md](references/audit-prep.md)** — audit-prep mode:
   security-surface inventory, authorization matrix, secrets and dependency checks,
   pre-audit dossier, and the bridge to the security-audit skills.
+- **[references/reachability-and-triage.md](references/reachability-and-triage.md)**
+  — the free deterministic floor (`composer audit` as control baseline, syft +
+  grype, gitleaks, OpenSSF Scorecard), the two different claims both sold as
+  "reachable" and what each proves, which tools support PHP at all, triage as
+  tool-enumerates / model-filters / human-samples, computing a priority with CISA
+  Vulnrichment and SSVC instead of inventing one, VEX as the structured claim, and
+  the design-fault bucket for findings that are not exploitable.
+- **[references/knowledge-artifacts.md](references/knowledge-artifacts.md)** —
+  what stops the base rotting: every artifact sorted into generated,
+  drift-checkable or written, the drift tools (tbls, oasdiff, Atlas) and the
+  generic gate when none exists, schema-versus-code drift as a finding,
+  architecture and ADRs as checkable artifacts, shared-brain implementations worth
+  studying, cautionary findings, and the two gate commands to run on the knowledge
+  base itself.
