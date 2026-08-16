@@ -16,11 +16,14 @@ Five principles govern every phase:
 1. **The knowledge base is the product.** Findings that stay in the conversation
    are lost. Every phase writes one artifact file; the final index routes readers
    (human or agent) to the right one.
-2. **A number without its command is not a measurement.** Every figure in every
-   artifact carries the command that produced it, or says `not run (<reason>)`.
-   Where no tool answers the question, write the analyzer — a script whose output
-   a human can re-run and sample-check — rather than reading files and forming an
-   opinion. What was measured and what was interpreted are never mixed in one cell.
+2. **A number without its command is not a measurement.** A deterministic tool
+   answers first and the model works on its output, never the reverse — see
+   [references/deterministic-tools.md](references/deterministic-tools.md) for the
+   toolchain and what each one alone can answer. Every figure in every artifact
+   carries the command that produced it, or says `not run (<reason>)`. Where no
+   tool answers the question, write the analyzer — a script whose output a human
+   can re-run and sample-check — rather than reading files and forming an opinion.
+   What was measured and what was interpreted are never mixed in one cell.
 3. **Recover intent, not implementation.** Use cases and business rules are written
    at the level a business analyst would have written them before the code existed.
    "System refuses an order above the credit limit" — never "the controller throws
@@ -143,6 +146,12 @@ Produce `risk-register.md`. The high-signal intersection is
 For each risk: what, evidence (file, command output), impact, and the cheapest
 mitigation (characterization test, extraction, upgrade).
 
+Run the deterministic pass before writing a single row: dead code, distance to a
+modern target, type-safety debt, architecture violations, mutation score and
+dependency CVEs all have tools, listed in
+[references/deterministic-tools.md](references/deterministic-tools.md). A risk
+that a tool could have measured and did not is a risk stated on an opinion.
+
 Always include: EOL/outdated critical dependencies, untested hotspots,
 schema/code drift, dead-code suspicions (entry points nothing references), and
 **safe first changes** — the short list of well-tested, low-coupling areas where
@@ -222,6 +231,10 @@ Then the internal coherence checks:
 
 ## Additional resources
 
+- **[references/deterministic-tools.md](references/deterministic-tools.md)** — the
+  toolchain that answers before the model does (PHP/Symfony), what to run first on
+  a takeover, behavioral analysis without a license, the two meanings of
+  "reachable", and how to write the analyzer when nothing answers.
 - **[references/recon-commands.md](references/recon-commands.md)** — BSD/macOS-safe
   command blocks: stack detection, size, entry points, dependency health, git
   archaeology, complexity and coverage proxies.
