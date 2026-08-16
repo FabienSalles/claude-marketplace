@@ -9,7 +9,7 @@ Skills, hooks, agents, and slash commands for [Claude Code](https://claude.ai/cl
 /plugin install goal@fabien-claude-marketplace
 ```
 
-Then use it: `/goal:spec <your ticket>` turns the ticket into a functional contract, `/goal:plan` locks the executable plan, and `/goal:supervise` runs it unattended. Browse the [catalog](#plugins), install the packs for your stack (`craft`, `php`, `typescript`…), and you're set. Other install methods (dev mode, `npx skills`, `skillkit`) are [below](#installation), folded under "Other install methods".
+Then use it: `/goal:spec <your ticket>` turns the ticket into a functional contract, `/goal:plan` locks the executable plan, and `/goal:supervise` runs it unattended. Browse the [catalog](#plugins), install the packs for your stack (`craft`, `php`, `typescript`…), and you're set. Not on Claude Code? `npx skills add FabienSalles/claude-marketplace` installs the same skills anywhere. Other install methods (dev mode, `skillkit`) are [below](#installation), folded under "Other install methods".
 
 ## Start here: `goal`
 
@@ -138,8 +138,18 @@ These overlap: [**docs/workflows-decision-guide.md**](docs/workflows-decision-gu
 
 The `statusline` plugin needs one extra activation step: see [Statusline](#statusline) below.
 
+**Without Claude Code, skills only (`npx skills`):**
+
+```bash
+npx skills add FabienSalles/claude-marketplace --list        # list available skills
+npx skills add FabienSalles/claude-marketplace@php-8-3       # install one skill
+npx skills add FabienSalles/claude-marketplace               # install everything
+```
+
+Same `SKILL.md` format, works with the [`npx skills`](https://github.com/vercel-labs/skills) ecosystem (Cursor, Codex, Claude Code…). This is also the only install path counted by [skills.sh](https://skills.sh/fabiensalles/claude-marketplace).
+
 <details>
-<summary><strong>Other install methods</strong>: dev mode (local clone), <code>npx skills</code>, <code>claude plugin</code>, <code>skillkit</code></summary>
+<summary><strong>Other install methods</strong>: dev mode (local clone), <code>claude plugin</code>, <code>skillkit</code></summary>
 
 ### Dev mode (local clone as marketplace)
 
@@ -153,15 +163,6 @@ git clone https://github.com/FabienSalles/claude-marketplace.git
 /plugin marketplace add /path/to/claude-marketplace
 /plugin install goal@fabien-claude-marketplace
 # …one install line per pack you want
-```
-
-### Via `npx skills add`
-
-Works with the [`npx skills`](https://github.com/anthropics/skills) ecosystem. Same `SKILL.md` format, no Claude Code required.
-
-```bash
-npx skills add FabienSalles/claude-marketplace --list   # list available skills
-npx skills add FabienSalles/claude-marketplace          # install everything
 ```
 
 ### Via `claude plugin install`
