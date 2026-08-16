@@ -21,9 +21,16 @@ ls composer.json package.json pom.xml build.gradle go.mod Gemfile requirements.t
 node -e "const p=require('./package-lock.json').packages; Object.entries(p).slice(1,30).forEach(([n,v])=>console.log(n,v.version))" 2>/dev/null
 ```
 
-Check the EOL status of the runtime and framework majors found (endoflife.date
-covers PHP, Node, Symfony, Laravel, .NET, Django, Rails…). An EOL runtime is
-always a top-3 risk-register entry.
+Fetch the EOL dates, never recall them:
+
+```bash
+curl -s https://endoflife.date/api/php.json | python3 -c "import json,sys; [print(c['cycle'], c['eol'], c.get('support')) for c in json.load(sys.stdin)[:5]]"
+```
+
+Record the dates as read (endoflife.date covers PHP, Node, Symfony, Laravel,
+.NET, Django, Rails…). Offline, record the versions found and mark the EOL status
+`unverified` — never a date from memory. An EOL runtime is always a top-3
+risk-register entry.
 
 ## Size and language split
 
@@ -32,7 +39,7 @@ always a top-3 risk-register entry.
 cloc . --vcs=git 2>/dev/null || git ls-files | sed -n 's/.*\.//p' | sort | uniq -c | sort -rn | head -15
 
 # Biggest source files (complexity proxy #1)
-git ls-files -z '*.php' '*.ts' '*.js' '*.py' '*.java' '*.cs' '*.rb' | xargs -0 wc -l 2>/dev/null | sort -rn | head -25
+git ls-files -z '*.php' '*.ts' '*.js' '*.py' '*.java' '*.cs' '*.rb' | xargs -0 wc -l 2>/dev/null | grep -v ' total$' | sort -rn | head -25
 ```
 
 ## Entry points
@@ -76,6 +83,9 @@ ls phpunit.xml* vitest.config.* jest.config.* pytest.ini .github/workflows/ .git
 echo "tests: $(git ls-files '*Test.php' '*test*.ts' '*_test.py' '*spec*.ts' | wc -l) / src: $(git ls-files 'src/*' 'app/*' | wc -l)"
 ```
 
+Those globs are a guess. `src: 0` almost always means the project does not use
+`src/` or `app/` — read the layout first and adjust, or the ratio is meaningless.
+
 If a coverage report can be generated cheaply (`--coverage-text`, `vitest run
 --coverage`), run it once and keep only the per-directory summary.
 
@@ -86,9 +96,10 @@ If a coverage report can be generated cheaply (`--coverage-text`, `vitest run
 git log --reverse --format=%cs | head -1; git log -1 --format=%cs
 git log --format=%cs | cut -c1-4 | uniq -c
 
-# Bus factor: recent vs all-time authors
-git shortlog -sn --since="12 months ago" | head -10
-git shortlog -sn | head -10
+# Bus factor: recent vs all-time authors (HEAD is required — without a revision
+# shortlog reads stdin and returns nothing)
+git shortlog -sn --group=author --group=trailer:co-authored-by --since="12 months ago" HEAD | head -10
+git shortlog -sn --group=author --group=trailer:co-authored-by HEAD | head -10
 
 # Churn hotspots (exclude lock/vendor/dist noise)
 git log --since="2 years ago" --name-only --format= | grep -v -e '\.lock' -e '^vendor/' -e '^node_modules/' -e '^dist/' -e '\.min\.' | sort | uniq -c | sort -rn | head -30
@@ -100,18 +111,23 @@ git log --since="3 months ago" --name-only --format= | sed 's|/[^/]*$||' | sort 
 git log -1 --format='%cs %an' -- path/to/file
 ```
 
+A bus factor of 1 is a question for the team, not a conclusion: pair and mob
+programming hide contributors behind one visible author. Ask « comment
+écrivez-vous le code, à plusieurs ou chacun de votre côté ? » and record the
+answer in `open-questions.md`.
+
 **The hotspot cross:** intersect the churn top-30 with the biggest-files top-25
 and with the absence of a matching test file. Files in all three sets are the
-risk-register core and the first candidates for characterization tests.
+risk-register candidates and the first places a characterization test pays.
 
-## Temporal coupling (optional, high signal)
+## Temporal coupling
 
 Files that always change together but live in different modules reveal hidden
 coupling the architecture map won't show:
 
 ```bash
-# Co-changed files across recent commits — eyeball pairs that recur
-git log --since="1 year ago" --format='---' --name-only | grep -v -e '\.lock' -e '^vendor/' | awk '/^---$/{if (n>1 && n<6) print files; files=""; n=0; next} {files=files" "$0; n++}' | sort | uniq -c | sort -rn | head -15
+# Commit file-sets that recur — read the coupled pairs off them
+git log --since="1 year ago" --format='%x2d%x2d%x2d' --name-only | grep -v -e '\.lock' -e '^vendor/' | awk 'NF==0{next} /^---$/{if (n>1 && n<6) print files; files=""; n=0; next} {files=files" "$0; n++}' | sort | uniq -c | sort -rn | head -15
 ```
 
 ## Environment and config surface

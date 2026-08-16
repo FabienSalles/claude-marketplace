@@ -51,18 +51,24 @@ documents; route, then edit in place.
 Stack, framework + version (EOL status), runtime version (EOL status), infra hints.
 
 ## Numbers
-| Metric | Value |
-|---|---|
-| Source files / LOC | |
-| Entry points (HTTP / CLI / async / cron) | |
-| Tables / entities | |
-| Test files vs source files | |
-| First commit → last commit | |
-| Active committers (12 mo / all-time) | |
+A row with no command is not a measurement: write `not run (<reason>)` in the
+Command cell, or move the row to open-questions.md.
+
+| Metric | Value | Command |
+|---|---|---|
+| Source files / LOC | | |
+| Entry points (HTTP / CLI / async / cron) | | |
+| Tables / entities | | |
+| Test files vs source files | | |
+| First commit → last commit | | |
+| Active committers (12 mo / all-time) | | |
 
 ## Churn hotspots (top 10, noise excluded)
-| File | Changes (2y) | LOC | Has tests? |
+Produced by: `<command>`
+
+| File | Changes (2y) | LOC | Tests |
 |---|---|---|---|
+| | | | none / implementation-coupled / behavioral |
 
 ## Recent focus (3 months)
 What the team is currently working on, from commit paths.

@@ -11,16 +11,27 @@ knowledge base that a human can read in an hour and that any future Claude sessi
 can consume to answer questions, plan changes, or run an audit — without re-reading
 the whole codebase.
 
-Three principles govern every phase:
+Five principles govern every phase:
 
 1. **The knowledge base is the product.** Findings that stay in the conversation
    are lost. Every phase writes one artifact file; the final index routes readers
    (human or agent) to the right one.
-2. **Recover intent, not implementation.** Use cases and business rules are written
+2. **A number without its command is not a measurement.** Every figure in every
+   artifact carries the command that produced it, or says `not run (<reason>)`.
+   Where no tool answers the question, write the analyzer — a script whose output
+   a human can re-run and sample-check — rather than reading files and forming an
+   opinion. What was measured and what was interpreted are never mixed in one cell.
+3. **Recover intent, not implementation.** Use cases and business rules are written
    at the level a business analyst would have written them before the code existed.
    "System refuses an order above the credit limit" — never "the controller throws
    `CreditLimitException`".
-3. **Scope before reading, fan out, cross-check.** Never deep-read files before the
+4. **Signals, never people.** Bus factor, churn and commit-message quality describe
+   a system, not a culprit. No artifact names an individual as the cause of a
+   defect: author data stays in `recon.md` as a distribution, and every risk is
+   phrased against the condition that produced it ("no review practice on this
+   module", not "X wrote this"). This binds hardest when the knowledge base lands
+   in the client's own git history.
+5. **Scope before reading, fan out, cross-check.** Never deep-read files before the
    recon pass has sized and clustered the codebase. On large codebases, launch
    parallel read-only Explore agents per cluster, then diff their coverage against
    the full file inventory to catch what they missed.
@@ -36,11 +47,15 @@ Ask ONE question combining two decisions, then proceed without further questions
 
 - **Mode**: `onboarding` (understand to develop) or `audit-prep` (understand to
   audit — adds risk register depth and a security-surface inventory).
-- **Where the artifacts live**: `docs/legacy/` committed to the target repo, or
+- **Where the artifacts live**: `docs/legacy/` committed to the target repo,
   `.claude/legacy/` gitignored (typical on a client mission where the knowledge
-  base must not pollute — or must not leak into — the client's history). When
-  gitignored, add the entry to `.gitignore` (or `.git/info/exclude` if even that
-  file must stay untouched).
+  base must not pollute — or must not leak into — the client's history), or a
+  directory outside the repository entirely, which is the only option when the
+  checkout is read-only. When gitignored, add the entry to `.gitignore` (or
+  `.git/info/exclude` if even that file must stay untouched). In `audit-prep`
+  mode this is not a free choice: the dossier stays gitignored or outside the
+  repository, because a security-surface inventory is never committed to the
+  repository it describes.
 
 Both modes produce the same core artifacts; `audit-prep` adds the deeper pass from
 [references/audit-prep.md](references/audit-prep.md).
@@ -133,6 +148,19 @@ schema/code drift, dead-code suspicions (entry points nothing references), and
 **safe first changes** — the short list of well-tested, low-coupling areas where
 work can start without fear (the answer to "where do I begin Tuesday morning").
 
+Two things the repository cannot tell you, and which are therefore questions
+rather than rows. A hotspot is an ambiguity, not a verdict: a core the product
+keeps growing and a zone nobody dares restructure produce identical churn. And
+business impact depends on what the system is worth to whoever commissioned this.
+For each, write the disambiguating question into `open-questions.md` addressed to
+a person, and mark the risk `needs-human-validation` until it is answered.
+
+Before judging the test suite, load `craft:testing-principles` and open two test
+files on the top hotspots: record whether their assertions state a business rule
+or echo the implementation. Do not load the language-convention skills — this
+codebase is not held to our conventions, and judging it against them manufactures
+false positives.
+
 In `audit-prep` mode, extend with the security-surface inventory and pre-audit
 dossier from [references/audit-prep.md](references/audit-prep.md), then hand over
 to `security-audit:security-audit` (with `audit:security-overrides` and the
@@ -154,7 +182,10 @@ This file doubles as the agenda for the first meetings with the team.
 
 End with an honest summary to the user: artifact counts, what could not be
 classified, which use cases were hardest to recover (they need the first human
-pass), and the recommended reading order.
+pass), the recommended reading order, and the validation load — how many rows
+across all artifacts carry `needs-human-validation`, listed per artifact. Report
+the count, never an estimated review rate: the count is measurable, the rate is
+the reader's to apply.
 
 ## Maintenance loop
 
@@ -164,7 +195,21 @@ to `open-questions.md` (with the answer), and note in the README changelog line
 any plan the new fact invalidates. Never fork the knowledge into new documents —
 route, then update in place.
 
-## Cross-validation (before declaring done)
+## Verification (before declaring done)
+
+Re-reading the artifacts against each other proves only that they agree with each
+other. Sampling against the code is the only pass that can catch a wrong number,
+so do it first:
+
+- **Sample against the source.** Re-run three of the commands recorded in
+  `recon.md` and re-derive one use case, one entity and one risk from the code.
+  Name the sampled items in the final summary so a human can redo the same sample
+  in ten minutes.
+- Every number in `recon.md` carries the command that produced it, or says why it
+  was not measured.
+- No artifact attributes a defect to a named person.
+
+Then the internal coherence checks:
 
 - Every actor appears in at least one use case; every use case names one actor.
 - Every entity a use case mentions exists in `entity-model.md`; every diagram
