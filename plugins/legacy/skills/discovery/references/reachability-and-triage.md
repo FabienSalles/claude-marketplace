@@ -491,6 +491,27 @@ alive) consumes CycloneDX SBOMs, integrates EPSS, and produces and consumes
 VEX/VDR — the natural way to turn a one-off audit into a monitoring deliverable
 the client keeps.
 
+### 7.3 When the audited application itself calls a model
+
+A growing share of PHP applications embed an LLM call, and at that point none of
+the frameworks above describe the risk. The reference set changes:
+
+- **OWASP GenAI Security Project** (genai.owasp.org) — the LLM application risk
+  top ten, re-released **2026-08-03**, plus a top ten for agentic applications.
+  Guidance, not tooling: the project ships no scanner and no repo to run.
+- **OWASP AIVSS** (aivss.owasp.org) — a scoring system for vulnerabilities of AI
+  systems, **v0.8, February 2026**, PDF specification plus an interactive
+  calculator built on an SSVC decision tree.
+
+Two rules follow. Scope: these score the vulnerabilities *of an AI system*, not
+those of a PHP application that happens to be audited with AI — conflating the
+two is the standing confusion of this whole field. Maturity: a v0.8 is not a
+settled specification, so cite it as emerging rather than as a standard.
+
+Sourcing note worth carrying: the press reports a precise incident count behind
+the 2026 edition while the project's own page says only "thousands". Prefer the
+project's wording.
+
 ---
 
 ## 8. VEX: the structured claim
