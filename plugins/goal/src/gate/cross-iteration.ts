@@ -1,6 +1,6 @@
 import { dirname } from 'node:path';
-import { existsSync } from 'node:fs';
 
+import { fs } from '../adapters/fs.ts';
 import { git } from '../adapters/git.ts';
 import { ok, type Result } from '../core/result.ts';
 import { resolvablePaths, selectReplay } from '../core/rules/cross-iteration.ts';
@@ -46,7 +46,7 @@ export const resolvabilityCheck = (source: string, iteration: string): Result<vo
     for (const path of declaredPaths(blockOf(source, later))) {
       const parent = path.endsWith('/') ? path.slice(0, -1) : dirname(path);
 
-      if (!existsSync(parent) && inHead(parent)) {
+      if (!fs.exists(parent) && inHead(parent)) {
         unresolvable.push(`iteration ${later}: ${path} (missing directory: ${parent})`);
       }
     }

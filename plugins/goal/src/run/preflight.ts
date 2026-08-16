@@ -11,9 +11,9 @@
 // session start, so it described a future session and never the running one. What replaces it is
 // detection in run/iteration.ts, which is executed.
 
-import { existsSync } from 'node:fs';
 import { basename, dirname } from 'node:path';
 
+import { fs } from '../adapters/fs.ts';
 import { git } from '../adapters/git.ts';
 import {
   caughtUpWithBase,
@@ -149,7 +149,7 @@ export const preflight = (plan: string, source: string, reporter: Reporter, gate
 
   // 8. No run already holds the plan.
   const lockPath = `${plan}.run.lock`;
-  const lockResult = freeLock(existsSync(lockPath), lockPath, `${gate} unlock ${quote(plan)}`);
+  const lockResult = freeLock(fs.exists(lockPath), lockPath, `${gate} unlock ${quote(plan)}`);
 
   if (!lockResult.ok) {
     reporter.stop(lockResult.error, REFUSED);

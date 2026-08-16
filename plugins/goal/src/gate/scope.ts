@@ -1,5 +1,4 @@
-import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
-
+import { fs } from '../adapters/fs.ts';
 import { git } from '../adapters/git.ts';
 import { covers } from '../core/plan.ts';
 import { ok, type Result } from '../core/result.ts';
@@ -83,7 +82,7 @@ export const scopeCheck = (
 
 export const takeLock = (path: string, iteration: string): void => {
   try {
-    mkdirSync(path);
+    fs.mkdir(path);
   } catch {
     halt(
       `Another writer holds the plan lock for iteration ${iteration}.`,
@@ -98,13 +97,13 @@ export const runLock = (subcommand: string, plan: string): string => {
   const path = `${plan}.run.lock`;
 
   if (subcommand === 'unlock') {
-    rmSync(path, { recursive: true, force: true });
+    fs.removeTree(path);
 
     return `OK: run lock released.\n`;
   }
 
   try {
-    mkdirSync(path);
+    fs.mkdir(path);
   } catch {
     halt(
       'Another run holds this plan.',
@@ -140,7 +139,7 @@ export const commitAndTick = (
   // Incidental paths are staged too, and only when the tree actually moved them: a tsconfig
   // tolerated by the scope check but left out of the commit would turn the next iteration red
   // on a file missing from the repository — a deferred failure in place of an honest halt.
-  const staged = [...paths, ...incidental].filter((path) => existsSync(path) || changed.has(path));
+  const staged = [...paths, ...incidental].filter((path) => fs.exists(path) || changed.has(path));
   const add = git('add', '--', ...staged);
 
   if (add.status !== 0) {
@@ -157,7 +156,7 @@ export const commitAndTick = (
   }
 
   lines[start + box] = lines[start + box]!.replace('- [ ]', '- [x]');
-  writeFileSync(plan, lines.join('\n'));
+  fs.writeFile(plan, lines.join('\n'));
 
   return `OK: iteration ${iteration} committed and ticked.\n`;
 };

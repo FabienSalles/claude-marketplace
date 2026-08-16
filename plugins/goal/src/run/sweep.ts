@@ -1,5 +1,4 @@
-import { spawnSync } from 'node:child_process';
-
+import { command } from '../adapters/command.ts';
 import { doneSection, gateFence } from '../core/plan.ts';
 import { REFUSED } from '../core/verdict.ts';
 import { bounded, spawnOptions } from '../gate/bounded.ts';
@@ -31,7 +30,7 @@ export const sweep = (source: string, reporter: Reporter): void => {
   const distinct = [...new Set(declared)];
 
   for (const cmd of distinct) {
-    const result = spawnSync(bounded(cmd), spawnOptions());
+    const result = command.run(bounded(cmd), [], spawnOptions());
 
     if (result.status !== 0) {
       reporter.stop(

@@ -2,8 +2,9 @@
 // is advancing or stopped, on stdout and, once a run directory is known, mirrored to a log file
 // inside it.
 
-import { appendFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+
+import { fs } from '../adapters/fs.ts';
 
 export type Reporter = {
   say: (message: string) => void;
@@ -19,7 +20,7 @@ export type Reporter = {
 // a search through `.claude/plans/` for whatever a run left beside the spec.
 export const runDir = (workId: string): string => {
   const dir = join(process.cwd(), '.claude', 'goal-runs', workId, new Date().toISOString().replace(/[:.]/g, '-'));
-  mkdirSync(dir, { recursive: true });
+  fs.mkdir(dir, { recursive: true });
 
   return dir;
 };
@@ -33,7 +34,7 @@ export const createReporter = (): Reporter => {
   // supervisor reads as a gate refusal and answers by discarding the implementer's tree.
   const append = (path: string, text: string): void => {
     try {
-      appendFileSync(path, text);
+      fs.appendFile(path, text);
     } catch {
       // a lost line is not a lost run
     }

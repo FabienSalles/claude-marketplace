@@ -4,20 +4,19 @@
 // calls postmortem() and narrates nothing itself, to respect its own 200-line ceiling. Every
 // finding below is a prose event line through Reporter.say — the JSONL schema stays untouched.
 
-import { spawnSync } from 'node:child_process';
-import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
-import { homedir } from 'node:os';
 import { join } from 'node:path';
 
+import { command } from '../adapters/command.ts';
+import { fs } from '../adapters/fs.ts';
 import { lastSessionId, projectDir } from '../core/events.ts';
 import type { Reporter } from './report.ts';
 
 // Overridable the same way advisory.ts's defaultSettingsPath() is: a test points it at a tmp
 // directory rather than the real ~/.claude/projects.
-const defaultProjectsRoot = (): string => process.env.GOAL_RUN_PROJECTS_ROOT ?? join(homedir(), '.claude', 'projects');
+const defaultProjectsRoot = (): string => process.env.GOAL_RUN_PROJECTS_ROOT ?? join(fs.homeDir(), '.claude', 'projects');
 
 export const claudeBinaryPath = (): string | undefined => {
-  const which = spawnSync('which', ['claude'], { encoding: 'utf8' });
+  const which = command.run('which', ['claude']);
 
   return which.status === 0 ? which.stdout.trim() : undefined;
 };
@@ -30,7 +29,7 @@ export const claudeBinaryMtime = (path: string | undefined): number | undefined 
   }
 
   try {
-    return statSync(path).mtimeMs;
+    return fs.mtime(path);
   } catch {
     return undefined;
   }
@@ -38,7 +37,7 @@ export const claudeBinaryMtime = (path: string | undefined): number | undefined 
 
 const persistAttemptOutput = (dir: string, attempt: number, output: string): void => {
   try {
-    writeFileSync(join(dir, `implementer-attempt-${attempt}.out`), output);
+    fs.writeFile(join(dir, `implementer-attempt-${attempt}.out`), output);
   } catch {
     // An unwritable run directory degrades to less evidence, never to a crash.
   }
@@ -51,12 +50,12 @@ const transcriptTail = (sessionId: string | undefined, cwd: string, lines = 20):
 
   const path = join(projectDir(cwd, defaultProjectsRoot()), `${sessionId}.jsonl`);
 
-  if (!existsSync(path)) {
+  if (!fs.exists(path)) {
     return [];
   }
 
   try {
-    return readFileSync(path, 'utf8')
+    return fs.readFile(path)
       .split('\n')
       .filter((line) => line.trim() !== '')
       .slice(-lines);

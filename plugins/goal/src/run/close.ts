@@ -3,11 +3,11 @@
 // belong to an earlier run — and the advisory lens and the auditor are invoked either way,
 // neither able to undo work the gate already verified and shipped.
 
-import { spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
 
+import { command } from '../adapters/command.ts';
+import { clock } from '../adapters/clock.ts';
+import { fs } from '../adapters/fs.ts';
 import { gateAdapterOf, type GateAdapter } from '../adapters/gate.ts';
 import { git } from '../adapters/git.ts';
 import { header, iterationNumbers, readPlan } from '../gate/plan.ts';
@@ -34,7 +34,7 @@ type AgentJob = { name: string; args: string[] };
 // separate, so the envelope `resultEnvelope` parses off stdout is never a warning on stderr away
 // from failing to parse at all.
 const runConcurrently = (jobs: AgentJob[]): { name: string; output: string; stderr: string; status: number }[] => {
-  const dir = mkdtempSync(join(tmpdir(), 'goal-close-'));
+  const dir = fs.mkdtemp(join(fs.tmpDir(), 'goal-close-'));
 
   try {
     const starts = jobs
@@ -44,7 +44,7 @@ const runConcurrently = (jobs: AgentJob[]): { name: string; output: string; stde
       )
       .join('\n');
     const waits = jobs.map((_, i) => `wait $pid${i}; printf 'STATUS${i}=%s\\n' "$?"`).join('\n');
-    const result = spawnSync(`${starts}\n${waits}`, { shell: true, encoding: 'utf8' });
+    const result = command.run(`${starts}\n${waits}`, [], { shell: true });
     const stdout = result.stdout ?? '';
 
     return jobs.map((job, i) => {
@@ -54,13 +54,13 @@ const runConcurrently = (jobs: AgentJob[]): { name: string; output: string; stde
 
       return {
         name: job.name,
-        output: existsSync(outFile) ? readFileSync(outFile, 'utf8') : '',
-        stderr: existsSync(errFile) ? readFileSync(errFile, 'utf8') : '',
+        output: fs.exists(outFile) ? fs.readFile(outFile) : '',
+        stderr: fs.exists(errFile) ? fs.readFile(errFile) : '',
         status: status !== undefined ? Number(status) : 1,
       };
     });
   } finally {
-    rmSync(dir, { recursive: true, force: true });
+    fs.removeTree(dir);
   }
 };
 
@@ -76,11 +76,11 @@ export const close = (
 ): number => {
   const gate = gateAdapterOf(gateArg);
   const jsonl = join(dir, '.run.jsonl');
-  const dodStart = Date.now();
+  const dodStart = clock.now();
   const dod = gate.dod(plan, hash);
   const dodOut = `${dod.stdout}${dod.stderr}`;
   const dodExit = dod.status;
-  reporter.say(`RUN stage=dod duration_ms=${Date.now() - dodStart} exit=${dodExit}`);
+  reporter.say(`RUN stage=dod duration_ms=${clock.now() - dodStart} exit=${dodExit}`);
 
   // The plan on disk, re-read here rather than trusted from before this run started: every box
   // the gate ticked, this run's own or an earlier run's, is on it now.
@@ -94,9 +94,9 @@ export const close = (
     const last = landed[landed.length - 1];
 
     if (last !== undefined) {
-      const pushStart = Date.now();
+      const pushStart = clock.now();
       publisher.publish(last);
-      reporter.say(`RUN stage=push duration_ms=${Date.now() - pushStart} exit=${publisher.state.blocked ? 1 : 0}`);
+      reporter.say(`RUN stage=push duration_ms=${clock.now() - pushStart} exit=${publisher.state.blocked ? 1 : 0}`);
     }
 
     reporter.say('RUN the global Definition of Done passed');
@@ -107,10 +107,10 @@ export const close = (
 
     if (publish.publishes && publish.prOpen && !publish.blocked) {
       branch = git('branch', '--show-current').stdout.trim();
-      const readyStart = Date.now();
-      const ready = spawnSync('gh', ['pr', 'ready', '--repo', repo, branch], { encoding: 'utf8' });
+      const readyStart = clock.now();
+      const ready = command.run('gh', ['pr', 'ready', '--repo', repo, branch]);
       const readyOut = `${ready.stdout}${ready.stderr}`;
-      reporter.say(`RUN stage=pull-request-update duration_ms=${Date.now() - readyStart} exit=${ready.status ?? 1}`);
+      reporter.say(`RUN stage=pull-request-update duration_ms=${clock.now() - readyStart} exit=${ready.status ?? 1}`);
 
       if ((ready.status ?? 1) === 0) {
         reporter.say('RUN the pull request was marked ready');
@@ -161,9 +161,9 @@ this run: it is advisory only.`;
       });
     }
 
-    const advisoryStart = Date.now();
+    const advisoryStart = clock.now();
     const results = runConcurrently(jobs);
-    const advisoryDuration = Date.now() - advisoryStart;
+    const advisoryDuration = clock.now() - advisoryStart;
 
     for (const result of results) {
       const { text, ...extraction } = resultEnvelope(result.output);
@@ -204,15 +204,13 @@ rather than describing this one twice. Write it in two sections, \`### Outcome\`
 \`### Cost\`, no other heading anywhere in the file. Do not edit a single line of code, do
 not stage anything, and do not judge whether the work was correct — the gate already did that.`;
 
-  const auditStart = Date.now();
-  const audit = spawnSync(
-    'claude',
-    ['-p', '--agent', 'goal:goal-run-auditor', '--permission-mode', 'auto', '--output-format', 'stream-json', '--verbose', auditBrief],
-    { encoding: 'utf8' },
-  );
+  const auditStart = clock.now();
+  const audit = command.run('claude', [
+    '-p', '--agent', 'goal:goal-run-auditor', '--permission-mode', 'auto', '--output-format', 'stream-json', '--verbose', auditBrief,
+  ]);
   const { text: auditText, ...auditExtraction } = resultEnvelope(audit.stdout ?? '');
   reporter.record(auditText);
-  reporter.say(`RUN stage=auditor duration_ms=${Date.now() - auditStart} exit=${audit.status ?? 1}`);
+  reporter.say(`RUN stage=auditor duration_ms=${clock.now() - auditStart} exit=${audit.status ?? 1}`);
 
   const auditTokens = tokensLine('auditor', auditExtraction);
 
@@ -228,8 +226,8 @@ not stage anything, and do not judge whether the work was correct — the gate a
 
   // Folded into the pull request body the auditor's report has just been written to, never as a
   // comment: the reviewer reads costs, halts and recurrences on the pull request itself.
-  if (existsSync(reportPath)) {
-    publisher.foldReport?.(readFileSync(reportPath, 'utf8'), plan, dir);
+  if (fs.exists(reportPath)) {
+    publisher.foldReport?.(fs.readFile(reportPath), plan, dir);
   }
 
   if (dodExit !== 0) {

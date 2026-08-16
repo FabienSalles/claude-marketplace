@@ -2,8 +2,8 @@
 // rule below is stated against what this module returns, and nothing here decides anything.
 
 import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
 
+import { fs } from '../adapters/fs.ts';
 import { makePlan, type DeliveryMode, type Plan } from '../core/plan.ts';
 import { halt, misuse } from './halt.ts';
 
@@ -36,7 +36,7 @@ export const header = (source: string, prefix: string): string | undefined => {
 
 export const readPlan = (path: string): string => {
   try {
-    return readFileSync(path, 'utf8');
+    return fs.readFile(path);
   } catch {
     return misuse(`plan not readable: ${path}`);
   }

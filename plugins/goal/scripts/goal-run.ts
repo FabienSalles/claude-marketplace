@@ -12,9 +12,9 @@
 //   2 — refused: the run never started, and nothing needs undoing
 //   3 — paused: a clean boundary, relaunch resumes here
 
-import { existsSync, readFileSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
 
+import { fs } from '../src/adapters/fs.ts';
 import { rootCatch } from '../src/gate/halt.ts';
 import { createReporter, runDir, type Reporter } from '../src/run/report.ts';
 import { preflight, REFUSED } from '../src/run/preflight.ts';
@@ -35,7 +35,7 @@ const main = async (): Promise<void> => {
     reporter.stop('usage: goal-run.ts <plan> [iteration]', REFUSED);
   }
 
-  if (!existsSync(plan) || !statSync(plan).isFile()) {
+  if (!fs.exists(plan) || !fs.isFile(plan)) {
     reporter.stop(`the plan is not readable: ${plan}`, REFUSED);
   }
 
@@ -54,7 +54,7 @@ const main = async (): Promise<void> => {
   // run by hand whichever channel this run itself took.
   const gateLabel = process.env.GOAL_GATE ?? `node ${quote(resolve(import.meta.dirname, 'goal-gate.ts'))}`;
   const gate: GateAdapter = process.env.GOAL_GATE !== undefined ? spawnGateAdapter(gateLabel) : inProcessGateAdapter();
-  const source = readFileSync(plan, 'utf8');
+  const source = fs.readFile(plan);
 
   const preflightStart = Date.now();
   const { policy, remote } = preflight(plan, source, reporter, gateLabel);

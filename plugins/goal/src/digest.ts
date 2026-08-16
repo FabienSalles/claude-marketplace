@@ -3,8 +3,7 @@
 // `is_error` flag beside the call, and the JSONL line number the tool_use itself sits on, so a
 // finding can be anchored back to it.
 
-import { readFileSync } from 'node:fs';
-
+import { fs } from './adapters/fs.ts';
 import { parseEvents } from './core/events.ts';
 
 export const digest = (transcriptPath: string): string[] => {
@@ -12,7 +11,7 @@ export const digest = (transcriptPath: string): string[] => {
   const outcomes = new Map<string, boolean>();
   const order: string[] = [];
 
-  for (const { line, event } of parseEvents(readFileSync(transcriptPath, 'utf8'))) {
+  for (const { line, event } of parseEvents(fs.readFile(transcriptPath))) {
     for (const block of event.message?.content ?? []) {
       if (block.type === 'tool_use' && block.id && block.name) {
         const target = block.input?.file_path ?? block.input?.command ?? '';

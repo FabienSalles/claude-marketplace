@@ -1,0 +1,430 @@
+.env.example declared in impl_files is not refused
+.env.example is not refused
+a .env declared in impl_files is refused rather than staged
+a .env named on the Incidental header is still refused
+a .pem file is refused
+a ```gate fence quoted in prose is not swept, even when its gate2 would fail
+a bite check signalled mid-window still puts the implementation back
+a blocked publication is named in the run's terminal line
+a budget that is not a number is refused
+a burst 429 backs off in seconds and relaunches, ignoring a large GOAL_RUN_QUOTA_SLEEP
+a burst backs off in seconds, capped, independently of GOAL_RUN_QUOTA_SLEEP
+a caller declaring a fixture root does not earn an exemption from this version
+a ceiling already in force is not re-set
+a ceiling that genuinely lowers the inherited limit is emitted
+a change that touches no gate or dod line does not move the hash
+a changed claude binary mtime names the auto-updater in the log line
+a command an earlier checked iteration passed on halts the slice that breaks it
+a command declared by two checked iterations is replayed once
+a command declared identically by two iterations runs once, not once per declaration
+a command keeps its own shape under the ceiling
+a command that cannot be run still fails rather than escaping the ceiling
+a command that fails on its second run halts, naming the run
+a command that outlives the wall clock is killed rather than left hanging
+a comment line added inside the gate fence does not move the hash
+a comment or blank line inside the gate fence is ignored
+a commit is refused while another writer holds the tick lock
+a commit run with GOAL_RUN_JSONL set appends an event for gate1, each determinism run, and the bite check
+a commit run with GOAL_RUN_JSONL unset writes no event file at all
+a declared command inherits no GOAL_RUN_* state from the run
+a declared command is either prefixed with a ceiling or already under one
+a declared non-ASCII path is not read as a scope leak
+a declared path carrying a glob character is refused
+a declared root only earns an exemption when it holds a fixture
+a Definition of Done block declaring a key it may not set is refused
+a Definition of Done block declaring no command cannot ship
+a Definition of Done refusal leaves the last iteration's commit local, never pushed
+a Definition of Done refusal still leaves the draft pull request open from the iterations that already landed
+a Definition of Done that could not be run is not reported as a refusal
+a deterministic HALT answers the fixed envelope and refusal prose
+a driven iteration and close land a token line carrying model, peak and compactions for every session
+a failing acceptance command leaves no commit and no tick
+a failing Definition of Done command halts, naming it
+a failing Definition of Done halts the run and skips marking the pull request ready
+a failure with no quota shape pauses immediately, without a retry
+a fixture whose summary the wrapper cannot read is refused, not passed
+a fixture with a failing test halts, naming the exit
+a fixture with one pass and one skip is refused, not silently accepted
+a fixup commit ahead of the first push blocks it, and nothing is pushed
+a gate block declaring a key it may not set is refused
+a gate block declaring the same key twice is refused
+a gate block missing commit_msg is refused
+a gate block missing gate1 is refused
+a gate block missing impl_files is refused
+a gate block smuggling dod1 is refused
+a gate block smuggling iteration_files is refused
+a gate block smuggling ship is refused
+a gate block smuggling spec_hash is refused
+a gate fence quoted in prose outside any iteration section does not move the hash
+a gate handed an unwritable GOAL_RUN_JSONL still judges instead of crashing
+a gate installed under a path holding a space still runs
+a gate pass also records the verdict in the run log
+a gate refusal is recorded exactly once in the log
+a gate refusal records the verdict in the run log and the STOP line names it
+a gate that could not run is not reported as a refusal
+a gate that refuses the work exits exactly 1
+a gate that refuses the work halts the run and says so
+a git-directory tamper is diagnosed by name, not read as an empty tree
+a halt after an earlier publication block names it too
+a halting bite check leaves no backup behind and puts the tree back
+a landed iteration under commit+pr is pushed to the plan's declared remote
+a landed run records a stage event with duration_ms and exit for preflight, implementer, gate and push
+a later iteration declaring a directory this run has not created yet is resolvable
+a later iteration declaring a file not written yet inside an existing directory is resolvable
+a later iteration declaring a subtree that exists is resolvable
+a later iteration's declared directory renamed away halts before the commit
+a long sleep runs as a loop of short slices, each one reported and slept through the clock
+a max_diff that is not a number is refused
+a missing settings.json produces no warning and no crash
+a mistyped test_files path repaired to another path does not halt
+a multi-line Goal folds to one line in its Delivered bullet
+a node_modules path is refused
+a non-numeric iteration argument exits 2 rather than being judged
+a non-zero exit persists the attempt's full stdout and stderr to the run directory
+a passing bite check leaves no backup behind and puts the tree back
+a passing Definition of Done marks the open pull request ready
+a passing iteration is committed under its message, then ticked
+a pause after an earlier publication block names it too
+a plan carrying a Review: comment header briefs the reviewer to post with an AI banner
+a plan declaring no Definition of Done cannot ship
+a plan edited beyond ticking no longer matches the hash it was locked with
+a plan matching the hash it was locked with is runnable
+a plan named issue-&lt;N>-spec.md carries a Closes line in the pull request body
+a plan not named issue-&lt;N>-spec.md carries no Closes line
+a plan prints a hash of its gate and dod lines
+a plan the gate refuses to check never reaches an implementer
+a plan title carrying an apostrophe opens a pull request rather than being refused
+a plan under Policy: commit is never pushed and opens no pull request
+a plan whose global Definition of Done passes may ship
+a pre-push scan judges committed content, not the working directory
+a preflight refusal exits exactly 2
+a pull request already closed is not treated as open, and a new one is opened instead of edited
+a pull request already merged is not treated as open, and a new one is opened instead of edited
+a pull request under an unrecognized future state is not treated as open
+a push on the first attempt survives a quota failure and retry
+a push still reads as a push, unaffected by the widened ref snapshot
+a quota that never reopens pauses after the default bound of 3 relaunches, with no override
+a quota that never reopens pauses the run after a bounded number of relaunches, not forever
+a quota-shaped failure sleeps and relaunches the same iteration until it lands
+a real gate resolved with no GOAL_GATE override refuses to certify a run whose Definition of Done fails
+a real gate resolved with no GOAL_GATE override refuses to commit once an earlier landed iteration was unticked while the run was going
+a rename halts under no-bc-break
+a replayed wall command is appended as its own event, apart from the slice’s own gateN
+a rewritten dod line is refused
+a rewritten gate line is refused
+a run lock is exclusive, and unlock hands it back
+a run refuses to commit once an earlier landed iteration was unticked while it ran
+a run writes .run.log, .run.jsonl and .run.session under .claude/goal-runs/&lt;work-id>/&lt;run-id>/
+a scanner that reports a finding refuses the push
+a scope leak leaves no commit and no tick
+a second close() replaces the run report section instead of appending to it
+a second landing adds a second numbered Delivered bullet, each with its own commit sha
+a second landing rewrites the pull request body instead of creating a second one
+a secret named only on the Incidental header is refused too
+a secret scanner refusal blocks the push, and no pull request is attempted
+a self-committed implementer is still diagnosed as that, unaffected by the new check
+a slice declaring no budget is not bounded
+a slice inside its declared budget passes
+a slice whose diff exceeds its declared budget halts
+a slice whose own deletion empties a declared directory is not judged by it
+a source file whose name contains env is left alone
+a staged deletion counts against the budget
+a staged deletion halts on a plan that declares no delivery mode at all
+a staged deletion halts on a plan that declares no-bc-break
+a supporting command green without the implementation does not halt the iteration
+a tag created by the implementer halts the run, naming it
+a tamper on the first attempt survives a quota failure and retry
+a ticked iteration's gate2 is still swept
+a tool use with no file_path renders its command as the target
+a tracked file changed but not declared halts the iteration
+a tracked implementation is restored even beside an intent-to-add file
+a trailing-slash impl_files subtree covering a test_files path is refused too
+a transcript carrying interruptedByShutdown upgrades the class to shutdown (confirmed)
+a transcript without interruptedByShutdown marks the class sigterm (sender unknown)
+a Trigger line is left alone in a *-cleanup-spec.md plan
+a well-formed gate block builds an immutable Plan
+a well-formed iteration is runnable and its plan hash is reported
+a worktree-side rename with both paths declared is not a scope leak
+an acceptance command that fails without the implementation passes the gate
+an acceptance command that passes without the implementation halts the iteration
+an already ticked iteration is not committed twice
+an earlier iteration nobody has checked yet is not replayed
+an empty test_files is exempt from the overlap invariant
+an envelope beside stderr noise still yields the token line and text, noise nowhere in the result
+an explicit GOAL_GATE still carries the ticked set check published through to the commit it drives
+an explicit usage-limit message is exhausted even when a 429 also appears
+an impl_files declaring .env is refused before any tree exists
+an implementation rewritten during the window is restored by overwrite, not merged
+an implementation that is a whole new file is set aside as well
+an implementer that committed is not mistaken for one that wrote nothing
+an implementer that keeps exiting 143 relaunches on a short fixed backoff, bounded, never the quota sleep
+an implementer that wrote nothing is reported as such, and no verdict is asked for
+an incidental path does not count against max_diff
+an incidental path is tolerated, then committed
+an iteration declaring a gitignored path halts
+an iteration declaring an empty commit_msg is refused
+an iteration declaring an empty gate1 is refused
+an iteration declaring an empty impl_files is refused
+an iteration declaring no commit_msg is refused
+an iteration declaring no gate1 is refused
+an iteration declaring no impl_files is refused
+an iteration declaring no test_files is not bitten, and the skip is said out loud
+an iteration the plan does not contain is refused
+an iteration whose only changes are declared passes verify
+an iteration whose section holds no gate block is refused, and the global DoD block is not borrowed
+an iteration with empty test_files is exempt from the overlap check
+an iteration with nothing to test is runnable
+an ordinary run that moves no ref is not stopped by this check
+an ordinary run that never pushes is not stopped by this check
+an ordinary run that never touches .git/ is not stopped by this check
+an unchanged claude binary mtime names no auto-updater
+an undeclared .env halts before the scope check
+an undeclared intent-to-add file halts the iteration
+an undeclared untracked file halts the iteration
+an unparseable settings.json produces no warning and no crash
+an unreadable plan exits 2 rather than reporting a bad plan
+an unreadable plan is a misuse, not a crash
+an unrelated file still halts when incidental is declared
+an unwritable run directory degrades silently instead of crashing
+before setLog, say renders to stdout only and writes no jsonl file at all
+betterleaks is the scanner when both are installed
+bite alone answers the one OK line proving gate1 fails without the implementation
+bite does not commit or tick the box it just checked
+bite halts an iteration whose impl_files covers its test_files
+bite halts when gate1 passes without the implementation
+bite reports OK and exits 0 when gate1 fails without the implementation
+bite restores the implementation by overwrite once it is done
+both files state the % cache read formula in the same sentence shape
+bounds: a max_diff that is not a number is refused, one that is respected passes
+bounds: a removal under no-bc-break halts, under allow-bc-break it does not
+burstBackoffSeconds caps at 8 by default and honours GOAL_RUN_BURST_CAP
+called with no plan at all is a misuse
+caughtUpWithBase refuses a branch behind its base, carrying the missing commits
+check answers a fixed OK line, plan_hash and ticked set
+check answers with the same status, plan_hash and ticked set on both channels
+check halts an iteration whose impl_files covers its test_files
+check publishes an empty ticked set when nothing is ticked yet
+check publishes the ticked set beside plan_hash=
+classifies a burst 429 apart from an exhausted usage-limit window
+classifyQuotaFailure reduces to a declarative table, exhausted checked before burst
+claudeBinaryMtime degrades to undefined for a missing path or no path at all
+cleanTree refuses uncommitted work, carrying the git status
+clock.now reports the real current time
+clock.sleepSeconds actually waits for roughly the requested duration
+close briefs the auditor to write its report in the run's own directory
+close folds the auditor's report into the pull request body, not as a comment
+close folds the report untransformed and ends the pull request body with the plan and run-directory paths
+close folds the run report behind a --- separator from the Delivered list
+close reports a stage=&lt;name> duration_ms=&lt;n> exit=&lt;n> event for every stage it runs
+close skips marking the pull request ready when the publisher's own state says blocked
+command.run reports a non-zero exit for a command that fails
+command.run spawns the named process and reports its exit and output
+command.runBinary spawns the named process and reports raw stdout bytes
+commands: determinismHeld halts on a replay that does not hold
+commands: gatePassed names the regression wall origin when one is given
+commit answers the bite check's and its own OK line, in order
+commit halts an iteration whose impl_files covers its test_files
+commit ignores a ticked set parked in the environment
+commit is unaffected by an untick when it is handed no ticked set
+commit lands the same verdict, the same commit and the same tick on both channels
+commit passes when the ticked set handed to it is still a subset of what the plan ticks
+commit refuses identically on both channels once a locked iteration was unticked
+commit refuses when a locked iteration was unticked before the commit
+core/ never imports node:fs, node:child_process, or an adapter
+createPublisher exposes its own publish state directly on the object it returns
+cross-iteration: resolvablePaths halts on an unresolvable later declaration
+cross-iteration: selectReplay skips a command already seen, keeps the first origin
+detectTamper diagnoses a self-committed HEAD before any other tamper
+detectTamper names a git-directory write ahead of a moved ref
+detectTamper names a moved local ref last
+detectTamper names a pushed remote ref ahead of any other moved ref
+detectTamper reports nothing when the tree state is unchanged
+digest anchors each call to the JSONL line the tool_use sits on
+digest carries the is_error flag from the matching tool_result
+digest marks a tool_use with no matching tool_result as pending, and a resolved one as ok
+digest returns one line per tool call, not one per transcript line
+dod answers a fixed OK line
+dod answers identically on both channels
+emptying an iteration's test_files is refused
+every declared Definition of Done command is replayed exactly once
+every log line says whether the run is advancing or stopped
+every preflight check narrates on stdout once it passes
+exit 143 classifies as shutdown regardless of output, bypassing quota classification
+extract reads usage, model and compactions out of a stream-json transcript
+featureBranch refuses outside a git repository and off the plan's own branch
+freeLock refuses a plan another run already holds, naming the unlock command
+fs.appendFile adds to what is already on disk rather than overwriting it
+fs.copyFile leaves the source untouched and the destination carrying its content
+fs.exists reports true for a path it just wrote and false once removed
+fs.homeDir and fs.tmpDir report real, non-empty paths
+fs.mkdir with no recursive throws when the directory already exists
+fs.mkdir with recursive creates every missing parent directory
+fs.mkdtemp creates a fresh directory under the prefix it is given
+fs.mtime and fs.isFile report the stat of a real file
+fs.readDir lists the entries a directory holds
+fs.readDirEntries tells a directory apart from a file
+fs.readFileBuffer hands back raw bytes rather than a decoded string
+fs.removeTree removes a directory and everything under it
+fs.writeFile then fs.readFile round-trips the content it was given
+git stash push halts the run, naming refs/stash rather than reading an empty tree
+gitleaks is the scanner when betterleaks is not installed
+GOAL_CMD_TIMEOUT overrides the default the same way GOAL_PROC_HEADROOM overrides the ceiling
+goalRunsIgnored and planDirIgnored refuse a directory git can see
+header ignores a Key: value line past the first heading, even wrapped in its own --- fences
+header ignores a Key: value line sitting outside the --- block
+header reads a Key: value line from inside the top --- block
+header still reads the # Spec: title outside the block
+impl_files covering its own test_files is refused, naming the fix
+it asks the implementer for a streamed, verbose account of its own actions
+it carries the hash check published into the commit call
+it does not warn when autoUpdatesChannel is stable
+it does not warn when env.DISABLE_AUTOUPDATER is set
+it falls back to comparing the branch against itself when no remote exists at all
+it hands the implementer the iteration section, and never the plan path
+it is valid on a first run, before .claude/goal-runs ever exists
+it pins the implementer to its own agent, in a mode that never prompts
+it proves every unchecked iteration runnable before implementing any
+it records the implementer session id beside the run
+it refuses a cleanup iteration (a Trigger line) sitting inside a feature plan
+it refuses against &lt;remote>/HEAD when the plan declares no PR base, so a fork is checked against itself
+it refuses against the plan's PR base:, even while origin/HEAD stays green
+it refuses before any other check when the plan carries no --- metadata block
+it refuses when .claude/goal-runs is visible to git, naming the directory and the gitignore line, before the clean-tree check
+it refuses when a later gate in the sweep (gate2..N) fails on the untouched tree
+it refuses when another run already holds the plan
+it refuses when no plan is named
+it refuses when the base is already red
+it refuses when the branch is behind the base it forked from
+it refuses when the checkout stands on the wrong branch
+it refuses when the iteration is not a number
+it refuses when the plan declares no Policy line
+it refuses when the plan declares no Remote line
+it refuses when the plan is not readable
+it refuses when the plan is Policy: manual
+it refuses when the plan's own directory is visible to git
+it refuses when the tree carries uncommitted work
+it releases the lock on the way out, whatever the outcome
+it releases the lock when the run is killed mid-implementation
+it renders each of the implementer tool uses as one line
+it replays the global Definition of Done once every requested iteration has landed
+it stops at the first iteration the gate refuses, and never attempts the next
+it surveys the unchecked iterations and runs them in order when no iteration is named
+it warns but continues when settings.json neither disables the auto-updater nor pins a stable channel
+it writes the same account to a log file beside the plan
+lastSessionId returns the last session_id carried by the stream, ignoring lines without one
+lock answers a fixed OK line
+lock then unlock answer identically on both channels
+metadataDeclared refuses a plan with no --- block, carrying the legacy lines to paste back
+mutate.sh fails when its target test file does not exist, instead of passing
+narrate counts both verified compaction marker shapes
+narrate falls back to the result event's modelUsage key for the served model
+narrate reads the context peak as a number, never NaN, when a usage class is absent
+narrate reads the context peak as the max, not the sum, over assistant usage blocks
+narrate reads the served model off an assistant event's own model field
+narrate reports zero compactions when the stream never compacted
+narrate returns the four token classes carried by the result event
+narrate returns undefined usage when no result event carries usage
+neither file lets the per-model rates reappear under the table
+never: a plan-declared .env is refused, a clean tree is not
+no argument exits 2 rather than reporting a bad plan
+no ceiling is emitted where the shell cannot express one
+no scanner installed refuses the push, naming what it looked for
+no session id and no transcript degrade silently, without crashing
+noCleanupIteration refuses a Trigger line inside a feature plan, spares a cleanup plan
+non-overlapping impl_files and test_files pass the check verb
+nothing is written beside the plan anymore
+nothing running under the ceiling can raise it back
+ok and err tag a value as a success or a failure
+parseEvents drops blank and malformed lines, keeping the 1-indexed line number of the rest
+Phase 5 orders the per-iteration /goal block withheld under commit+pr when every iteration is gateable, and its routing table agrees with the closing
+plan-guard answers a fixed OK line once the locked hash matches guard_hash
+plan-guard HALTs with the envelope, naming the locked value beside guard_hash
+plan-guard prints a fixed guard_hash for the fixed plan
+projectDir also encodes the dots in the cwd, the way Claude Code does
+projectDir encodes both the slashes and the dots of a cwd
+projectDir encodes the cwd the same way Claude Code names its own project directory
+record ignores blank text on both artifacts
+record writes a JSON line carrying the text as payload, and no prose reaches stdout
+remoteDeclared refuses an absent Remote line, passes a declared one through
+resultEnvelope extracts the text, usage and model from a stream-json envelope
+resultEnvelope falls back to the raw text when the input is not a json envelope
+resuming a single iteration when the pull request already exists edits it, and never recreates it
+run.sh refuses to re-enter itself
+run/preflight.ts, run/iteration.ts and run/close.ts all resolve outcomes back to core/verdict.ts
+runnablePolicy refuses an absent Policy line and a manual one, passes anything else through
+runTranscripts ignores non-jsonl entries even when they name the plan
+runTranscripts returns every transcript under the project dir that names the plan
+runTranscripts returns nothing when the project dir does not exist
+runTranscripts unions the recorded session ids with the content scan, without duplicates
+say writes a versioned JSON line to .run.jsonl next to the prose in .run.log
+scan answers a fixed OK line, invoking the scanner on git history, not the working tree
+scan answers identically on both channels
+scope: noScopeLeak halts on a changed path the plan never declared
+scope: shapedPaths refuses a glob, noIgnoredPaths refuses a gitignored path
+shutdownBackoffSeconds defaults to 5 and honours GOAL_RUN_SHUTDOWN_BACKOFF
+SIGINT releases the lock createLock() holds and exits 130
+SIGINT sent to goal-run.ts mid-implementation exits 130 and releases the lock
+spawnOptions defaults to a 900 second wall clock and kills with SIGKILL
+stop writes one JSON line carrying the exit code, and exits with it
+the &amp;quot;Definition of Done could not be run&amp;quot; STOP (close.ts) stays a say event with no exit field
+the &amp;quot;Definition of Done refused this run&amp;quot; STOP (close.ts) stays a say event with no exit field
+the &amp;quot;gate could not be run&amp;quot; STOP (iteration.ts) stays a say event with no exit field
+the &amp;quot;gate published no plan_hash&amp;quot; STOP (goal-run.ts) stays a say event with no exit field
+the &amp;quot;gate will not run iteration&amp;quot; STOP (goal-run.ts) stays a say event with no exit field
+the &amp;quot;iteration(s) landed&amp;quot; STOP (goal-run.ts) stays a say event with no exit field
+the &amp;quot;refused by the gate&amp;quot; STOP (iteration.ts) stays a say event with no exit field
+the acceptance command runs three times on a green slice
+the advisory lens runs after a landed run and never blocks it
+the auditor is briefed with the ### Outcome / ### Cost skeleton
+the auditor is invoked with the run's own JSONL path, not an elapsed string
+the auditor still runs when the Definition of Done refuses the run
+the auditor's attribution table carries its modifiers
+the auditor's Cost section prescribes the two validated tables verbatim
+the base sweep is skipped while the Bootstrap iteration is still unchecked
+the base sweep runs once the Bootstrap iteration is ticked
+the bite check says where the implementation is set aside before running the command
+the bite window spawns the acceptance command once beyond the three runs
+the brief never orders loading convention skills
+the claude spawn env disables the autoupdater
+the Definition of Done block is still swept
+the first landed iteration opens a draft pull request against the declared PR base
+the four outcomes are unified in core/verdict.ts, distinct and stable
+the gate judges the directory it stands in, not the one beside it
+the gate spawns commands it does not trust
+the halt names the overlapping pair and the fix, excluding the tests
+the implementer changing a file inside .git/ halts the run, naming the artifact
+the implementer pushing halts the run, naming the moved ref
+the implementer's brief requires it to report a failing check outside its own gate
+the implementer's brief warns the tree may already hold an interrupted attempt
+the lens and reviewer run concurrently rather than one after the other
+the lens is briefed from the plan's own ticked iterations, not from the run's landed list
+the lock is acquired once for the whole run, not once per iteration
+the manual closing (clipboard offer + per-iteration loop) stays as the fallback
+the path a rename left behind is a change the iteration has to declare
+the plan closing leads with /goal:supervise, not the manual loop, when every iteration is gateable under commit+pr
+the pull request body opens with Delivered bullets built from the Goal line and commit sha
+the reviewer is briefed to keep its review in the log when the plan carries no Review header
+the reviewer never runs when marking the pull request ready fails
+the reviewer never runs when the publisher's own state says blocked
+the reviewer runs once the pull request is marked ready
+the rule is load-bearing inside the report section, not a stray sentence
+the runner prints the run directory at launch
+the same deletion passes under allow-bc-break
+the same hash given back matches
+the shutdown retry bound defaults to 5 and honours GOAL_RUN_SHUTDOWN_MAX_RETRIES
+the slice being verified does not replay its own command
+the suite runs once per runner, recorded
+the supervise skill carries the same two table shapes as the auditor
+the supervise skill states that it extends the tables, never reshapes them
+the supervising row is scoped to the run's window, never the whole transcript
+the sweep announces the reduction from declared commands to the distinct ones it ran
+ticked: an untick between check and commit halts naming what dropped
+ticking an iteration leaves the plan hash untouched
+tokensLine formats the four classes for a named stage
+tokensLine reads the peak against the served model's effective window
+tokensLine reports the peak in tokens with no percentage for an unmapped model
+tokensLine returns undefined when there is no usage to report
+unlock answers a fixed OK line
+verify answers the bite check's and its own OK line, in order
+verify halts an iteration whose impl_files covers its test_files
+with an iteration named, only that one runs

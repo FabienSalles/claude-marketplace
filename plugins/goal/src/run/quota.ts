@@ -4,7 +4,8 @@
 // the full GOAL_RUN_QUOTA_SLEEP anyway. Kept out of run/iteration.ts to respect its own
 // 200-line ceiling.
 
-import { spawnSync } from 'node:child_process';
+import { clock as realClock } from '../adapters/clock.ts';
+import type { Clock } from '../ports.ts';
 
 export type QuotaClass = 'burst' | 'exhausted' | null;
 
@@ -41,17 +42,24 @@ export const shutdownBackoffSeconds = (): number => Number(process.env.GOAL_RUN_
 
 export const shutdownMaxRetries = (): number => Number(process.env.GOAL_RUN_SHUTDOWN_MAX_RETRIES ?? '5');
 
-// A loop of short slices, not one spawnSync('sleep', [totalSeconds]) whose return value is
-// discarded: a long wait is then a sequence of small, observable steps, each reported through
-// onSlice, rather than one opaque call that a run can only sit through in full.
-export const sleepInSlices = (totalSeconds: number, onSlice: (remainingSeconds: number) => void, sliceSeconds = 300): void => {
+// A loop of short slices, not one call to the Clock port for the whole totalSeconds whose return
+// value is discarded: a long wait is then a sequence of small, observable steps, each reported
+// through onSlice, rather than one opaque wait that a run can only sit through in full. `clock`
+// defaults to the real one and takes a test double in its place, the seam that lets a suite
+// observe every slice slept without paying for one.
+export const sleepInSlices = (
+  totalSeconds: number,
+  onSlice: (remainingSeconds: number) => void,
+  sliceSeconds = 300,
+  clock: Clock = realClock,
+): void => {
   let remaining = totalSeconds;
 
   while (remaining > 0) {
     const slice = Math.min(sliceSeconds, remaining);
 
     onSlice(remaining);
-    spawnSync('sleep', [String(slice)]);
+    clock.sleepSeconds(slice);
     remaining -= slice;
   }
 };

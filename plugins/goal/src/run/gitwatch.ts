@@ -6,28 +6,28 @@
 // both directories are resolved to absolute before anything is read, so the real `.git` is never
 // fingerprinted twice under two names.
 
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
+import { fs } from '../adapters/fs.ts';
 import { git } from '../adapters/git.ts';
 
 const read = (path: string): string | null => {
   try {
-    return readFileSync(path, 'utf8');
+    return fs.readFile(path);
   } catch {
     return null;
   }
 };
 
 const hookFiles = (hooksDir: string): string[] => {
-  if (!existsSync(hooksDir)) {
+  if (!fs.exists(hooksDir)) {
     return [];
   }
 
   const out: string[] = [];
 
   const walk = (dir: string): void => {
-    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    for (const entry of fs.readDirEntries(dir)) {
       const path = join(dir, entry.name);
 
       if (entry.isDirectory()) {

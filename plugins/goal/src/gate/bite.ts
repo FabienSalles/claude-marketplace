@@ -1,8 +1,9 @@
-import { spawnSync } from 'node:child_process';
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { dirname, join } from 'node:path';
 
+import { command as runner } from '../adapters/command.ts';
+import { clock } from '../adapters/clock.ts';
+import { fs } from '../adapters/fs.ts';
 import { git } from '../adapters/git.ts';
 import { covers } from '../core/plan.ts';
 import { bounded, spawnOptions } from './bounded.ts';
@@ -23,7 +24,7 @@ export const gitDir = (): string => {
 };
 
 export const headBlob = (path: string): Buffer => {
-  const run = spawnSync('git', ['show', `HEAD:${path}`], { maxBuffer: 512 * 1024 * 1024 });
+  const run = runner.runBinary('git', ['show', `HEAD:${path}`], { maxBuffer: 512 * 1024 * 1024 });
 
   if (run.status !== 0) {
     halt(
@@ -39,7 +40,7 @@ export const fingerprint = (paths: string[]): string => {
   const digest = createHash('sha256').update(git('status', '--porcelain', '-uall').stdout);
 
   for (const path of paths) {
-    digest.update(path).update(existsSync(path) ? readFileSync(path) : Buffer.of(0));
+    digest.update(path).update(fs.exists(path) ? fs.readFileBuffer(path) : Buffer.of(0));
   }
 
   return digest.digest('hex');
@@ -62,19 +63,19 @@ export const biteCheck = (declared: Map<string, string>, iteration: string, chan
     .map((path) => ({
       path,
       inHead: git('cat-file', '-e', `HEAD:${path}`).status === 0,
-      present: existsSync(path),
+      present: fs.exists(path),
     }));
 
   const aside = implementation.map(({ path }) => path);
   const before = fingerprint(aside);
-  const backup = mkdtempSync(join(gitDir(), 'goal-bite-'));
+  const backup = fs.mkdtemp(join(gitDir(), 'goal-bite-'));
 
   heldLocks.push(backup);
 
   for (const { path, present } of implementation) {
     if (present) {
-      mkdirSync(dirname(join(backup, path)), { recursive: true });
-      copyFileSync(path, join(backup, path));
+      fs.mkdir(dirname(join(backup, path)), { recursive: true });
+      fs.copyFile(path, join(backup, path));
     }
   }
 
@@ -88,9 +89,9 @@ export const biteCheck = (declared: Map<string, string>, iteration: string, chan
 
     for (const { path, present } of implementation) {
       if (present) {
-        copyFileSync(join(backup, path), path);
+        fs.copyFile(join(backup, path), path);
       } else {
-        rmSync(path, { force: true });
+        fs.removeFile(path);
       }
     }
   };
@@ -99,23 +100,23 @@ export const biteCheck = (declared: Map<string, string>, iteration: string, chan
 
   for (const { path, inHead } of implementation) {
     if (inHead) {
-      mkdirSync(dirname(path), { recursive: true });
-      writeFileSync(path, headBlob(path));
+      fs.mkdir(dirname(path), { recursive: true });
+      fs.writeFile(path, headBlob(path));
     } else {
-      rmSync(path, { force: true });
+      fs.removeFile(path);
     }
   }
 
   say(`BACKUP: iteration ${iteration}'s implementation is set aside in ${backup}\n`);
 
   const command = declared.get('gate1') ?? '';
-  const start = Date.now();
-  const run = spawnSync(bounded(command), spawnOptions());
+  const start = clock.now();
+  const run = runner.run(bounded(command), [], spawnOptions());
 
-  emitCommand('bite', command, Date.now() - start, run.status);
+  emitCommand('bite', command, clock.now() - start, run.status);
 
   restore();
-  rmSync(backup, { recursive: true, force: true });
+  fs.removeTree(backup);
 
   if (fingerprint(aside) !== before) {
     halt(

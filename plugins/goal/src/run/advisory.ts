@@ -3,17 +3,17 @@
 // exists to survive. Missing, unreadable or invalid settings say nothing about that risk, so none
 // of them raise the warning.
 
-import { readFileSync } from 'node:fs';
-import { homedir } from 'node:os';
 import { join } from 'node:path';
 
-export const defaultSettingsPath = (): string => process.env.GOAL_RUN_SETTINGS_PATH ?? join(homedir(), '.claude', 'settings.json');
+import { fs } from '../adapters/fs.ts';
+
+export const defaultSettingsPath = (): string => process.env.GOAL_RUN_SETTINGS_PATH ?? join(fs.homeDir(), '.claude', 'settings.json');
 
 export const autoUpdaterWarning = (path: string = defaultSettingsPath()): string | undefined => {
   let settings: Record<string, unknown>;
 
   try {
-    const parsed: unknown = JSON.parse(readFileSync(path, 'utf8'));
+    const parsed: unknown = JSON.parse(fs.readFile(path));
 
     if (typeof parsed !== 'object' || parsed === null) {
       return undefined;
