@@ -16,17 +16,28 @@ Five principles govern every phase:
 1. **The knowledge base is the product.** Findings that stay in the conversation
    are lost. Every phase writes one artifact file; the final index routes readers
    (human or agent) to the right one.
-2. **A number without its command is not a measurement.** A deterministic tool
-   answers first and the model works on its output, never the reverse — see
-   [references/deterministic-tools.md](references/deterministic-tools.md) for the
-   toolchain and what each one alone can answer. Every figure in every artifact
-   carries the command that produced it, or says `not run (<reason>)`. Where no
-   tool answers the question, write the analyzer — a script whose output a human
-   can re-run and sample-check — rather than reading files and forming an opinion:
-   [references/write-the-analyzer.md](references/write-the-analyzer.md) is the
-   manual, from the three checks that decide whether the pattern applies at all
-   to the output contract and the sampling protocol that makes a row falsifiable.
-   What was measured and what was interpreted are never mixed in one cell.
+2. **Every finding declares how it can be refuted.** Not every finding is a
+   measurement, and forcing a command onto one that is not produces a fake. Three
+   natures, each with its own mode of refutation, and each artifact row carries
+   which one it is:
+   - **Measured** — a tool or an analyzer produced a number. Refuted by re-running
+     the command, which the row therefore carries, or says `not run (<reason>)`. A
+     deterministic tool answers first and the model works on its output, never the
+     reverse: [references/deterministic-tools.md](references/deterministic-tools.md)
+     for the toolchain, [references/write-the-analyzer.md](references/write-the-analyzer.md)
+     for the questions no tool answers.
+   - **Read** — a business rule, an actor, a use-case step, a schema constraint,
+     recovered by reading the code. Refuted by opening `path:line` and disagreeing,
+     so the row carries the anchor rather than a command. An anchor is as strong a
+     proof as a command; what it is not is a number.
+   - **Judged** — an assessment that depends on context and intent: coupling
+     assumed or accidental, a responsibility misplaced, a test that asserts the
+     implementation instead of the behaviour. Refuted only by argument, so the row
+     names the criterion it was judged against (a `craft:*` principle, an audit
+     checkpoint) and stays attributed to whoever signs it. A judgement dressed as a
+     measurement is the one output this skill must never produce.
+   The three are never mixed in one cell, and the artifact never upgrades a
+   judgement into a measurement by attaching a number to it.
 3. **Recover intent, not implementation.** Use cases and business rules are written
    at the level a business analyst would have written them before the code existed.
    "System refuses an order above the credit limit" — never "the controller throws
@@ -177,11 +188,19 @@ business impact depends on what the system is worth to whoever commissioned this
 For each, write the disambiguating question into `open-questions.md` addressed to
 a person, and mark the risk `needs-human-validation` until it is answered.
 
-Before judging the test suite, load `craft:testing-principles` and open two test
-files on the top hotspots: record whether their assertions state a business rule
-or echo the implementation. Do not load the language-convention skills — this
-codebase is not held to our conventions, and judging it against them manufactures
-false positives.
+**Judged findings need a stated criterion, and the criterion comes from a skill.**
+A judgement whose grid is left implicit cannot be argued against, which is what
+separates it from an opinion. Load the `craft:*` principle that covers the axis
+being judged and cite it by name in the row: `craft:testing-principles` before
+judging a test suite (open two test files on the top hotspots and record whether
+the assertions state a business rule or echo the implementation),
+`craft:refactoring-principles` or `craft:ddd-principles` before judging a boundary
+or a coupling, `craft:oop-principles` before judging a design.
+
+Do not load the language-convention skills (`php:*`, `symfony:*`, `typescript:*`).
+They encode how we write code, not what good looks like universally, and judging
+inherited client code against them manufactures exactly the false-positive
+inflation an audit exists to avoid.
 
 In `audit-prep` mode, extend with the security-surface inventory and pre-audit
 dossier from [references/audit-prep.md](references/audit-prep.md), then hand over
@@ -244,12 +263,16 @@ Re-reading the artifacts against each other proves only that they agree with eac
 other. Sampling against the code is the only pass that can catch a wrong number,
 so do it first:
 
-- **Sample against the source.** Re-run three of the commands recorded in
-  `recon.md` and re-derive one use case, one entity and one risk from the code.
-  Name the sampled items in the final summary so a human can redo the same sample
-  in ten minutes.
-- Every number in `recon.md` carries the command that produced it, or says why it
-  was not measured.
+- **Sample against the source, by nature.** Re-run three of the commands recorded
+  in `recon.md` (measured). Open the anchor of three read findings and confirm the
+  code says what the row claims (read). For every judged finding, check the named
+  criterion is actually stated in the skill it cites, and that a person is
+  attached to it (judged). Name the sampled items in the final summary so a human
+  can redo the same sample in ten minutes.
+- Every measured row carries its command, or says why it was not measured. Every
+  read row carries a `path:line` anchor. Every judged row carries a criterion and
+  an owner.
+- No row states a judgement in the register while wearing a number.
 - No artifact attributes a defect to a named person.
 
 Then the internal coherence checks:
