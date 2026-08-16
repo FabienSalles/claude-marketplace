@@ -2,7 +2,17 @@ import { spawnSync } from 'node:child_process';
 import { chmodSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
-import { workIdOf } from '../../src/run/preflight.ts';
+import { command } from '../../src/adapters/command.ts';
+import { fs } from '../../src/adapters/fs.ts';
+import { spawnGateAdapter } from '../../src/adapters/gate.ts';
+import { LANDED, REFUSED } from '../../src/core/verdict.ts';
+import { iterationNumbers } from '../../src/gate/plan.ts';
+import { createLock } from '../../src/run/lock.ts';
+import { runIteration } from '../../src/run/iteration.ts';
+import { close } from '../../src/run/close.ts';
+import { preflight, workIdOf } from '../../src/run/preflight.ts';
+import { blockedNote, createPublisher } from '../../src/run/publish.ts';
+import { runDir, type Reporter } from '../../src/run/report.ts';
 import { tmpDir } from './tmp.ts';
 
 export const RUN_NODE = resolve(import.meta.dirname, '..', '..', 'scripts', 'goal-run.ts');
@@ -298,6 +308,209 @@ export const run = (fixture: Fixture, args: string[], env: Record<string, string
   });
 
   return { code: result.status ?? -1, output: `${result.stdout}${result.stderr}` };
+};
+
+// Thrown by the process.exit() stand-in below, and by the pilot's own reporter.stop(): a pilot
+// run stays inside this process, so neither can be allowed to actually end it the way a spawned
+// CLI's own exit would.
+class PilotExit {
+  code: number;
+
+  constructor(code: number) {
+    this.code = code;
+  }
+}
+
+// A recording pass-through over the one CommandRunner close(), runIteration() and publish() all
+// call through: every argv a pilot run hands to git, claude or gh is logged here and still
+// answered by the real adapter underneath, against the same fake binaries `run()` spawns for —
+// installed and torn down around one pilot call, the double proves the seam is real without a
+// second implementation of the shell to keep in sync with the real one.
+const doubleCommand = (): { calls: { cmd: string; args: string[] }[]; restore: () => void } => {
+  const calls: { cmd: string; args: string[] }[] = [];
+  const realRun = command.run;
+  const realRunBinary = command.runBinary;
+
+  command.run = (cmd, args, options) => {
+    calls.push({ cmd, args });
+
+    return realRun(cmd, args, options);
+  };
+  command.runBinary = (cmd, args, options) => {
+    calls.push({ cmd, args });
+
+    return realRunBinary(cmd, args, options);
+  };
+
+  return {
+    calls,
+    restore: () => {
+      command.run = realRun;
+      command.runBinary = realRunBinary;
+    },
+  };
+};
+
+// The in-process pilot: drives goal-run.ts's own orchestration — preflight, the gate.check
+// loop, the lock, runIteration() per iteration, the mid-run publish, close() — against the real
+// modules, in this process, rather than spawning a second Node process to parse the whole CLI
+// again. `command` is doubled for the call's own duration (see doubleCommand above); `clock` and
+// `fs` are the real adapters throughout, since neither this family asks them to do anything a
+// fixture's tmp tree does not already answer in microseconds. Same signature as `run()`, so a
+// caller reads its {code, output} the same way regardless of which channel it took.
+export const runInProcess = async (
+  fixture: Fixture,
+  args: string[],
+  env: Record<string, string | undefined> = {},
+): Promise<{ code: number; output: string }> => {
+  const [plan, iterationArg] = args;
+  const originalCwd = process.cwd();
+  const originalPath = process.env.PATH;
+  const originalExit = process.exit;
+  const touched = Object.entries(env);
+  const saved = new Map(touched.map(([key]) => [key, process.env[key]]));
+
+  process.chdir(fixture.dir);
+  process.env.PATH = `${fixture.bin}:${originalPath ?? ''}`;
+
+  for (const [key, value] of touched) {
+    if (value === undefined) {
+      delete process.env[key];
+    } else {
+      process.env[key] = value;
+    }
+  }
+
+  let output = '';
+  const reporter: Reporter = {
+    say: (message) => {
+      output += `${message}\n`;
+    },
+    record: (text) => {
+      if (text.trim() !== '') {
+        output += `${text}\n`;
+      }
+    },
+    stop: (message, code) => {
+      output += `STOP ${message}\n`;
+      throw new PilotExit(code);
+    },
+    setLog: () => {},
+  };
+
+  process.exit = (code?: number) => {
+    throw new PilotExit(code ?? 0);
+  };
+
+  const gateLabel = join(fixture.bin, 'fake-gate');
+  const gate = spawnGateAdapter(gateLabel);
+  const double = doubleCommand();
+  let lock: ReturnType<typeof createLock> | undefined;
+
+  try {
+    if (!fs.exists(plan!) || !fs.isFile(plan!)) {
+      reporter.stop(`the plan is not readable: ${plan}`, REFUSED);
+    }
+
+    if (iterationArg !== undefined && !/^[0-9]+$/.test(iterationArg)) {
+      reporter.stop(`the iteration must be a number, got: ${iterationArg}`, REFUSED);
+    }
+
+    const dir = runDir(workIdOf(plan!));
+    reporter.setLog(dir);
+    reporter.say(`RUN writing this run's records to ${dir}`);
+
+    const source = fs.readFile(plan!);
+    const preflightStart = Date.now();
+    const { policy, remote } = preflight(plan!, source, reporter, gateLabel);
+    reporter.say(`RUN stage=preflight duration_ms=${Date.now() - preflightStart} exit=0`);
+
+    const iterations = iterationArg !== undefined ? [iterationArg] : iterationNumbers(source, false);
+
+    if (iterations.length === 0) {
+      reporter.stop(`no unchecked iteration remains in ${plan}`, LANDED);
+    }
+
+    const hashes = new Map<string, string>();
+    const tickedSets = new Map<string, string>();
+
+    for (const n of iterations) {
+      const checked = gate.check(plan!, n);
+      const checkedOutput = `${checked.stdout}${checked.stderr}`;
+
+      if (checked.status !== 0) {
+        reporter.say(`STOP the gate will not run iteration ${n}, so nothing was attempted:`);
+        reporter.say(checkedOutput);
+        process.exit(REFUSED);
+      }
+
+      const hash = /^plan_hash=([0-9a-f]*)$/m.exec(checkedOutput)?.[1];
+
+      if (!hash) {
+        reporter.say(`STOP the gate published no plan_hash for iteration ${n}, so nothing locks the contract:`);
+        reporter.say(checkedOutput);
+        process.exit(REFUSED);
+      }
+
+      hashes.set(n, hash);
+
+      const ticked = /^ticked=(.*)$/m.exec(checkedOutput)?.[1];
+
+      if (ticked !== undefined) {
+        tickedSets.set(n, ticked);
+      }
+    }
+
+    lock = createLock(gate, plan!);
+
+    if (!lock.acquire()) {
+      reporter.stop(`another run holds this plan. Wait for it, or free it with: ${gateLabel} unlock ${plan}`, REFUSED);
+    }
+
+    const publisher = createPublisher(plan!, source, policy, remote, reporter, gate);
+    const landed: string[] = [];
+
+    for (const n of iterations) {
+      await runIteration(plan!, source, n, hashes.get(n)!, tickedSets.get(n) ?? '', gate, dir, reporter, publisher);
+      landed.push(n);
+
+      if (n !== iterations[iterations.length - 1]) {
+        const pushStart = Date.now();
+        publisher.publish(n);
+        reporter.say(`RUN stage=push duration_ms=${Date.now() - pushStart} exit=${publisher.state.blocked ? 1 : 0}`);
+      }
+    }
+
+    const exitCode = close(plan!, gate, hashes.get(iterations[iterations.length - 1]!)!, remote, publisher, landed, dir, reporter);
+
+    if (exitCode === LANDED) {
+      reporter.say(`STOP ${iterations.length} iteration(s) landed, gate-verified.${blockedNote(publisher)}`);
+    }
+
+    return { code: exitCode, output };
+  } catch (error) {
+    if (error instanceof PilotExit) {
+      return { code: error.code, output };
+    }
+
+    throw error;
+  } finally {
+    lock?.release();
+    double.restore();
+    process.exit = originalExit;
+    process.chdir(originalCwd);
+    process.env.PATH = originalPath;
+
+    for (const [key] of touched) {
+      const value = saved.get(key);
+
+      if (value === undefined) {
+        delete process.env[key];
+      } else {
+        process.env[key] = value;
+      }
+    }
+  }
 };
 
 export const lockOf = (fixture: Fixture) => `${fixture.plan}.run.lock`;

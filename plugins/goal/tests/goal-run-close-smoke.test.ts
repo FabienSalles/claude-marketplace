@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { HASH, PAUSED, PLAN, git, jsonlOf, repo, run, runDirOf } from './support/goal-run-harness.ts';
+import { HASH, PAUSED, PLAN, git, jsonlOf, repo, run, runDirOf, runInProcess } from './support/goal-run-harness.ts';
 import { tmpDir } from './support/tmp.ts';
 import { close, LANDED } from '../src/run/close.ts';
 import { createPublisher } from '../src/run/publish.ts';
@@ -13,19 +13,25 @@ const PLAN_PR = PLAN.replace('Policy: commit\n', 'Policy: commit+pr\n');
 const PLAN_PR_REVIEW = PLAN_PR.replace('Policy: commit+pr\n', 'Policy: commit+pr\nReview: comment\n');
 
 const land = (fixture: ReturnType<typeof repo>, env: Record<string, string> = {}) =>
-  run(fixture, [fixture.plan], {
+  runInProcess(fixture, [fixture.plan], {
     FAKE_GATE_COMMITS: '1',
     FAKE_CLAUDE_WRITES: join(fixture.dir, 'a.txt'),
     ...env,
   });
 
+// The one black-box survivor of this family: everything else in this file drives close() and
+// runIteration() in process, through the harness's own pilot; this test alone still spawns the
+// real CLI end to end, proving the wiring the pilot stands in for still holds.
 // R18 — every declared iteration landed only proves each slice against its own commands; the
 // global Definition of Done is the barrier that replays against the whole plan, once, after all
 // of them.
 test('it replays the global Definition of Done once every requested iteration has landed', () => {
   const fixture = repo();
 
-  const { code, output } = land(fixture);
+  const { code, output } = run(fixture, [fixture.plan], {
+    FAKE_GATE_COMMITS: '1',
+    FAKE_CLAUDE_WRITES: join(fixture.dir, 'a.txt'),
+  });
 
   assert.equal(code, 0, output);
   const calls = readFileSync(fixture.gateLog, 'utf8').split('\n').filter((line) => line !== '');
@@ -34,10 +40,10 @@ test('it replays the global Definition of Done once every requested iteration ha
 
 // R18 — a passing Definition of Done is what "shipped" means: the already-open pull request is
 // marked ready, mechanically, on the far side of the barrier.
-test('a passing Definition of Done marks the open pull request ready', () => {
+test('a passing Definition of Done marks the open pull request ready', async () => {
   const fixture = repo({ planText: PLAN_PR, remote: true });
 
-  const { code, output } = land(fixture, { FAKE_GH_PR_EXISTS: '1' });
+  const { code, output } = await land(fixture, { FAKE_GH_PR_EXISTS: '1' });
 
   assert.equal(code, 0, output);
   const calls = readFileSync(fixture.ghLog, 'utf8');
@@ -46,10 +52,10 @@ test('a passing Definition of Done marks the open pull request ready', () => {
 
 // R18 — a refusing Definition of Done halts the run after every slice landed, and nothing is
 // marked ready on top of a plan that is not, as a whole, done.
-test('a failing Definition of Done halts the run and skips marking the pull request ready', () => {
+test('a failing Definition of Done halts the run and skips marking the pull request ready', async () => {
   const fixture = repo({ planText: PLAN_PR, remote: true });
 
-  const { code, output } = land(fixture, { FAKE_GH_PR_EXISTS: '1', FAKE_GATE_DOD_EXIT: '1' });
+  const { code, output } = await land(fixture, { FAKE_GH_PR_EXISTS: '1', FAKE_GATE_DOD_EXIT: '1' });
 
   assert.notEqual(code, 0);
   assert.match(output, /Definition of Done/, output);
@@ -59,22 +65,22 @@ test('a failing Definition of Done halts the run and skips marking the pull requ
 
 // R7 — the gate exits 0 for a pass, 1 for a halt, and 2 for a misuse it never got past. Reading
 // that last one as a refused Definition of Done reports a verdict the barrier never reached.
-test('a Definition of Done that could not be run is not reported as a refusal', () => {
+test('a Definition of Done that could not be run is not reported as a refusal', async () => {
   const fixture = repo({ planText: PLAN_PR, remote: true });
 
-  const { code, output } = land(fixture, { FAKE_GATE_DOD_EXIT: '2' });
+  const { code, output } = await land(fixture, { FAKE_GATE_DOD_EXIT: '2' });
 
   assert.equal(code, PAUSED, output);
   assert.match(output, /could not be run/i, output);
   assert.ok(!/refused/i.test(output), `a non-verdict was reported as a refusal:\n${output}`);
 });
 
-// R18 — the advisory lens runs for the first time since it was written, and its own exit code
-// never reaches the run's: a false alarm cannot undo work the gate already verified and shipped.
-test('the advisory lens runs after a landed run and never blocks it', () => {
+// R18 — the advisory lens runs after a landed run and never blocks it: its own exit code never
+// reaches the run's, since a false alarm cannot undo work the gate already verified and shipped.
+test('the advisory lens runs after a landed run and never blocks it', async () => {
   const fixture = repo();
 
-  const { code, output } = land(fixture, { FAKE_CLAUDE_LENS_EXIT: '1' });
+  const { code, output } = await land(fixture, { FAKE_CLAUDE_LENS_EXIT: '1' });
 
   assert.equal(code, 0, output);
   const args = readFileSync(fixture.claudeLog, 'utf8');
@@ -83,10 +89,10 @@ test('the advisory lens runs after a landed run and never blocks it', () => {
 
 // R18 — the audit is handed the run's own JSONL path, not a string it can only skim: every stage
 // this run timed is an event in that file.
-test('the auditor is invoked with the run\'s own JSONL path, not an elapsed string', () => {
+test('the auditor is invoked with the run\'s own JSONL path, not an elapsed string', async () => {
   const fixture = repo();
 
-  const { code, output } = land(fixture);
+  const { code, output } = await land(fixture);
 
   assert.equal(code, 0, output);
   const args = readFileSync(fixture.claudeLog, 'utf8');
@@ -142,10 +148,10 @@ test('close skips marking the pull request ready when the publisher\'s own state
 
 // R18 — the audit is nobody's optional step: it still runs when the Definition of Done itself
 // is what halted the run, so a run that fails to ship is measured too.
-test('the auditor still runs when the Definition of Done refuses the run', () => {
+test('the auditor still runs when the Definition of Done refuses the run', async () => {
   const fixture = repo({ planText: PLAN_PR, remote: true });
 
-  const { code } = land(fixture, { FAKE_GATE_DOD_EXIT: '1' });
+  const { code } = await land(fixture, { FAKE_GATE_DOD_EXIT: '1' });
 
   assert.notEqual(code, 0);
   const args = readFileSync(fixture.claudeLog, 'utf8');
@@ -570,10 +576,10 @@ test('the lens and reviewer run concurrently rather than one after the other', (
 // R5 — the lock is acquired once, before the first iteration, and released only when the process
 // exits: two iterations landing in the same run must not show up as two lock/unlock pairs in the
 // gate's own log.
-test('the lock is acquired once for the whole run, not once per iteration', () => {
+test('the lock is acquired once for the whole run, not once per iteration', async () => {
   const fixture = repo();
 
-  const { code, output } = land(fixture);
+  const { code, output } = await land(fixture);
 
   assert.equal(code, 0, output);
   const calls = readFileSync(fixture.gateLog, 'utf8').split('\n').filter((line) => line !== '');
@@ -584,10 +590,10 @@ test('the lock is acquired once for the whole run, not once per iteration', () =
 // R6 — the final iteration's push moves into close(), behind the global Definition of Done: a
 // refusal there halts with that last commit landed locally but never reaching the remote, while
 // every iteration before it already published as it landed.
-test('a Definition of Done refusal leaves the last iteration\'s commit local, never pushed', () => {
+test('a Definition of Done refusal leaves the last iteration\'s commit local, never pushed', async () => {
   const fixture = repo({ planText: PLAN_PR, remote: true });
 
-  const { code, output } = land(fixture, { FAKE_GATE_DOD_EXIT: '1' });
+  const { code, output } = await land(fixture, { FAKE_GATE_DOD_EXIT: '1' });
 
   assert.notEqual(code, 0, output);
   const ahead = git(fixture.dir, 'rev-list', '--count', 'origin/feature/demo..HEAD').stdout.trim();
@@ -596,10 +602,10 @@ test('a Definition of Done refusal leaves the last iteration\'s commit local, ne
 
 // R6 — the pull request the earlier iterations opened is still there, showing what did land,
 // even though the last iteration's own push never went out.
-test('a Definition of Done refusal still leaves the draft pull request open from the iterations that already landed', () => {
+test('a Definition of Done refusal still leaves the draft pull request open from the iterations that already landed', async () => {
   const fixture = repo({ planText: PLAN_PR, remote: true });
 
-  const { code, output } = land(fixture, { FAKE_GATE_DOD_EXIT: '1' });
+  const { code, output } = await land(fixture, { FAKE_GATE_DOD_EXIT: '1' });
 
   assert.notEqual(code, 0, output);
   const calls = readFileSync(fixture.ghLog, 'utf8');
@@ -609,10 +615,10 @@ test('a Definition of Done refusal still leaves the draft pull request open from
 // One report format everywhere — the auditor's brief names the same `### Outcome` /
 // `### Cost` skeleton the agent's own prose is written against, so the two cannot diverge
 // silently.
-test('the auditor is briefed with the ### Outcome / ### Cost skeleton', () => {
+test('the auditor is briefed with the ### Outcome / ### Cost skeleton', async () => {
   const fixture = repo();
 
-  const { code, output } = land(fixture);
+  const { code, output } = await land(fixture);
 
   assert.equal(code, 0, output);
   const args = readFileSync(fixture.claudeLog, 'utf8');

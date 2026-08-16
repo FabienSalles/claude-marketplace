@@ -45,7 +45,6 @@ a failure with no quota shape pauses immediately, without a retry
 a fixture whose summary the wrapper cannot read is refused, not passed
 a fixture with a failing test halts, naming the exit
 a fixture with one pass and one skip is refused, not silently accepted
-a fixture within every ceiling and matching fingerprint passes
 a fixup commit ahead of the first push blocks it, and nothing is pushed
 a gate block declaring a key it may not set is refused
 a gate block declaring the same key twice is refused
@@ -74,9 +73,7 @@ a later iteration declaring a directory this run has not created yet is resolvab
 a later iteration declaring a file not written yet inside an existing directory is resolvable
 a later iteration declaring a subtree that exists is resolvable
 a later iteration's declared directory renamed away halts before the commit
-a long sleep runs as a loop of short slices, each one reported
-a longest-file budget under a slow file refuses, naming the file figure
-a longest-test budget under a slow test refuses, naming the test figure
+a long sleep runs as a loop of short slices, each one reported and slept through the clock
 a max_diff that is not a number is refused
 a missing settings.json produces no warning and no crash
 a mistyped test_files path repaired to another path does not halt
@@ -137,8 +134,6 @@ a staged deletion halts on a plan that declares no-bc-break
 a supporting command green without the implementation does not halt the iteration
 a tag created by the implementer halts the run, naming it
 a tamper on the first attempt survives a quota failure and retry
-a test name missing from the suite but still in the fingerprint refuses, naming the disappearance
-a test name new to the suite but absent from the fingerprint refuses, labeled as an addition
 a ticked iteration's gate2 is still swept
 a tool use with no file_path renders its command as the target
 a tracked file changed but not declared halts the iteration
@@ -147,7 +142,6 @@ a trailing-slash impl_files subtree covering a test_files path is refused too
 a transcript carrying interruptedByShutdown upgrades the class to shutdown (confirmed)
 a transcript without interruptedByShutdown marks the class sigterm (sender unknown)
 a Trigger line is left alone in a *-cleanup-spec.md plan
-a wall budget lowered under any real run refuses, naming the wall figure
 a well-formed gate block builds an immutable Plan
 a well-formed iteration is runnable and its plan hash is reported
 a worktree-side rename with both paths declared is not a scope leak
@@ -215,12 +209,17 @@ classifies a burst 429 apart from an exhausted usage-limit window
 classifyQuotaFailure reduces to a declarative table, exhausted checked before burst
 claudeBinaryMtime degrades to undefined for a missing path or no path at all
 cleanTree refuses uncommitted work, carrying the git status
+clock.now reports the real current time
+clock.sleepSeconds actually waits for roughly the requested duration
 close briefs the auditor to write its report in the run's own directory
 close folds the auditor's report into the pull request body, not as a comment
 close folds the report untransformed and ends the pull request body with the plan and run-directory paths
 close folds the run report behind a --- separator from the Delivered list
 close reports a stage=&lt;name> duration_ms=&lt;n> exit=&lt;n> event for every stage it runs
 close skips marking the pull request ready when the publisher's own state says blocked
+command.run reports a non-zero exit for a command that fails
+command.run spawns the named process and reports its exit and output
+command.runBinary spawns the named process and reports raw stdout bytes
 commands: determinismHeld halts on a replay that does not hold
 commands: gatePassed names the regression wall origin when one is given
 commit answers the bite check's and its own OK line, in order
@@ -254,10 +253,22 @@ exit 143 classifies as shutdown regardless of output, bypassing quota classifica
 extract reads usage, model and compactions out of a stream-json transcript
 featureBranch refuses outside a git repository and off the plan's own branch
 freeLock refuses a plan another run already holds, naming the unlock command
+fs.appendFile adds to what is already on disk rather than overwriting it
+fs.copyFile leaves the source untouched and the destination carrying its content
+fs.exists reports true for a path it just wrote and false once removed
+fs.homeDir and fs.tmpDir report real, non-empty paths
+fs.mkdir with no recursive throws when the directory already exists
+fs.mkdir with recursive creates every missing parent directory
+fs.mkdtemp creates a fresh directory under the prefix it is given
+fs.mtime and fs.isFile report the stat of a real file
+fs.readDir lists the entries a directory holds
+fs.readDirEntries tells a directory apart from a file
+fs.readFileBuffer hands back raw bytes rather than a decoded string
+fs.removeTree removes a directory and everything under it
+fs.writeFile then fs.readFile round-trips the content it was given
 git stash push halts the run, naming refs/stash rather than reading an empty tree
 gitleaks is the scanner when betterleaks is not installed
 GOAL_CMD_TIMEOUT overrides the default the same way GOAL_PROC_HEADROOM overrides the ceiling
-GOAL_RUN_SHUTDOWN_BACKOFF=0 relaunches with no measurable wait
 goalRunsIgnored and planDirIgnored refuse a directory git can see
 header ignores a Key: value line past the first heading, even wrapped in its own --- fences
 header ignores a Key: value line sitting outside the --- block

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { chmodSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { FAKE_REPO, HASH, PLAN, git, repo, run } from './support/goal-run-harness.ts';
+import { FAKE_REPO, HASH, PLAN, git, repo, run, runInProcess } from './support/goal-run-harness.ts';
 import { tmpDir } from './support/tmp.ts';
 import { createPublisher } from '../src/run/publish.ts';
 import { close, LANDED } from '../src/run/close.ts';
@@ -35,8 +35,8 @@ test('createPublisher exposes its own publish state directly on the object it re
   assert.equal(publisher.state.blocked, false, 'Policy: commit blocks nothing to publish, it never counts as a blocked publication');
 });
 
-const publish = (fixture: ReturnType<typeof repo>, args: string[], env: Record<string, string> = {}) =>
-  run(fixture, args, { FAKE_GATE_COMMITS: '1', ...env });
+const publish = (fixture: ReturnType<typeof repo>, args: string[], env: Record<string, string | undefined> = {}) =>
+  runInProcess(fixture, args, { FAKE_GATE_COMMITS: '1', ...env });
 
 // A `gh` stub that answers `pr view` with the given JSON body and swallows every other call, so
 // a test can drive `createPublisher` straight through a chosen `gh pr view` response instead of
@@ -80,10 +80,10 @@ esac
 
 // R10 — under commit+pr, a landed iteration is scanned for secrets before it is pushed. A
 // scanner refusal blocks the push rather than publishing whatever the branch carries.
-test('a secret scanner refusal blocks the push, and no pull request is attempted', () => {
+test('a secret scanner refusal blocks the push, and no pull request is attempted', async () => {
   const fixture = repo({ planText: PLAN_PR, remote: true });
 
-  const { code, output } = publish(fixture, [fixture.plan, '1'], {
+  const { code, output } = await publish(fixture, [fixture.plan, '1'], {
     FAKE_CLAUDE_WRITES: join(fixture.dir, 'a.txt'),
     FAKE_GATE_SCAN_EXIT: '1',
   });
@@ -94,12 +94,16 @@ test('a secret scanner refusal blocks the push, and no pull request is attempted
   assert.equal(git(fixture.dir, 'ls-remote', '--heads', 'origin').stdout, '', 'the branch was pushed though the scan refused it');
 });
 
+// The one black-box survivor of this family: everything else in this file drives publish() and
+// close() in process, through the harness's own pilot; this test alone still spawns the real CLI
+// end to end, proving the wiring the pilot stands in for still holds.
 // R11 — the push targets exactly the plan's declared remote, never a bare default, and the
 // remote named is never guessed from `gh`'s own resolution.
 test('a landed iteration under commit+pr is pushed to the plan\'s declared remote', () => {
   const fixture = repo({ planText: PLAN_PR, remote: true });
 
-  const { code, output } = publish(fixture, [fixture.plan, '1'], {
+  const { code, output } = run(fixture, [fixture.plan, '1'], {
+    FAKE_GATE_COMMITS: '1',
     FAKE_CLAUDE_WRITES: join(fixture.dir, 'a.txt'),
   });
 
@@ -110,10 +114,10 @@ test('a landed iteration under commit+pr is pushed to the plan\'s declared remot
 
 // R12 — a fixup or squash commit ahead of the first push refuses the push outright: the history
 // pushed unattended has to be the sequence a reviewer would read.
-test('a fixup commit ahead of the first push blocks it, and nothing is pushed', () => {
+test('a fixup commit ahead of the first push blocks it, and nothing is pushed', async () => {
   const fixture = repo({ planText: PLAN_PR, remote: true });
 
-  const { code, output } = publish(fixture, [fixture.plan, '1'], {
+  const { code, output } = await publish(fixture, [fixture.plan, '1'], {
     FAKE_CLAUDE_WRITES: join(fixture.dir, 'a.txt'),
     FAKE_GATE_COMMIT_MSG: 'fixup! stray edit',
   });
@@ -125,11 +129,11 @@ test('a fixup commit ahead of the first push blocks it, and nothing is pushed', 
 
 // R13 — the pull request opens as a draft at the first landed commit, targeting the plan's
 // declared `PR base:` line when it carries one.
-test('the first landed iteration opens a draft pull request against the declared PR base', () => {
+test('the first landed iteration opens a draft pull request against the declared PR base', async () => {
   const planText = PLAN_PR.replace('Remote: origin\n', 'Remote: origin\nPR base: develop\n');
   const fixture = repo({ planText, remote: true });
 
-  const { code, output } = publish(fixture, [fixture.plan, '1'], {
+  const { code, output } = await publish(fixture, [fixture.plan, '1'], {
     FAKE_CLAUDE_WRITES: join(fixture.dir, 'a.txt'),
   });
 
@@ -143,11 +147,11 @@ test('the first landed iteration opens a draft pull request against the declared
 
 // R14 — a title carrying an apostrophe opens its pull request normally: every `gh` call passes
 // argv, never a shell, so nothing about the title needs quoting in the first place.
-test('a plan title carrying an apostrophe opens a pull request rather than being refused', () => {
+test('a plan title carrying an apostrophe opens a pull request rather than being refused', async () => {
   const planText = PLAN_PR.replace('# Spec: demo\n', "# Spec: demo's run\n");
   const fixture = repo({ planText, remote: true });
 
-  const { code, output } = publish(fixture, [fixture.plan, '1'], {
+  const { code, output } = await publish(fixture, [fixture.plan, '1'], {
     FAKE_CLAUDE_WRITES: join(fixture.dir, 'a.txt'),
   });
 
@@ -160,10 +164,10 @@ test('a plan title carrying an apostrophe opens a pull request rather than being
 
 // R15 — every landing after the first rewrites the same pull request's body instead of
 // creating another one.
-test('a second landing rewrites the pull request body instead of creating a second one', () => {
+test('a second landing rewrites the pull request body instead of creating a second one', async () => {
   const fixture = repo({ planText: PLAN_PR, remote: true });
 
-  const { code, output } = run(fixture, [fixture.plan], {
+  const { code, output } = await runInProcess(fixture, [fixture.plan], {
     FAKE_GATE_COMMITS: '1',
     FAKE_CLAUDE_WRITES: join(fixture.dir, 'a.txt'),
   });
@@ -322,10 +326,10 @@ test('a second close() replaces the run report section instead of appending to i
 // PR body format — the body opens with "## Delivered" and one numbered bullet per landed
 // iteration, derived from its own Goal line and ending with the commit sha that landed it,
 // never a bare title list.
-test('the pull request body opens with Delivered bullets built from the Goal line and commit sha', () => {
+test('the pull request body opens with Delivered bullets built from the Goal line and commit sha', async () => {
   const fixture = repo({ planText: PLAN_PR, remote: true });
 
-  const { code, output } = publish(fixture, [fixture.plan, '1'], {
+  const { code, output } = await publish(fixture, [fixture.plan, '1'], {
     FAKE_CLAUDE_WRITES: join(fixture.dir, 'a.txt'),
   });
 
@@ -344,10 +348,10 @@ test('the pull request body opens with Delivered bullets built from the Goal lin
 
 // PR body format — a second landing appends a second numbered bullet rather than replacing the
 // first, each derived from its own iteration's Goal and its own commit sha.
-test('a second landing adds a second numbered Delivered bullet, each with its own commit sha', () => {
+test('a second landing adds a second numbered Delivered bullet, each with its own commit sha', async () => {
   const fixture = repo({ planText: PLAN_PR, remote: true });
 
-  const { code, output } = run(fixture, [fixture.plan], {
+  const { code, output } = await runInProcess(fixture, [fixture.plan], {
     FAKE_GATE_COMMITS: '1',
     FAKE_CLAUDE_WRITES: join(fixture.dir, 'a.txt'),
   });
@@ -363,14 +367,14 @@ test('a second landing adds a second numbered Delivered bullet, each with its ow
 
 // PR body format — a Goal spanning several lines in the plan folds to one line in the bullet,
 // continuation lines joined with spaces up to the next `- **` bullet or blank line.
-test('a multi-line Goal folds to one line in its Delivered bullet', () => {
+test('a multi-line Goal folds to one line in its Delivered bullet', async () => {
   const planText = PLAN_PR.replace(
     '- **Goal:** write a.txt\n',
     '- **Goal:** write a.txt with a long description that\n  continues on a second line and even\n  a third line before the gate block.\n',
   );
   const fixture = repo({ planText, remote: true });
 
-  const { code, output } = publish(fixture, [fixture.plan, '1'], {
+  const { code, output } = await publish(fixture, [fixture.plan, '1'], {
     FAKE_CLAUDE_WRITES: join(fixture.dir, 'a.txt'),
   });
 
@@ -385,10 +389,10 @@ test('a multi-line Goal folds to one line in its Delivered bullet', () => {
 
 // PR body format — a plan named `issue-<N>-spec.md` carries `Closes #N` in its Delivered
 // section, so the merge closes the backing issue.
-test('a plan named issue-<N>-spec.md carries a Closes line in the pull request body', () => {
+test('a plan named issue-<N>-spec.md carries a Closes line in the pull request body', async () => {
   const fixture = repo({ planText: PLAN_PR, planFile: 'issue-42-spec.md', branch: 'feature/issue-42', remote: true });
 
-  const { code, output } = publish(fixture, [fixture.plan, '1'], {
+  const { code, output } = await publish(fixture, [fixture.plan, '1'], {
     FAKE_CLAUDE_WRITES: join(fixture.dir, 'a.txt'),
   });
 
@@ -399,10 +403,10 @@ test('a plan named issue-<N>-spec.md carries a Closes line in the pull request b
 
 // PR body format — a plan not named `issue-<N>-spec.md` carries no Closes line: closing an
 // issue is only inferred from the plan's own filename, never guessed.
-test('a plan not named issue-<N>-spec.md carries no Closes line', () => {
+test('a plan not named issue-<N>-spec.md carries no Closes line', async () => {
   const fixture = repo({ planText: PLAN_PR, remote: true });
 
-  const { code, output } = publish(fixture, [fixture.plan, '1'], {
+  const { code, output } = await publish(fixture, [fixture.plan, '1'], {
     FAKE_CLAUDE_WRITES: join(fixture.dir, 'a.txt'),
   });
 
@@ -443,10 +447,10 @@ test('close folds the run report behind a --- separator from the Delivered list'
 
 // Under Policy: commit (no `+pr`), nothing is pushed and no pull request is opened — the plan
 // asked the developer to keep the commits on the branch.
-test('a plan under Policy: commit is never pushed and opens no pull request', () => {
+test('a plan under Policy: commit is never pushed and opens no pull request', async () => {
   const fixture = repo({ remote: true });
 
-  const { code, output } = publish(fixture, [fixture.plan, '1'], {
+  const { code, output } = await publish(fixture, [fixture.plan, '1'], {
     FAKE_CLAUDE_WRITES: join(fixture.dir, 'a.txt'),
   });
 
