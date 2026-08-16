@@ -198,3 +198,9 @@ export const iterationNumbers = (source: string, ticked: boolean): string[] => {
 
   return numbers;
 };
+
+// Every `### ` heading in the plan, verbatim. What a run shows when it recognised no iteration at
+// all: the heading it could not read is then visible beside the form it expected, which is the
+// difference between "no unchecked iteration remains" and a developer knowing why.
+export const subHeadings = (source: string): string[] =>
+  source.split('\n').filter((line) => line.startsWith('### '));

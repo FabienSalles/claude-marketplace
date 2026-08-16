@@ -586,6 +586,29 @@ rebase rewrites a hash, and a commit from another feature adding a test to the s
 the counts. Business rules map to **commands** in the `gate` and `dod` blocks, which are run;
 that is what replaces a number nobody re-measures.
 
+**The plan has two readers, and only one of them speaks your language.** `goal-run.ts` and
+`goal-gate.ts` match the tokens below **literally**. Write the plan's prose in whatever language
+the developer works in — the title, every goal, every rule, every note — and spell every token
+here exactly as printed, in English. A translated one does not fail loudly on its own: a
+`### Itération 1` heading parses as *zero iterations*, which reads as a finished plan. The runner
+now refuses that rather than reporting it as landed, and the refusal exists because it happened.
+
+| Read by the code | Exact form, never translated |
+|---|---|
+| the title prefix | `# Spec:` |
+| the Definition of Done section | `## Definition of Done` |
+| an iteration heading | `### Iteration <n>` |
+| the checkbox | `- [ ]` and `- [x]` |
+| the gate fence | ` ```gate ` and its closing fence |
+| frontmatter keys | `Policy:` `Delivery mode:` `Remote:` `PR base:` `Bootstrap:` `Incidental:` `Review:` |
+| gate block keys | `test_files` `impl_files` `max_diff` `commit_msg` `gate1..N` `dod1..N` |
+| a value matched literally | `allow-bc-break` |
+
+Free to be written in any language: everything after `# Spec:`, everything after
+`### Iteration 1 —`, and every line of prose. `Source:`, `Work-id:`, `Cleanup:` and `Trigger:` are
+read by humans and by the other skills rather than by the code, but keep them English too — the
+header is one block, and a reader who sees half of it translated cannot tell which half matters.
+
 Persist at `.claude/plans/<work-id>-spec.md`:
 
 ````markdown
