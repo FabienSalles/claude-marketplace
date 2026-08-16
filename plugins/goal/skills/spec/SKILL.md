@@ -103,12 +103,23 @@ When the verdict is borderline or the developer disputes it, load
 together are one outcome; parts that ship alone and stay valuable alone are a
 chantier's tickets.
 
+### Reproduce the problem
+
+Before anything is graded against it, reproduce the Problem the source states — the
+same commands and readings the source's own evidence points at, or the ones the
+developer names when it doesn't. Record each command run and the value it produced;
+that pair, verbatim, is what Phase 4 writes into `## Reproduction`. A problem that
+cannot be pointed at with a command is still caught by Phase 2's blocker for
+unevidenced problems — this step is for one that *can* be pointed at, and no longer
+shows what the source says it shows.
+
 ## Phase 2 — Validate the need
 
 | Issue | Severity | Action |
 |---|---|---|
 | Empty business intent | ❌ blocker | Ask the developer to provide it now |
 | **Problem asserted with no evidence** ("it would be better if…") | ❌ blocker | A problem nobody can point at has no way to be closed. Ask for the incident, the measurement, the file and line. |
+| **Problem does not reproduce** (the commands run in Phase 1 now show something the source didn't claim, or already fixed) | ❌ blocker | STOP. Say what changed since the source was written, and do not write a contract against a premise that no longer holds. |
 | **Objective written as a solution** ("rewrite X in Y") | ⚠️ warn | Ask what must become *true*. A solution stated as an objective freezes a design before the grill has looked at it. |
 | No success signal | ⚠️ warn | Note it. Acceptance criteria prove behavior is in place; they never prove the problem is gone. |
 | No acceptance criteria at all | ⚠️ warn | Fine — Phase 3 builds the functional DoD; that is this session's deliverable |
@@ -210,6 +221,10 @@ acceptance criteria, which only ever prove that behavior is in place.>
 
 <Then 1–3 paragraphs connecting the problem to the objective, in the developer's own domain
 vocabulary.>
+
+## Reproduction
+<the exact commands run in Phase 1, each followed by the value it produced — the same evidence
+the Problem line points at, kept alongside it so /goal:plan and any later reader can re-run it>
 
 ## Scope IN
 - <items>
