@@ -57,7 +57,7 @@ export const createPublisher = (
   const rawPrBase = header(source, 'PR base:');
   const prBase = rawPrBase !== undefined && /^[A-Za-z0-9._/-]+$/.test(rawPrBase) ? rawPrBase : undefined;
 
-  const planTitle = header(source, '# Spec:') || `Exécution de ${basename(plan)}`;
+  const planTitle = header(source, '# Spec:') || `Run of ${basename(plan)}`;
 
   let blocked = '';
   let shipped = false;

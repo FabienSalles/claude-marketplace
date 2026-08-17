@@ -625,10 +625,19 @@ now refuses that rather than reporting it as landed, and the refusal exists beca
 | gate block keys | `test_files` `impl_files` `max_diff` `commit_msg` `gate1..N` `dod1..N` |
 | a value matched literally | `allow-bc-break` |
 
-Free to be written in any language: everything after `# Spec:`, everything after
-`### Iteration 1 —`, and every line of prose. `Source:`, `Work-id:`, `Cleanup:` and `Trigger:` are
-read by humans and by the other skills rather than by the code, but keep them English too — the
-header is one block, and a reader who sees half of it translated cannot tell which half matters.
+**Two fields are published verbatim to the forge, so they are English whatever language the
+plan is written in.** `run/publish.ts` builds the pull request's **title** from the text after
+`# Spec:`, and its `## Delivered` bullets from each iteration's **Goal** line. Write those two in
+English and nothing downstream has to translate anything; write them in the developer's language
+and the run opens a pull request in that language, without anyone typing a foreign word into a
+`gh` command. The rule that a pull request is English is the `git` skill's, and this is where a
+plan silently decides whether it will be honoured.
+
+Free to be written in any language: every other line of prose — the business intent, the scope,
+the rules, the notes, the iteration bodies below their Goal. `Source:`, `Work-id:`, `Cleanup:` and
+`Trigger:` are read by humans and by the other skills rather than by the code, but keep them
+English too — the header is one block, and a reader who sees half of it translated cannot tell
+which half matters.
 
 Persist at `.claude/plans/<work-id>-spec.md`:
 
