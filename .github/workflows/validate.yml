@@ -189,7 +189,8 @@ jobs:
             plugins/security-runtime/tests/test_prompt-injection-detector.sh \
             plugins/security-runtime/tests/test_secret-file-guard.sh \
             plugins/superpowers/tests/test-find-polluter.sh \
-            scripts/tests/test-validate-skills.sh; do
+            scripts/tests/test-validate-skills.sh \
+            scripts/tests/test-skill-coherence.sh; do
             echo "== $suite"
             if bash "$suite"; then
               echo "✓ $suite"
