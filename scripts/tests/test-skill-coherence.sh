@@ -16,6 +16,7 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$REPO_ROOT" || exit 1
 
 CRAFT_TESTING=plugins/craft/skills/testing-principles/SKILL.md
+CRAFT_TDD=plugins/craft/skills/tdd-workflow-principles/SKILL.md
 VITEST_CONVENTIONS=plugins/vitest/skills/vitest-test-conventions/SKILL.md
 
 failures=0
@@ -67,6 +68,24 @@ assert_absent "R3 the vitest child ranks no double as preferred" \
 
 assert_absent "R4 the vitest catalogue advertises no craft-owned rule" \
   'spy over mock' plugins/vitest/README.md
+
+echo ""
+echo "== Iteration 2 — the level table claims a level, not an obligation"
+
+assert_absent "R5 no section mandates a test per artifact created" \
+  'New Code Must Have Tests' "$CRAFT_TDD"
+
+assert_absent "R5 no anti-pattern forbids writing code without a test" \
+  'Creating new code without tests' "$CRAFT_TDD"
+
+# R6 is one rule over two rows. Two literal patterns rather than the one ERE
+# alternation the spec first wrote: an escaped `\|` reads as a literal pipe in
+# ERE, which is how that command came to match nothing at all.
+assert_absent "R6 no row mandates a test for a plain data holder" \
+  '| DTO / serialization contract |' "$CRAFT_TDD"
+
+assert_absent "R6 no row mandates a unit test for middleware" \
+  '| Guard / middleware |' "$CRAFT_TDD"
 
 echo ""
 if [[ $failures -gt 0 ]]; then

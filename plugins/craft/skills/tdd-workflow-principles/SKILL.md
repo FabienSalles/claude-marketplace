@@ -123,17 +123,17 @@ realService = createServiceWithRealDeps()
 result = realService.method('x')  // fails when real impl is broken
 ```
 
-## New Code Must Have Tests
+## Which Level a Test Belongs To
 
-Every new code unit has at least one test:
+Whether a unit earns a test at all is `testing-principles`' call, not this table's: §2 lists what is not worth testing and §3 is the checklist that has to answer yes three times. Once a test **is** earned, §14 picks the level where its intent reads best — this table is the default starting point:
 
-| Created | Test required |
+| Created | Default level |
 |---|---|
 | Domain model / specification / use case | Unit test |
 | Controller / endpoint | Functional / E2E test |
 | Repository / adapter | Integration test |
-| DTO / serialization contract | Serialization test |
-| Guard / middleware | Unit test for access rules |
+| Serialization carrying its own mapping or format rules | Serialization test — the plain data holder underneath earns none |
+| The access rule a guard or middleware enforces | Wherever refusal is observable, usually functional |
 
 ## Anti-Patterns
 
@@ -144,7 +144,7 @@ Every new code unit has at least one test:
 - ❌ Skipping back to the entry point — always return to API regularly.
 - ❌ Not running tests after each phase.
 - ❌ Incomplete stubs that break the app at runtime.
-- ❌ Creating new code without tests.
+- ❌ Skipping the test for code that earned one under `testing-principles` §3.
 
 ### Warning Sign: Tests That Don't Survive Refactor
 
