@@ -183,6 +183,13 @@ pull request is open: `gh pr edit
 <highlights>"`. Outside `commit+pr`, or with no PR open yet, there is nowhere to fold it: the
 highlights stay in this session's own final message instead.
 
+**Write the fold in English, whatever language this session is running in.** It lands in a pull
+request body, and a pull request is English — the `git` skill's rule, which is not loaded here,
+so it is restated at the one point in this command that writes to the forge. The trap is that the
+highlights are already composed, in the reply being written to the developer: pasting that reply
+into `gh pr edit` is a new artifact for a different reader, not a copy. A French audit fold under
+an English run report is what this paragraph exists to prevent, and it happened before it did.
+
 The same fold completes the PR's attribution table: the auditor wrote it before its own tokens
 existed, so append the `Auditor` row (off its `RUN tokens` line) and the `Supervising session`
 row, and rewrite the `Total` row so it covers every row. A PR whose
