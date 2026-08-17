@@ -99,6 +99,27 @@ Summarize the source in 5–10 lines:
   couplings, contract changes)
 - Whether the functional level is settled
 
+### Replay the contract's reproduction
+
+Before ruling on the functional level, when the artifact carries a `## Reproduction`
+block, replay every command it lists and compare what it produces now against the
+value recorded there:
+
+- **No `## Reproduction` block** (raw source, or an artifact written before this
+  section existed) → nothing to replay. A contract without the block is still
+  planable — go straight to the ruling below.
+- **Every command reproduces the recorded value** → continue in silence; the
+  premise still holds, and there is nothing to report.
+- **A recorded command no longer exists** (renamed, moved, removed) → that absence
+  is itself the finding, not a crash to work around: route it as a **premise
+  fault** below, naming the missing command.
+- **A command reproduces a different value** → route it as a **premise fault**:
+  STOP, show the command, the value the contract recorded, and the value it
+  produces now, and do not open the technical grill on a premise that no longer
+  holds. The developer decides next: amend the contract's `## Reproduction`
+  through `/goal:spec` if the world moved on legitimately, or investigate why the
+  premise broke before this session spends a grill on it.
+
 Then rule, explicitly, before any question:
 
 - **The artifact came through `/goal:spec`** (`Status: spec`, business rules with

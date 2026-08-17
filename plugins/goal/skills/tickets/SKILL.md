@@ -216,8 +216,16 @@ The backlog-level counterpart of `/goal:next`, run after a ticket ships:
 2. **Re-cut with what it taught.** Ask only: does the order still hold? Does a
    ticket merge, split, or die, given what shipped? Re-cutting is cheap by
    construction — everything below the line is one-liners.
-3. **Arm the next ticket.** Move `← next`, give it its 3–5 lines (and no more),
-   confirm its route.
+3. **Re-measure the premise, then arm the next ticket.** Before moving `← next`,
+   re-measure the premise of the ticket about to carry it against the tree — the file,
+   the command, the state its outcome line assumed — rather than trust the wording
+   frozen when it was cut. If it moved, requalify the ticket (rewrite the outcome
+   line, split it, or drop it) before arming it: a ticket armed on a premise nobody
+   re-measured is a ticket armed on a guess. A ticket born from another ticket's
+   leftover — split off what a parent didn't finish, or the parent's own follow-up —
+   is armed with what that parent **delivered, verified**: the shipped PR/artifact
+   and the `## Shipped` line's ONE-line lesson, never a bare completion percentage.
+   Then move `← next`, give it its 3–5 lines (and no more), confirm its route.
 4. **Close the chantier when it is done** — the `## Outcome` line holds, not
    merely "no tickets left": set `Status: done`, say what proved it, and stop.
    A chantier whose tickets are all shipped but whose outcome does not hold gets
