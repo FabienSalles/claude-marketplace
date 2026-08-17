@@ -83,6 +83,12 @@ context:
 3. The stack-specific overlay (`audit:ts-security` for TS/NestJS; the PHP
    checkpoints of the baseline for Symfony).
 
+Read [reachability-and-triage.md](reachability-and-triage.md) before the counts
+from §4 reach anyone: what the word "reachable" proves depending on which
+mechanism printed it, which tools compute it for PHP at all, how to compute a
+priority (CISA Vulnrichment, SSVC) instead of inventing one, and the rule that
+the model never produces the finding list.
+
 The dossier's job is done when the auditor never has to ask "where does input
 enter?", "who may call this?", or "where is the sensitive data?" — those answers
 are already in `security-surface.md`, the authorization matrix, and

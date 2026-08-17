@@ -166,9 +166,16 @@ Only attributes carrying business rules need a row; skip plumbing columns.
 # Risk register
 
 ## Top risks
-| # | Risk | Evidence | Impact | Cheapest mitigation |
-|---|---|---|---|---|
-| 1 | Untested churn hotspot | file + churn count + no test file | | characterization test |
+Nature is the reader's instruction for how to disagree: `measured` carries the
+command, `read` carries a `path:line` anchor, `judged` carries the criterion it
+was judged against and the person who signs it. A row that cannot fill its
+Evidence cell in the form its Nature demands does not belong in this table.
+
+| # | Risk | Nature | Evidence | Impact | Cheapest mitigation |
+|---|---|---|---|---|---|
+| 1 | Untested churn hotspot | measured | `git log …` + no matching test file | | characterization test |
+| 2 | Order status set before payment is confirmed | read | `src/Order/Workflow.php:212` | | |
+| 3 | Repository responsibility placed in the controller | judged | craft:ddd-principles §3, signed <name> | | |
 
 ## Dependency health
 EOL runtime/framework, unmaintained critical packages, pinned ancient versions.
