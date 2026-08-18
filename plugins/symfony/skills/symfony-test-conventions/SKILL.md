@@ -151,11 +151,11 @@ assertions ("exactly one default badge on the page"), never as the whole test.
 ### Locate via markup production already emits
 
 Never add a hook for the test (see `craft:testing-principles` §12). Do not add a `js-*` class,
-`id`, or attribute to a template/FormType *only* so the crawler can find the element. Locate
-by the real field name (`input[name$="[account_ownership]"]`) or a class the framework/theme
-genuinely renders (e.g. `.form-check-inline` produced by a `radio-inline` label). A `js-*`
-selector is legitimate **only** when it is a real JS hook the feature already needs; used
-purely as a test anchor it is production code serving the test, and must not exist.
+`id`, or attribute to a template/FormType *only* so the crawler can find the element. Locate by
+the real field name (`input[name$="[account_ownership]"]`), the visible label text, or an
+accessible role — `craft:testing-principles` §13 ranks these over volatile styling/layout
+classes. A `js-*` selector is legitimate **only** when it is a real JS hook the feature already
+needs; used purely as a test anchor it is production code serving the test, and must not exist.
 
 Use `$crawler->filter('.css-selector')` for class matching (requires `symfony/css-selector`, a
 `require-dev` in any test-bearing project). It is the whole-token `.class` match — don't

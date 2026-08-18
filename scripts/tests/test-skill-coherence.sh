@@ -119,6 +119,12 @@ assert_absent "R8 no reference example labels the assert phase" \
   '// Assert' "$PHPUNIT_REFERENCES"
 
 echo ""
+echo "== Iteration 5 — the symfony child locates by what the app owns"
+
+assert_absent "R9 the symfony child blesses no layout class as a locator" \
+  'form-check-inline' plugins/symfony/skills/symfony-test-conventions/SKILL.md
+
+echo ""
 if [[ $failures -gt 0 ]]; then
   echo "✗ $failures/$cases assertion(s) failed"
   exit 1
