@@ -105,6 +105,20 @@ assert_present "R7 the NestJS child defers the does-it-earn-a-test question" \
   'craft:testing-principles' "$VITEST_TDD"
 
 echo ""
+echo "== Iteration 4 — the reference examples separate AAA with blank lines"
+
+PHPUNIT_REFERENCES=plugins/phpunit/skills/php-test-conventions/references
+
+assert_absent "R8 no reference example labels the arrange phase" \
+  '// Arrange' "$PHPUNIT_REFERENCES"
+
+assert_absent "R8 no reference example labels the act phase" \
+  '// Act' "$PHPUNIT_REFERENCES"
+
+assert_absent "R8 no reference example labels the assert phase" \
+  '// Assert' "$PHPUNIT_REFERENCES"
+
+echo ""
 if [[ $failures -gt 0 ]]; then
   echo "✗ $failures/$cases assertion(s) failed"
   exit 1
