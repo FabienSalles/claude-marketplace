@@ -73,9 +73,11 @@ $serializer = $this->createSerializer();
 $result = $httpClient->__invoke(); // Fails if deserialization is broken
 ```
 
-## PHP-specific: New Code Tests Mapping
+## PHP-specific: Default Test Level
 
-| Code Created | Tests Required |
+Whether a unit earns a test at all is `craft:testing-principles`' call, not this table's. Once a test **is** earned, these are the PHP/Symfony defaults:
+
+| Code Created | Default level |
 |--------------|----------------|
 | Feature class | Unit test for business logic |
 | Controller | Functional test (`WebTestCase`) for endpoint |

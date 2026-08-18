@@ -110,7 +110,6 @@ private function stubRepository(): void
 /** @test */
 public function itPrefillsFormWithCreditCardData(): void
 {
-    // Arrange - Permissive: use Argument::cetera() for stubs
     $paymentMethodRepository = $this->prophesize(PaymentMethodRepository::class);
     $paymentMethodRepository->get(Argument::cetera())
         ->willReturn(BuyerPaymentMethodResponseFactory::createWithCreditCard());
@@ -124,13 +123,11 @@ public function itPrefillsFormWithCreditCardData(): void
         $paymentMethodRepository->reveal(),
     );
 
-    // Act
     $sut->create(
         new OrderBuyerUuid(self::BUYER_UUID, self::ORDER_UUID),
         new \DateTimeImmutable('1980-01-15'),
     );
 
-    // Assert - Strict: use Argument::that() with PHPUnit assertions inside
     $formFactory->create(
         Argument::any(),
         Argument::that(function (array $formData): bool {

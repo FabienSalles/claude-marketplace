@@ -79,6 +79,11 @@ Mocks set expectations **before** the act (violates AAA). Spies verify **after**
 
 **Criterion:** if you write expectations before the act, you're using a mock; switch to a spy that asserts after.
 
+**Judge by the criterion, not by the tooling's vocabulary.** `vi.fn()` and `jest.fn()` are called
+*mock functions* by their own documentation, and Prophecy hands back what it calls a mock — but a
+bare double carries no expectation until you arm it with one. Created in Arrange and asserted after
+the act, it is a **spy**, whatever the library named it.
+
 ## 7. Parameterized Tests (data provider / it.each)
 
 When multiple tests have the **same Arrange-Act-Assert structure** and only differ in input data, consolidate via the language's parameterization (PHPUnit `@dataProvider`, Vitest `it.each`, etc.).

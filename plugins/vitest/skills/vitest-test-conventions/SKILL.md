@@ -21,23 +21,9 @@ version: "2.0"
 ## Vitest-specific: Test Doubles
 
 ```typescript
-vi.fn()    // Simple stubs for dependencies
-vi.spyOn() // Spy on real objects (verify after act — preferred)
-vi.mock()  // Module-level mocking
-```
-
-## Vitest-specific: Spy Over Mock (verify after act)
-
-```typescript
-// ❌ Setup expectations before act (violates AAA)
-const send = vi.fn();
-// → call SUT
-// → assert send was called
-
-// ✅ Spy on real method, assert AFTER act
-const send = vi.spyOn(notifier, 'send');
-// → call SUT
-expect(send).toHaveBeenCalledWith(expectedArg);
+vi.fn()    // Standalone double for an injected dependency
+vi.spyOn() // Wraps one method of a real object, leaving the rest real
+vi.mock()  // Module-level replacement, for what cannot be injected
 ```
 
 > When writing test doubles, parameterized tests, or factory functions, read `references/test-examples.md` for complete `vi.fn`/`spyOn`/`mock` patterns, `it.each` examples, and factory patterns.

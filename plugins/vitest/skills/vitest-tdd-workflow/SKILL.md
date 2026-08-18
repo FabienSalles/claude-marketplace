@@ -83,9 +83,11 @@ const lease = Lease.create(realLeaseData);
 const receipt = Receipt.create(lease, period);
 ```
 
-## NestJS-specific: New Code Tests Mapping
+## NestJS-specific: Default Test Level
 
-| Code Created | Tests Required |
+Whether a unit earns a test at all is `craft:testing-principles`' call, not this table's. Once a test **is** earned, these are the NestJS defaults:
+
+| Code Created | Default level |
 |--------------|----------------|
 | Domain model | Unit test for business logic |
 | Controller | E2E test (`supertest`) for endpoint |

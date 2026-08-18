@@ -23,7 +23,6 @@ Follow AAA pattern with spy verification **after** the act:
 /** @test */
 public function itCallsApiAndDeserializesProductsResponse(): void
 {
-    // Arrange - Setup stub response (use Argument::any() - no constraints here)
     $jsonResponse = '[{"uuid":"123","code":"ABC"}]';
     $httpClientFacade = $this->prophesize(HttpClientFacade::class);
     $httpClientFacade->jsonGet(Argument::any())->willReturn($jsonResponse);
@@ -32,10 +31,8 @@ public function itCallsApiAndDeserializesProductsResponse(): void
         SerializerFactory::create(),
     );
 
-    // Act
     $result = $httpClient->__invoke();
 
-    // Assert - First verify result, then verify API was called with correct URL
     $expected = new GetProductsResponse([...]);
     self::assertEquals($expected, $result);
     $httpClientFacade->jsonGet('/api/v1/products')->shouldHaveBeenCalled();
