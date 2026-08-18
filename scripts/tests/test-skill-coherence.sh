@@ -18,6 +18,8 @@ cd "$REPO_ROOT" || exit 1
 CRAFT_TESTING=plugins/craft/skills/testing-principles/SKILL.md
 CRAFT_TDD=plugins/craft/skills/tdd-workflow-principles/SKILL.md
 VITEST_CONVENTIONS=plugins/vitest/skills/vitest-test-conventions/SKILL.md
+PHP_TDD=plugins/phpunit/skills/php-tdd-workflow/SKILL.md
+VITEST_TDD=plugins/vitest/skills/vitest-tdd-workflow/SKILL.md
 
 failures=0
 cases=0
@@ -86,6 +88,21 @@ assert_absent "R6 no row mandates a test for a plain data holder" \
 
 assert_absent "R6 no row mandates a unit test for middleware" \
   '| Guard / middleware |' "$CRAFT_TDD"
+
+echo ""
+echo "== Iteration 3 — both TDD children carry their parent's framing"
+
+assert_absent "R7 neither child frames its table as a required test" \
+  'Tests Required' plugins/phpunit plugins/vitest
+
+assert_absent "R7 neither child titles its table as a new-code obligation" \
+  'New Code Tests Mapping' plugins/phpunit plugins/vitest
+
+assert_present "R7 the PHP child defers the does-it-earn-a-test question" \
+  'craft:testing-principles' "$PHP_TDD"
+
+assert_present "R7 the NestJS child defers the does-it-earn-a-test question" \
+  'craft:testing-principles' "$VITEST_TDD"
 
 echo ""
 if [[ $failures -gt 0 ]]; then
