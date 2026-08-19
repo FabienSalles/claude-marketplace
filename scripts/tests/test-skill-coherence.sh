@@ -197,6 +197,24 @@ assert_present "R2 the ddd-ts-fp examples point to ts-functional for Result and 
   'ts-functional' "$DDD_TS_FP_EXAMPLES"
 
 echo ""
+echo "== Iteration 5 — the DI example resolves, the paradigm skills route instead of compete"
+
+NEST_CONVENTIONS=plugins/nest/skills/nest-conventions/SKILL.md
+CRAFT_OOP=plugins/craft/skills/oop-principles/SKILL.md
+
+assert_absent "R1 nest-conventions' constructor injection example is not left unresolvable" \
+  'constructor(private readonly repo: ReceiptRepository) {}' "$NEST_CONVENTIONS"
+
+assert_present "R1 nest-conventions' constructor injection example carries the token it needs to resolve" \
+  'constructor(@Inject(RECEIPT_REPOSITORY) private readonly repo: ReceiptRepository) {}' "$NEST_CONVENTIONS"
+
+assert_present "R2 the craft parent gains a DO-NOT clause it had none of today" \
+  'DO NOT use for' "$CRAFT_OOP"
+
+assert_present "R2 the deference pointer names the owner of the functional aggregate" \
+  'ddd-fp-principles' "$CRAFT_OOP"
+
+echo ""
 if [[ $failures -gt 0 ]]; then
   echo "✗ $failures/$cases assertion(s) failed"
   exit 1

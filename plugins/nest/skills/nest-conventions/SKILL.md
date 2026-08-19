@@ -180,7 +180,7 @@ export class ReceiptService {
 // ✅ CORRECT - Constructor injection
 @Injectable()
 export class ReceiptService {
-  constructor(private readonly repo: ReceiptRepository) {}
+  constructor(@Inject(RECEIPT_REPOSITORY) private readonly repo: ReceiptRepository) {}
 }
 
 // ❌ AVOID - Property injection
