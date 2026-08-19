@@ -151,6 +151,25 @@ assert_present "R5 systematic-debugging defers to the real cross-language TDD sk
   'craft:tdd-workflow-principles' plugins/superpowers/skills/systematic-debugging/SKILL.md
 
 echo ""
+echo "== Iteration 3 — readonly placement, first-class callables, named arguments each have one owner"
+
+PHP_OOP=plugins/php/skills/php-oop/SKILL.md
+TWIG_CONVENTIONS=plugins/symfony/skills/twig-conventions/SKILL.md
+HTTP_TESTING=plugins/phpunit/skills/php-test-conventions/references/http-testing.md
+
+assert_absent "R1 php-oop prints no per-property readonly on an all-readonly value object" \
+  'public readonly FileTypeEnum' "$PHP_OOP"
+
+assert_absent "R1 php-oop names no unneeded argument under the four-argument threshold" \
+  'addFromDocument(document: ' "$PHP_OOP"
+
+assert_absent "R1 twig-conventions registers no TwigFunction with an array callable" \
+  "\[\$this, 'getCurrentYear'\]" "$TWIG_CONVENTIONS"
+
+assert_absent "R1 the http-testing reference names no positional null before a named argument" \
+  'new ObjectNormalizer(null, null, null,' "$HTTP_TESTING"
+
+echo ""
 if [[ $failures -gt 0 ]]; then
   echo "✗ $failures/$cases assertion(s) failed"
   exit 1
