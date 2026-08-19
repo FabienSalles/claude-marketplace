@@ -104,24 +104,26 @@ interface ReceiptRepository {
 
 ```typescript
 // ❌ AVOID - Both fields optional = 4 possible states, only 2 are valid
-type Result = {
-  data?: Receipt;
+type Receipt = {
+  data?: ReceiptData;
   error?: string;
 };
 
 // ✅ CORRECT - Discriminated union = only valid states
-type Result =
-  | { success: true; data: Receipt }
-  | { success: false; error: string };
+type Receipt =
+  | { fetched: true; data: ReceiptData }
+  | { fetched: false; error: string };
 
-function handle(result: Result) {
-  if (result.success) {
-    console.log(result.data); // TypeScript knows data exists
+function handle(receipt: Receipt) {
+  if (receipt.fetched) {
+    console.log(receipt.data); // TypeScript knows data exists
   } else {
-    console.error(result.error); // TypeScript knows error exists
+    console.error(receipt.error); // TypeScript knows error exists
   }
 }
 ```
+
+> **The `Result<T, E>` discriminated union for fallible operations is owned by `ts-functional`** — do not redefine it here.
 
 ## `satisfies` Operator
 

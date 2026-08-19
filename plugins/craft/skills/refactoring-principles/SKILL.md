@@ -68,6 +68,8 @@ Before keeping a wrapper, layer, or indirection, imagine deleting it and inlinin
 
 **Criterion:** an abstraction justifies its existence only when removing it would duplicate real complexity across callers — not when it merely renames a single indirection.
 
+**Exemption:** a seam mandated by the project's layered architecture (e.g. a mapper enforcing the domain/infrastructure boundary) is exempt from this test — it earns its keep by enforcing the dependency direction, not by hiding complexity.
+
 ## Quick Reference
 
 | Rule | Principle |

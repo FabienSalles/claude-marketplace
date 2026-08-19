@@ -170,6 +170,33 @@ assert_absent "R1 the http-testing reference names no positional null before a n
   'new ObjectNormalizer(null, null, null,' "$HTTP_TESTING"
 
 echo ""
+echo "== Iteration 4 — one Result, one domain shape, one deletion test"
+
+TS_OOP=plugins/typescript/skills/ts-oop/SKILL.md
+TS_CONVENTIONS=plugins/typescript/skills/ts-conventions/SKILL.md
+TS_FUNCTIONAL=plugins/typescript/skills/ts-functional/SKILL.md
+CRAFT_REFACTORING=plugins/craft/skills/refactoring-principles/SKILL.md
+DDD_TS_FP_EXAMPLES=plugins/typescript/skills/ddd-ts-fp/references/ddd-functional-examples.md
+
+assert_absent "R1 ts-conventions declares no competing Result shape" \
+  'success: true; data: Receipt' "$TS_CONVENTIONS"
+
+assert_present "R2 ts-conventions points to ts-functional for Result" \
+  'ts-functional' "$TS_CONVENTIONS"
+
+assert_present "R2 ts-functional names itself as the canonical Result owner" \
+  'canonical' "$TS_FUNCTIONAL"
+
+assert_present "R2 ts-oop defers to frontend-clean-architecture for domain models under features/" \
+  'frontend-clean-architecture' "$TS_OOP"
+
+assert_present "R4 the deletion test exempts architecture-mandated seams" \
+  'Exemption' "$CRAFT_REFACTORING"
+
+assert_present "R2 the ddd-ts-fp examples point to ts-functional for Result and pipe" \
+  'ts-functional' "$DDD_TS_FP_EXAMPLES"
+
+echo ""
 if [[ $failures -gt 0 ]]; then
   echo "✗ $failures/$cases assertion(s) failed"
   exit 1

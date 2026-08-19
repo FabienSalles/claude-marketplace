@@ -1,5 +1,7 @@
 # DDD Functional Pattern Examples
 
+> `Result`, `ok`, `err`, `pipe`, and `chain` used throughout these examples are the ones defined in `ts-functional` — this file does not redefine them.
+
 ## Table of Contents
 - [Aggregate Operations](#aggregate-operations)
 - [Composing Operations with pipe](#composing-operations-with-pipe)
