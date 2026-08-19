@@ -1,6 +1,6 @@
 {
   "name": "git",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Transverse git & PR discipline — ref freshness (fetch first), branch/commit/PR conventions, force-push and worktree guardrails. Merges the former PR-creation skill.",
   "author": {
     "name": "FabienSalles"

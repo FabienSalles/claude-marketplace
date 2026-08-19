@@ -1,6 +1,6 @@
 {
   "name": "vitest",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Vitest TDD workflow, test conventions and patterns",
   "author": {
     "name": "FabienSalles"

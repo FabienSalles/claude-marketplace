@@ -1,6 +1,6 @@
 {
   "name": "jquery",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "jQuery code conventions — module structure with exported init function, js-* selector classes, per-block scoping, symmetric toggleClass over imperative show/hide helpers. Framework-agnostic (works with any backend / build system).",
   "author": { "name": "FabienSalles" },
   "repository": "https://github.com/FabienSalles/claude-marketplace",
