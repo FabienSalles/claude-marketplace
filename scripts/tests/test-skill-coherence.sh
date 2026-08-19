@@ -136,6 +136,21 @@ assert_present "R2 the exclusion clause names the syntax it defers, not the whol
   'DO NOT use for: language-specific syntax already covered by' "$CRAFT_STYLE"
 
 echo ""
+echo "== Iteration 7 — the orphaned rows follow their parent, the dead pointer resolves"
+
+assert_absent "R3 the PHP child mandates no test for a plain DTO" \
+  '| DTO / Contract | Serialization test (in package) |' "$PHP_TDD"
+
+assert_absent "R3 the NestJS child mandates no unconditional unit test for a guard" \
+  '| Guard | Unit test for access rules |' "$VITEST_TDD"
+
+assert_absent "R5 systematic-debugging points to no test-driven-development skill under superpowers" \
+  'superpowers:test-driven-development' plugins/superpowers/skills/systematic-debugging/SKILL.md
+
+assert_present "R5 systematic-debugging defers to the real cross-language TDD skill" \
+  'craft:tdd-workflow-principles' plugins/superpowers/skills/systematic-debugging/SKILL.md
+
+echo ""
 if [[ $failures -gt 0 ]]; then
   echo "✗ $failures/$cases assertion(s) failed"
   exit 1

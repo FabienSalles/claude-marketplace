@@ -93,7 +93,7 @@ Whether a unit earns a test at all is `craft:testing-principles`' call, not this
 | Controller | E2E test (`supertest`) for endpoint |
 | Repository | Integration test with database |
 | Use case | Unit test with mocked ports |
-| Guard | Unit test for access rules |
+| The access rule a guard enforces | Wherever refusal is observable, usually E2E |
 
 ## Vitest-specific: Commands
 
