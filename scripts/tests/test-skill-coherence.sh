@@ -245,6 +245,31 @@ assert_present "R2 the astro-seo reference names astro-i18n as the hreflang emit
   'astro-i18n. emits the hreflang' "$ASTRO_SEO_REFERENCE"
 
 echo ""
+echo "== Iteration 7 — the goal pipeline stops giving its own agents opposite orders"
+
+SUPERVISE_SKILL=plugins/goal/skills/supervise/SKILL.md
+NEXT_SKILL=plugins/goal/skills/next/SKILL.md
+VERTICAL_SLICE=plugins/product/skills/vertical-slice/SKILL.md
+
+assert_absent "R1 supervise no longer points to the nonexistent /goal:run-issue command" \
+  '/goal:run-issue' "$SUPERVISE_SKILL"
+
+assert_present "R2 supervise's no-plan STOP names /goal:plan, the command that creates one" \
+  'Run `/goal:plan` first' "$SUPERVISE_SKILL"
+
+assert_absent "R1 vertical-slice no longer schedules cleanup as the last slice of this plan" \
+  'Keep the cleanup slice separate and last' "$VERTICAL_SLICE"
+
+assert_present "R2 vertical-slice defers cleanup scheduling to product:delivery, its owner" \
+  'never a slice of this plan' "$VERTICAL_SLICE"
+
+assert_absent "R1 the checkpoint no longer carves its own git-restore exception into the index" \
+  'unstage only what was wrongly added' "$NEXT_SKILL"
+
+assert_present "R2 the checkpoint defers manual-mode index handling to git:git, its owner" \
+  'git:git' "$NEXT_SKILL"
+
+echo ""
 if [[ $failures -gt 0 ]]; then
   echo "✗ $failures/$cases assertion(s) failed"
   exit 1

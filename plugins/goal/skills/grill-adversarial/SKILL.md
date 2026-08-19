@@ -88,9 +88,11 @@ assign them to iterations or mark them **transverse**. **Nothing is frozen** unt
 every cell is resolved and every invariant has an owner + a test.
 
 ## Termination
-Stop only when: every state is named, every invariant is written and owned, every
-`(state, action)` cell is resolved, and every break is an owned + tested rule. If a
-cell needs a human decision, **ASK** — never guess an invariant into place.
+Stop when every state is named, every invariant is written and owned, and a full pass over
+the `(state, action)` matrix surfaces no new hole. Completeness is the target, not a fixed
+cell count: once two consecutive passes add nothing, the matrix has converged and the
+remaining cells are exercised at the DoD instead of hand-enumerated here. If a cell needs a
+human decision, **ASK** — never guess an invariant into place.
 
 ## Output
 A challenged, updated plan the developer confirms — coherent and executable exactly

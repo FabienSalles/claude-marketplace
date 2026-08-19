@@ -31,7 +31,7 @@ Argument: `$ARGUMENTS`
 - A path ending in `.md` → that is the plan.
 - Empty → the `.claude/plans/*-spec.md` most recently modified, excluding
   `*-cleanup-spec.md`. Several equally plausible candidates → list them
-  and ASK. None → STOP: _"No plan found. Run `/goal:run-issue` first."_
+  and ASK. None → STOP: _"No plan found. Run `/goal:plan` first."_
 
 ## Phase 1 — Launch in the background
 
