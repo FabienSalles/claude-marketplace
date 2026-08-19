@@ -125,6 +125,17 @@ assert_absent "R9 the symfony child blesses no layout class as a locator" \
   'form-check-inline' plugins/symfony/skills/symfony-test-conventions/SKILL.md
 
 echo ""
+echo "== Iteration 6 — the base layer stops refusing PHP and TypeScript"
+
+CRAFT_STYLE=plugins/craft/skills/code-style-principles/SKILL.md
+
+assert_absent "R1 the craft base layer excludes no language with a dedicated skill" \
+  'in a language with no dedicated conventions skill' "$CRAFT_STYLE"
+
+assert_present "R2 the exclusion clause names the syntax it defers, not the whole language" \
+  'DO NOT use for: language-specific syntax already covered by' "$CRAFT_STYLE"
+
+echo ""
 if [[ $failures -gt 0 ]]; then
   echo "✗ $failures/$cases assertion(s) failed"
   exit 1
