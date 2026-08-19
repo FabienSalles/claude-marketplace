@@ -44,7 +44,7 @@ $('#commercial_proposal_form_proposal_context').removeAttr('readonly');
 
 **Why it's bad**: the ID changes if the parent form name changes, if the field is wrapped, if Symfony's `name` strategy is reconfigured. Fragile, and the dependency is invisible from the FormType.
 
-**Rewrite**: add a `js-*` class on the field in the template (or via FormType `attr` if no other choice), target that:
+**Rewrite**: add a `js-*` class on the field in the template, target that (for the Symfony FormType/Twig split, see `symfony:symfony-frontend`):
 
 ```js
 $('.js-proposal-context-textarea').removeAttr('readonly');

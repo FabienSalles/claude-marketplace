@@ -215,6 +215,36 @@ assert_present "R2 the deference pointer names the owner of the functional aggre
   'ddd-fp-principles' "$CRAFT_OOP"
 
 echo ""
+echo "== Iteration 6 — one voice per situation across jquery, symfony-frontend, and astro"
+
+JQUERY_SKILL=plugins/jquery/skills/jquery/SKILL.md
+JQUERY_TEMPLATE=plugins/jquery/skills/jquery/references/module-template.md
+JQUERY_ANTIPATTERNS=plugins/jquery/skills/jquery/references/anti-patterns.md
+ASTRO_BASICS=plugins/astro/skills/astro-basics/SKILL.md
+ASTRO_SEO_REFERENCE=plugins/astro/skills/astro-seo/references/seo-components-and-structured-data.md
+
+assert_absent "R1 no jquery example delegates a click that isn't dynamic content" \
+  "\$block.on('click', EDIT_" "$JQUERY_SKILL" "$JQUERY_TEMPLATE"
+
+assert_absent "R1 the anti-patterns rewrite no longer offers FormType attr as a hook fallback" \
+  'or via FormType `attr` if no other choice' "$JQUERY_ANTIPATTERNS"
+
+assert_present "R2 the anti-patterns rewrite defers hook placement to symfony-frontend" \
+  'symfony:symfony-frontend' "$JQUERY_ANTIPATTERNS"
+
+assert_absent "R1 astro-basics no longer names the collection-schema file config.ts" \
+  '└── config.ts   # Collection schemas' "$ASTRO_BASICS"
+
+assert_present "R2 astro-basics' tree points to astro-content-collections for the schema file" \
+  'astro-content-collections' "$ASTRO_BASICS"
+
+assert_absent "R1 the astro-seo reference no longer prints its own hreflang link tags" \
+  'hreflang="fr"' "$ASTRO_SEO_REFERENCE"
+
+assert_present "R2 the astro-seo reference names astro-i18n as the hreflang emitter" \
+  'astro-i18n. emits the hreflang' "$ASTRO_SEO_REFERENCE"
+
+echo ""
 if [[ $failures -gt 0 ]]; then
   echo "✗ $failures/$cases assertion(s) failed"
   exit 1

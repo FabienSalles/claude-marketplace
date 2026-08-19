@@ -13,8 +13,8 @@ Core patterns for Astro 5.x development based on project conventions.
 ```
 src/
 ├── components/     # Reusable .astro components
+├── content.config.ts   # Collection schemas (Zod) — see astro-content-collections
 ├── content/        # Content collections (markdown, yaml)
-│   └── config.ts   # Collection schemas (Zod)
 ├── layouts/        # Page layouts (BaseLayout, etc.)
 ├── pages/          # File-based routing
 │   ├── index.astro
