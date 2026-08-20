@@ -130,10 +130,9 @@ safe depends on the commit policy, and in **manual** mode staging is the
   staged or not), then **list plainly what remains for the developer to review and
   stage manually**. `.claude/plans/` is gitignored, so the plan file stays on disk — that is
   fine, it is durable there.
-  - If a prior step (or you) already staged something in manual mode, you may
-    **unstage only what was wrongly added** (`git restore --staged <files>`) — never
-    disturb staging the developer set up, and never `git reset` wholesale unless the
-    developer explicitly asks.
+  - If a prior step (or you) already staged something in manual mode, follow `git:git`
+    §I (Manual mode (index)) — it is the sole owner of what may and may not touch the
+    index here.
 
 Nothing is destroyed by leaving changes unstaged: they live in the working tree and
 the plan lives on disk. In manual mode, safety = **work-on-disk + plan-on-disk + a

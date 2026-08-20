@@ -83,7 +83,7 @@ Whether a unit earns a test at all is `craft:testing-principles`' call, not this
 | Controller | Functional test (`WebTestCase`) for endpoint |
 | Repository | Integration test with database (`KernelTestCase`) |
 | Specification | Unit test for each rule |
-| DTO / Contract | Serialization test (in package) |
+| Serialization carrying its own mapping or format rules | Serialization test (in package) — the plain DTO underneath earns none |
 
 ## PHP-specific: Commands
 

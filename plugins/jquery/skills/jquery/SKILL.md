@@ -105,12 +105,12 @@ When two elements swap visibility, one `toggleClass` on the pair beats an `addCl
 // ✅ Symmetric — the toggle is the truth
 const $buttons = $block.find(`${EDIT_SELECTOR}, ${RESET_SELECTOR}`);
 
-$block.on('click', EDIT_SELECTOR, () => {
+$editButton.on('click', () => {
     $textarea.removeAttr('readonly').trigger('focus');
     $buttons.toggleClass('d-none');
 });
 
-$block.on('click', RESET_SELECTOR, () => {
+$resetButton.on('click', () => {
     $textarea.val(originalValue).attr('readonly', 'readonly');
     $buttons.toggleClass('d-none');
 });

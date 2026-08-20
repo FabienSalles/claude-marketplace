@@ -10,6 +10,8 @@ version: "2.0"
 
 > See also: `ts-conventions` for typing rules (strict mode, etc.).
 
+> **Domain models under `features/<feature>/domain/` are typed, not classed** — `frontend-clean-architecture` owns that shape. The classes below apply to value objects and collections outside that layer.
+
 ## Example — Rule 1: Tell Don't Ask
 
 ```typescript

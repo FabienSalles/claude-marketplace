@@ -138,7 +138,7 @@ class SerializerRegistry
                 [
                     new DateTimeNormalizer(),
                     new JsonSerializableNormalizer(),
-                    new ObjectNormalizer(null, null, null, $propertyTypeExtractor),
+                    new ObjectNormalizer(propertyTypeExtractor: $propertyTypeExtractor),
                     new ArrayDenormalizer(),
                 ],
                 [new JsonEncoder()]

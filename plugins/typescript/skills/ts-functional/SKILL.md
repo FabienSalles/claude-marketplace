@@ -34,6 +34,8 @@ applyVAT(100); // 20
 
 **Model operations that can fail as a `Result` type** instead of throwing exceptions. Errors travel along the "failure track" without try/catch.
 
+> This is the canonical `Result<T, E>` definition. Other skills that need a fallible-operation type point here rather than declaring their own shape.
+
 ```typescript
 type Result<T, E = Error> =
   | { ok: true; value: T }

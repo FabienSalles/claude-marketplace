@@ -1,6 +1,6 @@
 {
   "name": "php",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "description": "PHP 8.0–8.3 language conventions — code style, OOP, DDD, refactoring, SQL, Composer. Framework-agnostic. Pair with phpunit for testing and symfony for Symfony-specific FormType/Twig/PRG conventions.",
   "author": {
     "name": "FabienSalles"

@@ -1,6 +1,6 @@
 {
   "name": "nest",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "NestJS architectural conventions, DDD with NestJS",
   "author": {
     "name": "FabienSalles"

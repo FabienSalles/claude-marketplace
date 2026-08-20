@@ -195,7 +195,7 @@ final class DateExtension extends AbstractExtension
     public function getFunctions(): array
     {
         return [
-            new TwigFunction('current_year', [$this, 'getCurrentYear']),
+            new TwigFunction('current_year', $this->getCurrentYear(...)),
         ];
     }
 

@@ -236,31 +236,7 @@ const breadcrumbs = {
 
 ## Multilingual SEO
 
-```astro
----
-const siteUrl = Astro.site?.toString().replace(/\/$/, '') || '';
-const currentPath = Astro.url.pathname;
-const isEnglish = currentPath.startsWith('/en');
-const alternateLang = isEnglish ? 'fr' : 'en';
-const alternatePath = isEnglish
-  ? currentPath.replace('/en', '')
-  : `/en${currentPath}`;
----
-
-<html lang={isEnglish ? 'en' : 'fr'}>
-  <head>
-    <!-- Alternate language versions -->
-    <link rel="alternate" hreflang="fr" href={`${siteUrl}${currentPath.replace('/en', '')}`} />
-    <link rel="alternate" hreflang="en" href={`${siteUrl}/en${currentPath}`} />
-    <link rel="alternate" hreflang="x-default" href={`${siteUrl}${currentPath.replace('/en', '')}`} />
-  </head>
-  <body>
-    <!-- ... -->
-  </body>
-</html>
-```
-
-For the full prefix-based routing implementation behind `alternateLang`/`alternatePath`, see `astro-i18n`'s `references/i18n-implementation-patterns.md`.
+`astro-i18n` emits the hreflang `<link>` tags. See the "SEO for Multilingual Sites" section of `astro-i18n`'s `references/i18n-implementation-patterns.md` for the full markup, alternate-path computation, and og:locale pairing.
 
 ## Sitemap Integration
 

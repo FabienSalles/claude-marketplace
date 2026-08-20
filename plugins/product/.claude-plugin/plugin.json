@@ -1,6 +1,6 @@
 {
   "name": "product",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Product delivery discipline — slice any functional spec into thin vertical iterations (vertical-slice: 17 splitting techniques + a method to choose and combine them per feature, technical constraint and execution mode), and ship each one without blocking (delivery: feature flags sized to the project, additive no-BC-break change, expand/contract, and the cleanup that closes the loop once it's in prod).",
   "author": { "name": "FabienSalles" },
   "license": "MIT",

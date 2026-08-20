@@ -1,6 +1,6 @@
 {
   "name": "goal",
-  "version": "2.3.0",
+  "version": "2.4.0",
   "description": "Chantier→spec→plan→unattended run workflow for Claude Code: cut an initiative into an ordered just-in-time backlog (/goal:tickets), settle the functional contract of any source — Jira US (via MCP), GitHub issue, spec file or inline — with a grilled, observable Definition of Done (/goal:spec), lock the executable plan into gate-blocked iterations (/goal:plan), then let the runner execute it unattended, each slice judged by a program (goal-gate.ts) that runs the declared command and is the only thing allowed to commit — watched to the end by /goal:supervise, with /goal:next as the checkpoint between two iterations. GitHub, commit and PR are all opt-in, never forced.",
   "author": { "name": "FabienSalles" },
   "license": "MIT",

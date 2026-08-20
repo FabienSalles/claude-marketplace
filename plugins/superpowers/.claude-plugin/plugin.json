@@ -1,6 +1,6 @@
 {
   "name": "superpowers",
-  "version": "5.1.2",
+  "version": "5.1.3",
   "description": "Cherry-picked obra/superpowers skills: verification-before-completion (evidence before claims), systematic-debugging (root-cause-first)",
   "author": { "name": "FabienSalles" },
   "license": "MIT",

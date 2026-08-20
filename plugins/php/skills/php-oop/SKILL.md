@@ -53,7 +53,7 @@ $collection->add(
 );
 
 // ✅ CORRECT — pass the whole object
-$collection->addFromDocument(document: $document, downloadUrl: $url);
+$collection->addFromDocument($document, $url);
 ```
 
 ## Example — Rule 4: Iterable Collections via `IteratorAggregate`
@@ -86,17 +86,19 @@ final class FilesCollection implements \IteratorAggregate
 // ❌ AVOID — consumer needs external fieldName → fileType mapping
 final class UploadFile {
     public function __construct(
-        public readonly string $content,
-        public readonly string $originalFileName,
+        public string $content,
+        public string $originalFileName,
     ) {}
 }
 
 // ✅ CORRECT — object carries its own type
-final class UploadFile {
+final readonly class UploadFile {
     public function __construct(
-        public readonly FileTypeEnum $type,
-        public readonly string $content,
-        public readonly string $originalFileName,
+        public FileTypeEnum $type,
+        public string $content,
+        public string $originalFileName,
     ) {}
 }
 ```
+
+Readonly placement (per-property vs class-level) is `php-8-2`'s call, not this skill's.

@@ -1,6 +1,6 @@
 {
   "name": "phpunit",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "PHPUnit testing discipline for PHP projects — TDD workflow (red-green-refactor with cross-layer iterations), test writing conventions (DAMP, AAA, Prophecy, factories). Layers on craft:tdd-workflow-principles and craft:testing-principles for the cross-language baseline; PHPUnit-specific commands and Prophecy examples live here.",
   "author": { "name": "FabienSalles" },
   "license": "MIT",

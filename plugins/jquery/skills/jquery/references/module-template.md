@@ -19,15 +19,17 @@ export const initEditableBlock = () => {
     $(BLOCK_SELECTOR).each(function () {
         const $block = $(this);
         const $textarea = $block.find(TEXTAREA_SELECTOR);
-        const $buttons = $block.find(`${EDIT_BUTTON_SELECTOR}, ${RESET_BUTTON_SELECTOR}`);
+        const $editButton = $block.find(EDIT_BUTTON_SELECTOR);
+        const $resetButton = $block.find(RESET_BUTTON_SELECTOR);
+        const $buttons = $editButton.add($resetButton);
         const originalValue = $textarea.val();
 
-        $block.on('click', EDIT_BUTTON_SELECTOR, () => {
+        $editButton.on('click', () => {
             $textarea.removeAttr('readonly').trigger('focus');
             $buttons.toggleClass(HIDDEN_CLASS);
         });
 
-        $block.on('click', RESET_BUTTON_SELECTOR, () => {
+        $resetButton.on('click', () => {
             $textarea.val(originalValue).attr('readonly', 'readonly');
             $buttons.toggleClass(HIDDEN_CLASS);
         });
@@ -47,7 +49,7 @@ $(document).ready(() => initEditableBlock());
 | `$(BLOCK_SELECTOR).each(function () {...})` | Scope per block — each block gets its own `$textarea`, `$buttons`, `original` |
 | `const originalValue = $textarea.val();`     | Captured in closure at init time, not lazily in `data-*`                      |
 | `$buttons = $block.find('A, B')`             | The two buttons treated as a single set for `toggleClass`                     |
-| `$block.on('click', SELECTOR, …)`            | Event delegation — works even if buttons are re-rendered                      |
+| `$editButton.on('click', …)`                 | Direct binding — the buttons are static, delegation is only for dynamic content |
 | `$(document).ready(() => init...())`         | Single side-effect line at the bottom; testable logic stays in the export     |
 
 ### Matching HTML

@@ -127,8 +127,9 @@ reviews fine slices; a gated run affords fat ones.**
   discovers the shape in slice 5 rewrites slices 1–4, and each rewrite is a full run.
 - **No slice depends on production feedback** — an unattended run cannot wait for a beta
   panel's opinion. Park those slices in a follow-up plan.
-- Keep the **cleanup slice separate and last** (flag removal, dropping the old column).
-  Additive-then-remove in one slice gives an agent no safe stopping point.
+- **Cleanup (flag removal, dropping the old column) is never a slice of this plan.**
+  `product:delivery` owns the trigger and the separate follow-up plan it lives in —
+  additive-then-remove in one slice gives an agent no safe stopping point.
 - The counterweight, kept: a failed gate halts the run, and a fat halted slice is slower
   to diagnose. So keep the **risky or uncertain** slice fine even here, and spend the
   fat ones on mechanical, well-understood ground.
