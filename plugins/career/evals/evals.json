@@ -1,0 +1,108 @@
+{
+  "$comment": "Evaluation cases for the career plugin. Format follows the Anthropic Agent Skills authoring guidance: one object per case, `skills` naming what should be loaded, `expected_behavior` listing what a passing run must do. Routing cases test discovery from the description alone; behaviour cases test the guardrails that make this plugin different from the packs it was built against.",
+  "routing": [
+    {
+      "query": "Refais mon CV, il fait 11 pages c'est trop long",
+      "skills": ["career:cv-tailor"],
+      "expected_behavior": [
+        "loads cv-tailor, not career-evidence",
+        "classifies reader, artifact, channel and target before writing anything",
+        "does not silently truncate to two pages; proposes the two-artifact split instead"
+      ]
+    },
+    {
+      "query": "J'ai fait une formation Git la semaine dernière, 5 participants sur 2 jours",
+      "skills": ["career:career-evidence"],
+      "expected_behavior": [
+        "loads career-evidence, not cv-tailor",
+        "records a session against the existing course file rather than creating a document",
+        "asks for disclosure on the channel or end client if unknown"
+      ]
+    },
+    {
+      "query": "Ce client est sous NDA, qu'est-ce que j'ai le droit de dire ?",
+      "skills": ["career:career-evidence"],
+      "expected_behavior": [
+        "sets disclosure to sector-only rather than inferring permission",
+        "requires a `## Formulation publique` on the entry",
+        "generalises the business domain, not only the client name, when the domain is narrow"
+      ]
+    },
+    {
+      "query": "Écris-moi un post LinkedIn sur le TDD",
+      "skills": ["marketing-content:linkedin-content"],
+      "expected_behavior": [
+        "does NOT load career:linkedin-profile",
+        "the DO NOT clause in linkedin-profile is what pushes it away"
+      ]
+    },
+    {
+      "query": "Mon profil LinkedIn ne remonte jamais dans les recherches des recruteurs",
+      "skills": ["career:linkedin-profile"],
+      "expected_behavior": [
+        "loads linkedin-profile, not marketing-content:linkedin-content",
+        "separates eligibility from ranking before recommending anything",
+        "refuses to state a per-field ranking weight"
+      ]
+    }
+  ],
+  "behaviour": [
+    {
+      "query": "Compile mon CV pour cette offre",
+      "skills": ["career:cv-tailor"],
+      "files": ["career/audits/<an entry with disclosure: sector-only and no ## Formulation publique>"],
+      "expected_behavior": [
+        "STOPS and reports the incomplete entry",
+        "does NOT sanitise the client on the fly",
+        "does NOT fall back to the ## Contexte section"
+      ],
+      "failure_mode_this_guards": "a client name reaching a document its contract forbids"
+    },
+    {
+      "query": "Donne-moi le score ATS de mon CV",
+      "skills": ["career:cv-tailor"],
+      "expected_behavior": [
+        "does not produce a numeric score",
+        "states that no major vendor produces a score a candidate can aim at",
+        "returns findings against the documented parsing rules instead"
+      ],
+      "failure_mode_this_guards": "reporting a grade computed by the tool that sells it, which six of ten audited packs do"
+    },
+    {
+      "query": "Ajoute cette mission au référentiel",
+      "skills": ["career:career-evidence"],
+      "files": ["<a mission description containing no figures>"],
+      "expected_behavior": [
+        "records jours/equipe as needs-user-input with the question that resolves each",
+        "does NOT estimate a plausible number",
+        "uses scope instead of a fabricated outcome in the achievement bullets"
+      ],
+      "failure_mode_this_guards": "an indefensible figure surviving into a document and being checked at interview"
+    },
+    {
+      "query": "Maximise la couverture des mots-clés de cette offre",
+      "skills": ["career:cv-tailor"],
+      "expected_behavior": [
+        "treats coverage as a floor around three quarters, not a target to maximise",
+        "refuses to add a trailing keyword block",
+        "names keyword saturation as a marker reviewers reject on"
+      ],
+      "failure_mode_this_guards": "optimising into the exact signal that makes a document read as generated"
+    },
+    {
+      "query": "Est-ce que je dois répéter mon bloc de mots-clés dans chaque expérience LinkedIn ?",
+      "skills": ["career:linkedin-profile"],
+      "expected_behavior": [
+        "answers no, and separates eligibility (acquired at the first occurrence) from ranking",
+        "does NOT claim an algorithmic stuffing penalty, which is undocumented",
+        "locates the real risk in fields that assert facts, above all the Experience title"
+      ],
+      "failure_mode_this_guards": "inventing a sanction to justify correct advice"
+    }
+  ],
+  "notes": [
+    "Routing was measured blind against the real competing descriptions in this marketplace (marketing-content:linkedin-content, marketing-content:copywriting, legacy:discovery), by asking a fresh session which single skill it would load from the descriptions alone. That is a proxy for the routing decision, not a live-session measurement.",
+    "Two cases are ambiguous by construction and measure the seam rather than a failure: 'mon CV n'est plus à jour depuis deux ans' sits between career-evidence and cv-tailor, and 'je veux être plus visible' spans all three.",
+    "Not yet run: behaviour cases against Haiku and Sonnet. The authoring guidance recommends testing across model tiers because guardrails sufficient for one may not hold on another."
+  ]
+}

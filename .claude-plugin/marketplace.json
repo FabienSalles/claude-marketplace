@@ -300,6 +300,16 @@
       "category": "development",
       "license": "MIT",
       "keywords": ["release", "semver", "version-bump", "marketplace", "plugins"]
+    },
+    {
+      "name": "career",
+      "source": "./plugins/career",
+      "description": "Career material for the French tech market, built once and projected per target — a referential of engagements (missions, audits, training) where every client name carries its own disclosure level, compiled into a two-page ATS-safe CV, an ESN dossier de compétences, or a LinkedIn profile written for how Recruiter actually retrieves and ranks. Rules sourced from vendor documentation (Workday, Greenhouse, Ashby, Apec, LinkedIn Engineering), not from resume-industry folklore.",
+      "version": "1.0.0",
+      "author": { "name": "FabienSalles" },
+      "category": "marketing",
+      "license": "MIT",
+      "keywords": ["cv", "resume", "linkedin", "ats", "freelance", "france", "dossier-de-competences"]
     }
   ]
 }
