@@ -118,3 +118,9 @@ top-3 P1 + path to the report.
 | FlorianBruniaux/claude-code-plugins | `audits/bruniaux-claude-code-plugins-gap-analysis.md` | 2026-07-22 | deep (101 agents) | ✅ backlog à traiter (4 ports) |
 | 20 predefined workflows publics (corpus) | `audits/workflow-corpus-gap-analysis.md` | 2026-07-28 | deep (22 agents) | ↻ remplacé par la v2 |
 | idem, v2 après le refactor `goal-single-run` | `audits/workflow-corpus-gap-analysis.md` | 2026-07-28 | deep (3 agents, corpus réutilisé) | ✅ backlog à traiter (2 P1 nouveaux + 8 survivants) |
+| 11 cibles, coupe thématique — workflow | `audits/theme-workflow.md` | 2026-08-20 | thématique (6 agents) | ✅ backlog à traiter |
+| idem — tests | `audits/theme-tests.md` | 2026-08-20 | thématique | ✅ backlog à traiter |
+| idem — craft | `audits/theme-craft.md` | 2026-08-20 | thématique | ✅ backlog à traiter |
+| idem — stack | `audits/theme-stack.md` | 2026-08-20 | thématique | ✅ backlog à traiter |
+| idem — git & garde-fous | `audits/theme-git-garde-fous.md` | 2026-08-20 | thématique | ✅ backlog à traiter |
+| idem — méta-tooling | `audits/theme-meta-tooling.md` | 2026-08-20 | thématique | ✅ backlog à traiter |

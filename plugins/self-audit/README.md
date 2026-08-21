@@ -31,18 +31,43 @@ Meta-tooling that keeps this marketplace **honestly curated**: it runs a rigorou
 
 ## Reports produced so far
 
-Each lands under [`audits/`](audits/); the canonical template is `audits/superpowers-gap-analysis.md`.
+Two cuts of the same corpus, both under [`audits/`](audits/). The canonical per-target template is
+`audits/superpowers-gap-analysis.md`.
 
-| Target | Verdict (headline) |
-|---|---|
-| `obra/superpowers` | 2 keep, 12 skip, 6 skip motifs realigned |
-| `mattpocock/skills` | 0 keep, 8 targeted grafts, doc drift fixed |
-| `ai-driven-dev/framework` | 0 keep, 2 P1 / 3 P2 / 3 P3 |
-| `bmad-code-org/BMAD-METHOD` | 0 keep, 3 technique-ports |
-| `github/spec-kit` | 0 keep, 4 technique-ports |
-| `SuperClaude-Org/SuperClaude_Framework` | full skip: 0 keep, 0 port |
+### By theme (2026-08) — the current read
 
-The recurring lesson across all six: most competitor "gaps" are **deliberate divergences** (human-gated git, no worktrees, mutable specs, no heavy MCP/persona runtime), not holes. The audits name them explicitly so a future session doesn't "fix" a choice.
+Six audits, each reading this marketplace against **eleven public packs** from fresh clones, anchored
+to `file:line` on both sides.
+
+| Theme | Ahead | Behind |
+|---|---|---|
+| [Workflow](audits/theme-workflow.md) | Judge is a program and the only committer; plan frozen by hash; bite check | No fuse on the implementer; a halted run writes no report; nothing reads the plan before it freezes |
+| [Tests](audits/theme-tests.md) | Choosing the level a rule reads best at; no prod code in service of a test | No "what doesn't count as a test" taxonomy; a skipped or filtered test passes the gate; no mutation check |
+| [Craft](audits/theme-craft.md) | Cross-language rules split from per-language examples — unique in the corpus | No shared design vocabulary; missing the "one adapter = hypothetical seam" guard; domain purity never mechanical |
+| [Stack](audits/theme-stack.md) | One skill = one enforceable rule, scoped by language version; no target ships any stack convention at all | Zero mechanically checkable rule; PHP stops at 8.3; no skill detects the project's version |
+| [Git & guardrails](audits/theme-git-garde-fous.md) | The only corpus where the writing agent structurally cannot commit, and it is verified after the fact | No hook blocks destructive git; the active force-push block is rented from an external plugin; hooks untested |
+| [Meta-tooling](audits/theme-meta-tooling.md) | Real structural CI, manifest parity, versioned audit register | Progressive disclosure nearly absent; zero eval on 106 skills; descriptions break this pack's own spec |
+
+### By target (2026-07 → 2026-08)
+
+| Target | Report | Verdict (headline) |
+|---|---|---|
+| `obra/superpowers` | [`superpowers`](audits/superpowers-gap-analysis.md) | 2 keep, 12 skip, 6 skip motifs realigned |
+| `mattpocock/skills` | [`mattpocock-skills`](audits/mattpocock-skills-gap-analysis.md) | 0 keep, 8 targeted grafts |
+| `ai-driven-dev/framework` | [`aidd-framework`](audits/aidd-framework-gap-analysis.md) | 0 keep, 2 P1 / 3 P2 / 3 P3 |
+| `bmad-code-org/BMAD-METHOD` | [`bmad-method`](audits/bmad-method-gap-analysis.md) | 0 keep, 3 technique-ports |
+| `github/spec-kit` | [`spec-kit`](audits/spec-kit-gap-analysis.md) | 0 keep, 4 technique-ports |
+| `SuperClaude-Org/SuperClaude_Framework` | [`superclaude`](audits/superclaude-gap-analysis.md) | full skip: 0 keep, 0 port |
+| `eyaltoledano/claude-task-master` | [`claude-task-master`](audits/claude-task-master-gap-analysis.md) | full skip: 0 keep, 0 port |
+| `buildermethods/agent-os` | [`agent-os`](audits/agent-os-gap-analysis.md) | near-skip: 1 optional P3 |
+| `ruvnet/claude-flow` | [`claude-flow`](audits/claude-flow-gap-analysis.md) | full skip: out of category |
+| `FlorianBruniaux/claude-code-plugins` | [`bruniaux`](audits/bruniaux-claude-code-plugins-gap-analysis.md) | 4 technique-ports |
+| 20 public predefined workflows | [`workflow-corpus`](audits/workflow-corpus-gap-analysis.md) | 2 new P1 + 8 survivors |
+
+The recurring lesson: most competitor "gaps" are **deliberate divergences** (human-gated git, no
+worktrees, mutable specs, no heavy MCP/persona runtime), not holes. The audits name them explicitly so
+a future session doesn't "fix" a choice. The thematic cut adds the symmetrical discipline — naming,
+with a quote, every axis where a target genuinely wins.
 
 ## Files
 
