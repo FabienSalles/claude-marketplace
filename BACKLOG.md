@@ -8,6 +8,52 @@ Items identified during a marketplace audit and not yet executed. Loose priority
 
 ---
 
+## 🔬 Thematic audit 2026-08 — P1s not tracked elsewhere
+
+Six thematic audits read this marketplace against eleven public packs from fresh clones
+([`plugins/self-audit/audits/theme-*.md`](plugins/self-audit/audits/)). The `goal` items 1, 3 and 11
+below were **re-confirmed independently** by the workflow audit and are not repeated here. What
+follows is what no section already tracks.
+
+### A hook that blocks destructive git
+- **Why:** nothing in this repo blocks `reset --hard`, `clean -fd`, `branch -D` or `--force`. The only force-push guard actually protecting the machine today comes from Florian's `security-suite` **installed in cache**, not from this marketplace — so it does not survive a reinstall on another Mac. That same plugin's `hooks.json` references two scripts absent from the installed tree, firing dead invocations on every Edit/Write. Raised as P2-b on 2026-07, never implemented.
+- **Effort:** ~1 h. `mattpocock/skills` ships a portable 25-line version to read, not copy.
+- **Trigger:** now — this is the one gap that is both known and currently outsourced.
+- **Path:** `plugins/git/hooks/`. Must let a bare `git push` through, or it fights the global `CLAUDE.md` instead of backing it.
+- **Careful:** the deny list is the whole design. Block the verb, not the workflow.
+
+### Tests on the git and common hooks
+- **Why:** ten hooks across `git` and `common` have no test at all, while `security-runtime` tests its three. A hook that silently stops matching is worse than no hook: it reads as protection.
+- **Effort:** ~2 h, same harness as `security-runtime`.
+- **Trigger:** with the hook above — write them together or the new one lands untested too.
+- **Path:** `scripts/tests/`.
+
+### "What does not count as a test" taxonomy
+- **Why:** a test that is skipped, filtered or asserts nothing passes the gate today. `@group`/`--filter` in PHPUnit and `it.skip`/`test.todo` in Vitest all exit green. BMAD's `verification-gap` lens closes exactly this; the rule worth stealing is *a test that exists but did not run counts as missing*.
+- **Effort:** ~1 h of prose in `craft:testing-principles` §2, plus a line in the done-criteria template.
+- **Trigger:** now. It undercuts the bite check, which is the differentiator.
+- **Path:** `plugins/craft/skills/testing-principles/SKILL.md`, `plugins/superpowers/skills/verification-before-completion/`.
+
+### The "one adapter = hypothetical seam" guard
+- **Why:** the sharpest anti-over-engineering rule in the whole corpus, and it is missing here. `ddd-principles` prescribes ports unconditionally; mattpocock's version refuses the abstraction until a *second* adapter exists. This lands on friction #1 of the usage profile.
+- **Effort:** ~30 min. One rule, one refusal criterion.
+- **Trigger:** now — cheapest P1 on the list.
+- **Path:** `plugins/craft/skills/ddd-principles/SKILL.md`.
+
+### Descriptions that break this pack's own spec
+- **Why:** `npx-skills-conventions` documents a 1024-character ceiling; three descriptions exceed it (`git` at 1,243) and ten carry angle brackets. Nothing tests the constraint, so it drifted. Separately, the `Covers: …` pattern used throughout is documented by `obra/superpowers` as an anti-pattern: summarising the workflow in the description makes the model follow the description instead of opening the skill.
+- **Effort:** ~1 h for the ceiling (plus a check in `validate-skills.sh`); the `Covers:` rework is a bigger, separate call.
+- **Trigger:** the ceiling now, since it is mechanically checkable. The `Covers:` question deserves its own decision.
+- **Path:** `scripts/validate-skills.sh`, then the offending frontmatter.
+
+### A version-detection rule for the language packs
+- **Why:** skills say "in a PHP 8.2+ project" without ever teaching Claude to read `composer.json` or `package.json` to find out. The gate on every versioned rule is therefore a guess. PHP also stops at 8.3, and no Symfony skill names its version.
+- **Effort:** ~2 h.
+- **Trigger:** before adding a `php-8-4` skill, or it inherits the same blind spot.
+- **Path:** `plugins/php/`, `plugins/symfony/`.
+
+---
+
 ## 🔐 MCPs hardening (manual configuration outside this repo)
 
 ### Restrict Cloudflare API token scope
@@ -98,6 +144,11 @@ unattended runs. That Workflow generation has since been deleted.
 
 Ordered by **what it costs to lose**, not by effort. The competitive reading behind items 4–10 is
 [`plugins/goal/docs/comparison.md`](plugins/goal/docs/comparison.md) §Where the field wins.
+
+> Items 1, 3 and 11 were re-confirmed independently on 2026-08-20 by
+> [`theme-workflow.md`](plugins/self-audit/audits/theme-workflow.md), reading eleven packs from fresh
+> clones: the fuse, the report on a halted run and the machine critic are the same three gaps, still
+> open, and still the ones where superpowers and BMAD are ahead. No new workflow gap was found.
 
 ### 1. A fuse — an iteration ceiling and a clock on the implementer
 - **Why:** the single largest gap, and the cheapest to close. `gate/bounded.ts` puts a 900s SIGKILL clock on every *declared command*, but the implementer session is spawned with no timeout, no turn cap and no iteration ceiling. A session circling an impossible slice circles until the usage allowance runs out — and `templates/done-criteria.template` already promises "maximum 15 turns per iteration", which nothing enforces. `SwarmOps` caps everything numerically; `Rel(AI)Build` ships a hard 3-iteration auto-fix cap; Anthropic's own `ralph-wiggum` says to "always rely on a maximum iteration count as the primary safety mechanism".

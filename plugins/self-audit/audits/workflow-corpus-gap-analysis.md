@@ -3,6 +3,12 @@
 **v2 — 2026-07-28, après le refactor `goal-single-run`.** Remplace la v1 du même jour, qui portait
 sur la version 919 lignes à tracks parallèles.
 
+> ⚠️ **Document historique.** Le sujet audité, `workflows/goal-auto.js`, a été **supprimé le
+> 2026-08-06** (voir `BACKLOG.md` §Done). Le runner actuel est `plugins/goal/scripts/goal-run.ts` +
+> `goal-gate.ts`. Les mesures ci-dessous décrivent un code qui n'existe plus ; les verdicts sur le
+> **corpus externe** restent valides. Pour la lecture à jour, voir
+> [`theme-workflow.md`](theme-workflow.md).
+
 | | v1 | v2 |
 |---|---|---|
 | Notre fichier | 919 l., tracks parallèles | **813 l., un seul mode** |

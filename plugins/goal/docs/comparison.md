@@ -54,8 +54,9 @@ What has **not** turned up anywhere is the conjunction, and inside it, two thing
    writing agent cannot reach.
 
 Say that, and the positioning survives contact with the field. Say "nobody makes the plan
-binding" (as this project's own French comparison still does), and a reader with a search engine
-falsifies it in a minute.
+binding", and a reader with a search engine falsifies it in a minute — `planning-with-files` and
+`Rel(AI)Build` both do. [`comparatif-fonctionnel.md`](comparatif-fonctionnel.md) carried exactly
+that overclaim until 2026-08-20 and now scopes it to the spec-driven family.
 
 ---
 

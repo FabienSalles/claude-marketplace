@@ -183,8 +183,10 @@ publiée seule, c'est celle-là.
 
 ## 2. Ce qu'ils ne font pas, et que je fais
 
-**Personne ne demande si le test a été rouge avant.** C'est la revendication centrale, et elle est
-falsifiable. La règle « le test doit échouer avant le correctif » n'est pas neuve : c'est le
+**Presque personne ne demande si le test a été rouge avant.** C'est la revendication centrale, et elle
+est falsifiable — donc il faut l'énoncer juste. Un harness au moins s'en approche par l'autre bout :
+`greenproof` photographie les tests avant la tranche et rejoue les **originaux** contre le nouveau
+code (voir [`comparison.md`](comparison.md) §Who else has it). La règle « le test doit échouer avant le correctif » n'est pas neuve : c'est le
 critère d'admission de SWE-bench, le jeu de données de référence.[^swebench] Mais SWE-bench est un
 harness d'**évaluation**, qui vérifie ça dans un conteneur jetable. Aucun harness de **livraison**
 ne le rejoue. Tous acceptent un changement quand la suite est verte, aucun ne demande si elle a
@@ -196,8 +198,11 @@ condition d'arrêt est *le test passe*, **modifier le test est un chemin valide 
 bite check transforme la condition en *le test passe et il échouait sans ce code*, ce qui rend la
 réécriture du test inutile comme stratégie, plutôt que simplement interdite.
 
-**Personne ne rend le plan opposable.** La famille des outils dirigés par la spécification
-(spec-kit chez GitHub, Agent OS) produit d'excellents plans et n'embarque **aucun mécanisme pour y
+**La famille spec-driven ne rend pas le plan opposable.** Attention à la portée : deux harnesses le
+font déjà, `planning-with-files` (scellé SHA-256, hooks qui refusent un corps altéré) et
+`Rel(AI)Build` (spec adressée par contenu, lockfile HMAC) — voir [`comparison.md`](comparison.md).
+Ce qui reste vrai, c'est que les outils dirigés par la spécification
+(spec-kit chez GitHub, Agent OS) produisent d'excellents plans et n'embarquent **aucun mécanisme pour y
 tenir l'agent**.[^speckit] Le plan est consultatif, l'agent le réinterprète en silence. Chez moi il est
 empreinté et un run qui l'a réécrit est refusé. Sur la foi du panel, c'est un différenciateur plus
 fort que le bite check : le bite check est au moins *concevable* ailleurs, alors qu'un plan
