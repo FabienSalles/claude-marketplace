@@ -15,7 +15,7 @@ Then use it: `/goal:spec <your ticket>` turns the ticket into a functional contr
 
 Most of this marketplace is conventions: prose that shapes how Claude writes code. **One pack is
 not.** [`goal`](plugins/goal/README.md) turns a ticket into a pull request without you in the
-loop: a runner and a gate, 2,648 lines of TypeScript under 266 tests, built around rules most
+loop: a runner and a gate, 2,761 lines of TypeScript under 444 tests, built around rules most
 autonomous loops do not have.
 
 > A slice of work is accepted by a **program** that runs the command the plan declared and reads
@@ -55,6 +55,26 @@ What this marketplace optimizes for (and, just as deliberately, what it refuses 
 - **Smallest change that works.** Skills push back on unrequested surface: anti-over-engineering is the default, not a mode.
 - **Discipline as skills, not runtime.** Plain `SKILL.md` conventions. No heavy MCP servers, personas, or scaffolding to stand up.
 - **Curated, not accumulated.** Every pack is weighed against the alternatives (the [`self-audit`](plugins/self-audit/README.md) plugin literally runs that comparison) instead of piling on.
+
+### Where it stands against the alternatives
+
+Six thematic audits (2026-08) read this marketplace against eleven public packs — `obra/superpowers`,
+`mattpocock/skills`, `anthropics/skills`, `github/spec-kit`, BMAD, agent-os, SuperClaude, claude-flow,
+task-master, AIDD, Bruniaux — from fresh clones. The honest summary:
+
+**Ahead of all eleven.** The verdict on a slice is an exit code no model can rewrite, and the gate is
+the only committer — every other pack tells its subagent to commit. Craft rules are split into
+cross-language principles plus per-language examples, which nobody else does. And no target ships a
+single line of PHP, Symfony, Doctrine, Twig, NestJS or Astro convention: they are workflow packs, so
+the stack depth here is real rather than claimed.
+
+**Behind, and worth saying.** Nothing here is mechanically enforceable — it is prose, where
+`mattpocock/skills` installs dependency-cruiser and proves the rule fails. There is no fuse on a run
+and no report when one halts, where superpowers and BMAD both keep a terminal status. A test that is
+skipped or filtered still passes the gate. Skills are long (116-line median against 32 elsewhere) with
+almost no `references/` split, and none of the 103 has an eval.
+
+**→ [the six thematic audits](plugins/self-audit/audits/), each anchored to `file:line` on both sides**
 
 ## Plugins
 
