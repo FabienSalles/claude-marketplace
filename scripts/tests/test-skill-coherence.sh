@@ -270,6 +270,27 @@ assert_present "R2 the checkpoint defers manual-mode index handling to git:git, 
   'git:git' "$NEXT_SKILL"
 
 echo ""
+echo "== Iteration 2 — the DDD examples construct and branch on the canonical Result"
+
+DDD_TS_FP=plugins/typescript/skills/ddd-ts-fp
+TS_DDD_EVENTS=plugins/typescript/skills/ts-ddd-events
+
+assert_absent "R3 no DDD example branches on the retired boolean .ok field" \
+  '\.ok' "$DDD_TS_FP" "$TS_DDD_EVENTS"
+
+cases=$((cases + 1))
+if grep -rqE '[^a-zA-Z](ok|err)\(' "$DDD_TS_FP" "$TS_DDD_EVENTS"; then
+  echo "✗ R5 no DDD example calls the hand-rolled ok/err constructors"
+  grep -rnE '[^a-zA-Z](ok|err)\(' "$DDD_TS_FP" "$TS_DDD_EVENTS" | sed 's/^/    /'
+  failures=$((failures + 1))
+else
+  echo "✓ R5 no DDD example calls the hand-rolled ok/err constructors"
+fi
+
+assert_present "R3 the ddd-ts-fp examples branch with the canonical isSuccess/isFailure" \
+  'success(' "$DDD_TS_FP"
+
+echo ""
 if [[ $failures -gt 0 ]]; then
   echo "✗ $failures/$cases assertion(s) failed"
   exit 1

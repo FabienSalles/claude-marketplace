@@ -39,13 +39,15 @@ Each operation is a **curried function** returning a new aggregate (or a `Result
 ```typescript
 const makeAddress =
   (addressId: string, createdAt: Date) =>
-  (command: AddAddressCommand): Result<Address, DomainError> =>
-    ok({
+  (command: AddAddressCommand): Result<Address, DomainError> => ({
+    tag: 'success',
+    value: {
       id: addressId,
       street: command.street,
       city: command.city,
       // …
-    });
+    },
+  });
 ```
 
 > When creating smart constructors for domain objects, read `references/ddd-functional-examples.md` for complete examples and pipeline integration.

@@ -1,6 +1,6 @@
 # DDD Functional Pattern Examples
 
-> `Result`, `ok`, `err`, `pipe`, and `chain` used throughout these examples are the ones defined in `ts-functional` — this file does not redefine them.
+> `Result`, `isSuccess`, `isFailure`, `pipe`, and `chain` used throughout these examples are the ones defined in `ts-functional` — this file does not redefine them. Success and failure values are constructed with the `{ tag: 'success', value }` / `{ tag: 'failure', error }` shape `ts-functional` defines; `isSuccess(result)` narrows to the success(...) arm, `isFailure(result)` to the failure(...) arm.
 
 ## Table of Contents
 - [Aggregate Operations](#aggregate-operations)
@@ -31,17 +31,20 @@ const addBillingAddress =
   (address: Address, existingCount: number) =>
   (tenant: Tenant): Result<Tenant, DomainError> => {
     if (existingCount >= MAX_ADDRESSES) {
-      return err({ message: 'Maximum addresses reached' });
+      return { tag: 'failure', error: { message: 'Maximum addresses reached' } };
     }
 
-    return ok({
-      ...tenant,
-      addresses: {
-        ...tenant.addresses,
-        billing: address,
-        collection: [...tenant.addresses.collection, address],
+    return {
+      tag: 'success',
+      value: {
+        ...tenant,
+        addresses: {
+          ...tenant.addresses,
+          billing: address,
+          collection: [...tenant.addresses.collection, address],
+        },
       },
-    });
+    };
   };
 ```
 
@@ -81,25 +84,30 @@ const addFullAddress =
 // make + context => specialized function
 const makeAddress =
   (addressId: string, createdAt: Date) =>
-  (command: AddAddressCommand): Result<Address, DomainError> =>
-    ok({
+  (command: AddAddressCommand): Result<Address, DomainError> => ({
+    tag: 'success',
+    value: {
       id: addressId,
       street: command.street,
       city: command.city,
       countryCode: command.countryCode,
       createdAt,
       updatedAt: createdAt,
-    });
+    },
+  });
 
 const makeFormatter =
   (logger: Logger) =>
   (rawMessage: ExternalMessage): Result<CreateTenantCommand, DomainError> => {
     logger.info('Formatting message', { id: rawMessage.id });
-    return ok({
-      email: rawMessage.email,
-      firstName: rawMessage.firstName,
-      lastName: rawMessage.lastName,
-    });
+    return {
+      tag: 'success',
+      value: {
+        email: rawMessage.email,
+        firstName: rawMessage.firstName,
+        lastName: rawMessage.lastName,
+      },
+    };
   };
 ```
 
@@ -114,6 +122,10 @@ const addressResult: Result<Address, DomainError> = pipe(
   chain(validateUsaAddress),
   chain(makeAddress(addressId, createdAt)),  // Smart constructor at end of pipeline
 );
+
+if (isSuccess(addressResult)) {
+  return addressResult.value;
+}
 ```
 
 ## Validation Pipeline Examples
@@ -123,18 +135,18 @@ type Validator<T> = (input: T) => Result<T, DomainError>;
 
 const validatePeriod: Validator<CreateReceiptCommand> = (cmd) =>
   cmd.period.month < 1 || cmd.period.month > 12
-    ? err({ message: 'Invalid month' })
-    : ok(cmd);
+    ? { tag: 'failure', error: { message: 'Invalid month' } }
+    : { tag: 'success', value: cmd };
 
 const validateAmount: Validator<CreateReceiptCommand> = (cmd) =>
   cmd.amount <= 0
-    ? err({ message: 'Amount must be positive' })
-    : ok(cmd);
+    ? { tag: 'failure', error: { message: 'Amount must be positive' } }
+    : { tag: 'success', value: cmd };
 
 const validateLease: Validator<CreateReceiptCommand> = (cmd) =>
   cmd.leaseId === ''
-    ? err({ message: 'Lease ID required' })
-    : ok(cmd);
+    ? { tag: 'failure', error: { message: 'Lease ID required' } }
+    : { tag: 'success', value: cmd };
 
 // Composition: stops at first error
 const validateCreateReceipt = (cmd: CreateReceiptCommand): Result<CreateReceiptCommand, DomainError> =>
@@ -158,18 +170,18 @@ const enrichWithCivility =
     const civility = mapCivility(externalData.civility);
 
     if (civility === null) {
-      return err({ message: `Unknown civility: ${externalData.civility}` });
+      return { tag: 'failure', error: { message: `Unknown civility: ${externalData.civility}` } };
     }
 
-    return ok({ ...command, civility });
+    return { tag: 'success', value: { ...command, civility } };
   };
 
 const enrichWithPhone =
   (externalData: ExternalMessage) =>
   (command: CreateTenantCommand): Result<CreateTenantCommand, DomainError> =>
     externalData.phone != null
-      ? ok({ ...command, phone: parsePhone(externalData.phone) })
-      : ok(command);
+      ? { tag: 'success', value: { ...command, phone: parsePhone(externalData.phone) } }
+      : { tag: 'success', value: command };
 
 // Complete pipeline
 const formatExternalToCommand =
@@ -205,21 +217,21 @@ const createReceiptHandler =
     // 1. Validate
     const validated = validateCreateReceipt(command);
 
-    if (!validated.ok) {
+    if (isFailure(validated)) {
       return validated;
     }
 
     // 2. Load aggregate
     const lease = await leaseRepository.getById(command.leaseId);
 
-    if (!lease.ok) {
+    if (isFailure(lease)) {
       return lease;
     }
 
     // 3. Domain logic (pure)
     const receipt = createReceipt(idGenerator.generate(), validated.value, lease.value);
 
-    if (!receipt.ok) {
+    if (isFailure(receipt)) {
       return receipt;
     }
 
