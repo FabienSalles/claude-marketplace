@@ -71,8 +71,8 @@ the stack depth here is real rather than claimed.
 **Behind, and worth saying.** Nothing here is mechanically enforceable — it is prose, where
 `mattpocock/skills` installs dependency-cruiser and proves the rule fails. There is no fuse on a run
 and no report when one halts, where superpowers and BMAD both keep a terminal status. A test that is
-skipped or filtered still passes the gate. Skills are long (116-line median against 32 elsewhere) with
-almost no `references/` split, and none of the 103 has an eval.
+skipped or filtered still passes the gate. Skills are long (131-line median against 32 elsewhere) with
+almost no `references/` split, and one of the 106 has an eval.
 
 **→ [the six thematic audits](plugins/self-audit/audits/), each anchored to `file:line` on both sides**
 
