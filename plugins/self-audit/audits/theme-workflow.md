@@ -126,7 +126,7 @@ c'est le seul gap qui morde directement sur la friction n°1 du profil d'usage.
 |---|---|---|---|
 | **Journal des tentatives, append-only** | `obra_superpowers/skills/subagent-driven-development/SKILL.md:141-152`, `:471-480` ; `BMAD/.../bmad-build/spec-template.md:63-73` | Chaque tentative refusée ajoute une ligne datée (itération, cause, ce qui doit survivre) dans le répertoire de run ; `/goal:supervise` la lit avant de classifier, et la rejoue à l'humain à l'arrêt. | ✅ |
 | **Passe de réfutation dans `grill-adversarial`** | `FlorianBruniaux_claude-code-plugins/plugins/pr-workflow/agents/plan-challenger.md:70-77` | Une étape terminale : pour chaque trou généré, quatre tests (déjà couvert ? pattern existant ? atteignable ? coût proportionné ?). Ce qui survit devient une règle ; le reste est listé comme écarté, avec le motif. | ✅ |
-| **Évaluer les skills de `goal`** | `anthropics_skills/skills/skill-creator/SKILL.md:308-314`, `:394` | `plugins/goal/evals/evals.json` existe (aujourd'hui aucun `evals/` n'existe dans le dépôt), avec un bras `without_skill` rejoué à chaque itération et une réserve held-out pour la description. Amplifie la force « méta-tooling » du profil. | ✅ |
+| **Évaluer les skills de `goal`** | `anthropics_skills/skills/skill-creator/SKILL.md:308-314`, `:394` | `plugins/goal/evals/evals.json` existe (aujourd'hui seul `plugins/career/evals/evals.json` existe), avec un bras `without_skill` rejoué à chaque itération et une réserve held-out pour la description. Amplifie la force « méta-tooling » du profil. | ✅ |
 
 ### P3
 
