@@ -1,0 +1,12 @@
+{
+  "name": "career",
+  "version": "1.0.0",
+  "description": "Career material for the French tech market, built once and projected per target. career-evidence keeps a versioned referential of engagements (missions, audits, training) where every client name carries its own disclosure level; cv-tailor projects it into a two-page ATS-safe CV or an ESN-style dossier de compétences; linkedin-profile audits and rewrites the profile for how LinkedIn Recruiter actually retrieves and ranks. Rules are sourced from vendor documentation (Workday, Greenhouse, Ashby, Apec, LinkedIn Engineering), never from resume-industry folklore.",
+  "author": {
+    "name": "FabienSalles"
+  },
+  "repository": "https://github.com/FabienSalles/claude-marketplace",
+  "license": "MIT",
+  "keywords": ["cv", "resume", "linkedin", "ats", "freelance", "france", "dossier-de-competences"],
+  "skills": "./skills/"
+}
