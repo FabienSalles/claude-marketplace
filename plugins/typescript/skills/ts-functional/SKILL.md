@@ -1,6 +1,6 @@
 ---
 name: ts-functional
-description: "ACTIVATE when writing functional-style TypeScript: pipe, compose, currying, Result types, railway-oriented programming, or AsyncResult. ACTIVATE for 'pipe', 'Result type', 'railway', 'functional', 'chain', 'flatMap'. Covers: type-safe pipe implementation, currying patterns, Result<T,E> type, railway-oriented error handling, AsyncResult for async pipelines. DO NOT use for: DDD aggregate modeling (see ddd-ts-fp), OOP patterns (see ts-oop), imperative code."
+description: "ACTIVATE when writing functional-style TypeScript: pipe, compose, currying, Result types, railway-oriented programming, or AsyncResult. ACTIVATE for 'pipe', 'Result type', 'railway', 'functional', 'chain'. Covers: type-safe pipe implementation, currying patterns, Result<T,E> type, railway-oriented error handling, AsyncResult for async pipelines. DO NOT use for: DDD aggregate modeling (see ddd-ts-fp), OOP patterns (see ts-oop), imperative code."
 version: "1.1"
 ---
 
@@ -38,11 +38,27 @@ applyVAT(100); // 20
 
 ```typescript
 type Result<T, E = Error> =
-  | { ok: true; value: T }
-  | { ok: false; error: E };
+  | { tag: 'success'; value: T }
+  | { tag: 'failure'; error: E };
 
-function ok<T>(value: T): Result<T, never> { return { ok: true, value }; }
-function err<E>(error: E): Result<never, E> { return { ok: false, error }; }
+function ok<T>(value: T): Result<T, never> { return { tag: 'success', value }; }
+function err<E>(error: E): Result<never, E> { return { tag: 'failure', error }; }
+
+function isSuccess<T, E>(result: Result<T, E>): result is Extract<Result<T, E>, { tag: 'success' }> {
+  return result.tag === 'success';
+}
+
+function isFailure<T, E>(result: Result<T, E>): result is Extract<Result<T, E>, { tag: 'failure' }> {
+  return result.tag === 'failure';
+}
+
+const Result = {
+  // Chain a fallible operation onto a Result, short-circuiting on failure
+  chain:
+    <T, S, E>(f: (value: T) => Result<S, E>) =>
+    <F>(result: Result<T, F>): Result<S, E | F> =>
+      isSuccess(result) ? f(result.value) : result,
+};
 ```
 
 ## AsyncResult
@@ -75,9 +91,8 @@ Provides `chain` (async fallible), `tee` (side-effect), and `wrap` (adapt sync t
 | `pipe(value, fn1, fn2, fn3)` | Left-to-right transformation chain |
 | `const specialized = general(config)` | Currying for partial application |
 | `Result<T, E>` | Success or failure without exceptions |
-| `map(result, fn)` | Transform success value, skip on error |
-| `flatMap(result, fn)` | Chain fallible operations |
-| `pipeResult(ok(x), fn1, fn2)` | Railway: pipe that stops on first error |
+| `isSuccess(result)` / `isFailure(result)` | Narrow a `Result` to its success or failure arm |
+| `Result.chain(fn)` | Chain a fallible operation, short-circuiting on failure |
 | `AsyncResult<T, E>` | Async Result: `Promise<Result<T, E>>` |
 | `AsyncResult.chain(fn)` | Chain async fallible operations |
 | `AsyncResult.tee(fn)` | Side-effect without altering the Result |

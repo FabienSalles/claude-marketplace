@@ -53,33 +53,8 @@ const result = pipe(
 
 ## Result Type Implementation
 
-### Core Types
-
-```typescript
-type Result<T, E = Error> =
-  | { ok: true; value: T }
-  | { ok: false; error: E };
-
-function ok<T>(value: T): Result<T, never> {
-  return { ok: true, value };
-}
-
-function err<E>(error: E): Result<never, E> {
-  return { ok: false, error };
-}
-```
-
-### Chaining with map / flatMap
-
-```typescript
-function map<T, U, E>(result: Result<T, E>, fn: (value: T) => U): Result<U, E> {
-  return result.ok ? ok(fn(result.value)) : result;
-}
-
-function flatMap<T, U, E>(result: Result<T, E>, fn: (value: T) => Result<U, E>): Result<U, E> {
-  return result.ok ? fn(result.value) : result;
-}
-```
+> `Result<T, E>` is defined once, in `SKILL.md`'s Railway-Oriented Programming section. The examples
+> below build on that definition rather than redeclaring it.
 
 ### Validation Pipeline Example
 
@@ -102,13 +77,13 @@ function validateMinLength(min: number) {
 function createTenant(dto: CreateTenantDto): Result<Tenant, ValidationError> {
   const email = validateEmail(dto.email);
 
-  if (!email.ok) {
+  if (isFailure(email)) {
     return email;
   }
 
   const password = validateMinLength(8)(dto.password);
 
-  if (!password.ok) {
+  if (isFailure(password)) {
     return password;
   }
 
@@ -118,28 +93,17 @@ function createTenant(dto: CreateTenantDto): Result<Tenant, ValidationError> {
 
 ## Railway-Oriented Programming
 
-### pipeResult
+### Chaining with Result.chain
 
 ```typescript
-function pipeResult<T, E>(
-  initial: Result<T, E>,
-  ...fns: Array<(value: any) => Result<any, E>>
-): Result<any, E> {
-  return fns.reduce(
-    (acc, fn) => (acc.ok ? fn(acc.value) : acc),
-    initial,
-  );
-}
-
-const result = pipeResult(
+const result = pipe(
   ok(rawInput),
-  validateEmail,
-  normalizeEmail,
-  checkUniqueness,
+  Result.chain(validateEmail),
+  Result.chain(normalizeEmail),
+  Result.chain(checkUniqueness),
 );
 
-if (!result.ok) {
-  // Handle error -- no try/catch needed
+if (isFailure(result)) {
   return { error: result.error };
 }
 
@@ -159,7 +123,7 @@ const AsyncResult = {
     <T, S, E>(f: (a: T) => AsyncResult<S, E>) =>
     async <F>(asyncResult: AsyncResult<T, F>): AsyncResult<S, E | F> => {
       const result = await asyncResult;
-      return result.ok ? f(result.value) : result;
+      return isSuccess(result) ? f(result.value) : result;
     },
 
   // Side-effect without altering the result (persist, log, notify)
@@ -167,7 +131,7 @@ const AsyncResult = {
     <T, E>(f: (a: T) => Promise<void>) =>
     async (asyncResult: AsyncResult<T, E>): AsyncResult<T, E> => {
       const result = await asyncResult;
-      if (result.ok) {
+      if (isSuccess(result)) {
         await f(result.value);
       }
       return result;
@@ -192,14 +156,14 @@ const addAddressHandler =
   async (customerId: string, command: AddAddressCommand): AsyncResult<Customer, DomainError> => {
     const customerResult = await customerRepository.getById(customerId);
 
-    if (!customerResult.ok) {
+    if (isFailure(customerResult)) {
       return customerResult;
     }
 
     const addressId = idGenerator.generate();
     const customer = addAddress(addressId, command)(customerResult.value);
 
-    if (!customer.ok) {
+    if (isFailure(customer)) {
       return customer;
     }
 
