@@ -127,7 +127,7 @@ const generateReceiptHandler =
   async (command: GenerateReceiptCommand): AsyncResult<Receipt, DomainError> => {
     const receipt = createReceipt(command);
 
-    if (!receipt.ok) {
+    if (isFailure(receipt)) {
       return receipt;
     }
 
