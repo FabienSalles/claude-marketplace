@@ -63,15 +63,15 @@ type ValidationError = { field: string; message: string };
 
 function validateEmail(input: string): Result<string, ValidationError> {
   return input.includes('@')
-    ? ok(input)
-    : err({ field: 'email', message: 'Invalid email' });
+    ? success(input)
+    : failure({ field: 'email', message: 'Invalid email' });
 }
 
 function validateMinLength(min: number) {
   return (input: string): Result<string, ValidationError> =>
     input.length >= min
-      ? ok(input)
-      : err({ field: 'password', message: `Min ${min} characters` });
+      ? success(input)
+      : failure({ field: 'password', message: `Min ${min} characters` });
 }
 
 function createTenant(dto: CreateTenantDto): Result<Tenant, ValidationError> {
@@ -87,24 +87,24 @@ function createTenant(dto: CreateTenantDto): Result<Tenant, ValidationError> {
     return password;
   }
 
-  return ok(Tenant.create(email.value, password.value));
+  return success(Tenant.create(email.value, password.value));
 }
 ```
 
 ## Railway-Oriented Programming
 
-### Chaining with Result.chain
+### Chaining with chain
 
 ```typescript
 const result = pipe(
-  ok(rawInput),
-  Result.chain(validateEmail),
-  Result.chain(normalizeEmail),
-  Result.chain(checkUniqueness),
+  success(rawInput),
+  chain(validateEmail),
+  chain(normalizeEmail),
+  chain(checkUniqueness),
 );
 
 if (isFailure(result)) {
-  return { error: result.error };
+  return failure(result.value);
 }
 
 // result.value is the validated, normalized, unique email

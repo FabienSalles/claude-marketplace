@@ -39,10 +39,10 @@ applyVAT(100); // 20
 ```typescript
 type Result<T, E = Error> =
   | { tag: 'success'; value: T }
-  | { tag: 'failure'; error: E };
+  | { tag: 'failure'; value: E };
 
-function ok<T>(value: T): Result<T, never> { return { tag: 'success', value }; }
-function err<E>(error: E): Result<never, E> { return { tag: 'failure', error }; }
+function success<T>(value: T): Result<T, never> { return { tag: 'success', value }; }
+function failure<E>(value: E): Result<never, E> { return { tag: 'failure', value }; }
 
 function isSuccess<T, E>(result: Result<T, E>): result is Extract<Result<T, E>, { tag: 'success' }> {
   return result.tag === 'success';
@@ -52,13 +52,11 @@ function isFailure<T, E>(result: Result<T, E>): result is Extract<Result<T, E>, 
   return result.tag === 'failure';
 }
 
-const Result = {
-  // Chain a fallible operation onto a Result, short-circuiting on failure
-  chain:
-    <T, S, E>(f: (value: T) => Result<S, E>) =>
-    <F>(result: Result<T, F>): Result<S, E | F> =>
-      isSuccess(result) ? f(result.value) : result,
-};
+// Chain a fallible operation onto a Result, short-circuiting on failure
+const chain =
+  <T, S, E>(f: (value: T) => Result<S, E>) =>
+  <F>(result: Result<T, F>): Result<S, E | F> =>
+    isSuccess(result) ? f(result.value) : result;
 ```
 
 ## AsyncResult
@@ -92,7 +90,7 @@ Provides `chain` (async fallible), `tee` (side-effect), and `wrap` (adapt sync t
 | `const specialized = general(config)` | Currying for partial application |
 | `Result<T, E>` | Success or failure without exceptions |
 | `isSuccess(result)` / `isFailure(result)` | Narrow a `Result` to its success or failure arm |
-| `Result.chain(fn)` | Chain a fallible operation, short-circuiting on failure |
+| `chain(fn)` | Chain a fallible operation, short-circuiting on failure |
 | `AsyncResult<T, E>` | Async Result: `Promise<Result<T, E>>` |
 | `AsyncResult.chain(fn)` | Chain async fallible operations |
 | `AsyncResult.tee(fn)` | Side-effect without altering the Result |

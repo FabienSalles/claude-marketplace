@@ -291,6 +291,57 @@ assert_present "R3 the ddd-ts-fp examples branch with the canonical isSuccess/is
   'success(' "$DDD_TS_FP"
 
 echo ""
+echo "== Iteration 4 — every construction site goes through success(...) / failure(...)"
+
+TS_FUNCTIONAL_DIR=plugins/typescript/skills/ts-functional
+DDD_EXAMPLES=plugins/typescript/skills/ddd-ts-fp/references/ddd-functional-examples.md
+FP_EXAMPLES=plugins/typescript/skills/ts-functional/references/fp-pattern-examples.md
+
+cases=$((cases + 1))
+if grep -rqE '[^a-zA-Z](ok|err)\(' "$TS_FUNCTIONAL_DIR"; then
+  echo "✗ R1 ts-functional's own examples keep no retired ok/err constructor call"
+  grep -rnE '[^a-zA-Z](ok|err)\(' "$TS_FUNCTIONAL_DIR" | sed 's/^/    /'
+  failures=$((failures + 1))
+else
+  echo "✓ R1 ts-functional's own examples keep no retired ok/err constructor call"
+fi
+
+assert_absent "R7 no example across the three skills carries the retired error: field" \
+  'error:' "$TS_FUNCTIONAL_DIR" "$DDD_TS_FP" "$TS_DDD_EVENTS"
+
+cases=$((cases + 1))
+if grep -rqE "\{ *tag: .(success|failure)., " "$FP_EXAMPLES" "$DDD_EXAMPLES"; then
+  echo "✗ R3 no example rebuilds the tagged shape by hand instead of calling the constructor"
+  grep -rnE "\{ *tag: .(success|failure)., " "$FP_EXAMPLES" "$DDD_EXAMPLES" | sed 's/^/    /'
+  failures=$((failures + 1))
+else
+  echo "✓ R3 no example rebuilds the tagged shape by hand instead of calling the constructor"
+fi
+
+cases=$((cases + 1))
+if grep -qE "(return|\? |: )failure\(" "$DDD_EXAMPLES"; then
+  echo "✓ R3 the ddd-ts-fp examples construct failures with failure("
+else
+  echo "✗ R3 the ddd-ts-fp examples construct failures with failure("
+  failures=$((failures + 1))
+fi
+
+cases=$((cases + 1))
+if grep -rqE "(^|[^c])Result\.(chain|tee)" "$TS_FUNCTIONAL_DIR"; then
+  echo "✗ R5 no example calls the Result.chain/Result.tee namespace the module does not export"
+  grep -rnE "(^|[^c])Result\.(chain|tee)" "$TS_FUNCTIONAL_DIR" | sed 's/^/    /'
+  failures=$((failures + 1))
+else
+  echo "✓ R5 no example calls the Result.chain/Result.tee namespace the module does not export"
+fi
+
+assert_present "R1 ts-functional's SKILL.md names the success<T> constructor" \
+  'success<T>' "$TS_FUNCTIONAL"
+
+assert_present "R1 ts-functional's SKILL.md names the failure<E> constructor" \
+  'failure<E>' "$TS_FUNCTIONAL"
+
+echo ""
 if [[ $failures -gt 0 ]]; then
   echo "✗ $failures/$cases assertion(s) failed"
   exit 1
