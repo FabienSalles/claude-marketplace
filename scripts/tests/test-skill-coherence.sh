@@ -287,8 +287,17 @@ else
   echo "✓ R5 no DDD example calls the hand-rolled ok/err constructors"
 fi
 
-assert_present "R3 the ddd-ts-fp examples branch with the canonical isSuccess/isFailure" \
-  'success(' "$DDD_TS_FP"
+# The pattern must be one prose cannot satisfy. Its first form was `success(`, which went green on
+# the sentence at the top of ddd-functional-examples.md while every construction site in the file was
+# still a hand-built literal, so the assertion passed through the very defect it was written to catch.
+# `if (isSuccess(` appears in code and nowhere else.
+cases=$((cases + 1))
+if grep -rqE 'if \(is(Success|Failure)\(' "$DDD_TS_FP"; then
+  echo "✓ R3 the ddd-ts-fp examples branch with the canonical isSuccess/isFailure"
+else
+  echo "✗ R3 the ddd-ts-fp examples branch with the canonical isSuccess/isFailure"
+  failures=$((failures + 1))
+fi
 
 echo ""
 echo "== Iteration 4 — every construction site goes through success(...) / failure(...)"
