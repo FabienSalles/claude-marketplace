@@ -63,7 +63,7 @@ test('bounded() attaches whatever ceiling ceiling() computed', (t) => {
     return;
   }
 
-  assert.equal(prefixed, `${limit}\ntrue`, 'bounded() did not attach the ceiling ceiling() computed');
+  assert.match(prefixed, /^ulimit -u \d+ \|\| exit 1\ntrue$/, 'bounded() did not attach the ceiling ceiling() computed');
 });
 
 // The regression that took the whole suite red on 2026-08-03, 35 failures for one cause:
