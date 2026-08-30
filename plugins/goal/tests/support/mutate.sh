@@ -18,7 +18,6 @@ import { spawnSync } from 'node:child_process';
 import { basename, resolve } from 'node:path';
 
 const testFile = resolve(process.env.MUTATE_TARGET);
-const testFileName = basename(testFile);
 
 if (!existsSync(testFile)) {
   console.error(`mutate.sh: target test file not found: ${testFile}`);
@@ -52,6 +51,25 @@ const mutations = [
   },
 ];
 
+// R3: every NEVER_VERSIONED alternative must be a covering assertion in core-rules.test.ts, so
+// this batch always targets that file, regardless of what MUTATE_TARGET was invoked with.
+const neverVersionedFile = resolve('plugins/goal/src/core/rules/never.ts');
+const coreRulesTest = resolve('plugins/goal/tests/core-rules.test.ts');
+const drop = (all, alt) => `(${all.filter((a) => a !== alt).join('|')})`;
+mutations.push(
+  { name: 'the .env alternative', file: neverVersionedFile, find: '  /(^|\\/)\\.env$/,\n', replacement: '', target: coreRulesTest },
+  { name: 'the .env.* alternative', file: neverVersionedFile, find: '  /(^|\\/)\\.env\\.(?!example$|sample$|template$|dist$)/,\n', replacement: '', target: coreRulesTest },
+  { name: 'the node_modules/ alternative', file: neverVersionedFile, find: '  /(^|\\/)node_modules\\//,\n', replacement: '', target: coreRulesTest },
+  ...['rsa', 'dsa', 'ecdsa', 'ed25519'].map((alt) => ({
+    name: `the ${alt} SSH-key alternative`, file: neverVersionedFile, find: '(rsa|dsa|ecdsa|ed25519)',
+    replacement: drop(['rsa', 'dsa', 'ecdsa', 'ed25519'], alt), target: coreRulesTest,
+  })),
+  ...['pem', 'p12', 'pfx', 'jks', 'keystore'].map((alt) => ({
+    name: `the ${alt} alternative`, file: neverVersionedFile, find: '(pem|p12|pfx|jks|keystore)',
+    replacement: drop(['pem', 'p12', 'pfx', 'jks', 'keystore'], alt), target: coreRulesTest,
+  })),
+);
+
 let failed = false;
 let live;
 
@@ -71,8 +89,10 @@ for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP']) {
   });
 }
 
-for (const { name, file, find, replacement } of mutations) {
+for (const { name, file, find, replacement, target } of mutations) {
   const original = readFileSync(file, 'utf8');
+  const runTarget = target ?? testFile;
+  const runTargetName = basename(runTarget);
 
   if (!original.includes(find)) {
     console.error(`mutate.sh: "${find}" not found in ${file} — the mutation itself no longer applies`);
@@ -83,7 +103,7 @@ for (const { name, file, find, replacement } of mutations) {
   live = { file, original };
   writeFileSync(file, original.replace(find, replacement));
 
-  const result = spawnSync(process.execPath, ['--test', testFile], {
+  const result = spawnSync(process.execPath, ['--test', runTarget], {
     encoding: 'utf8',
     env: { ...process.env, FORCE_COLOR: '0', NO_COLOR: '1' },
   });
@@ -91,10 +111,10 @@ for (const { name, file, find, replacement } of mutations) {
   restore();
 
   if (result.status === 0) {
-    console.error(`mutate.sh: mutation "${name}" did NOT turn ${testFileName} red`);
+    console.error(`mutate.sh: mutation "${name}" did NOT turn ${runTargetName} red`);
     failed = true;
   } else {
-    console.log(`mutate.sh: mutation "${name}" turned ${testFileName} red, as required`);
+    console.log(`mutate.sh: mutation "${name}" turned ${runTargetName} red, as required`);
   }
 }
 
