@@ -377,6 +377,12 @@ assert_present "R8 the skill defers to ts-oop for Tell Don't Ask" \
   'ts-oop' "$PORTS_ADAPTERS"
 
 echo ""
+echo "== Iteration 2 — ts-conventions no longer illustrates interface with a port"
+
+assert_absent "R9 ts-conventions' interface example is not a repository port" \
+  'interface ReceiptRepository' "$TS_CONVENTIONS"
+
+echo ""
 if [[ $failures -gt 0 ]]; then
   echo "✗ $failures/$cases assertion(s) failed"
   exit 1

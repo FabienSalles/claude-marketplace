@@ -92,9 +92,13 @@ type Receipt = {
 };
 
 // ✅ interface — when merging or extending is needed
-interface ReceiptRepository {
-  findById(id: string): Promise<Receipt | null>;
-  save(receipt: Receipt): Promise<void>;
+interface CreateTenantDto {
+  email: string;
+  firstName: string;
+}
+
+interface UpdateTenantDto extends Partial<CreateTenantDto> {
+  id: string;
 }
 ```
 
