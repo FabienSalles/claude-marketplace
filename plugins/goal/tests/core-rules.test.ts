@@ -20,6 +20,28 @@ test('never: a plan-declared .env is refused, a clean tree is not', () => {
   assert.equal(clean.ok, true);
 });
 
+test('never: every NEVER_VERSIONED alternative is a covering assertion', () => {
+  const alternatives: [string, string][] = [
+    ['.env exact', '.env'],
+    ['.env.* variant', 'config/.env.local'],
+    ['node_modules', 'node_modules/pkg/index.js'],
+    ['id_rsa', 'id_rsa'],
+    ['id_dsa', 'id_dsa'],
+    ['id_ecdsa', 'id_ecdsa'],
+    ['id_ed25519', 'id_ed25519'],
+    ['pem', 'cert.pem'],
+    ['p12', 'cert.p12'],
+    ['pfx', 'cert.pfx'],
+    ['jks', 'cert.jks'],
+    ['keystore', 'app.keystore'],
+  ];
+
+  for (const [name, path] of alternatives) {
+    const result = noNeverVersionedPaths([path], 'Iteration 1');
+    assert.equal(result.ok, false, `${name}: ${path} must be refused`);
+  }
+});
+
 test('ticked: an untick between check and commit halts naming what dropped', () => {
   const dropped = monotonicTicks('3', '1,2', '1');
   const held = monotonicTicks('3', '1,2', '1,2,3');

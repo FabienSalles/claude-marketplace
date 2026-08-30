@@ -35,6 +35,15 @@ test('no ceiling is emitted where the shell cannot express one', () => {
   );
 });
 
+// The counterpart to the test above: `bounded()` must attach the ceiling it is handed, or reducing
+// it to the identity function would pass every other assertion in this file unnoticed. The ceiling
+// is passed in rather than read from the machine: `ceiling()` returns `''` under dash, and a test
+// that reads the host cannot refuse that mutation on the shells where it returns nothing.
+test('bounded() attaches the ceiling it is given', () => {
+  assert.equal(bounded('true', 'ulimit -u 500 || exit 1'), 'ulimit -u 500 || exit 1\ntrue');
+  assert.equal(bounded('true', ''), 'true', 'an empty ceiling was attached anyway');
+});
+
 // The regression that took the whole suite red on 2026-08-03, 35 failures for one cause:
 // `ulimit -u` lowers the hard limit as well as the soft one, so a command already running under a
 // ceiling cannot set another — EPERM — and the `|| exit 1` turned every nested gate command into a
