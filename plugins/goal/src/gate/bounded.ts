@@ -75,11 +75,8 @@ export const ceiling = (): string => {
 
 // A newline, never `&&`: the command keeps its own shape, so a `!` negation or a pipeline still
 // parses as its author wrote it.
-export const bounded = (command: string): string => {
-  const limit = ceiling();
-
-  return limit === '' ? command : `${limit}\n${command}`;
-};
+export const bounded = (command: string, limit: string = ceiling()): string =>
+  limit === '' ? command : `${limit}\n${command}`;
 
 // A run's state reaches its gate through GOAL_RUN_* environment — the JSONL path today, the
 // ticked set until it moved to argv. None of it is addressed to the commands the gate runs: the

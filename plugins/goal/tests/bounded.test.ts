@@ -35,35 +35,13 @@ test('no ceiling is emitted where the shell cannot express one', () => {
   );
 });
 
-// The counterpart to the test above: wherever `ceiling()` actually computes a non-empty ceiling,
-// `bounded()` must attach it, or reducing `bounded()` to the identity function would pass every
-// other assertion in this file unnoticed. `ceiling()` reads the machine it runs on — its own live
-// process count against the inherited limit — and a headroom of 400 can leave nothing to lower on
-// a machine already crowded with processes, so this test drives its own subprocess with
-// GOAL_PROC_HEADROOM forced to 0, exactly as the GOAL_CMD_TIMEOUT test above drives its own. Under
-// dash, where `ceiling()` returns `''` by design, this is a skip carrying a reason string rather
-// than an assertion — `run.sh:84` refuses only node's bare `# SKIP`.
-test('bounded() attaches whatever ceiling ceiling() computed', (t) => {
-  const modulePath = resolve(import.meta.dirname, '../src/gate/bounded.ts');
-  const script = `
-    import { bounded, ceiling } from ${JSON.stringify(modulePath)};
-    const limit = ceiling();
-    process.stdout.write(JSON.stringify({ limit, prefixed: bounded('true') }));
-  `;
-
-  const run = spawnSync(process.execPath, ['--input-type=module', '-e', script], {
-    encoding: 'utf8',
-    env: { ...process.env, GOAL_PROC_HEADROOM: '0' },
-  });
-
-  const { limit, prefixed } = JSON.parse(run.stdout);
-
-  if (limit === '') {
-    t.skip('ceiling() computed no ceiling even at zero headroom, so bounded() reduced to the identity function is indistinguishable here');
-    return;
-  }
-
-  assert.match(prefixed, /^ulimit -u \d+ \|\| exit 1\ntrue$/, 'bounded() did not attach the ceiling ceiling() computed');
+// The counterpart to the test above: `bounded()` must attach the ceiling it is handed, or reducing
+// it to the identity function would pass every other assertion in this file unnoticed. The ceiling
+// is passed in rather than read from the machine: `ceiling()` returns `''` under dash, and a test
+// that reads the host cannot refuse that mutation on the shells where it returns nothing.
+test('bounded() attaches the ceiling it is given', () => {
+  assert.equal(bounded('true', 'ulimit -u 500 || exit 1'), 'ulimit -u 500 || exit 1\ntrue');
+  assert.equal(bounded('true', ''), 'true', 'an empty ceiling was attached anyway');
 });
 
 // The regression that took the whole suite red on 2026-08-03, 35 failures for one cause:

@@ -74,8 +74,8 @@ mutations.push(
 mutations.push({
   name: 'bounded() reduced to the identity function',
   file: resolve('plugins/goal/src/gate/bounded.ts'),
-  find: "export const bounded = (command: string): string => {\n  const limit = ceiling();\n\n  return limit === '' ? command : `${limit}\\n${command}`;\n};",
-  replacement: 'export const bounded = (command: string): string => {\n  return command;\n};',
+  find: "export const bounded = (command: string, limit: string = ceiling()): string =>\n  limit === '' ? command : `${limit}\\n${command}`;",
+  replacement: 'export const bounded = (command: string, limit: string = ceiling()): string => command;',
   target: resolve('plugins/goal/tests/bounded.test.ts'),
 });
 
