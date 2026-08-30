@@ -8,7 +8,7 @@ TypeScript conventions and workflows: typing, code style, functional programming
 /plugin install typescript@fabien-claude-marketplace
 ```
 
-## Skills (7)
+## Skills (8)
 
 ### Code & typing
 
@@ -31,5 +31,11 @@ TypeScript conventions and workflows: typing, code style, functional programming
 | Skill | Purpose |
 |---|---|
 | [`ts-refactoring`](skills/ts-refactoring/SKILL.md) | End-to-end flow analysis before refactoring, consumer-driven value-object design, value-object completeness checklist |
+
+### Architecture
+
+| Skill | Purpose |
+|---|---|
+| [`ts-ports-adapters`](skills/ts-ports-adapters/SKILL.md) | Declaring a port as a type, building its adapter, composing it at the infrastructure entry point, substituting a test double -- without a DI container |
 
 > Security audit for TS/NestJS was moved to [`audit:ts-security`](../audit/skills/ts-security/SKILL.md) so all audit concerns live in the same plugin.

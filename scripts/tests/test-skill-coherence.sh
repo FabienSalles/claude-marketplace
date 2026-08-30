@@ -351,6 +351,32 @@ assert_present "R1 ts-functional's SKILL.md names the failure<E> constructor" \
   'failure<E>' "$TS_FUNCTIONAL"
 
 echo ""
+echo "== Iteration 1 — a port and its adapter, without a DI container"
+
+PORTS_ADAPTERS=plugins/typescript/skills/ts-ports-adapters/SKILL.md
+
+assert_present "R2 the skill declares a port as a type" \
+  '^type [A-Za-z]*Port' "$PORTS_ADAPTERS"
+
+assert_present "R3 the skill builds an adapter implementing the port" \
+  'Adapter' "$PORTS_ADAPTERS"
+
+assert_present "R4 the skill composes the adapter at an infrastructure/composition site" \
+  'composition' "$PORTS_ADAPTERS"
+
+assert_present "R5 the skill shows a substitution that proves the port pays" \
+  'test double\|fake\|stub' "$PORTS_ADAPTERS"
+
+assert_absent "R6 the skill names no DI container" \
+  'DI container\|InversifyJS\|tsyringe\|Awilix' "$PORTS_ADAPTERS"
+
+assert_present "R7 the skill defers to ts-functional for its Result type" \
+  'ts-functional' "$PORTS_ADAPTERS"
+
+assert_present "R8 the skill defers to ts-oop for Tell Don't Ask" \
+  'ts-oop' "$PORTS_ADAPTERS"
+
+echo ""
 if [[ $failures -gt 0 ]]; then
   echo "✗ $failures/$cases assertion(s) failed"
   exit 1
