@@ -70,6 +70,15 @@ mutations.push(
   })),
 );
 
+// R4: bounded() reduced to the identity function must turn bounded.test.ts red.
+mutations.push({
+  name: 'bounded() reduced to the identity function',
+  file: resolve('plugins/goal/src/gate/bounded.ts'),
+  find: "export const bounded = (command: string): string => {\n  const limit = ceiling();\n\n  return limit === '' ? command : `${limit}\\n${command}`;\n};",
+  replacement: 'export const bounded = (command: string): string => {\n  return command;\n};',
+  target: resolve('plugins/goal/tests/bounded.test.ts'),
+});
+
 let failed = false;
 let live;
 
