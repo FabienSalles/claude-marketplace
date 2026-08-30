@@ -1,23 +1,24 @@
 #!/bin/bash
-# Proves gate-captures.test.ts is not vacuous. Each mutation below moves either the HALT envelope
-# or the scanner's own scope — the two ways R1 names as what a capture built on a fixture blind to
-# argv (`gate-ship.test.ts`'s own `#!/bin/sh\nexit 0`) could never notice. Every mutation below
-# must turn `node --test gate-captures.test.ts` red on its own; if one does not, this script exits
+# Proves the target test is not vacuous. Each mutation below injects, into a core/ file, exactly
+# the kind of import R2 names the dependency rule as forbidding — reaching for node:fs, for
+# node:child_process, or for an adapter — the ways core/ could cross its own boundary. Every
+# mutation below must turn the target test red on its own; if one does not, this script exits
 # non-zero, naming which one, and the mutation harness is what failed, not the suite.
 #
 # The mutated file is always restored, pass or fail, before this script exits.
 #
 # Usage: bash plugins/goal/tests/support/mutate.sh [test-file]   (run from the repository root, as gate1 does)
-# test-file defaults to plugins/goal/tests/gate-captures.test.ts when omitted.
+# test-file defaults to plugins/goal/tests/core-purity.test.ts when omitted.
 
 set -uo pipefail
 
-MUTATE_TARGET="${1:-plugins/goal/tests/gate-captures.test.ts}" node --input-type=module - <<'NODE'
+MUTATE_TARGET="${1:-plugins/goal/tests/core-purity.test.ts}" node --input-type=module - <<'NODE'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
-import { resolve } from 'node:path';
+import { basename, resolve } from 'node:path';
 
 const testFile = resolve(process.env.MUTATE_TARGET);
+const testFileName = basename(testFile);
 
 if (!existsSync(testFile)) {
   console.error(`mutate.sh: target test file not found: ${testFile}`);
@@ -26,16 +27,28 @@ if (!existsSync(testFile)) {
 
 const mutations = [
   {
-    name: 'the HALT envelope reworded (src/gate/halt.ts)',
-    file: resolve('plugins/goal/src/gate/halt.ts'),
-    find: '`HALT\\n\\nREASON:',
-    replacement: '`HALTED\\n\\nREASON:',
+    name: 'a node:fs import injected into core/result.ts',
+    file: resolve('plugins/goal/src/core/result.ts'),
+    find: 'export type Result',
+    replacement: "import { readFileSync } from 'node:fs';\n\nexport type Result",
   },
   {
-    name: "the scanner's scope widened from git history to the working directory (src/gate/ship.ts)",
-    file: resolve('plugins/goal/src/gate/ship.ts'),
-    find: '`${scanner} git . --redact`',
-    replacement: '`${scanner} dir . --redact`',
+    name: 'a node:child_process import injected into core/verdict.ts',
+    file: resolve('plugins/goal/src/core/verdict.ts'),
+    find: 'export type Halt',
+    replacement: "import { spawnSync } from 'node:child_process';\n\nexport type Halt",
+  },
+  {
+    name: 'an adapters/ import injected into core/plan.ts',
+    file: resolve('plugins/goal/src/core/plan.ts'),
+    find: "import { basename } from 'node:path';",
+    replacement: "import { basename } from 'node:path';\nimport { readFile } from '../adapters/fs.ts';",
+  },
+  {
+    name: 'a node:process import injected into core/preflight.ts — a builtin no observed spelling names, but the dependency rule still forbids',
+    file: resolve('plugins/goal/src/core/preflight.ts'),
+    find: "import { err, ok, type Result } from './result.ts';",
+    replacement: "import { cwd } from 'node:process';\nimport { err, ok, type Result } from './result.ts';",
   },
 ];
 
@@ -78,10 +91,10 @@ for (const { name, file, find, replacement } of mutations) {
   restore();
 
   if (result.status === 0) {
-    console.error(`mutate.sh: mutation "${name}" did NOT turn gate-captures.test.ts red`);
+    console.error(`mutate.sh: mutation "${name}" did NOT turn ${testFileName} red`);
     failed = true;
   } else {
-    console.log(`mutate.sh: mutation "${name}" turned gate-captures.test.ts red, as required`);
+    console.log(`mutate.sh: mutation "${name}" turned ${testFileName} red, as required`);
   }
 }
 
