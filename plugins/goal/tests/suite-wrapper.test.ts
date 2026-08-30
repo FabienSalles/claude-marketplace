@@ -31,7 +31,23 @@ test('a fixture with one pass and one skip is refused, not silently accepted', (
   const { code, output } = runWith({ GOAL_TESTS_ROOT: root });
 
   assert.equal(code, 1, output);
-  assert.match(output, /skipped/i, output);
+  assert.match(output, /HALT: \d+ test\(s\) skipped/, output);
+});
+
+// R5 — node indents a subtest's `﹣` line when it sits inside a describe(), and a skip declared
+// there is exactly as undeclared as one at the top level, so the refusal must read past the
+// indentation rather than only match a skip line anchored at column zero.
+test('a skip nested in a describe() is refused, not silently accepted', () => {
+  const root = tmpDir('goal-suite-wrapper-skip-nested-');
+  fixture(
+    root,
+    "import { test, describe } from 'node:test';\ndescribe('a group', () => {\n  test('a fixture test passes', () => {});\n  test('a fixture test is skipped', { skip: true }, () => {});\n});",
+  );
+
+  const { code, output } = runWith({ GOAL_TESTS_ROOT: root });
+
+  assert.equal(code, 1, output);
+  assert.match(output, /HALT: \d+ test\(s\) skipped/, output);
 });
 
 // R7 — a fixture test that fails halts the wrapper, and the halt names the exit code the suite
