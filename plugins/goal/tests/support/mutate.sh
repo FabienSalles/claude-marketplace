@@ -7,16 +7,17 @@
 #
 # The mutated file is always restored, pass or fail, before this script exits.
 #
-# Usage: bash plugins/goal/tests/support/mutate.sh   (run from the repository root, as gate1 does)
+# Usage: bash plugins/goal/tests/support/mutate.sh [test-file]   (run from the repository root, as gate1 does)
+# test-file defaults to plugins/goal/tests/gate-captures.test.ts when omitted.
 
 set -uo pipefail
 
-node --input-type=module - <<'NODE'
+MUTATE_TARGET="${1:-plugins/goal/tests/gate-captures.test.ts}" node --input-type=module - <<'NODE'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { resolve } from 'node:path';
 
-const testFile = resolve('plugins/goal/tests/gate-captures.test.ts');
+const testFile = resolve(process.env.MUTATE_TARGET);
 
 if (!existsSync(testFile)) {
   console.error(`mutate.sh: target test file not found: ${testFile}`);

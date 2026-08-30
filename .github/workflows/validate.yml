@@ -167,6 +167,9 @@ jobs:
       - name: Run the gate suite
         run: bash plugins/goal/tests/run.sh
 
+      - name: Prove the capture suite bites
+        run: bash plugins/goal/tests/support/mutate.sh
+
       - name: Type-check the gate
         run: |
           # node strips types at run time without checking them — verified. This is the
