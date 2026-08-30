@@ -36,6 +36,6 @@ TypeScript conventions and workflows: typing, code style, functional programming
 
 | Skill | Purpose |
 |---|---|
-| [`ts-ports-adapters`](skills/ts-ports-adapters/SKILL.md) | Declaring a port as a type, building its adapter, composing it at the infrastructure entry point, substituting a test double -- without a DI container |
+| [`ts-ports-adapters`](skills/ts-ports-adapters/SKILL.md) | Port as a type of functions in the domain, adapter as an annotated object literal, handler taking its dependencies first, composition root in the infrastructure, in-memory stub in the test |
 
 > Security audit for TS/NestJS was moved to [`audit:ts-security`](../audit/skills/ts-security/SKILL.md) so all audit concerns live in the same plugin.
