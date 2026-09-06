@@ -79,9 +79,27 @@ const STATUS = {
 type Status = (typeof STATUS)[keyof typeof STATUS]; // 'active' | 'inactive'
 ```
 
+as const serves exactly two purposes: freezing a closed set to derive a union, and pinning a module constant to its literal type.
+
+## Closed Set as a Triplet
+
+A closed set is written as a triplet in a single file: the as const object, the derived union, and the predicate.
+
+```typescript
+const RECEIPT_STATUS = {
+  Draft: 'draft',
+  Sent: 'sent',
+} as const;
+
+type ReceiptStatus = (typeof RECEIPT_STATUS)[keyof typeof RECEIPT_STATUS];
+
+const isReceiptStatus = (value: string): value is ReceiptStatus =>
+  Object.values(RECEIPT_STATUS).includes(value as ReceiptStatus);
+```
+
 ## `type` vs `interface`
 
-**Use `type` by default.** Use `interface` only when declaration merging or `extends` is needed (e.g., for NestJS class-based DI).
+**Use `type` by default.** Use `interface` only when declaration merging or `extends` is needed (e.g., for NestJS class-based DI). The type-over-interface convention is enforced by ESLint's naming-convention rule, not by code review.
 
 ```typescript
 // ✅ type — for most cases
@@ -127,6 +145,8 @@ function handle(receipt: Receipt) {
 }
 ```
 
+The discriminant field is always named tag, and callers use isX predicates instead of comparing tag directly.
+
 > **The `Result<T, E>` discriminated union for fallible operations is owned by `ts-functional`** — do not redefine it here.
 
 ## `satisfies` Operator
@@ -151,6 +171,8 @@ const routes = {
 routes.home.path; // type: '/' (preserved)
 ```
 
+satisfies checks a rendered or collected object literal's shape without widening it; it is never used to validate an untyped value.
+
 ## Branded Types
 
 **Prevent accidental swaps** of primitive types that represent different concepts:
@@ -173,6 +195,8 @@ function getReceipts(landlordId: LandlordId): Receipt[] { ... }
 const tenantId = toTenantId('abc');
 getReceipts(tenantId); // Type error!
 ```
+
+as is tolerated only at infrastructure boundaries: external payloads, JSON.parse, SDK calls, empty accumulators; inside the domain it is debt.
 
 > **See also**: `ts-oop`'s "TS-specific: Branded Types for Primitive Identifiers" heading for branded types in value objects.
 
@@ -233,6 +257,22 @@ if (tenant === null) {
 }
 
 // tenant is now Tenant (narrowed)
+```
+
+Absence in a domain type is written as an explicit | null; ? is reserved for external payload shapes and partial update commands.
+
+## Command and Query Handler Typing
+
+On the Command side, publish a named function-type alias after the handler's file and annotate the factory with it; on the Query side, let it infer.
+
+```typescript
+// createReceipt.ts
+export type CreateReceiptHandler = (command: CreateReceiptCommand) => AsyncResult<Receipt, DomainError>;
+
+const createReceipt: CreateReceiptHandler = (command) => { ... };
+
+// findReceiptById.ts — Query, no alias, inferred return type
+const findReceiptById = (query: FindReceiptByIdQuery) => { ... };
 ```
 
 ## Quick Reference

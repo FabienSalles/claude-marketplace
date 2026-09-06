@@ -69,6 +69,16 @@ Provides `chain` (async fallible), `tee` (side-effect), and `wrap` (adapt sync t
 
 > **When building an AsyncResult with chain/tee/wrap**, read `references/fp-pattern-examples.md` for the full implementation and handler usage patterns.
 
+## Error and Composition Conventions
+
+- throw is reserved for a state the type system allows but the domain declares impossible; an expected business failure returns failure() instead.
+- A handler returns an AsyncResult only when its caller must branch on a business failure; otherwise it returns a plain Promise.
+- The port method's name encodes the absence contract: find* returns Promise<T | null> and the caller decides, get* returns AsyncResult<T, DomainError> and the port supplies the typed error.
+- Compose Results with pipe and chain only when synchronous; in async code, unwrap imperatively with if (isFailure(x)) return x;.
+- AsyncResult.wrap, chain, and tee belong only to infrastructure orchestration, at the top of a worker.
+- pipe is a general composition tool, not a Result-only tool, and infrastructure is its heaviest consumer.
+- In tests, assert the boolean guard, then result.value; never compare against a reconstructed success(...).
+
 ## When to Use What
 
 | Pattern | Use case |

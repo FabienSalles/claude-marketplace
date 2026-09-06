@@ -8,7 +8,7 @@ TypeScript conventions and workflows: typing, code style, functional programming
 /plugin install typescript@fabien-claude-marketplace
 ```
 
-## Skills (8)
+## Skills (9)
 
 ### Code & typing
 
@@ -37,5 +37,6 @@ TypeScript conventions and workflows: typing, code style, functional programming
 | Skill | Purpose |
 |---|---|
 | [`ts-ports-adapters`](skills/ts-ports-adapters/SKILL.md) | Port as a type of functions in the domain, adapter as an annotated object literal, handler taking its dependencies first, composition root in the infrastructure, in-memory stub in the test |
+| [`ts-layer-boundaries`](skills/ts-layer-boundaries/SKILL.md) | Worker composition root, curried consumer, Router wiring, five-gesture controller, domain-never-imports-infrastructure enforced by ESLint zones, infrastructure-only ports, in-memory doubles, read-can-reach-write asymmetry |
 
 > Security audit for TS/NestJS was moved to [`audit:ts-security`](../audit/skills/ts-security/SKILL.md) so all audit concerns live in the same plugin.

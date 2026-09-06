@@ -39,6 +39,45 @@ assert_absent() {
   fi
 }
 
+# assert_pins NAME PATTERN TARGET… — fails if the pattern is absent from the target set,
+# shorter than 40 characters, or found anywhere in plugins/ outside that set.
+assert_pins() {
+  local name="$1" pattern="$2"
+  shift 2
+  local targets=("$@")
+  cases=$((cases + 1))
+
+  if [[ ${#pattern} -lt 40 ]]; then
+    echo "✗ $name (pattern is only ${#pattern} chars, prose could satisfy it)"
+    failures=$((failures + 1))
+    return
+  fi
+
+  if ! grep -rq -- "$pattern" "${targets[@]}"; then
+    echo "✗ $name"
+    echo "    '$pattern' found in none of: ${targets[*]}"
+    failures=$((failures + 1))
+    return
+  fi
+
+  local stray
+  stray=$(grep -rl -- "$pattern" plugins/ 2>/dev/null | while IFS= read -r f; do
+    local inside=0
+    for t in "${targets[@]}"; do
+      case "$f" in "$t"*) inside=1 ;; esac
+    done
+    [[ $inside -eq 0 ]] && echo "$f"
+  done)
+
+  if [[ -n "$stray" ]]; then
+    echo "✗ $name (pattern also found outside the target set)"
+    echo "$stray" | sed 's/^/    /'
+    failures=$((failures + 1))
+  else
+    echo "✓ $name"
+  fi
+}
+
 # assert_present NAME PATTERN TARGET… — PATTERN must appear in some TARGET
 assert_present() {
   local name="$1" pattern="$2"
@@ -418,6 +457,323 @@ echo "== Iteration 2 — ts-conventions no longer illustrates interface with a p
 
 assert_absent "R9 ts-conventions' interface example is not a repository port" \
   'interface ReceiptRepository' "$TS_CONVENTIONS"
+
+echo ""
+echo "== Iteration 8 — the six SPI port conventions the reference code proves"
+
+assert_pins "C4 a CQRS-split aggregate keeps its write and read ports disjoint" \
+  "A CQRS-split aggregate carries a homonymous write port and read port whose operations never overlap." \
+  "$PORTS_ADAPTERS"
+
+assert_pins "C7 the adapter is a default-exported lowerCamel const annotated by its port" \
+  "The adapter is a lowerCamel const annotated by its port and exported as the module's default." \
+  "$PORTS_ADAPTERS"
+
+assert_pins "C11 only non-determinism and I/O sit behind a port" \
+  "Only the clock, id generation, persistence, dispatch, and feature flags sit behind a port; everything else is reached directly." \
+  "$PORTS_ADAPTERS"
+
+assert_pins "C14 every domain port lives under SPI/, stated as a decision" \
+  "Every domain port lives under SPI/, with no port left outside it by convention." \
+  "$PORTS_ADAPTERS"
+
+assert_pins "C17 each port ships a hand-written InMemory or Stub double" \
+  "Each port keeps a hand-written double: InMemory for one that holds state, Stub for one that returns a deterministic sequence." \
+  "$PORTS_ADAPTERS"
+
+assert_pins "C20 a port with no domain consumer has no reason to live in SPI" \
+  "A port that only circulates between two infrastructure files has no reason to live in SPI." \
+  "$PORTS_ADAPTERS"
+
+echo ""
+echo "== Iteration 9 — the nine boundary conventions land in one skill, ESLint zones over review"
+
+LAYER_BOUNDARIES=plugins/typescript/skills/ts-layer-boundaries/SKILL.md
+TS_CODE_CONVENTIONS=plugins/typescript/skills/ts-code-conventions/SKILL.md
+
+assert_pins "C73 *Worker.ts is the sole async composition root with a module-level side effect" \
+  "The async composition root is \*Worker.ts, the only file in the worker tree allowed a module-level side effect." \
+  "$LAYER_BOUNDARIES"
+
+assert_pins "C74 the consumer is a curried factory that never imports a concrete adapter" \
+  "The consumer is a curried factory receiving handlers, formatters, and ports; it never imports a concrete adapter." \
+  "$LAYER_BOUNDARIES"
+
+assert_pins "C76 the Router wires command endpoints, adapters in, handler applied once" \
+  "The Router wires command endpoints: it imports the adapters, applies the handler once at load time, and passes the curried controller when registering the route." \
+  "$LAYER_BOUNDARIES"
+
+assert_pins "C78 a controller performs exactly five gestures" \
+  "A controller performs five gestures: read the request, build the Command or Query, await the handler, branch on the Result, set the status or envelope." \
+  "$LAYER_BOUNDARIES"
+
+assert_pins "C80 #77 the domain never imports infrastructure, declared in ESLint zones" \
+  "The domain never imports infrastructure, and the boundary is declared in ESLint zones rather than left to code review." \
+  "$LAYER_BOUNDARIES"
+
+assert_pins "C87 an infrastructure-only collaborator has its port declared in infrastructure" \
+  "A collaborator used only by infrastructure has its port declared in infrastructure, beside its adapter, never in Domain/SPI." \
+  "$LAYER_BOUNDARIES"
+
+assert_pins "C92 every declared port keeps a hand-written in-memory double" \
+  "Every declared port keeps a hand-written in-memory double, so the test becomes its own composition root." \
+  "$LAYER_BOUNDARIES"
+
+assert_pins "C96 the read side may reach the write side, never the reverse, stated as a decision" \
+  "The read side may reach the write side, never the reverse; codebase B forbids both directions and pays it back in duplication." \
+  "$LAYER_BOUNDARIES"
+
+assert_pins "C102 a read endpoint goes through a domain handler, never the repository directly" \
+  "A read endpoint goes through a domain handler: no direct repository call from the controller, no persistence type on the wire." \
+  "$LAYER_BOUNDARIES"
+
+assert_present "R1 the catalogue names ts-layer-boundaries as the boundary rule's one owner" \
+  'ts-layer-boundaries' plugins/typescript/README.md
+
+assert_absent "R2 ts-code-conventions makes no boundary claim now owned by ts-layer-boundaries" \
+  'infrastructure' "$TS_CODE_CONVENTIONS"
+
+assert_present "R2 ts-code-conventions defers layer boundaries to their one owner" \
+  'ts-layer-boundaries' "$TS_CODE_CONVENTIONS"
+
+echo ""
+echo "== Iteration 3 — the seven currying and parameter-order conventions"
+
+CRAFT_DDD_FP=plugins/craft/skills/ddd-fp-principles
+
+assert_pins "C22 the dependency group is positional, never a destructured object or a container" \
+  "The dependency group is positional, never a destructured object nor a container." \
+  "$DDD_TS_FP" "$CRAFT_DDD_FP"
+
+assert_pins "C23 dependencies then data at the handler, data then subject at the model: the aggregate is last" \
+  "Dependencies then data at the handler level, but data then subject at the model level: the aggregate is always the last curried argument." \
+  "$DDD_TS_FP" "$CRAFT_DDD_FP"
+
+assert_pins "C25 curry only what will be partially applied or piped" \
+  "Curry only what will be partially applied or piped; adapters, ports, predicates, and mappers stay single-stage." \
+  "$DDD_TS_FP" "$CRAFT_DDD_FP"
+
+assert_pins "C28 publish export type XHandler beside a Command handler, never for a Query" \
+  "Publish export type XHandler beside a Command handler and annotate the factory with it; never do so for a Query." \
+  "$DDD_TS_FP" "$CRAFT_DDD_FP"
+
+assert_pins "C30 a handler never calls another handler, composition moves up a level" \
+  "A handler never calls another handler: composition moves up a level, into a Workflow, a Listener, a Router, or a Consumer." \
+  "$DDD_TS_FP" "$CRAFT_DDD_FP"
+
+assert_pins "C31 Result when a business rule can fail, Promise<void> for fire-and-forget, never a bare domain value" \
+  "Return Result when a business rule can fail, Promise<void> for fire-and-forget; never a bare domain value." \
+  "$DDD_TS_FP" "$CRAFT_DDD_FP"
+
+assert_pins "C32 the data stage takes a single XCommand or XQuery object, never a list of primitives" \
+  "The data stage takes a single XCommand or XQuery object, never a list of primitives." \
+  "$DDD_TS_FP" "$CRAFT_DDD_FP"
+
+echo ""
+echo "== Iteration 4 — the seven modelling conventions, including the maker/validator split"
+
+assert_pins "C38 a Result only for a fallible operation, the bare model for a total transition" \
+  "An operation returns a Result only when it can fail; a total transition returns the bare model." \
+  "$DDD_TS_FP" "$CRAFT_DDD_FP"
+
+assert_pins "C43 an entity's operations take and return the aggregate, never the entity itself" \
+  "An entity carrying identity has its own Models/Entities/<Name>/ folder, and its operations take and return the aggregate, never the entity." \
+  "$DDD_TS_FP" "$CRAFT_DDD_FP"
+
+assert_pins "C44 [#75] the smart constructor splits into Validator files and a never-failing maker" \
+  "The smart constructor splits in two: Validator files carry the invariants, and the maker only maps and normalizes, and never fails." \
+  "$DDD_TS_FP" "$CRAFT_DDD_FP"
+
+assert_pins "C45 a closed set is a triplet in one file: as const object, derived union, predicate" \
+  "A closed set is written as a triplet in a single file: the as const object, the derived union, and the predicate." \
+  "$TS_CONVENTIONS"
+
+assert_pins "C46 each CQRS side owns its model copy, the read copy deliberately narrowed" \
+  "Each CQRS side owns its own copy of the model; the read copy is deliberately narrowed." \
+  "$DDD_TS_FP" "$CRAFT_DDD_FP"
+
+assert_pins "C47 the command DTO repeats per feature, never factored across features by shape" \
+  "The command DTO repeats per feature; two features are never factored together just because their types are identical." \
+  "$DDD_TS_FP" "$CRAFT_DDD_FP"
+
+assert_pins "C49 the repository receives the whole aggregate, never a patch nor a field list" \
+  "The repository receives the whole aggregate, never a patch nor a list of fields." \
+  "$DDD_TS_FP" "$CRAFT_DDD_FP"
+
+echo ""
+echo "== Iteration 5 — the seven error and composition conventions, C57 stays absent"
+
+assert_pins "C58 throw is for the type-allowed-but-domain-impossible state, failure() for the expected business failure" \
+  "throw is reserved for a state the type system allows but the domain declares impossible; an expected business failure returns failure() instead." \
+  "$TS_FUNCTIONAL"
+
+assert_pins "C62 a handler returns an AsyncResult only when its caller must branch on a business failure" \
+  "A handler returns an AsyncResult only when its caller must branch on a business failure; otherwise it returns a plain Promise." \
+  "$TS_FUNCTIONAL"
+
+assert_pins "C63 the port method's name encodes the absence contract, find* versus get*" \
+  "The port method's name encodes the absence contract: find\* returns Promise<T | null> and the caller decides, get\* returns AsyncResult<T, DomainError> and the port supplies the typed error." \
+  "$TS_FUNCTIONAL"
+
+assert_pins "C64 compose Results with pipe and chain only when synchronous, unwrap imperatively in async" \
+  "Compose Results with pipe and chain only when synchronous; in async code, unwrap imperatively with if (isFailure(x)) return x;." \
+  "$TS_FUNCTIONAL"
+
+assert_pins "C66 AsyncResult.wrap, chain, and tee belong only to infrastructure orchestration atop a worker" \
+  "AsyncResult.wrap, chain, and tee belong only to infrastructure orchestration, at the top of a worker." \
+  "$TS_FUNCTIONAL"
+
+assert_pins "C67 pipe is a general composition tool, not a Result-only tool, and infrastructure consumes it most" \
+  "pipe is a general composition tool, not a Result-only tool, and infrastructure is its heaviest consumer." \
+  "$TS_FUNCTIONAL"
+
+assert_pins "C71 in test, assert the boolean guard then result.value, never compare against a reconstructed success" \
+  "In tests, assert the boolean guard, then result.value; never compare against a reconstructed success(...)." \
+  "$TS_FUNCTIONAL"
+
+assert_absent "C57 stays deferred, no canonical DomainError shape unified between A and B" \
+  "the domain error shape of A and B is unified into one canonical DomainError type" \
+  plugins
+
+echo ""
+echo "== Iteration 6 — the eight event, outbox and CQRS conventions, starting with the two vocabularies"
+
+assert_pins "C103 #79 two vocabularies of event must never be confused, no file imports both" \
+  "Two vocabularies of event must never be confused: the transport envelope Event<T> (id/type/timestamp/version/metadata/data) and the domain event DomainEvent<U> (id/type/payload/createdAt). No file imports both." \
+  "$TS_DDD_EVENTS"
+
+assert_pins "C107 the event is created in the handler, never in the aggregate" \
+  "The event is created in the handler, never in the aggregate: without a class, the aggregate cannot carry an event buffer." \
+  "$TS_DDD_EVENTS"
+
+assert_pins "C108 dispatch is a domain port typed as a bare function type, its adapter a make*Mapper table" \
+  "Dispatch is a domain port typed as a bare function type, whose adapter is a Record<type, listener> table built by a make\*Mapper factory." \
+  "$TS_DDD_EVENTS"
+
+assert_pins "C109 emit by returning the event in success or by calling the injected dispatcher, no rule between them" \
+  "Emit either by returning the event in Result's success, or by calling the injected dispatcher: both are used, with no rule between them." \
+  "$TS_DDD_EVENTS"
+
+assert_pins "C112 #79 this outbox is INBOUND, it publishes nothing" \
+  "This outbox is INBOUND: it stages messages received from SQS for local consumption. It publishes nothing, so it is not the reliable publishing pattern." \
+  "$TS_DDD_EVENTS"
+
+assert_pins "C120 the read model is not fed by events, both sides share one database and collection" \
+  "The read model is not fed by events: both sides share one database and collection, so a write is immediately visible on read." \
+  "$TS_DDD_EVENTS"
+
+assert_pins "C121 only one codebase forbids Command importing Query by lint, the read side still reaches into the write side" \
+  "Only one codebase forbids Command importing Query by lint. Neither violates the rule, but the read side freely reaches into the write side." \
+  "$TS_DDD_EVENTS"
+
+assert_pins "C122 domain purity holds even where CQRS does not, a single concrete logger exception" \
+  "Domain purity holds even where CQRS does not: a single exception, a concrete logger, in the gap the zones do not cover." \
+  "$TS_DDD_EVENTS"
+
+echo ""
+echo "== Iteration 7 — the seven typing conventions are stated in ts-conventions"
+
+assert_pins "C128 #77 type-over-interface is locked by ESLint, not by review" \
+  "The type-over-interface convention is enforced by ESLint's naming-convention rule, not by code review." \
+  "$TS_CONVENTIONS"
+
+assert_pins "C133 the discriminant is named tag, exposed through isX predicates" \
+  "The discriminant field is always named tag, and callers use isX predicates instead of comparing tag directly." \
+  "$TS_CONVENTIONS"
+
+assert_pins "C135 satisfies checks a rendered or collected literal's shape without widening it" \
+  "satisfies checks a rendered or collected object literal's shape without widening it; it is never used to validate an untyped value." \
+  "$TS_CONVENTIONS"
+
+assert_pins "C136 as const serves exactly two purposes" \
+  "as const serves exactly two purposes: freezing a closed set to derive a union, and pinning a module constant to its literal type." \
+  "$TS_CONVENTIONS"
+
+assert_pins "C138 as is tolerated only at infrastructure boundaries" \
+  "as is tolerated only at infrastructure boundaries: external payloads, JSON.parse, SDK calls, empty accumulators; inside the domain it is debt." \
+  "$TS_CONVENTIONS"
+
+assert_pins "C146 absence in a domain type is an explicit | null, not ?" \
+  "Absence in a domain type is written as an explicit | null; ? is reserved for external payload shapes and partial update commands." \
+  "$TS_CONVENTIONS"
+
+assert_pins "C148 Command publishes a named handler type alias, Query lets it infer" \
+  "On the Command side, publish a named function-type alias after the handler's file and annotate the factory with it; on the Query side, let it infer." \
+  "$TS_CONVENTIONS"
+
+echo ""
+echo "== Iteration 8 — the ten test-strategy conventions are stated in craft:testing-principles"
+
+assert_pins "C154 jest.mock is only a module-level dependency injector redirecting to a hand-written stub" \
+  "\`jest.mock\` exists only as a module-level dependency injector, to redirect an infrastructure singleton to a hand-written stub." \
+  "$CRAFT_TESTING"
+
+assert_pins "C155 never a jest double for a port, an in-memory stub applied to the curried handler" \
+  "Never a jest double for a port: write an in-memory stub in tests/Helpers and apply it to the curried handler." \
+  "$CRAFT_TESTING"
+
+assert_pins "C156 the stub is typed Port & test accessors, its own spy, asserted on state" \
+  "it is its own spy, and you assert on its state rather than a call registry." \
+  "$CRAFT_TESTING"
+
+assert_pins "C157 the stub resets in beforeEach on Jest, a tagged Before/After hook on Cucumber" \
+  "The stub's state resets in \`beforeEach\` on the Jest side, and through a tagged Before/After hook on the Cucumber side." \
+  "$CRAFT_TESTING"
+
+assert_pins "C159 determinism comes from injected stub generators, never useFakeTimers" \
+  "Determinism comes from stub generators injected over a fixed list, never from \`useFakeTimers\`." \
+  "$CRAFT_TESTING"
+
+assert_pins "C160 node:assert in Cucumber, expect everywhere else" \
+  "Two assertion vocabularies stay strictly separated by runner: \`node:assert\` in Cucumber, \`expect\` everywhere else." \
+  "$CRAFT_TESTING"
+
+assert_pins "C163 AAA separated by blank lines, Result guard before the payload, several assertions allowed" \
+  "AAA stays separated by blank lines, a Result guard precedes the payload assertion, and several assertions per test are allowed." \
+  "$CRAFT_TESTING"
+
+assert_pins "C164 toMatchSnapshot only on a whole value, always paired with a discrete assertion" \
+  "\`toMatchSnapshot\` applies only to a whole value (an aggregate, an HTTP body, a rendered template) and is always paired with a discrete assertion in the same test." \
+  "$CRAFT_TESTING"
+
+assert_pins "C166 Gherkin owns business acceptance criteria, steps run handlers against stubs, no HTTP or DB" \
+  "Gherkin owns the business acceptance criteria: Feature/Scenario/Given-When-Then in English with data tables, and steps that run the handlers against stubs, with no HTTP and no database." \
+  "$CRAFT_TESTING"
+
+assert_pins "C169 the Pact suite stays outside the normal run" \
+  "The Pact suite stays outside the normal run: a \`\*.pact.spec.ts\` suffix, a dedicated script, a CI job in \`allow_failure\`, and a published, versioned pact." \
+  "$CRAFT_TESTING"
+
+echo ""
+echo "== Iteration 9 — the seven aliasing, build and environment-config conventions"
+
+assert_pins "C174 #77 layer boundaries are declared as zones, one per forbidden edge, each named for its rule" \
+  "Layer boundaries are declared as import/no-restricted-paths zones, one zone per forbidden edge, each carrying the message of the rule it violates." \
+  "$TS_CODE_CONVENTIONS"
+
+assert_pins "C175 #77 the CQRS zone is unidirectional by design and a relative path bypasses it" \
+  "The CQRS zone is unidirectional by design: it stops Command from reading Query, never the reverse. A relative path bypasses it." \
+  "$TS_CODE_CONVENTIONS"
+
+assert_pins "C176 every layer has its own alias @<Context><Layer>, a relative path is reserved for same-folder neighbors" \
+  "Every layer has its own alias @<Context><Layer>, and it is imported through it; a relative path is reserved for a neighbor in the same folder." \
+  "$TS_CODE_CONVENTIONS"
+
+assert_pins "C177 the alias table is declared four times and must stay in sync" \
+  "The alias table is declared four times (tsconfig, jest moduleNameMapper, tsconfig-paths at runtime, transform at build) and must stay in sync." \
+  "$TS_CODE_CONVENTIONS"
+
+assert_pins "C178 compile with tspc plus typescript-transform-paths so dist needs no runtime resolver" \
+  "Compile with tspc (ts-patch) plus typescript-transform-paths, so dist needs no resolver at runtime." \
+  "$TS_CODE_CONVENTIONS"
+
+assert_pins "C183 process.env is read at one place per layer, a config.ts destructuring with inline defaults" \
+  "process.env is read at one place per layer: a config.ts that destructures it with inline default values." \
+  "$TS_CODE_CONVENTIONS"
+
+assert_pins "C190 tests import by alias too, @Tests/* for fixtures, because a mirrored tree has no stable relative offset" \
+  "Tests import by alias too, @Tests/\* for fixtures, because a mirrored tree has no stable relative offset, so the alias is a necessity, not a preference." \
+  "$TS_CODE_CONVENTIONS"
 
 echo ""
 if [[ $failures -gt 0 ]]; then
