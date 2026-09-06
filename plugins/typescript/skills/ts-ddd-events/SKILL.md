@@ -74,6 +74,17 @@ Status flow: `created` -> `in_progress` -> `processed` / `failed`
 | Outbox | Reliable publishing without dual-write |
 | Consumer | Asynchronous reaction to an event |
 
+## Event, Outbox & CQRS Conventions
+
+1. Two vocabularies of event must never be confused: the transport envelope Event<T> (id/type/timestamp/version/metadata/data) and the domain event DomainEvent<U> (id/type/payload/createdAt). No file imports both.
+2. The event is created in the handler, never in the aggregate: without a class, the aggregate cannot carry an event buffer.
+3. Dispatch is a domain port typed as a bare function type, whose adapter is a Record<type, listener> table built by a make*Mapper factory.
+4. Emit either by returning the event in Result's success, or by calling the injected dispatcher: both are used, with no rule between them.
+5. This outbox is INBOUND: it stages messages received from SQS for local consumption. It publishes nothing, so it is not the reliable publishing pattern.
+6. The read model is not fed by events: both sides share one database and collection, so a write is immediately visible on read.
+7. Only one codebase forbids Command importing Query by lint. Neither violates the rule, but the read side freely reaches into the write side.
+8. Domain purity holds even where CQRS does not: a single exception, a concrete logger, in the gap the zones do not cover.
+
 ## Quick Reference
 
 | Rule | Convention |

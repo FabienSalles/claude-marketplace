@@ -636,6 +636,41 @@ assert_absent "C57 stays deferred, no canonical DomainError shape unified betwee
   plugins
 
 echo ""
+echo "== Iteration 6 — the eight event, outbox and CQRS conventions, starting with the two vocabularies"
+
+assert_pins "C103 #79 two vocabularies of event must never be confused, no file imports both" \
+  "Two vocabularies of event must never be confused: the transport envelope Event<T> (id/type/timestamp/version/metadata/data) and the domain event DomainEvent<U> (id/type/payload/createdAt). No file imports both." \
+  "$TS_DDD_EVENTS"
+
+assert_pins "C107 the event is created in the handler, never in the aggregate" \
+  "The event is created in the handler, never in the aggregate: without a class, the aggregate cannot carry an event buffer." \
+  "$TS_DDD_EVENTS"
+
+assert_pins "C108 dispatch is a domain port typed as a bare function type, its adapter a make*Mapper table" \
+  "Dispatch is a domain port typed as a bare function type, whose adapter is a Record<type, listener> table built by a make\*Mapper factory." \
+  "$TS_DDD_EVENTS"
+
+assert_pins "C109 emit by returning the event in success or by calling the injected dispatcher, no rule between them" \
+  "Emit either by returning the event in Result's success, or by calling the injected dispatcher: both are used, with no rule between them." \
+  "$TS_DDD_EVENTS"
+
+assert_pins "C112 #79 this outbox is INBOUND, it publishes nothing" \
+  "This outbox is INBOUND: it stages messages received from SQS for local consumption. It publishes nothing, so it is not the reliable publishing pattern." \
+  "$TS_DDD_EVENTS"
+
+assert_pins "C120 the read model is not fed by events, both sides share one database and collection" \
+  "The read model is not fed by events: both sides share one database and collection, so a write is immediately visible on read." \
+  "$TS_DDD_EVENTS"
+
+assert_pins "C121 only one codebase forbids Command importing Query by lint, the read side still reaches into the write side" \
+  "Only one codebase forbids Command importing Query by lint. Neither violates the rule, but the read side freely reaches into the write side." \
+  "$TS_DDD_EVENTS"
+
+assert_pins "C122 domain purity holds even where CQRS does not, a single concrete logger exception" \
+  "Domain purity holds even where CQRS does not: a single exception, a concrete logger, in the gap the zones do not cover." \
+  "$TS_DDD_EVENTS"
+
+echo ""
 if [[ $failures -gt 0 ]]; then
   echo "✗ $failures/$cases assertion(s) failed"
   exit 1
