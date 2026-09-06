@@ -570,6 +570,37 @@ assert_pins "C32 the data stage takes a single XCommand or XQuery object, never 
   "$DDD_TS_FP" "$CRAFT_DDD_FP"
 
 echo ""
+echo "== Iteration 4 — the seven modelling conventions, including the maker/validator split"
+
+assert_pins "C38 a Result only for a fallible operation, the bare model for a total transition" \
+  "An operation returns a Result only when it can fail; a total transition returns the bare model." \
+  "$DDD_TS_FP" "$CRAFT_DDD_FP"
+
+assert_pins "C43 an entity's operations take and return the aggregate, never the entity itself" \
+  "An entity carrying identity has its own Models/Entities/<Name>/ folder, and its operations take and return the aggregate, never the entity." \
+  "$DDD_TS_FP" "$CRAFT_DDD_FP"
+
+assert_pins "C44 [#75] the smart constructor splits into Validator files and a never-failing maker" \
+  "The smart constructor splits in two: Validator files carry the invariants, and the maker only maps and normalizes, and never fails." \
+  "$DDD_TS_FP" "$CRAFT_DDD_FP"
+
+assert_pins "C45 a closed set is a triplet in one file: as const object, derived union, predicate" \
+  "A closed set is written as a triplet in a single file: the as const object, the derived union, and the predicate." \
+  "$TS_CONVENTIONS"
+
+assert_pins "C46 each CQRS side owns its model copy, the read copy deliberately narrowed" \
+  "Each CQRS side owns its own copy of the model; the read copy is deliberately narrowed." \
+  "$DDD_TS_FP" "$CRAFT_DDD_FP"
+
+assert_pins "C47 the command DTO repeats per feature, never factored across features by shape" \
+  "The command DTO repeats per feature; two features are never factored together just because their types are identical." \
+  "$DDD_TS_FP" "$CRAFT_DDD_FP"
+
+assert_pins "C49 the repository receives the whole aggregate, never a patch nor a field list" \
+  "The repository receives the whole aggregate, never a patch nor a list of fields." \
+  "$DDD_TS_FP" "$CRAFT_DDD_FP"
+
+echo ""
 if [[ $failures -gt 0 ]]; then
   echo "✗ $failures/$cases assertion(s) failed"
   exit 1

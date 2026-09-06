@@ -105,6 +105,89 @@ const addAddressHandler =
 
 Dependencies (`repository`, `clock`) come first as separate arguments, never as one destructured object. The command comes last. A model-level operation instead takes its data first and the aggregate last: `addAddress(address)(receipt)`.
 
+## TS-specific: Result vs Bare Model
+
+An operation returns a Result only when it can fail; a total transition returns the bare model.
+
+```typescript
+// Fallible — the amount could be negative
+const withAmount = (amount: number) => (receipt: Receipt): Result<Receipt, DomainError> => ...;
+
+// Total — appending never fails
+const addAddress = (address: Address) => (receipt: Receipt): Receipt => ...;
+```
+
+## TS-specific: Entity Folder and Aggregate-Only Operations
+
+An entity carrying identity has its own Models/Entities/<Name>/ folder, and its operations take and return the aggregate, never the entity.
+
+```typescript
+// plugins/../Models/Entities/Address/updateAddress.ts
+const updateAddress =
+  (addressId: AddressId, patch: AddressPatch) =>
+  (customer: Customer): Customer => ({
+    ...customer,
+    addresses: customer.addresses.map((a) => (a.id === addressId ? { ...a, ...patch } : a)),
+  });
+```
+
+## TS-specific: Maker/Validator Split
+
+The smart constructor splits in two: Validator files carry the invariants, and the maker only maps and normalizes, and never fails.
+
+```typescript
+// AddressValidator.ts
+const validateAddress = (command: AddAddressCommand): Result<AddAddressCommand, DomainError> =>
+  command.street.length === 0 ? failure(invalidStreet()) : success(command);
+
+// makeAddress.ts — no conditional, only mapping and normalization
+const makeAddress =
+  (addressId: AddressId, createdAt: Date) =>
+  (command: AddAddressCommand): Address => ({
+    id: addressId,
+    street: command.street.trim(),
+    city: command.city.trim(),
+    createdAt,
+  });
+```
+
+## TS-specific: CQRS Model Copies
+
+Each CQRS side owns its own copy of the model; the read copy is deliberately narrowed.
+
+```typescript
+// Command/Models/Address.ts — full write shape
+type Address = { readonly street: string; readonly city: string; readonly geo: GeoPoint /* … */ };
+
+// Query/Models/Address.ts — narrowed read shape
+type Address = { readonly street: string; readonly city: string };
+```
+
+## TS-specific: Command DTO Duplication Across Features
+
+The command DTO repeats per feature; two features are never factored together just because their types are identical.
+
+```typescript
+// features/onboard-customer/AddAddressCommand.ts
+type AddAddressCommand = { readonly street: string; readonly city: string };
+
+// features/relocate-customer/AddAddressCommand.ts — same shape, its own file
+type AddAddressCommand = { readonly street: string; readonly city: string };
+```
+
+## TS-specific: Repository Receives the Whole Aggregate
+
+The repository receives the whole aggregate, never a patch nor a list of fields.
+
+```typescript
+export type CustomerRepository = {
+  save: (customer: Customer) => Promise<void>;
+};
+
+// ❌ AVOID — no partial-update method
+// update: (id: CustomerId, patch: Partial<Customer>) => Promise<void>;
+```
+
 ## Quick Reference (TS-specific FP)
 
 | Element | Convention |

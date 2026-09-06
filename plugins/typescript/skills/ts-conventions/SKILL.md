@@ -79,6 +79,22 @@ const STATUS = {
 type Status = (typeof STATUS)[keyof typeof STATUS]; // 'active' | 'inactive'
 ```
 
+## Closed Set as a Triplet
+
+A closed set is written as a triplet in a single file: the as const object, the derived union, and the predicate.
+
+```typescript
+const RECEIPT_STATUS = {
+  Draft: 'draft',
+  Sent: 'sent',
+} as const;
+
+type ReceiptStatus = (typeof RECEIPT_STATUS)[keyof typeof RECEIPT_STATUS];
+
+const isReceiptStatus = (value: string): value is ReceiptStatus =>
+  Object.values(RECEIPT_STATUS).includes(value as ReceiptStatus);
+```
+
 ## `type` vs `interface`
 
 **Use `type` by default.** Use `interface` only when declaration merging or `extends` is needed (e.g., for NestJS class-based DI).
