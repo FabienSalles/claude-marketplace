@@ -32,38 +32,23 @@ Each operation is a **curried function** returning a new aggregate (or a `Result
 
 > When implementing aggregate operations, pipe composition, or nested immutable updates, read `references/ddd-functional-examples.md` for complete patterns.
 
-## TS-specific: Maker with Context
-
-`make` prefix — curried factory that captures context and returns a specialized function usable directly in a `pipe`:
-
-```typescript
-const makeAddress =
-  (addressId: string, createdAt: Date) =>
-  (command: AddAddressCommand): Result<Address, DomainError> => ({
-    tag: 'success',
-    value: {
-      id: addressId,
-      street: command.street,
-      city: command.city,
-      // …
-    },
-  });
-```
-
-> When creating a maker for domain objects, read `references/ddd-functional-examples.md` for complete examples and pipeline integration.
-
 ## TS-specific: Validation Pipeline
 
-```typescript
-type Validator<T> = (input: T) => Result<T, DomainError>;
+A single check keeps the type; the **composition** is what mints the branded one. That is where the proof enters the type system, so nothing downstream has to trust a call order.
 
-// Composition
-const validateCreateReceipt = (cmd) =>
+```typescript
+type Check<T> = (input: T) => Result<T, DomainError>;
+type Validator<Raw, Valid extends Raw> = (input: Raw) => Result<Valid, DomainError>;
+
+// Each check keeps the type; the last step BUILDS the narrower shape out of the
+// primitives it just proved, so the pipeline narrows by construction, never by assertion.
+const validateCreateReceipt: Validator<CreateReceiptCommand, ValidCreateReceiptCommand> = (cmd) =>
   pipe(
     cmd,
     validatePeriod,
     chain(validateAmount),
     chain(validateLease),
+    chain(buildValidCreateReceipt),
   );
 ```
 
@@ -131,25 +116,38 @@ const updateAddress =
   });
 ```
 
-## TS-specific: Maker/Validator Split
+## TS-specific: Validator and Maker
 
-The smart constructor splits in two: Validator files carry the invariants, and the maker only maps and normalizes, and never fails.
+Validator files carry the invariants and return a branded command; the maker maps and normalizes a value the type system already proves valid, so it never fails.
 
 ```typescript
-// AddressValidator.ts
-const validateAddress = (command: AddAddressCommand): Result<AddAddressCommand, DomainError> =>
-  command.street.length === 0 ? failure(invalidStreet()) : success(command);
+// ValidAddAddressCommand.ts — a real shape, not a tag on the raw one
+type ValidAddAddressCommand = {
+  readonly street: NonEmptyString;
+  readonly city: NonEmptyString;
+};
 
-// makeAddress.ts — no conditional, only mapping and normalization
+// AddressValidator.ts — fallible, and it builds the narrower value rather than asserting it
+const validateAddress = (command: AddAddressCommand): Result<ValidAddAddressCommand, DomainError> =>
+  pipe(
+    nonEmpty(command.street),
+    chain((street) => map(nonEmpty(command.city), (city) => ({ street, city }))),
+  );
+
+// makeAddress.ts — curried on its context, total because its input is the proof
 const makeAddress =
   (addressId: AddressId, createdAt: Date) =>
-  (command: AddAddressCommand): Address => ({
+  (command: ValidAddAddressCommand): Address => ({
     id: addressId,
-    street: command.street.trim(),
-    city: command.city.trim(),
+    street: command.street,
+    city: command.city,
     createdAt,
   });
 ```
+
+`makeAddress(addressId, createdAt)(rawCommand)` does not compile, and that is the entire point of the split. A maker that accepted `AddAddressCommand` would be total in its signature only — the invariant would live in a call-order convention nothing enforces. See `craft:ddd-fp-principles` §3 for why a single fallible constructor is the default, and what justifies splitting it.
+
+The object literal is **constructed**, so the compiler checks it and the validator asserts nothing. Every remaining assertion sits in the primitive's own constructor — `nonEmpty` returns `Brand<string, 'NonEmptyString'>`, minted once in the kernel (`ts-conventions` — Branded Types). That is what keeps `as` out of the domain, per C138, instead of widening the rule to admit it.
 
 ## TS-specific: CQRS Model Copies
 
@@ -194,12 +192,12 @@ export type CustomerRepository = {
 |---------|------------|
 | Aggregate | Immutable `readonly` type, no class |
 | Operations | Pure curried functions |
-| Validator | Fallible; owns the invariants |
-| Maker | Total; maps and normalizes, never fails |
+| Validator | Fallible; owns the invariants and returns a branded type |
+| Maker | Total; takes the branded type, which is what earns the totality |
 | Updates | Spread operator, never mutate |
 | Composition | `pipe(aggregate, op1, op2, op3)` |
 | Fallible composition | `pipe(aggregate, op1, chain(op2))` |
-| Validation | Composable `Validator<T>` pipeline |
+| Validation | Composable `Validator<Raw, Valid>` pipeline; narrows the type |
 | Enrichment | Pipeline at system boundary |
 | Handler | Orchestrator: validate → load → domain → persist |
 | Handler args | Dependencies positional, then the Command/Query last |

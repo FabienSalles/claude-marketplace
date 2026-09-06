@@ -32,29 +32,36 @@ Total operations compose bare in a pipe; only a fallible operation needs chain, 
 
 ## 3. Validators and Makers (`make*` prefix)
 
-A maker is a curried factory that:
-
-- Takes the surrounding context (ids, clocks, configuration).
-- Returns a function that takes the input command and produces the aggregate.
-
-Convention:
+A **validator** owns the invariants and returns a **narrower type**; a **maker** builds the aggregate from that narrower type and cannot fail.
 
 | Element | Rule |
 |---|---|
+| Validator | `(raw) => Result<Validated<X>, error>` — owns the invariants, returns a type the raw input does not satisfy |
 | Prefix | `make` |
-| Shape | `make<X>(context) => (input) => output \| Result<output, error>` |
-| Return | The aggregate. A maker is total and never returns a failure |
-| Position in pipeline | After the validation pipeline, applied to the validated command outside the pipe |
+| Shape | `make<X>(context) => (validated) => aggregate` |
+| Return | The aggregate. A maker is total, and its input type is what earns that |
+| Position in pipeline | After the validator, applied to the narrowed value |
 
-Every maker is paired with a named validator that owns its invariants, and the two are separate units: the validator is fallible, the maker is total and returns the aggregate.
+Every maker is paired with a named validator that owns its invariants, and the two are separate units: the validator is fallible and narrows the type, the maker is total because its input already carries that proof.
 
-## 4. Validation Pipelines
+**A maker that takes the raw input is not total — it is partial and silent.** `Raw -> Aggregate` is total only when every `Raw` yields a valid aggregate. When some do not, the invariant lives outside the types and nothing stops `make(neverValidated)` from compiling: the split then costs a step and buys no guarantee, because the ordering is a promise rather than a compile error.
 
-Validation is a **chain of composable validators**: `(input) => Result<input, error>`.
+**Why not a single fallible constructor?** That is the canonical form and it is correct — `create: (raw) => Result<T, error>` makes illegal states unrepresentable in one step (Wlaschin, *Domain Modeling Made Functional*). Split it in two only for a reason: to accumulate every error instead of short-circuiting at the first, or to keep construction context (ids, clocks) out of the invariants. Without one of those two, the fallible constructor is simpler and just as safe.
 
-- Each validator either passes the input through (success) or short-circuits (error).
+**Totality is not purity.** A function returning `Result<T, error>` is pure — `Result` is a value, not an effect. Never reach for a total maker in the name of purity: both forms are pure, and only the narrowed input type buys anything.
+
+**Earning the narrower type.** Prefer a shape that is genuinely narrower and therefore *constructed*, because a construction is checked and needs no assertion. A phantom brand adds no data, so it can only ever be asserted: when it is the right tool, mint it through one helper outside the domain rather than at each site. A type predicate is not a third option — the language never checks that its body proves its claim, so it is the same assertion with no word left to grep for.
+
+## 4. Validation Pipelines — parse, don't validate
+
+A validator that returns its own input type throws away what it just proved: once it succeeds you hold the type you started with, and the compiler knows nothing it did not know before. Return a **narrower** type instead, so the proof travels with the value (Alexis King, *Parse, don't validate*, 2019).
+
+Validation is a **chain of composable validators**: `(raw) => Result<narrower, error>`.
+
+- Each validator either produces the narrowed value (success) or short-circuits (error).
 - Composition stops at the first error — no need to short-circuit manually with `if`.
 - Validation is for **internal constraints** (positive amount, valid period, …).
+- The narrowed type is what the next stage demands, which turns a call-order convention into a compile error.
 
 ## 5. Enrichment Pipelines
 
@@ -101,12 +108,12 @@ validate(command)
 |------|-----------|
 | Aggregate | Immutable `readonly` record, no class |
 | Operations | Pure curried functions returning new aggregates |
-| Validator | Fallible; owns the invariants |
-| Maker | Total; maps and normalizes, never fails |
+| Validator | Fallible; owns the invariants and narrows the type |
+| Maker | Total; takes the narrowed type, which is what earns the totality |
 | Updates | Spread / structural sharing — never mutate |
 | Composition | `pipe(aggregate, op1, op2, op3)` |
 | Fallible composition | `pipe(aggregate, op1, chain(op2))` |
-| Validation pipeline | Chain of `Validator<T>`; stops at first error |
+| Validation pipeline | Chain of `(raw) => Result<narrower, e>`; stops at first error |
 | Enrichment pipeline | Transform external → domain at system boundary |
 | Handler | Orchestrator: validate → load → pure domain → persist |
 | Dependency group | Positional arguments, never a destructured object or container |
