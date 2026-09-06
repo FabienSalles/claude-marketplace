@@ -874,6 +874,12 @@ assert_present "J3 the quick-ref keeps its Validator row" '| Validator |' "$CRAF
 
 assert_present "J3 the quick-ref keeps its Maker row" '| Maker |' "$CRAFT_DDD_FP_SKILL"
 
+assert_absent "C202 section 3 names the maker, not the fused smart constructor" \
+  'A smart constructor is a curried factory' "$CRAFT_DDD_FP"
+
+assert_present "C202 the retired term stays a routing keyword in the description" \
+  "'smart constructor'" "$CRAFT_DDD_FP/SKILL.md"
+
 echo ""
 if [[ $failures -gt 0 ]]; then
   echo "✗ $failures/$cases assertion(s) failed"

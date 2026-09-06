@@ -32,7 +32,7 @@ Total operations compose bare in a pipe; only a fallible operation needs chain, 
 
 ## 3. Validators and Makers (`make*` prefix)
 
-A smart constructor is a curried factory that:
+A maker is a curried factory that:
 
 - Takes the surrounding context (ids, clocks, configuration).
 - Returns a function that takes the input command and produces the aggregate.
