@@ -601,6 +601,41 @@ assert_pins "C49 the repository receives the whole aggregate, never a patch nor 
   "$DDD_TS_FP" "$CRAFT_DDD_FP"
 
 echo ""
+echo "== Iteration 5 — the seven error and composition conventions, C57 stays absent"
+
+assert_pins "C58 throw is for the type-allowed-but-domain-impossible state, failure() for the expected business failure" \
+  "throw is reserved for a state the type system allows but the domain declares impossible; an expected business failure returns failure() instead." \
+  "$TS_FUNCTIONAL"
+
+assert_pins "C62 a handler returns an AsyncResult only when its caller must branch on a business failure" \
+  "A handler returns an AsyncResult only when its caller must branch on a business failure; otherwise it returns a plain Promise." \
+  "$TS_FUNCTIONAL"
+
+assert_pins "C63 the port method's name encodes the absence contract, find* versus get*" \
+  "The port method's name encodes the absence contract: find\* returns Promise<T | null> and the caller decides, get\* returns AsyncResult<T, DomainError> and the port supplies the typed error." \
+  "$TS_FUNCTIONAL"
+
+assert_pins "C64 compose Results with pipe and chain only when synchronous, unwrap imperatively in async" \
+  "Compose Results with pipe and chain only when synchronous; in async code, unwrap imperatively with if (isFailure(x)) return x;." \
+  "$TS_FUNCTIONAL"
+
+assert_pins "C66 AsyncResult.wrap, chain, and tee belong only to infrastructure orchestration atop a worker" \
+  "AsyncResult.wrap, chain, and tee belong only to infrastructure orchestration, at the top of a worker." \
+  "$TS_FUNCTIONAL"
+
+assert_pins "C67 pipe is a general composition tool, not a Result-only tool, and infrastructure consumes it most" \
+  "pipe is a general composition tool, not a Result-only tool, and infrastructure is its heaviest consumer." \
+  "$TS_FUNCTIONAL"
+
+assert_pins "C71 in test, assert the boolean guard then result.value, never compare against a reconstructed success" \
+  "In tests, assert the boolean guard, then result.value; never compare against a reconstructed success(...)." \
+  "$TS_FUNCTIONAL"
+
+assert_absent "C57 stays deferred, no canonical DomainError shape unified between A and B" \
+  "the domain error shape of A and B is unified into one canonical DomainError type" \
+  plugins
+
+echo ""
 if [[ $failures -gt 0 ]]; then
   echo "✗ $failures/$cases assertion(s) failed"
   exit 1
