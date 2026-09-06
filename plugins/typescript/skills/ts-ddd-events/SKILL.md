@@ -35,10 +35,8 @@ type ReceiptGenerated = {
 type DomainEvent<T> = {
   readonly id: string;           // UUID unique
   readonly type: string;         // 'receipt.generated'
-  readonly timestamp: Date;
-  readonly version: string;      // '1.0' -- for versioning
-  readonly metadata?: Record<string, string>;
-  readonly data: T;              // Payload type
+  readonly payload: T;
+  readonly createdAt: Date;
 };
 ```
 
@@ -77,20 +75,28 @@ Status flow: `created` -> `in_progress` -> `processed` / `failed`
 ## Event, Outbox & CQRS Conventions
 
 1. Two vocabularies of event must never be confused: the transport envelope Event<T> (id/type/timestamp/version/metadata/data) and the domain event DomainEvent<U> (id/type/payload/createdAt). No file imports both.
+   Measure: zero files import both a type named `Event` and a type named `DomainEvent`.
 2. The event is created in the handler, never in the aggregate: without a class, the aggregate cannot carry an event buffer.
+   Measure: zero methods on a domain/ aggregate file are named `emit*` or `raise*`.
 3. Dispatch is a domain port typed as a bare function type, whose adapter is a Record<type, listener> table built by a make*Mapper factory.
+   Cost: one `make*Mapper` factory per bounded context, never one per event type.
 4. Emit either by returning the event in Result's success, or by calling the injected dispatcher: both are used, with no rule between them.
+   Measure: a handler uses exactly one of the two mechanisms; none returns the event in success and also calls the dispatcher.
 5. This outbox is INBOUND: it stages messages received from SQS for local consumption. It publishes nothing, so it is not the reliable publishing pattern.
+   Cost: naming it `outbox` without this note costs a reader the reliable-publishing assumption; the note is the one-line fix.
 6. The read model is not fed by events: both sides share one database and collection, so a write is immediately visible on read.
+   Measure: zero event listeners write to the read collection; only the write side's own handlers do.
 7. Only one codebase forbids Command importing Query by lint. Neither violates the rule, but the read side freely reaches into the write side.
+   Measure: exactly one of the two codebases declares a Command-cannot-import-Query ESLint zone; the other declares none.
 8. Domain purity holds even where CQRS does not: a single exception, a concrete logger, in the gap the zones do not cover.
+   Measure: exactly one concrete infrastructure import, the logger, crosses the domain boundary.
 
 ## Quick Reference
 
 | Rule | Convention |
 |------|-----------|
 | Naming | Past tense (`ReceiptGenerated`) |
-| Structure | `{ id, type, timestamp, version, data }` |
+| Structure | `{ id, type, payload, createdAt }` |
 | Event Store | Append-only, `domain_events` table |
 | Outbox | Atomic with state change |
 | Status | `created` -> `in_progress` -> `processed` / `failed` |

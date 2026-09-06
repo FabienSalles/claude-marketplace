@@ -78,6 +78,51 @@ assert_pins() {
   fi
 }
 
+# assert_measured NAME PINNED_PATTERN MEASURE_PATTERN COUNTER_PATTERN TARGET — the pinned sentence
+# must appear in TARGET, a measure (a concrete, quantified scope) must follow it on a later line —
+# never merged into the same sentence — and no contradicting form of the rule may exist anywhere
+# in plugins/.
+assert_measured() {
+  local name="$1" pattern="$2" measure="$3" counter="$4" target="$5"
+  cases=$((cases + 1))
+
+  if [[ ${#pattern} -lt 40 ]]; then
+    echo "✗ $name (pinned pattern is only ${#pattern} chars, prose could satisfy it)"
+    failures=$((failures + 1))
+    return
+  fi
+
+  local pin_line measure_line
+  pin_line=$(grep -n -- "$pattern" "$target" | head -1 | cut -d: -f1)
+  if [[ -z "$pin_line" ]]; then
+    echo "✗ $name (pinned sentence absent from $target)"
+    failures=$((failures + 1))
+    return
+  fi
+
+  measure_line=$(tail -n +"$pin_line" "$target" | grep -n -- "$measure" | head -1 | cut -d: -f1)
+  if [[ -z "$measure_line" ]]; then
+    echo "✗ $name (no measure found after the pinned sentence in $target)"
+    failures=$((failures + 1))
+    return
+  fi
+
+  if [[ "$measure_line" -eq 1 ]]; then
+    echo "✗ $name (measure sits inside the pinned sentence, not after it)"
+    failures=$((failures + 1))
+    return
+  fi
+
+  if grep -rq -- "$counter" plugins; then
+    echo "✗ $name (a contradicting form still coexists in the pack)"
+    grep -rn -- "$counter" plugins | sed 's/^/    /'
+    failures=$((failures + 1))
+    return
+  fi
+
+  echo "✓ $name"
+}
+
 # assert_present NAME PATTERN TARGET… — PATTERN must appear in some TARGET
 assert_present() {
   local name="$1" pattern="$2"
@@ -486,6 +531,68 @@ assert_pins "C20 a port with no domain consumer has no reason to live in SPI" \
   "$PORTS_ADAPTERS"
 
 echo ""
+echo "== Iteration 9 — ts-ports-adapters states its seven port conventions with the scope that founds each"
+
+assert_measured "C2 a port field is an arrow-typed property, never method shorthand" \
+  "Each field is a \*\*property typed as an arrow function\*\*, not method shorthand." \
+  "Zero ports across the reference codebases declare a field with method shorthand." \
+  "a port field is declared with method shorthand instead of an arrow-typed property" \
+  "$PORTS_ADAPTERS"
+
+assert_measured "C3 the type annotation is what binds every adapter to its port" \
+  "The annotation is what binds the adapter to the port: drop a field or drift a signature and the
+compiler refuses the object." \
+  "Every adapter in the reference codebases carries this annotation, with
+zero adapters left untyped." \
+  "an adapter is exported with no port annotation at all" \
+  "$PORTS_ADAPTERS"
+
+assert_measured "C5 the port annotation is used over satisfies, with no literal type worth keeping" \
+  "Use the annotation rather than \`satisfies\` — the port is exactly the
+type the consumer wants, so there are no literal types worth preserving." \
+  "No adapter in either
+reference codebase is declared with \`satisfies\` in place of the port annotation." \
+  "an adapter is declared with satisfies instead of the port type annotation" \
+  "$PORTS_ADAPTERS"
+
+assert_measured "C9 the handler's outer call takes the ports, its inner call takes the command" \
+  "The outer call takes every port and returns the named handler type; the inner call takes the
+command." \
+  "Every handler in the reference codebases follows this two-call shape, with zero handlers
+taking their dependencies and their data in a single parameter list." \
+  "a handler takes its ports and its command in a single flat parameter list" \
+  "$PORTS_ADAPTERS"
+
+assert_measured "C13 applying a handler to its adapters is an infrastructure act" \
+  "Applying a handler to its adapters is an infrastructure act." \
+  "Zero domain files in the reference codebases apply a handler to its adapters; every application
+happens in a controller, a worker, or a CLI entry point." \
+  "a domain file applies a handler to its adapters instead of an infrastructure entry point" \
+  "$PORTS_ADAPTERS"
+
+assert_measured "C15 a consumer that imports the concrete adapter turns its port into decoration" \
+  "Declaring a port and then importing the concrete adapter everywhere is the failure mode this shape
+exists to prevent: it keeps the type and loses the seam." \
+  "No consumer file in the reference
+codebases imports a concrete adapter while a port of the same name exists." \
+  "a consumer imports the concrete adapter directly even though a port of the same name exists" \
+  "$PORTS_ADAPTERS"
+
+assert_measured "C18 every port keeps a test that substitutes its in-memory stub at the same call site" \
+  "The same call site takes an in-memory stub." \
+  "Every port in the reference codebases has at least one test exercising this substitution." \
+  "a port ships with no test exercising its in-memory stub at the production call site" \
+  "$PORTS_ADAPTERS"
+
+assert_measured "C19 the hand-written stub doubles as the spy, no separate spy assertion coexists" \
+  "Because the stub is an ordinary value, it doubles as the spy — asserting on \`savedReceipts\` reads
+better than asserting on a recorded call." \
+  "Zero tests in the reference codebases pair a hand-written
+stub with a separate spy assertion." \
+  "a test pairs a hand-written stub with a separate spy assertion" \
+  "$PORTS_ADAPTERS"
+
+echo ""
 echo "== Iteration 9 — the nine boundary conventions land in one skill, ESLint zones over review"
 
 LAYER_BOUNDARIES=plugins/typescript/skills/ts-layer-boundaries/SKILL.md
@@ -625,7 +732,7 @@ assert_pins "C66 AsyncResult.wrap, chain, and tee belong only to infrastructure 
 
 assert_pins "C67 pipe is a general composition tool, not a Result-only tool, and infrastructure consumes it most" \
   "pipe is a general composition tool, not a Result-only tool, and infrastructure is its heaviest consumer." \
-  "$TS_FUNCTIONAL"
+  "$TS_FUNCTIONAL_DIR"
 
 assert_pins "C71 in test, assert the boolean guard then result.value, never compare against a reconstructed success" \
   "In tests, assert the boolean guard, then result.value; never compare against a reconstructed success(...)." \
@@ -921,6 +1028,335 @@ assert_absent "L5 the functional-DDD pair asserts no brand of its own" \
 
 assert_absent "L6 no pipeline in the pair narrows by casting its own result" \
   ' as Result<Valid' "$DDD_TS_FP" "$CRAFT_DDD_FP"
+
+echo ""
+echo "== Iteration 1 — C185 carries its own measured scope"
+
+assert_measured "C185 a function's length is capped by a stated, quantified scope" \
+  "Extract a private or local helper as soon as a function's body no longer fits in one glance." \
+  "no function body exceeds 25 executable lines" \
+  "there is no maximum function length" \
+  "$CRAFT_STYLE"
+
+echo ""
+echo "== Iteration 2 — ts-ddd-events stops confusing its own two vocabularies, and its eight rules carry their measure"
+
+assert_absent "C106 the domain event example no longer declares the envelope's timestamp field" \
+  'readonly timestamp: Date;' "$TS_DDD_EVENTS/SKILL.md"
+
+assert_absent "C106 the domain event example no longer declares the envelope's version field" \
+  "readonly version: string;      // '1.0' -- for versioning" "$TS_DDD_EVENTS/SKILL.md"
+
+assert_present "C106 the domain event example carries the payload field rule 1 names" \
+  'readonly payload: T;' "$TS_DDD_EVENTS/SKILL.md"
+
+assert_present "C106 the domain event example carries the createdAt field rule 1 names" \
+  'readonly createdAt: Date;' "$TS_DDD_EVENTS/SKILL.md"
+
+assert_measured "C113 the event is created in the handler, never in the aggregate" \
+  "The event is created in the handler, never in the aggregate: without a class, the aggregate cannot carry an event buffer." \
+  "zero methods on a domain/ aggregate file are named .emit\*. or .raise\*." \
+  "an aggregate method is named emitReceiptGenerated" \
+  "$TS_DDD_EVENTS/SKILL.md"
+
+assert_measured "C114 dispatch's make\*Mapper factory is bounded by cost, not by event count" \
+  "Dispatch is a domain port typed as a bare function type, whose adapter is a Record<type, listener> table built by a make\*Mapper factory." \
+  "one .make\*Mapper. factory per bounded context, never one per event type" \
+  "a make*Mapper factory is written per event type" \
+  "$TS_DDD_EVENTS/SKILL.md"
+
+assert_measured "C117 emit picks exactly one of the two mechanisms, never both" \
+  "Emit either by returning the event in Result's success, or by calling the injected dispatcher: both are used, with no rule between them." \
+  "none returns the event in success and also calls the dispatcher" \
+  "a handler returns the event in success and also calls the dispatcher" \
+  "$TS_DDD_EVENTS/SKILL.md"
+
+assert_measured "C118 the inbound outbox naming cost is paid once, in the note" \
+  "This outbox is INBOUND: it stages messages received from SQS for local consumption. It publishes nothing, so it is not the reliable publishing pattern." \
+  "naming it .outbox. without this note costs a reader the reliable-publishing assumption" \
+  "this inbound outbox is the reliable publishing pattern" \
+  "$TS_DDD_EVENTS/SKILL.md"
+
+assert_measured "C124 the read model has zero event-fed writers" \
+  "The read model is not fed by events: both sides share one database and collection, so a write is immediately visible on read." \
+  "zero event listeners write to the read collection" \
+  "an event listener writes to the read collection" \
+  "$TS_DDD_EVENTS/SKILL.md"
+
+assert_measured "C125 exactly one codebase declares the Command-Query lint zone" \
+  "Only one codebase forbids Command importing Query by lint. Neither violates the rule, but the read side freely reaches into the write side." \
+  "exactly one of the two codebases declares a Command-cannot-import-Query ESLint zone" \
+  "both codebases forbid Command importing Query by lint" \
+  "$TS_DDD_EVENTS/SKILL.md"
+
+assert_measured "C126 exactly one concrete infrastructure import crosses the domain boundary" \
+  "Domain purity holds even where CQRS does not: a single exception, a concrete logger, in the gap the zones do not cover." \
+  "exactly one concrete infrastructure import, the logger, crosses the domain boundary" \
+  "more than one concrete infrastructure import crosses the domain boundary" \
+  "$TS_DDD_EVENTS/SKILL.md"
+
+echo ""
+echo "== Iteration 3 — ts-functional stops presenting chain, tee and wrap as ordinary async tooling"
+
+assert_absent "M1 the Quick Reference no longer lists AsyncResult.chain unqualified" \
+  '`AsyncResult.chain(fn)` | Chain async fallible operations |' "$TS_FUNCTIONAL"
+
+assert_absent "M1 the Quick Reference no longer lists AsyncResult.tee unqualified" \
+  '`AsyncResult.tee(fn)` | Side-effect without altering the Result |' "$TS_FUNCTIONAL"
+
+assert_absent "M1 the Quick Reference no longer lists AsyncResult.wrap unqualified" \
+  '`AsyncResult.wrap(fn)` | Adapt sync Result function to async pipeline |' "$TS_FUNCTIONAL"
+
+assert_present "M2 every AsyncResult.chain/tee/wrap row now carries its infrastructure-only scope" \
+  'infrastructure orchestration only' "$TS_FUNCTIONAL"
+
+assert_absent "M1 the When to Use table no longer lists AsyncResult unqualified" \
+  '| AsyncResult | Async operations that can fail (DB, API, I/O) |' "$TS_FUNCTIONAL"
+
+assert_pins "C54 chain and AsyncResult.chain are two distinct functions sharing one name" \
+  "chain and AsyncResult.chain are two distinct functions sharing one name; a sync pipe calls the bare chain, an async pipe calls AsyncResult.chain, and the two are never mixed in a single pipe call." \
+  "$TS_FUNCTIONAL_DIR"
+
+assert_pins "C59 tee never returns a new value" \
+  "tee never returns a new value: it is reserved for a side effect (persist, log, notify) that the pipeline's result must survive unchanged." \
+  "$TS_FUNCTIONAL_DIR"
+
+assert_pins "C61 wrap only lifts a sync Result-returning function, never re-wraps an already-async one" \
+  "wrap exists only to lift a synchronous Result-returning function into an async pipe; a function that already returns AsyncResult is passed to chain directly, never re-wrapped." \
+  "$TS_FUNCTIONAL_DIR"
+
+assert_pins "C68 the two tables never list AsyncResult.chain/tee/wrap without their infrastructure scope" \
+  "the Quick Reference and When to Use tables never list AsyncResult.chain, AsyncResult.tee, or AsyncResult.wrap without their infrastructure-orchestration scope, so a reader scanning a table alone cannot mistake them for domain-layer tooling." \
+  "$TS_FUNCTIONAL_DIR"
+
+assert_pins "C69 a handler reaching for AsyncResult.chain is composition sitting one level too low" \
+  "a Workflow, Listener, or Consumer that needs to chain fallible async steps is exactly the infrastructure orchestration rule 5 names; a handler reaching for AsyncResult.chain is a sign the composition belongs one level up." \
+  "$TS_FUNCTIONAL_DIR"
+
+assert_pins "C70 pipe alone is what a domain handler composes with, never with an async step" \
+  "pipe alone, without AsyncResult.chain, tee, or wrap, is what a domain handler or a maker composes with; the moment a step turns async, composition moves to the infrastructure file that owns the worker." \
+  "$TS_FUNCTIONAL_DIR"
+
+assert_present "C55 the re-pinned pipe/infrastructure sentence lands in the references file too" \
+  'pipe is a general composition tool, not a Result-only tool, and infrastructure is its heaviest consumer' \
+  "$FP_EXAMPLES"
+
+assert_measured "C65 calling AsyncResult.chain/tee/wrap from a handler reads as ordinary async tooling" \
+  "Calling AsyncResult.chain, tee, or wrap from a domain handler reads as ordinary async tooling, exactly the confusion rule 5 exists to prevent." \
+  "the assumption that AsyncResult.chain, tee, or wrap is safe wherever a Promise is expected" \
+  "AsyncResult.chain, tee, and wrap are safe to call from any handler" \
+  "$TS_FUNCTIONAL"
+
+echo ""
+echo "== Iteration 4 — the curried-operation shape states one answer, not two"
+
+assert_measured "C199 a curried domain operation's shape names one return type, never both in an alternation" \
+  "Each domain operation is a \*\*curried function\*\*: \`(context) => (input) => output\`." \
+  "A single operation returns exactly one of the two shapes, \`output\` or \`Result<output, error>\`, never both in the same signature." \
+  "(context) => (input) => output | Result<output, error>" \
+  "$CRAFT_DDD_FP_SKILL"
+
+echo ""
+echo "== Iteration 5 — ddd-ts-fp states the currying, parameter-order and modelling scope under each rule"
+
+DDD_TS_FP_SKILL=plugins/typescript/skills/ddd-ts-fp/SKILL.md
+
+assert_measured "C24 every domain operation curries before it receives the aggregate" \
+  "Each operation is a \*\*curried function\*\* returning a new aggregate (or a \`Result\`). Compose with \`pipe\` and \`chain\`." \
+  "no domain operation in this file's own examples takes its data and the aggregate in one non-curried argument list" \
+  "a domain operation takes its data and the aggregate in one non-curried argument list" \
+  "$DDD_TS_FP_SKILL"
+
+assert_measured "C26 handler dependencies stay positional, never a destructured options object" \
+  "Dependencies (\`clock\`) come first as separate arguments, never as one destructured object." \
+  "no handler example in this skill destructures its dependencies into a single options object" \
+  "a handler destructures its dependencies into a single options object" \
+  "$DDD_TS_FP_SKILL"
+
+assert_measured "C35 Result is reserved to the operation that can actually fail" \
+  "An operation returns a Result only when it can fail; a total transition returns the bare model." \
+  "no total operation in this skill's examples wraps its return type in Result, and no fallible operation returns the bare model" \
+  "a total operation returns Result<Type, DomainError> even though it cannot fail" \
+  "$DDD_TS_FP_SKILL"
+
+assert_measured "C37 an entity's operations never take or return the bare entity" \
+  "An entity carrying identity has its own Models/Entities/<Name>/ folder, and its operations take and return the aggregate, never the entity." \
+  "no entity operation in this skill's examples takes or returns the bare entity" \
+  "an entity operation takes the entity and returns the entity, never the aggregate" \
+  "$DDD_TS_FP_SKILL"
+
+assert_measured "C41 the maker never returns a Result once the validator has proved its input" \
+  "Validator files carry the invariants and return a branded command; the maker maps and normalizes a value the type system already proves valid, so it never fails." \
+  "no maker in this skill's examples returns a Result" \
+  "a maker returns Result<Address, DomainError> despite taking an already-validated command" \
+  "$DDD_TS_FP_SKILL"
+
+assert_measured "C50 the CQRS read copy never shares its shape with the write side" \
+  "Each CQRS side owns its own copy of the model; the read copy is deliberately narrowed." \
+  "the Query-side \`Address\` type in this file's example carries fewer fields than the Command-side one" \
+  "the Command and Query sides import the same Address type from one shared file" \
+  "$DDD_TS_FP_SKILL"
+
+assert_measured "C53 a command DTO shared by two features is never factored into one file" \
+  "The command DTO repeats per feature; two features are never factored together just because their types are identical." \
+  "stay two files in this skill's example, never one shared import" \
+  "onboard-customer and relocate-customer import one shared AddAddressCommand type" \
+  "$DDD_TS_FP_SKILL"
+
+assert_measured "C39 a patch-shaped repository method costs every caller the aggregate's own invariant" \
+  "The repository receives the whole aggregate, never a patch nor a list of fields." \
+  "forces every caller to reconstruct the invariant the aggregate already proved, one call site at a time" \
+  "a repository interface declares an update method accepting a patch or list of fields, alongside save" \
+  "$DDD_TS_FP_SKILL"
+
+echo ""
+echo "== Iteration 6 — ts-conventions states its seven typing conventions with their scope"
+
+assert_measured "C130 strict mode is enforced repo-wide, no package tsconfig may relax it" \
+  "no package's own \`tsconfig.json\` may set it back to \`false\` to relax the check for that package alone." \
+  "a package \`tsconfig.json\` that relaxes \`strict\` silently loses \`noUncheckedIndexedAccess\` and \`exactOptionalPropertyTypes\`" \
+  "a package tsconfig.json may set strict to false to relax the check for that package alone" \
+  "$TS_CONVENTIONS"
+
+assert_measured "C134 unknown replaces any only at a boundary that receives untyped data" \
+  "\`unknown\` replaces \`any\` only at a boundary that receives untyped data — a parsed HTTP body, \`JSON.parse\`, a third-party callback — never inside code the domain already typed." \
+  "an \`any\` that survives past the parse boundary propagates through every function it touches" \
+  "any is acceptable anywhere the correct return type is inconvenient to declare" \
+  "$TS_CONVENTIONS"
+
+assert_measured "C139 import type applies to every type-only import, not just the typeof import pattern" \
+  "\`import type\` applies to every import kept only for its type, not just the \`typeof import(...)\` pattern shown above." \
+  "a value import kept only for its type still pulls the whole module into the runtime bundle" \
+  "a type-only import may stay a regular value import for convenience" \
+  "$TS_CONVENTIONS"
+
+assert_measured "C141 Pick/Omit/Partial derive a DTO from an aggregate, never the aggregate itself" \
+  "\`Pick\`, \`Omit\`, and \`Partial\` derive a DTO or a command shape from an aggregate; the aggregate itself is never expressed as a \`Partial\`." \
+  "an aggregate typed as \`Partial<Tenant>\` for a command payload lets a caller construct it missing the very fields the constructor was written to guarantee" \
+  "the aggregate type itself is expressed as Partial<Tenant> for a command payload" \
+  "$TS_CONVENTIONS"
+
+assert_measured "C142 a domain function's generic always carries a semantic constraint" \
+  "An unconstrained \`<T>\` is reserved to structural containers such as \`ApiResponse\` above; a domain function's generic always carries a semantic constraint" \
+  "an unconstrained \`<T>\` on a domain function accepts any shape at all, so a typo'd field name on the call site fails at runtime instead of at the call" \
+  "a domain function declares an unconstrained generic <T> with no extends clause" \
+  "$TS_CONVENTIONS"
+
+assert_pins "C152 the non-null assertion is reserved to a framework entry point" \
+  "The non-null assertion \`!\` is reserved to a framework entry point — application bootstrap, DI container resolution — never to a domain handler or service." \
+  "$TS_CONVENTIONS"
+
+assert_pins "C153 the exported handler type alias lives in the handler's own file" \
+  "The exported handler type alias lives in the handler's own file, never centralized in a shared \`types.ts\` barrel." \
+  "$TS_CONVENTIONS"
+
+echo ""
+echo "== Iteration 7 — ts-code-conventions states its mechanics, naming and organisation rules with their scope"
+
+assert_measured "C179 config.ts is the only file allowed to import process.env" \
+  "A layer's config.ts is the only file allowed to import process.env; every other module receives its configuration already destructured as arguments." \
+  "No file other than a layer's own config.ts contains the string process.env." \
+  "a handler reads process.env directly instead of receiving it from config.ts" \
+  "$TS_CODE_CONVENTIONS"
+
+assert_measured "C180 a barrel file re-exports only, and declares no logic of its own" \
+  "Barrel files (index.ts) re-export only, and declare no function, class, or logic of their own." \
+  "Zero index.ts files in the codebase contain a function or class declaration of their own." \
+  "an index.ts declares its own function instead of re-exporting one" \
+  "$TS_CODE_CONVENTIONS"
+
+assert_measured "C184 a boolean is named with an is/has/can prefix, never a bare noun or verb" \
+  "A boolean variable, property, or function name carries an \`is\`, \`has\`, or \`can\` prefix; a bare noun or verb is reserved for non-boolean values." \
+  "No boolean declaration in the codebase is named without one of the three prefixes." \
+  "a boolean property is named valid instead of isValid" \
+  "$TS_CODE_CONVENTIONS"
+
+assert_measured "C186 a file exports one primary symbol, past a third export it is split" \
+  "A file exports one primary symbol; a second export is allowed only for a tightly related overload or the type a factory constructs." \
+  "A file accumulating a fourth unrelated public export is split before that fourth export lands." \
+  "a single file accumulates four unrelated public exports" \
+  "$TS_CODE_CONVENTIONS"
+
+assert_measured "C191 a test file is colocated next to the file it exercises, never mirrored into tests/" \
+  "A test file sits beside the file it exercises, Name.spec.ts next to Name.ts, never mirrored into a separate top-level tests/ tree." \
+  "Zero .spec.ts files live outside the directory of the file they test." \
+  "a spec file is moved into a parallel tests directory mirroring src" \
+  "$TS_CODE_CONVENTIONS"
+
+echo ""
+echo "== Iteration 8 — the twelve layer-boundary conventions carry their measured scope"
+
+assert_measured "C75 the composition root's side effect has no rival in the worker tree" \
+  "The async composition root is \*Worker.ts, the only file in the worker tree allowed a module-level side effect." \
+  "Zero files besides \*Worker.ts under the worker tree execute code at module scope" \
+  "the worker tree has more than one file opening a connection at module load time" \
+  "$LAYER_BOUNDARIES"
+
+assert_measured "C79 the consumer's ports never resolve to a concrete adapter import" \
+  "The consumer is a curried factory receiving handlers, formatters, and ports; it never imports a concrete adapter." \
+  "no consumer file contains an import statement targeting a path under Infrastructure/" \
+  "a consumer imports a concrete adapter directly from Infrastructure/" \
+  "$LAYER_BOUNDARIES"
+
+assert_measured "C85 the Router applies each handler exactly once, never per request" \
+  "The Router wires command endpoints: it imports the adapters, applies the handler once at load time, and passes the curried controller when registering the route." \
+  "each handler is applied exactly once per route registration, at module load, never re-created inside a request callback" \
+  "a handler is constructed inside the request callback on every call" \
+  "$LAYER_BOUNDARIES"
+
+assert_measured "C88 a controller's fifth gesture is its last, no sixth statement follows" \
+  "A controller performs five gestures: read the request, build the Command or Query, await the handler, branch on the Result, set the status or envelope." \
+  "a controller body executes exactly five gestures, no sixth statement performing a repository call or a second branch" \
+  "a controller performs a sixth gesture such as a direct repository call" \
+  "$LAYER_BOUNDARIES"
+
+assert_measured "C89 zero domain imports of infrastructure survive the ESLint zone" \
+  "The domain never imports infrastructure, and the boundary is declared in ESLint zones rather than left to code review." \
+  "zero domain files import a path under infrastructure/; the ESLint zone rule fails the build on the first one that does" \
+  "a domain file importing infrastructure is caught only in code review, with no ESLint zone declared" \
+  "$LAYER_BOUNDARIES"
+
+assert_measured "C90 an infrastructure-only port is declared beside its own adapter, never counted among domain ports" \
+  "A collaborator used only by infrastructure has its port declared in infrastructure, beside its adapter, never in Domain/SPI." \
+  "no port used by zero domain handlers is declared under Domain/SPI; it is declared beside its own adapter in infrastructure instead" \
+  "an infrastructure-only port such as a retry policy is declared under Domain/SPI anyway" \
+  "$LAYER_BOUNDARIES"
+
+assert_measured "C93 every port double is hand-written, none comes from a mocking library" \
+  "Every declared port keeps a hand-written in-memory double, so the test becomes its own composition root." \
+  "zero ports in the reference codebases are doubled with a mocking library call; every double is a hand-written InMemory or Stub object" \
+  "a port is doubled with jest.mock instead of a hand-written stub" \
+  "$LAYER_BOUNDARIES"
+
+assert_measured "C94 the read-write asymmetry has exactly one allowed direction" \
+  "The read side may reach the write side, never the reverse; codebase B forbids both directions and pays it back in duplication." \
+  "zero Command-side files import a path under Query/; a Query-side file importing Command/ is the only direction this rule allows" \
+  "a Command handler imports a repository under Query/" \
+  "$LAYER_BOUNDARIES"
+
+assert_measured "C95 a read controller never calls a repository directly" \
+  "A read endpoint goes through a domain handler: no direct repository call from the controller, no persistence type on the wire." \
+  "zero read controllers call a repository method directly; every read response is shaped by the handler before it reaches the controller" \
+  "a read controller calls repository.findByX directly and returns the persistence document unchanged" \
+  "$LAYER_BOUNDARIES"
+
+assert_measured "C97 orchestration coordinates handlers, it decides nothing on its own" \
+  "A Workflow, Listener, or Consumer orchestrates calls to handlers; it never contains a business branch of its own." \
+  "zero orchestration files contain an if statement branching on a domain value; every branch on business state lives inside a handler" \
+  "a Consumer branches on a domain field directly instead of delegating the decision to a handler" \
+  "$LAYER_BOUNDARIES"
+
+assert_measured "C98 a third-party SDK is reached from infrastructure alone" \
+  "Only Infrastructure imports a third-party SDK; Domain and Application import nothing beyond their own ports." \
+  "zero files outside infrastructure/ contain an import from a package other than the project's own ports and models" \
+  "a domain file imports the AWS SDK directly instead of going through a port" \
+  "$LAYER_BOUNDARIES"
+
+assert_measured "C99 a wire DTO is declared once, in Infrastructure/Http" \
+  "A DTO shaped for the wire lives in Infrastructure/Http, never re-exported from Domain." \
+  "zero Domain files export a type whose name ends in Dto or Response; that shape is declared once, in Infrastructure/Http" \
+  "a domain file exports ReceiptResponseDto for the controller to reuse" \
+  "$LAYER_BOUNDARIES"
 
 echo ""
 if [[ $failures -gt 0 ]]; then

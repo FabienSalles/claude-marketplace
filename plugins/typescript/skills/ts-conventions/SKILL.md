@@ -25,6 +25,10 @@ version: "1.1"
 }
 ```
 
+`strict: true` is set once, at the repo root, and no package's own `tsconfig.json` may set it back to `false` to relax the check for that package alone.
+
+Cost: a package `tsconfig.json` that relaxes `strict` silently loses `noUncheckedIndexedAccess` and `exactOptionalPropertyTypes` along with it, so a missing array index compiles clean inside that package and only crashes once another package imports it.
+
 ## No `any` — Use `unknown` + Narrowing
 
 ```typescript
@@ -43,6 +47,10 @@ function parse(input: unknown): string {
 }
 ```
 
+`unknown` replaces `any` only at a boundary that receives untyped data — a parsed HTTP body, `JSON.parse`, a third-party callback — never inside code the domain already typed.
+
+Cost: an `any` that survives past the parse boundary propagates through every function it touches, so the narrowing done three call sites downstream stops meaning anything.
+
 ## No Inline `typeof import(...)` — Use `import type`
 
 ```typescript
@@ -60,6 +68,10 @@ const service = new MyService(
   mock as unknown as Repository,
 );
 ```
+
+`import type` applies to every import kept only for its type, not just the `typeof import(...)` pattern shown above.
+
+Cost: a value import kept only for its type still pulls the whole module into the runtime bundle — the compiler considers it used, so tree-shaking cannot remove it.
 
 ## No `enum` — Use `as const`
 
@@ -206,6 +218,10 @@ as is tolerated only at infrastructure boundaries: external payloads, JSON.parse
 
 ## Utility Types
 
+`Pick`, `Omit`, and `Partial` derive a DTO or a command shape from an aggregate; the aggregate itself is never expressed as a `Partial`.
+
+Cost: an aggregate typed as `Partial<Tenant>` for a command payload lets a caller construct it missing the very fields the constructor was written to guarantee, moving the invariant back to code review.
+
 ```typescript
 // Pick specific properties
 type TenantSummary = Pick<Tenant, 'id' | 'email' | 'firstName'>;
@@ -241,6 +257,10 @@ type ApiResponse<T = unknown> = {
 };
 ```
 
+An unconstrained `<T>` is reserved to structural containers such as `ApiResponse` above; a domain function's generic always carries a semantic constraint (`extends { id: string }`, `extends DomainError`, …).
+
+Cost: an unconstrained `<T>` on a domain function accepts any shape at all, so a typo'd field name on the call site fails at runtime instead of at the call.
+
 ## Nullability Patterns
 
 ```typescript
@@ -265,9 +285,13 @@ if (tenant === null) {
 
 Absence in a domain type is written as an explicit | null; ? is reserved for external payload shapes and partial update commands.
 
+The non-null assertion `!` is reserved to a framework entry point — application bootstrap, DI container resolution — never to a domain handler or service.
+
 ## Command and Query Handler Typing
 
 On the Command side, publish a named function-type alias after the handler's file and annotate the factory with it; on the Query side, let it infer.
+
+The exported handler type alias lives in the handler's own file, never centralized in a shared `types.ts` barrel.
 
 ```typescript
 // createReceipt.ts

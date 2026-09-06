@@ -112,6 +112,8 @@ if (isFailure(result)) {
 
 ## AsyncResult Implementation
 
+> pipe is a general composition tool, not a Result-only tool, and infrastructure is its heaviest consumer: every AsyncResult.wrap/chain/tee call below sits inside an infrastructure file, never a domain handler.
+
 ### Definition
 
 ```typescript
