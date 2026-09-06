@@ -1222,6 +1222,81 @@ assert_measured "C191 a test file is colocated next to the file it exercises, ne
   "$TS_CODE_CONVENTIONS"
 
 echo ""
+echo "== Iteration 8 — the twelve layer-boundary conventions carry their measured scope"
+
+assert_measured "C75 the composition root's side effect has no rival in the worker tree" \
+  "The async composition root is \*Worker.ts, the only file in the worker tree allowed a module-level side effect." \
+  "Zero files besides \*Worker.ts under the worker tree execute code at module scope" \
+  "the worker tree has more than one file opening a connection at module load time" \
+  "$LAYER_BOUNDARIES"
+
+assert_measured "C79 the consumer's ports never resolve to a concrete adapter import" \
+  "The consumer is a curried factory receiving handlers, formatters, and ports; it never imports a concrete adapter." \
+  "no consumer file contains an import statement targeting a path under Infrastructure/" \
+  "a consumer imports a concrete adapter directly from Infrastructure/" \
+  "$LAYER_BOUNDARIES"
+
+assert_measured "C85 the Router applies each handler exactly once, never per request" \
+  "The Router wires command endpoints: it imports the adapters, applies the handler once at load time, and passes the curried controller when registering the route." \
+  "each handler is applied exactly once per route registration, at module load, never re-created inside a request callback" \
+  "a handler is constructed inside the request callback on every call" \
+  "$LAYER_BOUNDARIES"
+
+assert_measured "C88 a controller's fifth gesture is its last, no sixth statement follows" \
+  "A controller performs five gestures: read the request, build the Command or Query, await the handler, branch on the Result, set the status or envelope." \
+  "a controller body executes exactly five gestures, no sixth statement performing a repository call or a second branch" \
+  "a controller performs a sixth gesture such as a direct repository call" \
+  "$LAYER_BOUNDARIES"
+
+assert_measured "C89 zero domain imports of infrastructure survive the ESLint zone" \
+  "The domain never imports infrastructure, and the boundary is declared in ESLint zones rather than left to code review." \
+  "zero domain files import a path under infrastructure/; the ESLint zone rule fails the build on the first one that does" \
+  "a domain file importing infrastructure is caught only in code review, with no ESLint zone declared" \
+  "$LAYER_BOUNDARIES"
+
+assert_measured "C90 an infrastructure-only port is declared beside its own adapter, never counted among domain ports" \
+  "A collaborator used only by infrastructure has its port declared in infrastructure, beside its adapter, never in Domain/SPI." \
+  "no port used by zero domain handlers is declared under Domain/SPI; it is declared beside its own adapter in infrastructure instead" \
+  "an infrastructure-only port such as a retry policy is declared under Domain/SPI anyway" \
+  "$LAYER_BOUNDARIES"
+
+assert_measured "C93 every port double is hand-written, none comes from a mocking library" \
+  "Every declared port keeps a hand-written in-memory double, so the test becomes its own composition root." \
+  "zero ports in the reference codebases are doubled with a mocking library call; every double is a hand-written InMemory or Stub object" \
+  "a port is doubled with jest.mock instead of a hand-written stub" \
+  "$LAYER_BOUNDARIES"
+
+assert_measured "C94 the read-write asymmetry has exactly one allowed direction" \
+  "The read side may reach the write side, never the reverse; codebase B forbids both directions and pays it back in duplication." \
+  "zero Command-side files import a path under Query/; a Query-side file importing Command/ is the only direction this rule allows" \
+  "a Command handler imports a repository under Query/" \
+  "$LAYER_BOUNDARIES"
+
+assert_measured "C95 a read controller never calls a repository directly" \
+  "A read endpoint goes through a domain handler: no direct repository call from the controller, no persistence type on the wire." \
+  "zero read controllers call a repository method directly; every read response is shaped by the handler before it reaches the controller" \
+  "a read controller calls repository.findByX directly and returns the persistence document unchanged" \
+  "$LAYER_BOUNDARIES"
+
+assert_measured "C97 orchestration coordinates handlers, it decides nothing on its own" \
+  "A Workflow, Listener, or Consumer orchestrates calls to handlers; it never contains a business branch of its own." \
+  "zero orchestration files contain an if statement branching on a domain value; every branch on business state lives inside a handler" \
+  "a Consumer branches on a domain field directly instead of delegating the decision to a handler" \
+  "$LAYER_BOUNDARIES"
+
+assert_measured "C98 a third-party SDK is reached from infrastructure alone" \
+  "Only Infrastructure imports a third-party SDK; Domain and Application import nothing beyond their own ports." \
+  "zero files outside infrastructure/ contain an import from a package other than the project's own ports and models" \
+  "a domain file imports the AWS SDK directly instead of going through a port" \
+  "$LAYER_BOUNDARIES"
+
+assert_measured "C99 a wire DTO is declared once, in Infrastructure/Http" \
+  "A DTO shaped for the wire lives in Infrastructure/Http, never re-exported from Domain." \
+  "zero Domain files export a type whose name ends in Dto or Response; that shape is declared once, in Infrastructure/Http" \
+  "a domain file exports ReceiptResponseDto for the controller to reuse" \
+  "$LAYER_BOUNDARIES"
+
+echo ""
 if [[ $failures -gt 0 ]]; then
   echo "✗ $failures/$cases assertion(s) failed"
   exit 1
