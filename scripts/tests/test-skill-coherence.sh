@@ -39,6 +39,45 @@ assert_absent() {
   fi
 }
 
+# assert_pins NAME PATTERN TARGET… — fails if the pattern is absent from the target set,
+# shorter than 40 characters, or found anywhere in plugins/ outside that set.
+assert_pins() {
+  local name="$1" pattern="$2"
+  shift 2
+  local targets=("$@")
+  cases=$((cases + 1))
+
+  if [[ ${#pattern} -lt 40 ]]; then
+    echo "✗ $name (pattern is only ${#pattern} chars, prose could satisfy it)"
+    failures=$((failures + 1))
+    return
+  fi
+
+  if ! grep -rq -- "$pattern" "${targets[@]}"; then
+    echo "✗ $name"
+    echo "    '$pattern' found in none of: ${targets[*]}"
+    failures=$((failures + 1))
+    return
+  fi
+
+  local stray
+  stray=$(grep -rl -- "$pattern" plugins/ 2>/dev/null | while IFS= read -r f; do
+    local inside=0
+    for t in "${targets[@]}"; do
+      case "$f" in "$t"*) inside=1 ;; esac
+    done
+    [[ $inside -eq 0 ]] && echo "$f"
+  done)
+
+  if [[ -n "$stray" ]]; then
+    echo "✗ $name (pattern also found outside the target set)"
+    echo "$stray" | sed 's/^/    /'
+    failures=$((failures + 1))
+  else
+    echo "✓ $name"
+  fi
+}
+
 # assert_present NAME PATTERN TARGET… — PATTERN must appear in some TARGET
 assert_present() {
   local name="$1" pattern="$2"
@@ -418,6 +457,33 @@ echo "== Iteration 2 — ts-conventions no longer illustrates interface with a p
 
 assert_absent "R9 ts-conventions' interface example is not a repository port" \
   'interface ReceiptRepository' "$TS_CONVENTIONS"
+
+echo ""
+echo "== Iteration 8 — the six SPI port conventions the reference code proves"
+
+assert_pins "C4 a CQRS-split aggregate keeps its write and read ports disjoint" \
+  "A CQRS-split aggregate carries a homonymous write port and read port whose operations never overlap." \
+  "$PORTS_ADAPTERS"
+
+assert_pins "C7 the adapter is a default-exported lowerCamel const annotated by its port" \
+  "The adapter is a lowerCamel const annotated by its port and exported as the module's default." \
+  "$PORTS_ADAPTERS"
+
+assert_pins "C11 only non-determinism and I/O sit behind a port" \
+  "Only the clock, id generation, persistence, dispatch, and feature flags sit behind a port; everything else is reached directly." \
+  "$PORTS_ADAPTERS"
+
+assert_pins "C14 every domain port lives under SPI/, stated as a decision" \
+  "Every domain port lives under SPI/, with no port left outside it by convention." \
+  "$PORTS_ADAPTERS"
+
+assert_pins "C17 each port ships a hand-written InMemory or Stub double" \
+  "Each port keeps a hand-written double: InMemory for one that holds state, Stub for one that returns a deterministic sequence." \
+  "$PORTS_ADAPTERS"
+
+assert_pins "C20 a port with no domain consumer has no reason to live in SPI" \
+  "A port that only circulates between two infrastructure files has no reason to live in SPI." \
+  "$PORTS_ADAPTERS"
 
 echo ""
 if [[ $failures -gt 0 ]]; then
