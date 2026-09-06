@@ -842,6 +842,39 @@ assert_present "I4 the retired term is kept in the ddd-ts-fp description" \
   "'smart constructor'" "$DDD_TS_FP/SKILL.md"
 
 echo ""
+echo "== Iteration 1 (#75) — section 3 states the split once, the fused smart constructor is gone"
+
+CRAFT_DDD_FP_SKILL=plugins/craft/skills/ddd-fp-principles/SKILL.md
+
+assert_absent "J1 no fused encapsulates-all-invariants claim survives" \
+  'Encapsulates **all invariants**' "$CRAFT_DDD_FP_SKILL"
+
+assert_absent "J1 no quick-ref row still names a smart constructor" \
+  '| Smart constructor |' "$CRAFT_DDD_FP_SKILL"
+
+assert_absent "J1 no heading still names a smart constructor" \
+  '## 3. Smart Constructors' "$CRAFT_DDD_FP_SKILL"
+
+assert_absent "J1 the return row no longer conditions the maker's return on validation" \
+  'when validation can fail' "$CRAFT_DDD_FP_SKILL"
+
+assert_absent "J1 the pipeline-position row no longer calls the maker end of pipeline" \
+  'End of pipeline (after validations)' "$CRAFT_DDD_FP_SKILL"
+
+assert_absent "J1 the maker's contract no longer names a Result return" \
+  'Result<aggregate, error>' "$CRAFT_DDD_FP_SKILL"
+
+assert_present "J2 the maker/validator pairing sentence survives" \
+  'Every maker is paired with a named validator' "$CRAFT_DDD_FP_SKILL"
+
+assert_present "J2 the total-vs-fallible composition sentence survives" \
+  'Total operations compose bare in a pipe' "$CRAFT_DDD_FP_SKILL"
+
+assert_present "J3 the quick-ref keeps its Validator row" '| Validator |' "$CRAFT_DDD_FP_SKILL"
+
+assert_present "J3 the quick-ref keeps its Maker row" '| Maker |' "$CRAFT_DDD_FP_SKILL"
+
+echo ""
 if [[ $failures -gt 0 ]]; then
   echo "✗ $failures/$cases assertion(s) failed"
   exit 1

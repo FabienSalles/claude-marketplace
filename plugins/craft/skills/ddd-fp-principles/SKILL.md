@@ -30,13 +30,12 @@ Each domain operation is a **curried function**: `(context) => (input) => output
 
 Total operations compose bare in a pipe; only a fallible operation needs chain, because chain requires a function that returns a Result.
 
-## 3. Smart Constructors (`make*` prefix)
+## 3. Validators and Makers (`make*` prefix)
 
 A smart constructor is a curried factory that:
 
 - Takes the surrounding context (ids, clocks, configuration).
-- Returns a function that takes the input command and produces the aggregate (or a `Result<aggregate, error>`).
-- Encapsulates **all invariants** at construction time — once built, the aggregate is valid by construction.
+- Returns a function that takes the input command and produces the aggregate.
 
 Convention:
 
@@ -44,8 +43,8 @@ Convention:
 |---|---|
 | Prefix | `make` |
 | Shape | `make<X>(context) => (input) => output \| Result<output, error>` |
-| Return | `Result<T, E>` when validation can fail, plain `T` otherwise |
-| Position in pipeline | End of pipeline (after validations) or start of workflow |
+| Return | The aggregate. A maker is total and never returns a failure |
+| Position in pipeline | After the validation pipeline, applied to the validated command outside the pipe |
 
 Every maker is paired with a named validator that owns its invariants, and the two are separate units: the validator is fallible, the maker is total and returns the aggregate.
 
@@ -102,7 +101,6 @@ validate(command)
 |------|-----------|
 | Aggregate | Immutable `readonly` record, no class |
 | Operations | Pure curried functions returning new aggregates |
-| Smart constructor | `make<X>(context) => (input) => output \| Result<output, error>` |
 | Validator | Fallible; owns the invariants |
 | Maker | Total; maps and normalizes, never fails |
 | Updates | Spread / structural sharing — never mutate |
