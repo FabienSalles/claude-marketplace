@@ -580,7 +580,7 @@ assert_pins "C43 an entity's operations take and return the aggregate, never the
   "An entity carrying identity has its own Models/Entities/<Name>/ folder, and its operations take and return the aggregate, never the entity." \
   "$DDD_TS_FP" "$CRAFT_DDD_FP"
 
-assert_pins "C44 [#75] the smart constructor splits into Validator files and a never-failing maker" \
+assert_pins "C44 the smart constructor splits into Validator files and a never-failing maker" \
   "The smart constructor splits in two: Validator files carry the invariants, and the maker only maps and normalizes, and never fails." \
   "$DDD_TS_FP" "$CRAFT_DDD_FP"
 
@@ -804,6 +804,42 @@ assert_present "R4 the craft quick-ref carries a Maker row" '| Maker |' "$CRAFT_
 assert_present "R4 the ddd-ts-fp quick-ref carries a Validator row" '| Validator |' "$DDD_TS_FP"
 
 assert_present "R4 the ddd-ts-fp quick-ref carries a Maker row" '| Maker |' "$DDD_TS_FP"
+
+echo ""
+echo "== Iteration 2 (#75) — the two composition examples compose, the fused term retires"
+
+assert_absent "I1 no example composes a total function with chain via chain(make" \
+  'chain(make' "$DDD_TS_FP/SKILL.md" "$DDD_TS_FP/references/ddd-functional-examples.md"
+
+assert_present "I2 the reference pipe stays on the command, the maker applies with its full arity after the guard" \
+  'makeAddress(addressId, createdAt)(validated.value)' "$DDD_TS_FP/references/ddd-functional-examples.md"
+
+assert_present "I2 the sync pipe's declared result is the validated command, not the model" \
+  'const validated: Result<AddAddressCommand, DomainError> = pipe(' "$DDD_TS_FP/references/ddd-functional-examples.md"
+
+assert_present "I3 the handler example unwraps validation imperatively" \
+  'if (isFailure(validated)) return validated;' "$DDD_TS_FP/SKILL.md"
+
+assert_absent "I3 the handler example carries no dependency it never uses" \
+  'ReceiptRepository' "$DDD_TS_FP/SKILL.md"
+
+assert_absent "I4 the retired term is gone from the ddd-ts-fp heading" \
+  '## TS-specific: Smart Constructor' "$DDD_TS_FP/SKILL.md"
+
+assert_absent "I4 the retired term is gone from the ddd-ts-fp pointer at :53" \
+  'creating smart constructors' "$DDD_TS_FP/SKILL.md"
+
+assert_absent "I4 the retired term is gone from the ddd-ts-fp quick-ref" \
+  '| Smart constructor |' "$DDD_TS_FP/SKILL.md"
+
+assert_absent "I4 the retired term is gone from the reference examples heading" \
+  '## Smart Constructor Examples' "$DDD_TS_FP/references/ddd-functional-examples.md"
+
+assert_absent "I4 the retired term is gone from README.md:26" \
+  'smart constructors' plugins/typescript/README.md
+
+assert_present "I4 the retired term is kept in the ddd-ts-fp description" \
+  "'smart constructor'" "$DDD_TS_FP/SKILL.md"
 
 echo ""
 if [[ $failures -gt 0 ]]; then
