@@ -1095,6 +1095,59 @@ assert_measured "C199 a curried domain operation's shape names one return type, 
   "$CRAFT_DDD_FP_SKILL"
 
 echo ""
+echo "== Iteration 5 — ddd-ts-fp states the currying, parameter-order and modelling scope under each rule"
+
+DDD_TS_FP_SKILL=plugins/typescript/skills/ddd-ts-fp/SKILL.md
+
+assert_measured "C24 every domain operation curries before it receives the aggregate" \
+  "Each operation is a \*\*curried function\*\* returning a new aggregate (or a \`Result\`). Compose with \`pipe\` and \`chain\`." \
+  "no domain operation in this file's own examples takes its data and the aggregate in one non-curried argument list" \
+  "a domain operation takes its data and the aggregate in one non-curried argument list" \
+  "$DDD_TS_FP_SKILL"
+
+assert_measured "C26 handler dependencies stay positional, never a destructured options object" \
+  "Dependencies (\`clock\`) come first as separate arguments, never as one destructured object." \
+  "no handler example in this skill destructures its dependencies into a single options object" \
+  "a handler destructures its dependencies into a single options object" \
+  "$DDD_TS_FP_SKILL"
+
+assert_measured "C35 Result is reserved to the operation that can actually fail" \
+  "An operation returns a Result only when it can fail; a total transition returns the bare model." \
+  "no total operation in this skill's examples wraps its return type in Result, and no fallible operation returns the bare model" \
+  "a total operation returns Result<Type, DomainError> even though it cannot fail" \
+  "$DDD_TS_FP_SKILL"
+
+assert_measured "C37 an entity's operations never take or return the bare entity" \
+  "An entity carrying identity has its own Models/Entities/<Name>/ folder, and its operations take and return the aggregate, never the entity." \
+  "no entity operation in this skill's examples takes or returns the bare entity" \
+  "an entity operation takes the entity and returns the entity, never the aggregate" \
+  "$DDD_TS_FP_SKILL"
+
+assert_measured "C41 the maker never returns a Result once the validator has proved its input" \
+  "Validator files carry the invariants and return a branded command; the maker maps and normalizes a value the type system already proves valid, so it never fails." \
+  "no maker in this skill's examples returns a Result" \
+  "a maker returns Result<Address, DomainError> despite taking an already-validated command" \
+  "$DDD_TS_FP_SKILL"
+
+assert_measured "C50 the CQRS read copy never shares its shape with the write side" \
+  "Each CQRS side owns its own copy of the model; the read copy is deliberately narrowed." \
+  "the Query-side \`Address\` type in this file's example carries fewer fields than the Command-side one" \
+  "the Command and Query sides import the same Address type from one shared file" \
+  "$DDD_TS_FP_SKILL"
+
+assert_measured "C53 a command DTO shared by two features is never factored into one file" \
+  "The command DTO repeats per feature; two features are never factored together just because their types are identical." \
+  "stay two files in this skill's example, never one shared import" \
+  "onboard-customer and relocate-customer import one shared AddAddressCommand type" \
+  "$DDD_TS_FP_SKILL"
+
+assert_measured "C39 a patch-shaped repository method costs every caller the aggregate's own invariant" \
+  "The repository receives the whole aggregate, never a patch nor a list of fields." \
+  "forces every caller to reconstruct the invariant the aggregate already proved, one call site at a time" \
+  "a repository interface declares an update method accepting a patch or list of fields, alongside save" \
+  "$DDD_TS_FP_SKILL"
+
+echo ""
 if [[ $failures -gt 0 ]]; then
   echo "✗ $failures/$cases assertion(s) failed"
   exit 1
