@@ -671,6 +671,37 @@ assert_pins "C122 domain purity holds even where CQRS does not, a single concret
   "$TS_DDD_EVENTS"
 
 echo ""
+echo "== Iteration 7 — the seven typing conventions are stated in ts-conventions"
+
+assert_pins "C128 #77 type-over-interface is locked by ESLint, not by review" \
+  "The type-over-interface convention is enforced by ESLint's naming-convention rule, not by code review." \
+  "$TS_CONVENTIONS"
+
+assert_pins "C133 the discriminant is named tag, exposed through isX predicates" \
+  "The discriminant field is always named tag, and callers use isX predicates instead of comparing tag directly." \
+  "$TS_CONVENTIONS"
+
+assert_pins "C135 satisfies checks a rendered or collected literal's shape without widening it" \
+  "satisfies checks a rendered or collected object literal's shape without widening it; it is never used to validate an untyped value." \
+  "$TS_CONVENTIONS"
+
+assert_pins "C136 as const serves exactly two purposes" \
+  "as const serves exactly two purposes: freezing a closed set to derive a union, and pinning a module constant to its literal type." \
+  "$TS_CONVENTIONS"
+
+assert_pins "C138 as is tolerated only at infrastructure boundaries" \
+  "as is tolerated only at infrastructure boundaries: external payloads, JSON.parse, SDK calls, empty accumulators; inside the domain it is debt." \
+  "$TS_CONVENTIONS"
+
+assert_pins "C146 absence in a domain type is an explicit | null, not ?" \
+  "Absence in a domain type is written as an explicit | null; ? is reserved for external payload shapes and partial update commands." \
+  "$TS_CONVENTIONS"
+
+assert_pins "C148 Command publishes a named handler type alias, Query lets it infer" \
+  "On the Command side, publish a named function-type alias after the handler's file and annotate the factory with it; on the Query side, let it infer." \
+  "$TS_CONVENTIONS"
+
+echo ""
 if [[ $failures -gt 0 ]]; then
   echo "✗ $failures/$cases assertion(s) failed"
   exit 1
