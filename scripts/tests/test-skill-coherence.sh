@@ -351,6 +351,75 @@ assert_present "R1 ts-functional's SKILL.md names the failure<E> constructor" \
   'failure<E>' "$TS_FUNCTIONAL"
 
 echo ""
+echo "== Iteration 1 — a port and its adapter, without a DI container"
+
+PORTS_ADAPTERS=plugins/typescript/skills/ts-ports-adapters/SKILL.md
+
+assert_present "R2 the skill declares a port as an exported type" \
+  'export type [A-Za-z]*\(Repository\|Dispatcher\|Generator\|Clock\|Formatter\) =' "$PORTS_ADAPTERS"
+
+assert_absent "R2 the skill declares no port as an interface of methods" \
+  'interface [A-Za-z]*\(Repository\|Dispatcher\|Generator\|Clock\)' "$PORTS_ADAPTERS"
+
+assert_present "R2 the skill situates the port in the domain layer" \
+  'Domain/SPI\|domain/ports' "$PORTS_ADAPTERS"
+
+# The port's fields are arrow-typed properties. Method shorthand is the container-era form a
+# class implements, and the reference codebases use it in none of their 17 ports.
+cases=$((cases + 1))
+if grep -qE '^ +[a-z][A-Za-z]*: \([^)]*\) =>' "$PORTS_ADAPTERS"; then
+  echo "✓ R2 the port's fields are arrow-typed properties, not method shorthand"
+else
+  echo "✗ R2 the port's fields are arrow-typed properties, not method shorthand"
+  failures=$((failures + 1))
+fi
+
+# R3 and R4 are the two greps that returned zero across the whole pack and are the reason this
+# skill exists. They run here verbatim, against the skill, where they must now match.
+cases=$((cases + 1))
+if grep -qE "^(const|export const) [a-z][A-Za-z]*(Repository|Store|Dispatcher|Generator|Clock|Service) *(:[^=]*)?= *\{" "$PORTS_ADAPTERS"; then
+  echo "✓ R3 the skill constructs an adapter bound to its port"
+else
+  echo "✗ R3 the skill constructs an adapter bound to its port"
+  failures=$((failures + 1))
+fi
+
+cases=$((cases + 1))
+if grep -qE "[a-zA-Z]+Handler\([a-zA-Z]" "$PORTS_ADAPTERS"; then
+  echo "✓ R4 the skill applies a handler to its dependencies"
+else
+  echo "✗ R4 the skill applies a handler to its dependencies"
+  failures=$((failures + 1))
+fi
+
+cases=$((cases + 1))
+if grep -qE '@Injectable|@Inject\(|@Module|Symbol\(|useClass' "$PORTS_ADAPTERS"; then
+  echo "✗ R5 the skill's mechanism names no container"
+  grep -nE '@Injectable|@Inject\(|@Module|Symbol\(|useClass' "$PORTS_ADAPTERS" | sed 's/^/    /'
+  failures=$((failures + 1))
+else
+  echo "✓ R5 the skill's mechanism names no container"
+fi
+
+assert_absent "R5 the skill silences no compiler error with a non-null assertion" \
+  'process\.env\.[A-Z_]*!' "$PORTS_ADAPTERS"
+
+assert_present "R6 the skill defers the doubles doctrine to craft:testing-principles" \
+  'craft:testing-principles' "$PORTS_ADAPTERS"
+
+assert_present "R7 the skill defers the Result type to ts-functional" \
+  'ts-functional' "$PORTS_ADAPTERS"
+
+assert_present "R8 the skill names nest-ddd-conventions as the owner of container-based DI" \
+  'nest-ddd-conventions' "$PORTS_ADAPTERS"
+
+echo ""
+echo "== Iteration 2 — ts-conventions no longer illustrates interface with a port"
+
+assert_absent "R9 ts-conventions' interface example is not a repository port" \
+  'interface ReceiptRepository' "$TS_CONVENTIONS"
+
+echo ""
 if [[ $failures -gt 0 ]]; then
   echo "✗ $failures/$cases assertion(s) failed"
   exit 1
