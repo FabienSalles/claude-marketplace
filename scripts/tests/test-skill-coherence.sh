@@ -78,6 +78,51 @@ assert_pins() {
   fi
 }
 
+# assert_measured NAME PINNED_PATTERN MEASURE_PATTERN COUNTER_PATTERN TARGET — the pinned sentence
+# must appear in TARGET, a measure (a concrete, quantified scope) must follow it on a later line —
+# never merged into the same sentence — and no contradicting form of the rule may exist anywhere
+# in plugins/.
+assert_measured() {
+  local name="$1" pattern="$2" measure="$3" counter="$4" target="$5"
+  cases=$((cases + 1))
+
+  if [[ ${#pattern} -lt 40 ]]; then
+    echo "✗ $name (pinned pattern is only ${#pattern} chars, prose could satisfy it)"
+    failures=$((failures + 1))
+    return
+  fi
+
+  local pin_line measure_line
+  pin_line=$(grep -n -- "$pattern" "$target" | head -1 | cut -d: -f1)
+  if [[ -z "$pin_line" ]]; then
+    echo "✗ $name (pinned sentence absent from $target)"
+    failures=$((failures + 1))
+    return
+  fi
+
+  measure_line=$(tail -n +"$pin_line" "$target" | grep -n -- "$measure" | head -1 | cut -d: -f1)
+  if [[ -z "$measure_line" ]]; then
+    echo "✗ $name (no measure found after the pinned sentence in $target)"
+    failures=$((failures + 1))
+    return
+  fi
+
+  if [[ "$measure_line" -eq 1 ]]; then
+    echo "✗ $name (measure sits inside the pinned sentence, not after it)"
+    failures=$((failures + 1))
+    return
+  fi
+
+  if grep -rq -- "$counter" plugins; then
+    echo "✗ $name (a contradicting form still coexists in the pack)"
+    grep -rn -- "$counter" plugins | sed 's/^/    /'
+    failures=$((failures + 1))
+    return
+  fi
+
+  echo "✓ $name"
+}
+
 # assert_present NAME PATTERN TARGET… — PATTERN must appear in some TARGET
 assert_present() {
   local name="$1" pattern="$2"
@@ -921,6 +966,15 @@ assert_absent "L5 the functional-DDD pair asserts no brand of its own" \
 
 assert_absent "L6 no pipeline in the pair narrows by casting its own result" \
   ' as Result<Valid' "$DDD_TS_FP" "$CRAFT_DDD_FP"
+
+echo ""
+echo "== Iteration 1 — C185 carries its own measured scope"
+
+assert_measured "C185 a function's length is capped by a stated, quantified scope" \
+  "Extract a private or local helper as soon as a function's body no longer fits in one glance." \
+  "no function body exceeds 25 executable lines" \
+  "there is no maximum function length" \
+  "$CRAFT_STYLE"
 
 echo ""
 if [[ $failures -gt 0 ]]; then
