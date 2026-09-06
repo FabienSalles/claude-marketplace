@@ -88,6 +88,23 @@ validate(command)
 
 > When writing domain handlers, read `references/ddd-functional-examples.md` for the complete handler pattern with error handling.
 
+## TS-specific: Handler Parameter Order
+
+```typescript
+export type AddAddressHandler = (command: AddAddressCommand) => Promise<Result<Receipt, DomainError>>;
+
+const addAddressHandler =
+  (repository: ReceiptRepository, clock: Clock) =>
+  (command: AddAddressCommand): Promise<Result<Receipt, DomainError>> =>
+    pipe(
+      command,
+      validateAddAddress,
+      chain(makeAddress(clock.now())),
+    );
+```
+
+Dependencies (`repository`, `clock`) come first as separate arguments, never as one destructured object. The command comes last. A model-level operation instead takes its data first and the aggregate last: `addAddress(address)(receipt)`.
+
 ## Quick Reference (TS-specific FP)
 
 | Element | Convention |
@@ -101,3 +118,6 @@ validate(command)
 | Validation | Composable `Validator<T>` pipeline |
 | Enrichment | Pipeline at system boundary |
 | Handler | Orchestrator: validate → load → domain → persist |
+| Handler args | Dependencies positional, then the Command/Query last |
+| Model args | Data first, aggregate last (`op(data)(aggregate)`) |
+| Command handler type | `export type XHandler = (command: XCommand) => Promise<Result<T, E>>` |

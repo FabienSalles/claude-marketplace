@@ -537,6 +537,39 @@ assert_present "R2 ts-code-conventions defers layer boundaries to their one owne
   'ts-layer-boundaries' "$TS_CODE_CONVENTIONS"
 
 echo ""
+echo "== Iteration 3 — the seven currying and parameter-order conventions"
+
+CRAFT_DDD_FP=plugins/craft/skills/ddd-fp-principles
+
+assert_pins "C22 the dependency group is positional, never a destructured object or a container" \
+  "The dependency group is positional, never a destructured object nor a container." \
+  "$DDD_TS_FP" "$CRAFT_DDD_FP"
+
+assert_pins "C23 dependencies then data at the handler, data then subject at the model: the aggregate is last" \
+  "Dependencies then data at the handler level, but data then subject at the model level: the aggregate is always the last curried argument." \
+  "$DDD_TS_FP" "$CRAFT_DDD_FP"
+
+assert_pins "C25 curry only what will be partially applied or piped" \
+  "Curry only what will be partially applied or piped; adapters, ports, predicates, and mappers stay single-stage." \
+  "$DDD_TS_FP" "$CRAFT_DDD_FP"
+
+assert_pins "C28 publish export type XHandler beside a Command handler, never for a Query" \
+  "Publish export type XHandler beside a Command handler and annotate the factory with it; never do so for a Query." \
+  "$DDD_TS_FP" "$CRAFT_DDD_FP"
+
+assert_pins "C30 a handler never calls another handler, composition moves up a level" \
+  "A handler never calls another handler: composition moves up a level, into a Workflow, a Listener, a Router, or a Consumer." \
+  "$DDD_TS_FP" "$CRAFT_DDD_FP"
+
+assert_pins "C31 Result when a business rule can fail, Promise<void> for fire-and-forget, never a bare domain value" \
+  "Return Result when a business rule can fail, Promise<void> for fire-and-forget; never a bare domain value." \
+  "$DDD_TS_FP" "$CRAFT_DDD_FP"
+
+assert_pins "C32 the data stage takes a single XCommand or XQuery object, never a list of primitives" \
+  "The data stage takes a single XCommand or XQuery object, never a list of primitives." \
+  "$DDD_TS_FP" "$CRAFT_DDD_FP"
+
+echo ""
 if [[ $failures -gt 0 ]]; then
   echo "✗ $failures/$cases assertion(s) failed"
   exit 1

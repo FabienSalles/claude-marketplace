@@ -82,6 +82,16 @@ validate(command)
 - Validation, load, persist, publish: **impure** (I/O).
 - Domain operations between them: **pure**.
 
+## 7. Parameter Order and Curry Conventions
+
+- **Dependency positioning.** The dependency group is positional, never a destructured object nor a container. A curried factory takes its dependencies as separate leading arguments, not as one bag.
+- **Argument order.** Dependencies then data at the handler level, but data then subject at the model level: the aggregate is always the last curried argument. This keeps `pipe(aggregate, op1(deps), op2(deps))` shaped consistently.
+- **What gets curried.** Curry only what will be partially applied or piped; adapters, ports, predicates, and mappers stay single-stage. Currying a member that is always called fully applied only adds indirection.
+- **Handler type export.** Publish export type XHandler beside a Command handler and annotate the factory with it; never do so for a Query. Queries return their result directly and gain nothing from the named type.
+- **No handler-to-handler calls.** A handler never calls another handler: composition moves up a level, into a Workflow, a Listener, a Router, or a Consumer. A handler importing another handler's implementation is a sign the composition belongs one layer higher.
+- **Return type by failure mode.** Return Result when a business rule can fail, Promise<void> for fire-and-forget; never a bare domain value. A bare value hides whether the operation could have failed.
+- **Single input object.** The data stage takes a single XCommand or XQuery object, never a list of primitives. Adding a field never changes the call site's arity.
+
 ## Quick Reference
 
 | Rule | Convention |
@@ -95,3 +105,10 @@ validate(command)
 | Validation pipeline | Chain of `Validator<T>`; stops at first error |
 | Enrichment pipeline | Transform external → domain at system boundary |
 | Handler | Orchestrator: validate → load → pure domain → persist |
+| Dependency group | Positional arguments, never a destructured object or container |
+| Argument order | Handler: deps then data. Model: data then subject, aggregate last |
+| Curry scope | Only what is partially applied or piped; ports/predicates/mappers stay single-stage |
+| Handler type | `export type XHandler` for Command, never for Query |
+| Handler composition | Never handler-to-handler; compose in a Workflow/Listener/Router/Consumer |
+| Handler return | `Result` when failable, `Promise<void>` when fire-and-forget |
+| Data stage input | One `XCommand`/`XQuery` object, never a list of primitives |
