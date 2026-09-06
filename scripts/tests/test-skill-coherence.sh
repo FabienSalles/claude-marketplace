@@ -1148,6 +1148,47 @@ assert_measured "C39 a patch-shaped repository method costs every caller the agg
   "$DDD_TS_FP_SKILL"
 
 echo ""
+echo "== Iteration 6 — ts-conventions states its seven typing conventions with their scope"
+
+assert_measured "C130 strict mode is enforced repo-wide, no package tsconfig may relax it" \
+  "no package's own \`tsconfig.json\` may set it back to \`false\` to relax the check for that package alone." \
+  "a package \`tsconfig.json\` that relaxes \`strict\` silently loses \`noUncheckedIndexedAccess\` and \`exactOptionalPropertyTypes\`" \
+  "a package tsconfig.json may set strict to false to relax the check for that package alone" \
+  "$TS_CONVENTIONS"
+
+assert_measured "C134 unknown replaces any only at a boundary that receives untyped data" \
+  "\`unknown\` replaces \`any\` only at a boundary that receives untyped data — a parsed HTTP body, \`JSON.parse\`, a third-party callback — never inside code the domain already typed." \
+  "an \`any\` that survives past the parse boundary propagates through every function it touches" \
+  "any is acceptable anywhere the correct return type is inconvenient to declare" \
+  "$TS_CONVENTIONS"
+
+assert_measured "C139 import type applies to every type-only import, not just the typeof import pattern" \
+  "\`import type\` applies to every import kept only for its type, not just the \`typeof import(...)\` pattern shown above." \
+  "a value import kept only for its type still pulls the whole module into the runtime bundle" \
+  "a type-only import may stay a regular value import for convenience" \
+  "$TS_CONVENTIONS"
+
+assert_measured "C141 Pick/Omit/Partial derive a DTO from an aggregate, never the aggregate itself" \
+  "\`Pick\`, \`Omit\`, and \`Partial\` derive a DTO or a command shape from an aggregate; the aggregate itself is never expressed as a \`Partial\`." \
+  "an aggregate typed as \`Partial<Tenant>\` for a command payload lets a caller construct it missing the very fields the constructor was written to guarantee" \
+  "the aggregate type itself is expressed as Partial<Tenant> for a command payload" \
+  "$TS_CONVENTIONS"
+
+assert_measured "C142 a domain function's generic always carries a semantic constraint" \
+  "An unconstrained \`<T>\` is reserved to structural containers such as \`ApiResponse\` above; a domain function's generic always carries a semantic constraint" \
+  "an unconstrained \`<T>\` on a domain function accepts any shape at all, so a typo'd field name on the call site fails at runtime instead of at the call" \
+  "a domain function declares an unconstrained generic <T> with no extends clause" \
+  "$TS_CONVENTIONS"
+
+assert_pins "C152 the non-null assertion is reserved to a framework entry point" \
+  "The non-null assertion \`!\` is reserved to a framework entry point — application bootstrap, DI container resolution — never to a domain handler or service." \
+  "$TS_CONVENTIONS"
+
+assert_pins "C153 the exported handler type alias lives in the handler's own file" \
+  "The exported handler type alias lives in the handler's own file, never centralized in a shared \`types.ts\` barrel." \
+  "$TS_CONVENTIONS"
+
+echo ""
 if [[ $failures -gt 0 ]]; then
   echo "✗ $failures/$cases assertion(s) failed"
   exit 1
