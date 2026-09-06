@@ -1189,6 +1189,39 @@ assert_pins "C153 the exported handler type alias lives in the handler's own fil
   "$TS_CONVENTIONS"
 
 echo ""
+echo "== Iteration 7 — ts-code-conventions states its mechanics, naming and organisation rules with their scope"
+
+assert_measured "C179 config.ts is the only file allowed to import process.env" \
+  "A layer's config.ts is the only file allowed to import process.env; every other module receives its configuration already destructured as arguments." \
+  "No file other than a layer's own config.ts contains the string process.env." \
+  "a handler reads process.env directly instead of receiving it from config.ts" \
+  "$TS_CODE_CONVENTIONS"
+
+assert_measured "C180 a barrel file re-exports only, and declares no logic of its own" \
+  "Barrel files (index.ts) re-export only, and declare no function, class, or logic of their own." \
+  "Zero index.ts files in the codebase contain a function or class declaration of their own." \
+  "an index.ts declares its own function instead of re-exporting one" \
+  "$TS_CODE_CONVENTIONS"
+
+assert_measured "C184 a boolean is named with an is/has/can prefix, never a bare noun or verb" \
+  "A boolean variable, property, or function name carries an \`is\`, \`has\`, or \`can\` prefix; a bare noun or verb is reserved for non-boolean values." \
+  "No boolean declaration in the codebase is named without one of the three prefixes." \
+  "a boolean property is named valid instead of isValid" \
+  "$TS_CODE_CONVENTIONS"
+
+assert_measured "C186 a file exports one primary symbol, past a third export it is split" \
+  "A file exports one primary symbol; a second export is allowed only for a tightly related overload or the type a factory constructs." \
+  "A file accumulating a fourth unrelated public export is split before that fourth export lands." \
+  "a single file accumulates four unrelated public exports" \
+  "$TS_CODE_CONVENTIONS"
+
+assert_measured "C191 a test file is colocated next to the file it exercises, never mirrored into tests/" \
+  "A test file sits beside the file it exercises, Name.spec.ts next to Name.ts, never mirrored into a separate top-level tests/ tree." \
+  "Zero .spec.ts files live outside the directory of the file they test." \
+  "a spec file is moved into a parallel tests directory mirroring src" \
+  "$TS_CODE_CONVENTIONS"
+
+echo ""
 if [[ $failures -gt 0 ]]; then
   echo "✗ $failures/$cases assertion(s) failed"
   exit 1
