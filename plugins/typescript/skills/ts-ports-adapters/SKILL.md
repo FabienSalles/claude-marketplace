@@ -24,7 +24,8 @@ export type ReceiptRepository = {
 };
 ```
 
-Each field is a **property typed as an arrow function**, not method shorthand. Method syntax is the
+Each field is a **property typed as an arrow function**, not method shorthand.
+Zero ports across the reference codebases declare a field with method shorthand. Method syntax is the
 form a class `implements`, and it invites the container-shaped reflex of making the adapter a class;
 an object literal cannot satisfy a contract it was never asked to extend.
 
@@ -67,8 +68,10 @@ export default receiptRepository;
 ```
 
 The annotation is what binds the adapter to the port: drop a field or drift a signature and the
-compiler refuses the object. Use the annotation rather than `satisfies` — the port is exactly the
-type the consumer wants, so there are no literal types worth preserving.
+compiler refuses the object. Every adapter in the reference codebases carries this annotation, with
+zero adapters left untyped. Use the annotation rather than `satisfies` — the port is exactly the
+type the consumer wants, so there are no literal types worth preserving. No adapter in either
+reference codebase is declared with `satisfies` in place of the port annotation.
 
 ## The handler takes its dependencies first, its data second
 
@@ -93,12 +96,16 @@ export const generateReceiptHandler =
 ```
 
 The outer call takes every port and returns the named handler type; the inner call takes the
-command. Dependencies are resolved once, at startup, and the inner function is what the rest of the
+command. Every handler in the reference codebases follows this two-call shape, with zero handlers
+taking their dependencies and their data in a single parameter list. Dependencies are resolved
+once, at startup, and the inner function is what the rest of the
 application holds — so nothing downstream ever needs to know what a `ReceiptRepository` really is.
 
 ## The composition root lives in the infrastructure
 
-Applying a handler to its adapters is an infrastructure act. It happens at the entry point that owns
+Applying a handler to its adapters is an infrastructure act.
+Zero domain files in the reference codebases apply a handler to its adapters; every application
+happens in a controller, a worker, or a CLI entry point. It happens at the entry point that owns
 the process — a controller, a worker, a CLI — and never inside the domain, which must stay ignorant
 of which adapter it runs against.
 
@@ -118,13 +125,16 @@ const generateReceiptController = async (request: Request, response: Response): 
 ```
 
 Declaring a port and then importing the concrete adapter everywhere is the failure mode this shape
-exists to prevent: it keeps the type and loses the seam. If a consumer imports the adapter instead
-of receiving the port, the port is decoration.
+exists to prevent: it keeps the type and loses the seam. No consumer file in the reference
+codebases imports a concrete adapter while a port of the same name exists. If a consumer imports
+the adapter instead of receiving the port, the port is decoration.
 
 ## The substitution that proves the port pays
 
-The same call site takes an in-memory stub. Nothing in the domain changes, and no mocking library is
-involved — the stub records what it was given and answers what the test needs.
+The same call site takes an in-memory stub.
+Every port in the reference codebases has at least one test exercising this substitution. Nothing
+in the domain changes, and no mocking library is involved — the stub records what it was given and
+answers what the test needs.
 
 ```typescript
 // tests/Unit/Command/Domain/Features/generateReceiptHandler.spec.ts
@@ -143,7 +153,8 @@ assert.deepStrictEqual(savedReceipts.length, 1);
 ```
 
 Because the stub is an ordinary value, it doubles as the spy — asserting on `savedReceipts` reads
-better than asserting on a recorded call. Which double to reach for, and what does not deserve a
+better than asserting on a recorded call. Zero tests in the reference codebases pair a hand-written
+stub with a separate spy assertion. Which double to reach for, and what does not deserve a
 test at all, is `craft:testing-principles`'s subject, not this skill's.
 
 ## A CQRS split keeps the write port and the read port disjoint

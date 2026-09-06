@@ -531,6 +531,68 @@ assert_pins "C20 a port with no domain consumer has no reason to live in SPI" \
   "$PORTS_ADAPTERS"
 
 echo ""
+echo "== Iteration 9 — ts-ports-adapters states its seven port conventions with the scope that founds each"
+
+assert_measured "C2 a port field is an arrow-typed property, never method shorthand" \
+  "Each field is a \*\*property typed as an arrow function\*\*, not method shorthand." \
+  "Zero ports across the reference codebases declare a field with method shorthand." \
+  "a port field is declared with method shorthand instead of an arrow-typed property" \
+  "$PORTS_ADAPTERS"
+
+assert_measured "C3 the type annotation is what binds every adapter to its port" \
+  "The annotation is what binds the adapter to the port: drop a field or drift a signature and the
+compiler refuses the object." \
+  "Every adapter in the reference codebases carries this annotation, with
+zero adapters left untyped." \
+  "an adapter is exported with no port annotation at all" \
+  "$PORTS_ADAPTERS"
+
+assert_measured "C5 the port annotation is used over satisfies, with no literal type worth keeping" \
+  "Use the annotation rather than \`satisfies\` — the port is exactly the
+type the consumer wants, so there are no literal types worth preserving." \
+  "No adapter in either
+reference codebase is declared with \`satisfies\` in place of the port annotation." \
+  "an adapter is declared with satisfies instead of the port type annotation" \
+  "$PORTS_ADAPTERS"
+
+assert_measured "C9 the handler's outer call takes the ports, its inner call takes the command" \
+  "The outer call takes every port and returns the named handler type; the inner call takes the
+command." \
+  "Every handler in the reference codebases follows this two-call shape, with zero handlers
+taking their dependencies and their data in a single parameter list." \
+  "a handler takes its ports and its command in a single flat parameter list" \
+  "$PORTS_ADAPTERS"
+
+assert_measured "C13 applying a handler to its adapters is an infrastructure act" \
+  "Applying a handler to its adapters is an infrastructure act." \
+  "Zero domain files in the reference codebases apply a handler to its adapters; every application
+happens in a controller, a worker, or a CLI entry point." \
+  "a domain file applies a handler to its adapters instead of an infrastructure entry point" \
+  "$PORTS_ADAPTERS"
+
+assert_measured "C15 a consumer that imports the concrete adapter turns its port into decoration" \
+  "Declaring a port and then importing the concrete adapter everywhere is the failure mode this shape
+exists to prevent: it keeps the type and loses the seam." \
+  "No consumer file in the reference
+codebases imports a concrete adapter while a port of the same name exists." \
+  "a consumer imports the concrete adapter directly even though a port of the same name exists" \
+  "$PORTS_ADAPTERS"
+
+assert_measured "C18 every port keeps a test that substitutes its in-memory stub at the same call site" \
+  "The same call site takes an in-memory stub." \
+  "Every port in the reference codebases has at least one test exercising this substitution." \
+  "a port ships with no test exercising its in-memory stub at the production call site" \
+  "$PORTS_ADAPTERS"
+
+assert_measured "C19 the hand-written stub doubles as the spy, no separate spy assertion coexists" \
+  "Because the stub is an ordinary value, it doubles as the spy — asserting on \`savedReceipts\` reads
+better than asserting on a recorded call." \
+  "Zero tests in the reference codebases pair a hand-written
+stub with a separate spy assertion." \
+  "a test pairs a hand-written stub with a separate spy assertion" \
+  "$PORTS_ADAPTERS"
+
+echo ""
 echo "== Iteration 9 — the nine boundary conventions land in one skill, ESLint zones over review"
 
 LAYER_BOUNDARIES=plugins/typescript/skills/ts-layer-boundaries/SKILL.md
