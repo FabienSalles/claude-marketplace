@@ -78,18 +78,17 @@ const addFullAddress =
 ## Maker with Context Examples
 
 ```typescript
-// make + context => specialized function
+// make + context => specialized function. Total: its input is the validated type.
 const makeAddress =
   (addressId: string, createdAt: Date) =>
-  (command: AddAddressCommand): Result<Address, DomainError> =>
-    success({
-      id: addressId,
-      street: command.street,
-      city: command.city,
-      countryCode: command.countryCode,
-      createdAt,
-      updatedAt: createdAt,
-    });
+  (command: ValidAddAddressCommand): Address => ({
+    id: addressId,
+    street: command.street,
+    city: command.city,
+    countryCode: command.countryCode,
+    createdAt,
+    updatedAt: createdAt,
+  });
 
 const makeFormatter =
   (logger: Logger) =>
@@ -107,7 +106,7 @@ const makeFormatter =
 
 ```typescript
 // The pipe only validates; the maker runs once validation has succeeded
-const validated: Result<AddAddressCommand, DomainError> = pipe(
+const validated: Result<ValidAddAddressCommand, DomainError> = pipe(
   addAddressCommand,
   validateBrazilAddress,
   chain(validateMexicoAddress),
@@ -122,25 +121,27 @@ if (isSuccess(validated)) {
 ## Validation Pipeline Examples
 
 ```typescript
-type Validator<T> = (input: T) => Result<T, DomainError>;
+type Check<T> = (input: T) => Result<T, DomainError>;
 
-const validatePeriod: Validator<CreateReceiptCommand> = (cmd) =>
+const validatePeriod: Check<CreateReceiptCommand> = (cmd) =>
   cmd.period.month < 1 || cmd.period.month > 12
     ? failure({ message: 'Invalid month' })
     : success(cmd);
 
-const validateAmount: Validator<CreateReceiptCommand> = (cmd) =>
+const validateAmount: Check<CreateReceiptCommand> = (cmd) =>
   cmd.amount <= 0
     ? failure({ message: 'Amount must be positive' })
     : success(cmd);
 
-const validateLease: Validator<CreateReceiptCommand> = (cmd) =>
+const validateLease: Check<CreateReceiptCommand> = (cmd) =>
   cmd.leaseId === ''
     ? failure({ message: 'Lease ID required' })
     : success(cmd);
 
 // Composition: stops at first error
-const validateCreateReceipt = (cmd: CreateReceiptCommand): Result<CreateReceiptCommand, DomainError> =>
+// The chain proves the constraints; buildValidCreateReceipt constructs the narrower
+// shape from them, so nothing is asserted.
+const validateCreateReceipt = (cmd: CreateReceiptCommand): Result<ValidCreateReceiptCommand, DomainError> =>
   pipe(
     cmd,
     validatePeriod,

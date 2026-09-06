@@ -580,8 +580,8 @@ assert_pins "C43 an entity's operations take and return the aggregate, never the
   "An entity carrying identity has its own Models/Entities/<Name>/ folder, and its operations take and return the aggregate, never the entity." \
   "$DDD_TS_FP" "$CRAFT_DDD_FP"
 
-assert_pins "C44 the smart constructor splits into Validator files and a never-failing maker" \
-  "The smart constructor splits in two: Validator files carry the invariants, and the maker only maps and normalizes, and never fails." \
+assert_pins "C44 validators narrow the type and the maker is total because its input is the proof" \
+  "Validator files carry the invariants and return a branded command; the maker maps and normalizes a value the type system already proves valid, so it never fails." \
   "$DDD_TS_FP" "$CRAFT_DDD_FP"
 
 assert_pins "C45 a closed set is a triplet in one file: as const object, derived union, predicate" \
@@ -779,23 +779,16 @@ echo ""
 echo "== Iteration 1 — the maker/validator split is stated as the cross-language rule"
 
 assert_pins "R1 ddd-fp-principles states the maker/validator pairing as a cross-language rule" \
-  "Every maker is paired with a named validator that owns its invariants, and the two are separate units: the validator is fallible, the maker is total and returns the aggregate." \
+  "Every maker is paired with a named validator that owns its invariants, and the two are separate units: the validator is fallible and narrows the type, the maker is total because its input already carries that proof." \
   "$CRAFT_DDD_FP"
 
 assert_pins "R2 ddd-fp-principles states the total-vs-fallible composition criterion" \
   "Total operations compose bare in a pipe; only a fallible operation needs chain, because chain requires a function that returns a Result." \
   "$CRAFT_DDD_FP"
 
-cases=$((cases + 1))
-DDD_TS_FP_SKILL="$DDD_TS_FP/SKILL.md"
-line136=$(sed -n '136p' "$DDD_TS_FP_SKILL")
-if [[ "$line136" == "The smart constructor splits in two: Validator files carry the invariants, and the maker only maps and normalizes, and never fails." ]]; then
-  echo "✓ R3 ddd-ts-fp:136 keeps its sentence byte-for-byte unchanged"
-else
-  echo "✗ R3 ddd-ts-fp:136 keeps its sentence byte-for-byte unchanged"
-  echo "    line 136 is now: $line136"
-  failures=$((failures + 1))
-fi
+assert_pins "R3 the maker's parameter is the branded command, so a raw one cannot reach it" \
+  "(command: ValidAddAddressCommand): Address" \
+  "$DDD_TS_FP"
 
 assert_present "R4 the craft quick-ref carries a Validator row" '| Validator |' "$CRAFT_DDD_FP"
 
@@ -815,7 +808,7 @@ assert_present "I2 the reference pipe stays on the command, the maker applies wi
   'makeAddress(addressId, createdAt)(validated.value)' "$DDD_TS_FP/references/ddd-functional-examples.md"
 
 assert_present "I2 the sync pipe's declared result is the validated command, not the model" \
-  'const validated: Result<AddAddressCommand, DomainError> = pipe(' "$DDD_TS_FP/references/ddd-functional-examples.md"
+  'const validated: Result<ValidAddAddressCommand, DomainError> = pipe(' "$DDD_TS_FP/references/ddd-functional-examples.md"
 
 assert_present "I3 the handler example unwraps validation imperatively" \
   'if (isFailure(validated)) return validated;' "$DDD_TS_FP/SKILL.md"
@@ -879,6 +872,55 @@ assert_absent "C202 section 3 names the maker, not the fused smart constructor" 
 
 assert_present "C202 the retired term stays a routing keyword in the description" \
   "'smart constructor'" "$CRAFT_DDD_FP/SKILL.md"
+
+echo ""
+echo "== Iteration 1 (#75, second pass) — the maker's totality is earned, and the reasoning is written down"
+
+assert_pins "K1 a maker over the raw type is named partial and silent, not total" \
+  "A maker that takes the raw input is not total — it is partial and silent." \
+  "$CRAFT_DDD_FP"
+
+assert_pins "K2 the single fallible constructor is stated as the default, with what justifies splitting it" \
+  "Split it in two only for a reason: to accumulate every error instead of short-circuiting at the first, or to keep construction context (ids, clocks) out of the invariants." \
+  "$CRAFT_DDD_FP"
+
+assert_pins "K3 totality is not purity, and purity is not an argument for a total maker" \
+  "Never reach for a total maker in the name of purity: both forms are pure, and only the narrowed input type buys anything." \
+  "$CRAFT_DDD_FP"
+
+assert_pins "K4 the validation section states parse-don't-validate and why a same-type validator loses the proof" \
+  "once it succeeds you hold the type you started with, and the compiler knows nothing it did not know before" \
+  "$CRAFT_DDD_FP"
+
+assert_absent "K5 no maker in the pair returns a Result over the aggregate" \
+  'Result<Address, DomainError>' "$DDD_TS_FP"
+
+assert_absent "K6 the maker is defined once — the duplicate context section is gone" \
+  '## TS-specific: Maker with Context' "$DDD_TS_FP/SKILL.md"
+
+assert_absent "K7 no validator in the pair is typed as returning its own input type" \
+  'type Validator<T> = (input: T) => Result<T, DomainError>;' "$DDD_TS_FP" "$CRAFT_DDD_FP"
+
+assert_pins "L1 the narrower type is preferred constructed, the brand minted once, the predicate refused" \
+  "A type predicate is not a third option — the language never checks that its body proves its claim, so it is the same assertion with no word left to grep for." \
+  "$CRAFT_DDD_FP"
+
+assert_pins "L2 ts-conventions states why a string-literal brand key is forgeable" \
+  "which makes passing through the factory optional — and a proof that is optional is not a proof." \
+  "$TS_CONVENTIONS"
+
+assert_pins "L3 the brand is minted through one kernel helper, not asserted per type" \
+  "export const mint = <B extends string>() => <T>(value: T): Brand<T, B> => value as Brand<T, B>;" \
+  "$TS_CONVENTIONS"
+
+assert_absent "L4 ts-conventions no longer asserts a brand per factory" \
+  'return id as TenantId;' "$TS_CONVENTIONS"
+
+assert_absent "L5 the functional-DDD pair asserts no brand of its own" \
+  ' as Valid' "$DDD_TS_FP" "$CRAFT_DDD_FP"
+
+assert_absent "L6 no pipeline in the pair narrows by casting its own result" \
+  ' as Result<Valid' "$DDD_TS_FP" "$CRAFT_DDD_FP"
 
 echo ""
 if [[ $failures -gt 0 ]]; then

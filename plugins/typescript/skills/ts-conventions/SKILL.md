@@ -175,26 +175,30 @@ satisfies checks a rendered or collected object literal's shape without widening
 
 ## Branded Types
 
-**Prevent accidental swaps** of primitive types that represent different concepts:
+**Prevent accidental swaps** of primitive types that represent different concepts. A brand adds no data, so it can only ever be asserted — which is why the assertion is written **once**, in the kernel, and never in the domain:
 
 ```typescript
-type TenantId = string & { readonly __brand: 'TenantId' };
-type LandlordId = string & { readonly __brand: 'LandlordId' };
+// kernel/brand.ts — the one place in the codebase that asserts a brand
+declare const brand: unique symbol;
 
-// Factory functions
-function toTenantId(id: string): TenantId {
-  return id as TenantId;
-}
+export type Brand<T, B extends string> = T & { readonly [brand]: B };
+export const mint = <B extends string>() => <T>(value: T): Brand<T, B> => value as Brand<T, B>;
+```
 
-function toLandlordId(id: string): LandlordId {
-  return id as LandlordId;
-}
+```typescript
+// domain — no `as` here, and nothing outside can forge one
+type TenantId = Brand<string, 'TenantId'>;
+type LandlordId = Brand<string, 'LandlordId'>;
+
+const toTenantId = mint<'TenantId'>();
+const toLandlordId = mint<'LandlordId'>();
 
 // ❌ Compile error — cannot mix branded types
 function getReceipts(landlordId: LandlordId): Receipt[] { ... }
-const tenantId = toTenantId('abc');
-getReceipts(tenantId); // Type error!
+getReceipts(toTenantId('abc')); // Type error!
 ```
+
+The brand key is a `unique symbol` that is never exported, so no caller can hand-write `{ ...value, __brand: 'TenantId' }` and forge the proof. A string-literal key such as `string & { readonly __brand: 'TenantId' }` is addressable, which makes passing through the factory optional — and a proof that is optional is not a proof.
 
 as is tolerated only at infrastructure boundaries: external payloads, JSON.parse, SDK calls, empty accumulators; inside the domain it is debt.
 
@@ -286,6 +290,6 @@ const findReceiptById = (query: FindReceiptByIdQuery) => { ... };
 | type vs interface | `type` by default, `interface` for merging/extends |
 | Exclusive states | Discriminated unions |
 | Value validation | `satisfies` to preserve literal types |
-| ID safety | Branded types (`string & { __brand }`) |
+| ID safety | `Brand<T, B>`, minted once in the kernel, never asserted in the domain |
 | Subsets | `Pick`, `Omit`, `Partial`, `Required` |
 | Nullability | Explicit `| null`, narrowing over `!` |
