@@ -776,6 +776,36 @@ assert_pins "C190 tests import by alias too, @Tests/* for fixtures, because a mi
   "$TS_CODE_CONVENTIONS"
 
 echo ""
+echo "== Iteration 1 — the maker/validator split is stated as the cross-language rule"
+
+assert_pins "R1 ddd-fp-principles states the maker/validator pairing as a cross-language rule" \
+  "Every maker is paired with a named validator that owns its invariants, and the two are separate units: the validator is fallible, the maker is total and returns the aggregate." \
+  "$CRAFT_DDD_FP"
+
+assert_pins "R2 ddd-fp-principles states the total-vs-fallible composition criterion" \
+  "Total operations compose bare in a pipe; only a fallible operation needs chain, because chain requires a function that returns a Result." \
+  "$CRAFT_DDD_FP"
+
+cases=$((cases + 1))
+DDD_TS_FP_SKILL="$DDD_TS_FP/SKILL.md"
+line136=$(sed -n '136p' "$DDD_TS_FP_SKILL")
+if [[ "$line136" == "The smart constructor splits in two: Validator files carry the invariants, and the maker only maps and normalizes, and never fails." ]]; then
+  echo "✓ R3 ddd-ts-fp:136 keeps its sentence byte-for-byte unchanged"
+else
+  echo "✗ R3 ddd-ts-fp:136 keeps its sentence byte-for-byte unchanged"
+  echo "    line 136 is now: $line136"
+  failures=$((failures + 1))
+fi
+
+assert_present "R4 the craft quick-ref carries a Validator row" '| Validator |' "$CRAFT_DDD_FP"
+
+assert_present "R4 the craft quick-ref carries a Maker row" '| Maker |' "$CRAFT_DDD_FP"
+
+assert_present "R4 the ddd-ts-fp quick-ref carries a Validator row" '| Validator |' "$DDD_TS_FP"
+
+assert_present "R4 the ddd-ts-fp quick-ref carries a Maker row" '| Maker |' "$DDD_TS_FP"
+
+echo ""
 if [[ $failures -gt 0 ]]; then
   echo "✗ $failures/$cases assertion(s) failed"
   exit 1

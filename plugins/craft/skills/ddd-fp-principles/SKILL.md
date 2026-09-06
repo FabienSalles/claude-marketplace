@@ -28,6 +28,8 @@ Each domain operation is a **curried function**: `(context) => (input) => output
 
 **Why curried:** each `op` becomes directly usable in a `pipe` without extra wrapping.
 
+Total operations compose bare in a pipe; only a fallible operation needs chain, because chain requires a function that returns a Result.
+
 ## 3. Smart Constructors (`make*` prefix)
 
 A smart constructor is a curried factory that:
@@ -44,6 +46,8 @@ Convention:
 | Shape | `make<X>(context) => (input) => output \| Result<output, error>` |
 | Return | `Result<T, E>` when validation can fail, plain `T` otherwise |
 | Position in pipeline | End of pipeline (after validations) or start of workflow |
+
+Every maker is paired with a named validator that owns its invariants, and the two are separate units: the validator is fallible, the maker is total and returns the aggregate.
 
 ## 4. Validation Pipelines
 
@@ -99,6 +103,8 @@ validate(command)
 | Aggregate | Immutable `readonly` record, no class |
 | Operations | Pure curried functions returning new aggregates |
 | Smart constructor | `make<X>(context) => (input) => output \| Result<output, error>` |
+| Validator | Fallible; owns the invariants |
+| Maker | Total; maps and normalizes, never fails |
 | Updates | Spread / structural sharing — never mutate |
 | Composition | `pipe(aggregate, op1, op2, op3)` |
 | Fallible composition | `pipe(aggregate, op1, chain(op2))` |

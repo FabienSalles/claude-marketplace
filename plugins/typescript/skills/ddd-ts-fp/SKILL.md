@@ -195,6 +195,8 @@ export type CustomerRepository = {
 | Aggregate | Immutable `readonly` type, no class |
 | Operations | Pure curried functions |
 | Smart constructor | `make<X>(context) => (input) => output \| Result<output, error>` |
+| Validator | Fallible; owns the invariants |
+| Maker | Total; maps and normalizes, never fails |
 | Updates | Spread operator, never mutate |
 | Composition | `pipe(aggregate, op1, op2, op3)` |
 | Fallible composition | `pipe(aggregate, op1, chain(op2))` |
