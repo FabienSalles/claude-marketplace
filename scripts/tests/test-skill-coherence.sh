@@ -702,6 +702,49 @@ assert_pins "C148 Command publishes a named handler type alias, Query lets it in
   "$TS_CONVENTIONS"
 
 echo ""
+echo "== Iteration 8 — the ten test-strategy conventions are stated in craft:testing-principles"
+
+assert_pins "C154 jest.mock is only a module-level dependency injector redirecting to a hand-written stub" \
+  "\`jest.mock\` exists only as a module-level dependency injector, to redirect an infrastructure singleton to a hand-written stub." \
+  "$CRAFT_TESTING"
+
+assert_pins "C155 never a jest double for a port, an in-memory stub applied to the curried handler" \
+  "Never a jest double for a port: write an in-memory stub in tests/Helpers and apply it to the curried handler." \
+  "$CRAFT_TESTING"
+
+assert_pins "C156 the stub is typed Port & test accessors, its own spy, asserted on state" \
+  "it is its own spy, and you assert on its state rather than a call registry." \
+  "$CRAFT_TESTING"
+
+assert_pins "C157 the stub resets in beforeEach on Jest, a tagged Before/After hook on Cucumber" \
+  "The stub's state resets in \`beforeEach\` on the Jest side, and through a tagged Before/After hook on the Cucumber side." \
+  "$CRAFT_TESTING"
+
+assert_pins "C159 determinism comes from injected stub generators, never useFakeTimers" \
+  "Determinism comes from stub generators injected over a fixed list, never from \`useFakeTimers\`." \
+  "$CRAFT_TESTING"
+
+assert_pins "C160 node:assert in Cucumber, expect everywhere else" \
+  "Two assertion vocabularies stay strictly separated by runner: \`node:assert\` in Cucumber, \`expect\` everywhere else." \
+  "$CRAFT_TESTING"
+
+assert_pins "C163 AAA separated by blank lines, Result guard before the payload, several assertions allowed" \
+  "AAA stays separated by blank lines, a Result guard precedes the payload assertion, and several assertions per test are allowed." \
+  "$CRAFT_TESTING"
+
+assert_pins "C164 toMatchSnapshot only on a whole value, always paired with a discrete assertion" \
+  "\`toMatchSnapshot\` applies only to a whole value (an aggregate, an HTTP body, a rendered template) and is always paired with a discrete assertion in the same test." \
+  "$CRAFT_TESTING"
+
+assert_pins "C166 Gherkin owns business acceptance criteria, steps run handlers against stubs, no HTTP or DB" \
+  "Gherkin owns the business acceptance criteria: Feature/Scenario/Given-When-Then in English with data tables, and steps that run the handlers against stubs, with no HTTP and no database." \
+  "$CRAFT_TESTING"
+
+assert_pins "C169 the Pact suite stays outside the normal run" \
+  "The Pact suite stays outside the normal run: a \`\*.pact.spec.ts\` suffix, a dedicated script, a CI job in \`allow_failure\`, and a published, versioned pact." \
+  "$CRAFT_TESTING"
+
+echo ""
 if [[ $failures -gt 0 ]]; then
   echo "✗ $failures/$cases assertion(s) failed"
   exit 1

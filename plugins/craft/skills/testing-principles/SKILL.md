@@ -250,6 +250,28 @@ at the class that implements it, and not mechanically end-to-end either.
 **Criterion:** read the test's name and assertions alone — they must state the business
 rule in domain terms. If they describe scraping mechanics, descend one level and retry.
 
+## 15. Test Doubles — the Doctrine the Reference Code Proves
+
+`jest.mock` exists only as a module-level dependency injector, to redirect an infrastructure singleton to a hand-written stub.
+
+Never a jest double for a port: write an in-memory stub in tests/Helpers and apply it to the curried handler.
+
+The stub is typed `Port & { test accessors }`: it is its own spy, and you assert on its state rather than a call registry.
+
+The stub's state resets in `beforeEach` on the Jest side, and through a tagged Before/After hook on the Cucumber side.
+
+Determinism comes from stub generators injected over a fixed list, never from `useFakeTimers`.
+
+Two assertion vocabularies stay strictly separated by runner: `node:assert` in Cucumber, `expect` everywhere else.
+
+AAA stays separated by blank lines, a Result guard precedes the payload assertion, and several assertions per test are allowed.
+
+`toMatchSnapshot` applies only to a whole value (an aggregate, an HTTP body, a rendered template) and is always paired with a discrete assertion in the same test.
+
+Gherkin owns the business acceptance criteria: Feature/Scenario/Given-When-Then in English with data tables, and steps that run the handlers against stubs, with no HTTP and no database.
+
+The Pact suite stays outside the normal run: a `*.pact.spec.ts` suffix, a dedicated script, a CI job in `allow_failure`, and a published, versioned pact.
+
 ## Quick Reference
 
 | Rule | Principle |
