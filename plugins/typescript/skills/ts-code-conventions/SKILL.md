@@ -1,6 +1,6 @@
 ---
 name: ts-code-conventions
-description: "ACTIVATE whenever writing or modifying TypeScript code in src/. ACTIVATE for code review, formatting, or 'coding standards'. Provides TS-specific code style examples for the cross-language rules defined in craft:code-style-principles, plus TS-specific patterns (optional chaining, nullish coalescing, template literals, no truthy/falsy). DO NOT use for: TypeScript typing rules (see ts-conventions), test conventions."
+description: "ACTIVATE whenever writing or modifying TypeScript code in src/. ACTIVATE for code review, formatting, or 'coding standards'. Provides TS-specific code style examples for the cross-language rules defined in craft:code-style-principles, plus TS-specific patterns (optional chaining, nullish coalescing, template literals, no truthy/falsy). DO NOT use for: TypeScript typing rules (see ts-conventions), test conventions, domain/infra layer boundaries (see ts-layer-boundaries)."
 version: "2.0"
 ---
 

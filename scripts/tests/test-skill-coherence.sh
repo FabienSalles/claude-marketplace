@@ -486,6 +486,57 @@ assert_pins "C20 a port with no domain consumer has no reason to live in SPI" \
   "$PORTS_ADAPTERS"
 
 echo ""
+echo "== Iteration 9 — the nine boundary conventions land in one skill, ESLint zones over review"
+
+LAYER_BOUNDARIES=plugins/typescript/skills/ts-layer-boundaries/SKILL.md
+TS_CODE_CONVENTIONS=plugins/typescript/skills/ts-code-conventions/SKILL.md
+
+assert_pins "C73 *Worker.ts is the sole async composition root with a module-level side effect" \
+  "The async composition root is \*Worker.ts, the only file in the worker tree allowed a module-level side effect." \
+  "$LAYER_BOUNDARIES"
+
+assert_pins "C74 the consumer is a curried factory that never imports a concrete adapter" \
+  "The consumer is a curried factory receiving handlers, formatters, and ports; it never imports a concrete adapter." \
+  "$LAYER_BOUNDARIES"
+
+assert_pins "C76 the Router wires command endpoints, adapters in, handler applied once" \
+  "The Router wires command endpoints: it imports the adapters, applies the handler once at load time, and passes the curried controller when registering the route." \
+  "$LAYER_BOUNDARIES"
+
+assert_pins "C78 a controller performs exactly five gestures" \
+  "A controller performs five gestures: read the request, build the Command or Query, await the handler, branch on the Result, set the status or envelope." \
+  "$LAYER_BOUNDARIES"
+
+assert_pins "C80 #77 the domain never imports infrastructure, declared in ESLint zones" \
+  "The domain never imports infrastructure, and the boundary is declared in ESLint zones rather than left to code review." \
+  "$LAYER_BOUNDARIES"
+
+assert_pins "C87 an infrastructure-only collaborator has its port declared in infrastructure" \
+  "A collaborator used only by infrastructure has its port declared in infrastructure, beside its adapter, never in Domain/SPI." \
+  "$LAYER_BOUNDARIES"
+
+assert_pins "C92 every declared port keeps a hand-written in-memory double" \
+  "Every declared port keeps a hand-written in-memory double, so the test becomes its own composition root." \
+  "$LAYER_BOUNDARIES"
+
+assert_pins "C96 the read side may reach the write side, never the reverse, stated as a decision" \
+  "The read side may reach the write side, never the reverse; codebase B forbids both directions and pays it back in duplication." \
+  "$LAYER_BOUNDARIES"
+
+assert_pins "C102 a read endpoint goes through a domain handler, never the repository directly" \
+  "A read endpoint goes through a domain handler: no direct repository call from the controller, no persistence type on the wire." \
+  "$LAYER_BOUNDARIES"
+
+assert_present "R1 the catalogue names ts-layer-boundaries as the boundary rule's one owner" \
+  'ts-layer-boundaries' plugins/typescript/README.md
+
+assert_absent "R2 ts-code-conventions makes no boundary claim now owned by ts-layer-boundaries" \
+  'infrastructure' "$TS_CODE_CONVENTIONS"
+
+assert_present "R2 ts-code-conventions defers layer boundaries to their one owner" \
+  'ts-layer-boundaries' "$TS_CODE_CONVENTIONS"
+
+echo ""
 if [[ $failures -gt 0 ]]; then
   echo "✗ $failures/$cases assertion(s) failed"
   exit 1
