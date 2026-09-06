@@ -48,6 +48,28 @@ if (isValid) { /* ... */ }
 const message = `Hello ${user.name}, you have ${count} items`;
 ```
 
+## TS-specific: Aliasing, Build and Environment Config
+
+> Layer boundaries themselves (the ESLint zones that enforce them) are owned by `ts-layer-boundaries`; this section covers the alias, build and env-config conventions that sit alongside them.
+
+Layer boundaries are declared as import/no-restricted-paths zones, one zone per forbidden edge, each carrying the message of the rule it violates.
+
+The CQRS zone is unidirectional by design: it stops Command from reading Query, never the reverse. A relative path bypasses it.
+
+Every layer has its own alias @<Context><Layer>, and it is imported through it; a relative path is reserved for a neighbor in the same folder.
+
+The alias table is declared four times (tsconfig, jest moduleNameMapper, tsconfig-paths at runtime, transform at build) and must stay in sync.
+
+Compile with tspc (ts-patch) plus typescript-transform-paths, so dist needs no resolver at runtime.
+
+process.env is read at one place per layer: a config.ts that destructures it with inline default values.
+
+```typescript
+const { PORT = '3000', DATABASE_URL = 'postgres://localhost:5432' } = process.env;
+```
+
+Tests import by alias too, @Tests/* for fixtures, because a mirrored tree has no stable relative offset, so the alias is a necessity, not a preference.
+
 ## Quick Reference (TS-specific only)
 
 > For the cross-language quick reference (early return, continue, blank lines, parameter ordering), see `craft:code-style-principles`.

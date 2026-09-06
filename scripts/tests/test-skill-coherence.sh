@@ -745,6 +745,37 @@ assert_pins "C169 the Pact suite stays outside the normal run" \
   "$CRAFT_TESTING"
 
 echo ""
+echo "== Iteration 9 — the seven aliasing, build and environment-config conventions"
+
+assert_pins "C174 #77 layer boundaries are declared as zones, one per forbidden edge, each named for its rule" \
+  "Layer boundaries are declared as import/no-restricted-paths zones, one zone per forbidden edge, each carrying the message of the rule it violates." \
+  "$TS_CODE_CONVENTIONS"
+
+assert_pins "C175 #77 the CQRS zone is unidirectional by design and a relative path bypasses it" \
+  "The CQRS zone is unidirectional by design: it stops Command from reading Query, never the reverse. A relative path bypasses it." \
+  "$TS_CODE_CONVENTIONS"
+
+assert_pins "C176 every layer has its own alias @<Context><Layer>, a relative path is reserved for same-folder neighbors" \
+  "Every layer has its own alias @<Context><Layer>, and it is imported through it; a relative path is reserved for a neighbor in the same folder." \
+  "$TS_CODE_CONVENTIONS"
+
+assert_pins "C177 the alias table is declared four times and must stay in sync" \
+  "The alias table is declared four times (tsconfig, jest moduleNameMapper, tsconfig-paths at runtime, transform at build) and must stay in sync." \
+  "$TS_CODE_CONVENTIONS"
+
+assert_pins "C178 compile with tspc plus typescript-transform-paths so dist needs no runtime resolver" \
+  "Compile with tspc (ts-patch) plus typescript-transform-paths, so dist needs no resolver at runtime." \
+  "$TS_CODE_CONVENTIONS"
+
+assert_pins "C183 process.env is read at one place per layer, a config.ts destructuring with inline defaults" \
+  "process.env is read at one place per layer: a config.ts that destructures it with inline default values." \
+  "$TS_CODE_CONVENTIONS"
+
+assert_pins "C190 tests import by alias too, @Tests/* for fixtures, because a mirrored tree has no stable relative offset" \
+  "Tests import by alias too, @Tests/\* for fixtures, because a mirrored tree has no stable relative offset, so the alias is a necessity, not a preference." \
+  "$TS_CODE_CONVENTIONS"
+
+echo ""
 if [[ $failures -gt 0 ]]; then
   echo "✗ $failures/$cases assertion(s) failed"
   exit 1
