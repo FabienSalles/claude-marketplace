@@ -580,7 +580,7 @@ assert_pins "C43 an entity's operations take and return the aggregate, never the
   "An entity carrying identity has its own Models/Entities/<Name>/ folder, and its operations take and return the aggregate, never the entity." \
   "$DDD_TS_FP" "$CRAFT_DDD_FP"
 
-assert_pins "C44 [#75] the smart constructor splits into Validator files and a never-failing maker" \
+assert_pins "C44 the smart constructor splits into Validator files and a never-failing maker" \
   "The smart constructor splits in two: Validator files carry the invariants, and the maker only maps and normalizes, and never fails." \
   "$DDD_TS_FP" "$CRAFT_DDD_FP"
 
@@ -774,6 +774,105 @@ assert_pins "C183 process.env is read at one place per layer, a config.ts destru
 assert_pins "C190 tests import by alias too, @Tests/* for fixtures, because a mirrored tree has no stable relative offset" \
   "Tests import by alias too, @Tests/\* for fixtures, because a mirrored tree has no stable relative offset, so the alias is a necessity, not a preference." \
   "$TS_CODE_CONVENTIONS"
+
+echo ""
+echo "== Iteration 1 — the maker/validator split is stated as the cross-language rule"
+
+assert_pins "R1 ddd-fp-principles states the maker/validator pairing as a cross-language rule" \
+  "Every maker is paired with a named validator that owns its invariants, and the two are separate units: the validator is fallible, the maker is total and returns the aggregate." \
+  "$CRAFT_DDD_FP"
+
+assert_pins "R2 ddd-fp-principles states the total-vs-fallible composition criterion" \
+  "Total operations compose bare in a pipe; only a fallible operation needs chain, because chain requires a function that returns a Result." \
+  "$CRAFT_DDD_FP"
+
+cases=$((cases + 1))
+DDD_TS_FP_SKILL="$DDD_TS_FP/SKILL.md"
+line136=$(sed -n '136p' "$DDD_TS_FP_SKILL")
+if [[ "$line136" == "The smart constructor splits in two: Validator files carry the invariants, and the maker only maps and normalizes, and never fails." ]]; then
+  echo "✓ R3 ddd-ts-fp:136 keeps its sentence byte-for-byte unchanged"
+else
+  echo "✗ R3 ddd-ts-fp:136 keeps its sentence byte-for-byte unchanged"
+  echo "    line 136 is now: $line136"
+  failures=$((failures + 1))
+fi
+
+assert_present "R4 the craft quick-ref carries a Validator row" '| Validator |' "$CRAFT_DDD_FP"
+
+assert_present "R4 the craft quick-ref carries a Maker row" '| Maker |' "$CRAFT_DDD_FP"
+
+assert_present "R4 the ddd-ts-fp quick-ref carries a Validator row" '| Validator |' "$DDD_TS_FP"
+
+assert_present "R4 the ddd-ts-fp quick-ref carries a Maker row" '| Maker |' "$DDD_TS_FP"
+
+echo ""
+echo "== Iteration 2 (#75) — the two composition examples compose, the fused term retires"
+
+assert_absent "I1 no example composes a total function with chain via chain(make" \
+  'chain(make' "$DDD_TS_FP/SKILL.md" "$DDD_TS_FP/references/ddd-functional-examples.md"
+
+assert_present "I2 the reference pipe stays on the command, the maker applies with its full arity after the guard" \
+  'makeAddress(addressId, createdAt)(validated.value)' "$DDD_TS_FP/references/ddd-functional-examples.md"
+
+assert_present "I2 the sync pipe's declared result is the validated command, not the model" \
+  'const validated: Result<AddAddressCommand, DomainError> = pipe(' "$DDD_TS_FP/references/ddd-functional-examples.md"
+
+assert_present "I3 the handler example unwraps validation imperatively" \
+  'if (isFailure(validated)) return validated;' "$DDD_TS_FP/SKILL.md"
+
+assert_absent "I3 the handler example carries no dependency it never uses" \
+  'ReceiptRepository' "$DDD_TS_FP/SKILL.md"
+
+assert_absent "I4 the retired term is gone from the ddd-ts-fp heading" \
+  '## TS-specific: Smart Constructor' "$DDD_TS_FP/SKILL.md"
+
+assert_absent "I4 the retired term is gone from the ddd-ts-fp pointer at :53" \
+  'creating smart constructors' "$DDD_TS_FP/SKILL.md"
+
+assert_absent "I4 the retired term is gone from the ddd-ts-fp quick-ref" \
+  '| Smart constructor |' "$DDD_TS_FP/SKILL.md"
+
+assert_absent "I4 the retired term is gone from the reference examples heading" \
+  '## Smart Constructor Examples' "$DDD_TS_FP/references/ddd-functional-examples.md"
+
+assert_absent "I4 the retired term is gone from README.md:26" \
+  'smart constructors' plugins/typescript/README.md
+
+assert_present "I4 the retired term is kept in the ddd-ts-fp description" \
+  "'smart constructor'" "$DDD_TS_FP/SKILL.md"
+
+echo ""
+echo "== Iteration 1 (#75) — section 3 states the split once, the fused smart constructor is gone"
+
+CRAFT_DDD_FP_SKILL=plugins/craft/skills/ddd-fp-principles/SKILL.md
+
+assert_absent "J1 no fused encapsulates-all-invariants claim survives" \
+  'Encapsulates **all invariants**' "$CRAFT_DDD_FP_SKILL"
+
+assert_absent "J1 no quick-ref row still names a smart constructor" \
+  '| Smart constructor |' "$CRAFT_DDD_FP_SKILL"
+
+assert_absent "J1 no heading still names a smart constructor" \
+  '## 3. Smart Constructors' "$CRAFT_DDD_FP_SKILL"
+
+assert_absent "J1 the return row no longer conditions the maker's return on validation" \
+  'when validation can fail' "$CRAFT_DDD_FP_SKILL"
+
+assert_absent "J1 the pipeline-position row no longer calls the maker end of pipeline" \
+  'End of pipeline (after validations)' "$CRAFT_DDD_FP_SKILL"
+
+assert_absent "J1 the maker's contract no longer names a Result return" \
+  'Result<aggregate, error>' "$CRAFT_DDD_FP_SKILL"
+
+assert_present "J2 the maker/validator pairing sentence survives" \
+  'Every maker is paired with a named validator' "$CRAFT_DDD_FP_SKILL"
+
+assert_present "J2 the total-vs-fallible composition sentence survives" \
+  'Total operations compose bare in a pipe' "$CRAFT_DDD_FP_SKILL"
+
+assert_present "J3 the quick-ref keeps its Validator row" '| Validator |' "$CRAFT_DDD_FP_SKILL"
+
+assert_present "J3 the quick-ref keeps its Maker row" '| Maker |' "$CRAFT_DDD_FP_SKILL"
 
 echo ""
 if [[ $failures -gt 0 ]]; then

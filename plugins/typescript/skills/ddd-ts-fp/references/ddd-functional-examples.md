@@ -5,7 +5,7 @@
 ## Table of Contents
 - [Aggregate Operations](#aggregate-operations)
 - [Composing Operations with pipe](#composing-operations-with-pipe)
-- [Smart Constructor Examples](#smart-constructor-examples)
+- [Maker with Context Examples](#maker-with-context-examples)
 - [Validation Pipeline Examples](#validation-pipeline-examples)
 - [Enrichment Pipeline Examples](#enrichment-pipeline-examples)
 - [Handler Pattern Examples](#handler-pattern-examples)
@@ -75,7 +75,7 @@ const addFullAddress =
     );
 ```
 
-## Smart Constructor Examples
+## Maker with Context Examples
 
 ```typescript
 // make + context => specialized function
@@ -106,17 +106,16 @@ const makeFormatter =
 ### Usage in pipe
 
 ```typescript
-// The smart constructor integrates naturally into a pipeline
-const addressResult: Result<Address, DomainError> = pipe(
+// The pipe only validates; the maker runs once validation has succeeded
+const validated: Result<AddAddressCommand, DomainError> = pipe(
   addAddressCommand,
   validateBrazilAddress,
   chain(validateMexicoAddress),
   chain(validateUsaAddress),
-  chain(makeAddress(addressId, createdAt)),  // Smart constructor at end of pipeline
 );
 
-if (isSuccess(addressResult)) {
-  return addressResult.value;
+if (isSuccess(validated)) {
+  return makeAddress(addressId, createdAt)(validated.value);
 }
 ```
 

@@ -32,7 +32,7 @@ Each operation is a **curried function** returning a new aggregate (or a `Result
 
 > When implementing aggregate operations, pipe composition, or nested immutable updates, read `references/ddd-functional-examples.md` for complete patterns.
 
-## TS-specific: Smart Constructor
+## TS-specific: Maker with Context
 
 `make` prefix — curried factory that captures context and returns a specialized function usable directly in a `pipe`:
 
@@ -50,7 +50,7 @@ const makeAddress =
   });
 ```
 
-> When creating smart constructors for domain objects, read `references/ddd-functional-examples.md` for complete examples and pipeline integration.
+> When creating a maker for domain objects, read `references/ddd-functional-examples.md` for complete examples and pipeline integration.
 
 ## TS-specific: Validation Pipeline
 
@@ -94,16 +94,16 @@ validate(command)
 export type AddAddressHandler = (command: AddAddressCommand) => Promise<Result<Receipt, DomainError>>;
 
 const addAddressHandler =
-  (repository: ReceiptRepository, clock: Clock) =>
-  (command: AddAddressCommand): Promise<Result<Receipt, DomainError>> =>
-    pipe(
-      command,
-      validateAddAddress,
-      chain(makeAddress(clock.now())),
-    );
+  (clock: Clock) =>
+  async (command: AddAddressCommand): Promise<Result<Receipt, DomainError>> => {
+    const validated = validateAddAddress(command);
+    if (isFailure(validated)) return validated;
+
+    return buildReceipt(clock.now())(validated.value);
+  };
 ```
 
-Dependencies (`repository`, `clock`) come first as separate arguments, never as one destructured object. The command comes last. A model-level operation instead takes its data first and the aggregate last: `addAddress(address)(receipt)`.
+Dependencies (`clock`) come first as separate arguments, never as one destructured object. The command comes last. A model-level operation instead takes its data first and the aggregate last: `addAddress(address)(receipt)`.
 
 ## TS-specific: Result vs Bare Model
 
@@ -194,7 +194,8 @@ export type CustomerRepository = {
 |---------|------------|
 | Aggregate | Immutable `readonly` type, no class |
 | Operations | Pure curried functions |
-| Smart constructor | `make<X>(context) => (input) => output \| Result<output, error>` |
+| Validator | Fallible; owns the invariants |
+| Maker | Total; maps and normalizes, never fails |
 | Updates | Spread operator, never mutate |
 | Composition | `pipe(aggregate, op1, op2, op3)` |
 | Fallible composition | `pipe(aggregate, op1, chain(op2))` |
