@@ -1086,6 +1086,15 @@ assert_measured "C65 calling AsyncResult.chain/tee/wrap from a handler reads as 
   "$TS_FUNCTIONAL"
 
 echo ""
+echo "== Iteration 4 — the curried-operation shape states one answer, not two"
+
+assert_measured "C199 a curried domain operation's shape names one return type, never both in an alternation" \
+  "Each domain operation is a \*\*curried function\*\*: \`(context) => (input) => output\`." \
+  "A single operation returns exactly one of the two shapes, \`output\` or \`Result<output, error>\`, never both in the same signature." \
+  "(context) => (input) => output | Result<output, error>" \
+  "$CRAFT_DDD_FP_SKILL"
+
+echo ""
 if [[ $failures -gt 0 ]]; then
   echo "✗ $failures/$cases assertion(s) failed"
   exit 1

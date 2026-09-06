@@ -20,7 +20,9 @@ Model aggregates as **immutable record types** with all fields `readonly`. State
 
 ## 2. Curried Operations
 
-Each domain operation is a **curried function**: `(context) => (input) => output | Result<output, error>`.
+Each domain operation is a **curried function**: `(context) => (input) => output`.
+
+A single operation returns exactly one of the two shapes, `output` or `Result<output, error>`, never both in the same signature.
 
 - The outer call captures context (config, ids, clocks).
 - The inner call applies the operation to the aggregate.
