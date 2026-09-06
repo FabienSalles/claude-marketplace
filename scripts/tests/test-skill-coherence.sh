@@ -670,7 +670,7 @@ assert_pins "C66 AsyncResult.wrap, chain, and tee belong only to infrastructure 
 
 assert_pins "C67 pipe is a general composition tool, not a Result-only tool, and infrastructure consumes it most" \
   "pipe is a general composition tool, not a Result-only tool, and infrastructure is its heaviest consumer." \
-  "$TS_FUNCTIONAL"
+  "$TS_FUNCTIONAL_DIR"
 
 assert_pins "C71 in test, assert the boolean guard then result.value, never compare against a reconstructed success" \
   "In tests, assert the boolean guard, then result.value; never compare against a reconstructed success(...)." \
@@ -1032,6 +1032,58 @@ assert_measured "C126 exactly one concrete infrastructure import crosses the dom
   "exactly one concrete infrastructure import, the logger, crosses the domain boundary" \
   "more than one concrete infrastructure import crosses the domain boundary" \
   "$TS_DDD_EVENTS/SKILL.md"
+
+echo ""
+echo "== Iteration 3 — ts-functional stops presenting chain, tee and wrap as ordinary async tooling"
+
+assert_absent "M1 the Quick Reference no longer lists AsyncResult.chain unqualified" \
+  '`AsyncResult.chain(fn)` | Chain async fallible operations |' "$TS_FUNCTIONAL"
+
+assert_absent "M1 the Quick Reference no longer lists AsyncResult.tee unqualified" \
+  '`AsyncResult.tee(fn)` | Side-effect without altering the Result |' "$TS_FUNCTIONAL"
+
+assert_absent "M1 the Quick Reference no longer lists AsyncResult.wrap unqualified" \
+  '`AsyncResult.wrap(fn)` | Adapt sync Result function to async pipeline |' "$TS_FUNCTIONAL"
+
+assert_present "M2 every AsyncResult.chain/tee/wrap row now carries its infrastructure-only scope" \
+  'infrastructure orchestration only' "$TS_FUNCTIONAL"
+
+assert_absent "M1 the When to Use table no longer lists AsyncResult unqualified" \
+  '| AsyncResult | Async operations that can fail (DB, API, I/O) |' "$TS_FUNCTIONAL"
+
+assert_pins "C54 chain and AsyncResult.chain are two distinct functions sharing one name" \
+  "chain and AsyncResult.chain are two distinct functions sharing one name; a sync pipe calls the bare chain, an async pipe calls AsyncResult.chain, and the two are never mixed in a single pipe call." \
+  "$TS_FUNCTIONAL_DIR"
+
+assert_pins "C59 tee never returns a new value" \
+  "tee never returns a new value: it is reserved for a side effect (persist, log, notify) that the pipeline's result must survive unchanged." \
+  "$TS_FUNCTIONAL_DIR"
+
+assert_pins "C61 wrap only lifts a sync Result-returning function, never re-wraps an already-async one" \
+  "wrap exists only to lift a synchronous Result-returning function into an async pipe; a function that already returns AsyncResult is passed to chain directly, never re-wrapped." \
+  "$TS_FUNCTIONAL_DIR"
+
+assert_pins "C68 the two tables never list AsyncResult.chain/tee/wrap without their infrastructure scope" \
+  "the Quick Reference and When to Use tables never list AsyncResult.chain, AsyncResult.tee, or AsyncResult.wrap without their infrastructure-orchestration scope, so a reader scanning a table alone cannot mistake them for domain-layer tooling." \
+  "$TS_FUNCTIONAL_DIR"
+
+assert_pins "C69 a handler reaching for AsyncResult.chain is composition sitting one level too low" \
+  "a Workflow, Listener, or Consumer that needs to chain fallible async steps is exactly the infrastructure orchestration rule 5 names; a handler reaching for AsyncResult.chain is a sign the composition belongs one level up." \
+  "$TS_FUNCTIONAL_DIR"
+
+assert_pins "C70 pipe alone is what a domain handler composes with, never with an async step" \
+  "pipe alone, without AsyncResult.chain, tee, or wrap, is what a domain handler or a maker composes with; the moment a step turns async, composition moves to the infrastructure file that owns the worker." \
+  "$TS_FUNCTIONAL_DIR"
+
+assert_present "C55 the re-pinned pipe/infrastructure sentence lands in the references file too" \
+  'pipe is a general composition tool, not a Result-only tool, and infrastructure is its heaviest consumer' \
+  "$FP_EXAMPLES"
+
+assert_measured "C65 calling AsyncResult.chain/tee/wrap from a handler reads as ordinary async tooling" \
+  "Calling AsyncResult.chain, tee, or wrap from a domain handler reads as ordinary async tooling, exactly the confusion rule 5 exists to prevent." \
+  "the assumption that AsyncResult.chain, tee, or wrap is safe wherever a Promise is expected" \
+  "AsyncResult.chain, tee, and wrap are safe to call from any handler" \
+  "$TS_FUNCTIONAL"
 
 echo ""
 if [[ $failures -gt 0 ]]; then
