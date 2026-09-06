@@ -977,6 +977,63 @@ assert_measured "C185 a function's length is capped by a stated, quantified scop
   "$CRAFT_STYLE"
 
 echo ""
+echo "== Iteration 2 — ts-ddd-events stops confusing its own two vocabularies, and its eight rules carry their measure"
+
+assert_absent "C106 the domain event example no longer declares the envelope's timestamp field" \
+  'readonly timestamp: Date;' "$TS_DDD_EVENTS/SKILL.md"
+
+assert_absent "C106 the domain event example no longer declares the envelope's version field" \
+  "readonly version: string;      // '1.0' -- for versioning" "$TS_DDD_EVENTS/SKILL.md"
+
+assert_present "C106 the domain event example carries the payload field rule 1 names" \
+  'readonly payload: T;' "$TS_DDD_EVENTS/SKILL.md"
+
+assert_present "C106 the domain event example carries the createdAt field rule 1 names" \
+  'readonly createdAt: Date;' "$TS_DDD_EVENTS/SKILL.md"
+
+assert_measured "C113 the event is created in the handler, never in the aggregate" \
+  "The event is created in the handler, never in the aggregate: without a class, the aggregate cannot carry an event buffer." \
+  "zero methods on a domain/ aggregate file are named .emit\*. or .raise\*." \
+  "an aggregate method is named emitReceiptGenerated" \
+  "$TS_DDD_EVENTS/SKILL.md"
+
+assert_measured "C114 dispatch's make\*Mapper factory is bounded by cost, not by event count" \
+  "Dispatch is a domain port typed as a bare function type, whose adapter is a Record<type, listener> table built by a make\*Mapper factory." \
+  "one .make\*Mapper. factory per bounded context, never one per event type" \
+  "a make*Mapper factory is written per event type" \
+  "$TS_DDD_EVENTS/SKILL.md"
+
+assert_measured "C117 emit picks exactly one of the two mechanisms, never both" \
+  "Emit either by returning the event in Result's success, or by calling the injected dispatcher: both are used, with no rule between them." \
+  "none returns the event in success and also calls the dispatcher" \
+  "a handler returns the event in success and also calls the dispatcher" \
+  "$TS_DDD_EVENTS/SKILL.md"
+
+assert_measured "C118 the inbound outbox naming cost is paid once, in the note" \
+  "This outbox is INBOUND: it stages messages received from SQS for local consumption. It publishes nothing, so it is not the reliable publishing pattern." \
+  "naming it .outbox. without this note costs a reader the reliable-publishing assumption" \
+  "this inbound outbox is the reliable publishing pattern" \
+  "$TS_DDD_EVENTS/SKILL.md"
+
+assert_measured "C124 the read model has zero event-fed writers" \
+  "The read model is not fed by events: both sides share one database and collection, so a write is immediately visible on read." \
+  "zero event listeners write to the read collection" \
+  "an event listener writes to the read collection" \
+  "$TS_DDD_EVENTS/SKILL.md"
+
+assert_measured "C125 exactly one codebase declares the Command-Query lint zone" \
+  "Only one codebase forbids Command importing Query by lint. Neither violates the rule, but the read side freely reaches into the write side." \
+  "exactly one of the two codebases declares a Command-cannot-import-Query ESLint zone" \
+  "both codebases forbid Command importing Query by lint" \
+  "$TS_DDD_EVENTS/SKILL.md"
+
+assert_measured "C126 exactly one concrete infrastructure import crosses the domain boundary" \
+  "Domain purity holds even where CQRS does not: a single exception, a concrete logger, in the gap the zones do not cover." \
+  "exactly one concrete infrastructure import, the logger, crosses the domain boundary" \
+  "more than one concrete infrastructure import crosses the domain boundary" \
+  "$TS_DDD_EVENTS/SKILL.md"
+
+echo ""
 if [[ $failures -gt 0 ]]; then
   echo "✗ $failures/$cases assertion(s) failed"
   exit 1
