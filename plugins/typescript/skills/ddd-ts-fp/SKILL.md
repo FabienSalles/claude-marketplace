@@ -29,6 +29,7 @@ const addAddress =
 ```
 
 Each operation is a **curried function** returning a new aggregate (or a `Result`). Compose with `pipe` and `chain`.
+Measure: no domain operation in this file's own examples takes its data and the aggregate in one non-curried argument list; every operation curries at least once before receiving the aggregate.
 
 > When implementing aggregate operations, pipe composition, or nested immutable updates, read `references/ddd-functional-examples.md` for complete patterns.
 
@@ -88,11 +89,15 @@ const addAddressHandler =
   };
 ```
 
-Dependencies (`clock`) come first as separate arguments, never as one destructured object. The command comes last. A model-level operation instead takes its data first and the aggregate last: `addAddress(address)(receipt)`.
+Dependencies (`clock`) come first as separate arguments, never as one destructured object.
+Measure: no handler example in this skill destructures its dependencies into a single options object; each dependency is its own curried argument.
+
+The command comes last. A model-level operation instead takes its data first and the aggregate last: `addAddress(address)(receipt)`.
 
 ## TS-specific: Result vs Bare Model
 
 An operation returns a Result only when it can fail; a total transition returns the bare model.
+Measure: no total operation in this skill's examples wraps its return type in Result, and no fallible operation returns the bare model.
 
 ```typescript
 // Fallible — the amount could be negative
@@ -105,6 +110,7 @@ const addAddress = (address: Address) => (receipt: Receipt): Receipt => ...;
 ## TS-specific: Entity Folder and Aggregate-Only Operations
 
 An entity carrying identity has its own Models/Entities/<Name>/ folder, and its operations take and return the aggregate, never the entity.
+Measure: no entity operation in this skill's examples takes or returns the bare entity; `updateAddress` both receives and returns `Customer`, never `Address`.
 
 ```typescript
 // plugins/../Models/Entities/Address/updateAddress.ts
@@ -119,6 +125,7 @@ const updateAddress =
 ## TS-specific: Validator and Maker
 
 Validator files carry the invariants and return a branded command; the maker maps and normalizes a value the type system already proves valid, so it never fails.
+Measure: no maker in this skill's examples returns a Result; `makeAddress`'s signature is total because `ValidAddAddressCommand` is the proof, not a runtime check.
 
 ```typescript
 // ValidAddAddressCommand.ts — a real shape, not a tag on the raw one
@@ -152,6 +159,7 @@ The object literal is **constructed**, so the compiler checks it and the validat
 ## TS-specific: CQRS Model Copies
 
 Each CQRS side owns its own copy of the model; the read copy is deliberately narrowed.
+Measure: the Query-side `Address` type in this file's example carries fewer fields than the Command-side one, never the same shape imported from one file.
 
 ```typescript
 // Command/Models/Address.ts — full write shape
@@ -164,6 +172,7 @@ type Address = { readonly street: string; readonly city: string };
 ## TS-specific: Command DTO Duplication Across Features
 
 The command DTO repeats per feature; two features are never factored together just because their types are identical.
+Measure: `onboard-customer`'s `AddAddressCommand` and `relocate-customer`'s `AddAddressCommand` stay two files in this skill's example, never one shared import.
 
 ```typescript
 // features/onboard-customer/AddAddressCommand.ts
@@ -176,6 +185,7 @@ type AddAddressCommand = { readonly street: string; readonly city: string };
 ## TS-specific: Repository Receives the Whole Aggregate
 
 The repository receives the whole aggregate, never a patch nor a list of fields.
+Cost: a repository interface that declares an update method accepting a patch or list of fields forces every caller to reconstruct the invariant the aggregate already proved, one call site at a time.
 
 ```typescript
 export type CustomerRepository = {

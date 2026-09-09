@@ -266,11 +266,17 @@ Two assertion vocabularies stay strictly separated by runner: `node:assert` in C
 
 AAA stays separated by blank lines, a Result guard precedes the payload assertion, and several assertions per test are allowed.
 
+Nothing asserts a payload field ahead of that guard: the guard runs first, or the payload assertion is unreachable when the Result failed.
+
 `toMatchSnapshot` applies only to a whole value (an aggregate, an HTTP body, a rendered template) and is always paired with a discrete assertion in the same test.
 
 Gherkin owns the business acceptance criteria: Feature/Scenario/Given-When-Then in English with data tables, and steps that run the handlers against stubs, with no HTTP and no database.
 
+Zero Gherkin step definitions in this pack open an HTTP client or a database connection — every step reaches the handler through its stub.
+
 The Pact suite stays outside the normal run: a `*.pact.spec.ts` suffix, a dedicated script, a CI job in `allow_failure`, and a published, versioned pact.
+
+Zero `*.pact.spec.ts` files run inside the default test script; the `allow_failure` job is the only runner that executes them.
 
 ## Quick Reference
 

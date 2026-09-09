@@ -62,6 +62,12 @@ The alias table is declared four times (tsconfig, jest moduleNameMapper, tsconfi
 
 Compile with tspc (ts-patch) plus typescript-transform-paths, so dist needs no resolver at runtime.
 
+A layer's config.ts is the only file allowed to import process.env; every other module receives its configuration already destructured as arguments.
+No file other than a layer's own config.ts contains the string process.env.
+
+Barrel files (index.ts) re-export only, and declare no function, class, or logic of their own.
+Zero index.ts files in the codebase contain a function or class declaration of their own.
+
 process.env is read at one place per layer: a config.ts that destructures it with inline default values.
 
 ```typescript
@@ -69,6 +75,17 @@ const { PORT = '3000', DATABASE_URL = 'postgres://localhost:5432' } = process.en
 ```
 
 Tests import by alias too, @Tests/* for fixtures, because a mirrored tree has no stable relative offset, so the alias is a necessity, not a preference.
+
+## TS-specific: Naming and File Organisation
+
+A boolean variable, property, or function name carries an `is`, `has`, or `can` prefix; a bare noun or verb is reserved for non-boolean values.
+No boolean declaration in the codebase is named without one of the three prefixes.
+
+A file exports one primary symbol; a second export is allowed only for a tightly related overload or the type a factory constructs.
+A file accumulating a fourth unrelated public export is split before that fourth export lands.
+
+A test file sits beside the file it exercises, Name.spec.ts next to Name.ts, never mirrored into a separate top-level tests/ tree.
+Zero .spec.ts files live outside the directory of the file they test.
 
 ## Quick Reference (TS-specific only)
 

@@ -92,6 +92,12 @@ border-color: $danger !important;
 
 **Heuristic**: if deleting the comment loses no information a competent reader couldn't get from the code in seconds, delete it.
 
+## 8. Function Length
+
+Extract a private or local helper as soon as a function's body no longer fits in one glance.
+
+Measure: no function body exceeds 25 executable lines, blank lines and comments excluded.
+
 ## Quick Reference
 
 | Rule | Principle |
@@ -103,3 +109,4 @@ border-color: $danger !important;
 | Explicit checks | No implicit truthy/falsy — compare to empty / null explicitly |
 | Parameter ordering | Mandatory before optional |
 | Comments | Only for hidden complexity / business rule; delete anything that restates the code |
+| Function length | Extract a helper past 25 executable lines |
