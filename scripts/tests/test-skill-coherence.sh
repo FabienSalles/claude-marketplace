@@ -851,6 +851,14 @@ assert_pins "C169 the Pact suite stays outside the normal run" \
   "The Pact suite stays outside the normal run: a \`\*.pact.spec.ts\` suffix, a dedicated script, a CI job in \`allow_failure\`, and a published, versioned pact." \
   "$CRAFT_TESTING"
 
+assert_pins "C158 the stub's type is the port intersected with its own test accessors" \
+  "The stub is typed \`Port & { test accessors }\`: it is its own spy, and you assert on its state rather than a call registry." \
+  "$CRAFT_TESTING"
+
+assert_pins "C173 the Pact CI job stays non-blocking behind a published, versioned pact" \
+  "a CI job in \`allow_failure\`, and a published, versioned pact." \
+  "$CRAFT_TESTING"
+
 echo ""
 echo "== Iteration 9 — the seven aliasing, build and environment-config conventions"
 
@@ -1357,6 +1365,27 @@ assert_measured "C99 a wire DTO is declared once, in Infrastructure/Http" \
   "zero Domain files export a type whose name ends in Dto or Response; that shape is declared once, in Infrastructure/Http" \
   "a domain file exports ReceiptResponseDto for the controller to reuse" \
   "$LAYER_BOUNDARIES"
+
+echo ""
+echo "== Iteration 10 — craft:testing-principles states its three test-strategy conventions with their scope"
+
+assert_measured "C162 the Result guard is checked before the payload assertion, never after" \
+  "a Result guard precedes the payload assertion, and several assertions per test are allowed" \
+  "Nothing asserts a payload field ahead of that guard" \
+  "the payload assertion precedes the Result guard" \
+  "$CRAFT_TESTING"
+
+assert_measured "C167 a Gherkin step runs the handler against a stub, never over HTTP or a database" \
+  "steps that run the handlers against stubs, with no HTTP and no database" \
+  "Zero Gherkin step definitions in this pack open an HTTP client or a database connection" \
+  "a Gherkin step definition opens an HTTP client or hits a database" \
+  "$CRAFT_TESTING"
+
+assert_measured "C170 the Pact suite is isolated by suffix and script, never run by the default job" \
+  "a \`\*.pact.spec.ts\` suffix, a dedicated script, a CI job in \`allow_failure\`" \
+  "Zero \`\*.pact.spec.ts\` files run inside the default test script; the \`allow_failure\` job is the only runner that executes them" \
+  "the default test script executes a \*.pact.spec.ts file" \
+  "$CRAFT_TESTING"
 
 echo ""
 if [[ $failures -gt 0 ]]; then
