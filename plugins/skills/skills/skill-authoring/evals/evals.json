@@ -1,0 +1,23 @@
+{
+  "$comment": "One object per case; `skills` names what should load, `expected_behavior` lists what a passing run must do.",
+  "routing": [
+    {
+      "query": "I'm writing SKILL.md frontmatter and I'm not sure how long the description can be",
+      "skills": ["skills:skill-authoring"],
+      "expected_behavior": [
+        "loads skills:skill-authoring, not skills:plugin-conventions",
+        "cites the 1024-char hard cap and the 300-char advisory target, sourced across agentskills.io, VS Code Copilot and the Codex parser",
+        "does not invent a platform-specific limit beyond the three loaders this repo certifies against"
+      ]
+    },
+    {
+      "query": "Why does my skill never trigger even though it's installed?",
+      "skills": ["skills:skill-authoring"],
+      "expected_behavior": [
+        "loads skills:skill-authoring, not skills:agent-authoring",
+        "treats description as the routing mechanism and checks trigger phrases before anything else",
+        "points at name/directory mismatch as a common cause"
+      ]
+    }
+  ]
+}

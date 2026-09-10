@@ -9,7 +9,7 @@
 // A plugin directory (one with a `skills/` subdirectory but no SKILL.md of its own) certifies
 // every skill it contains and aggregates their verdicts into a single exit code.
 
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 
 import { certifyAgent } from '../src/agents.ts';
@@ -51,6 +51,24 @@ export const certify = (skillDir: string): Verdict => {
   return aggregateVerdict(skillDir, levels);
 };
 
+// I7 — with --require-evals, a skill missing evals/evals.json (or with an empty routing array)
+// fails certification: a skill ships its own evidence that it triggers on the right prompts.
+export const requireEvalsFinding = (skillDir: string): Finding => {
+  const evalsPath = join(skillDir, 'evals', 'evals.json');
+
+  if (!existsSync(evalsPath)) {
+    return { rule: 'evals-present', status: 'fail', detail: `missing ${evalsPath}`, source: 'skills:plugin-conventions' };
+  }
+
+  const parsed = JSON.parse(readFileSync(evalsPath, 'utf8'));
+
+  if (!Array.isArray(parsed.routing) || parsed.routing.length === 0) {
+    return { rule: 'evals-present', status: 'fail', detail: `${evalsPath} has no routing cases`, source: 'skills:plugin-conventions' };
+  }
+
+  return { rule: 'evals-present', status: 'pass', detail: `${evalsPath} has ${parsed.routing.length} routing case(s)`, source: 'skills:plugin-conventions' };
+};
+
 export const renderVerdict = (verdict: Verdict): string => {
   const lines: string[] = [`Certification: ${verdict.skillDir}`];
 
@@ -68,7 +86,9 @@ export const renderVerdict = (verdict: Verdict): string => {
 };
 
 if (import.meta.main) {
-  const [flag, arg] = process.argv.slice(2);
+  const args = process.argv.slice(2);
+  const requireEvals = args.includes('--require-evals');
+  const [flag, arg] = args.filter((a) => a !== '--require-evals');
 
   if (flag === '--stock') {
     process.stdout.write(`${renderStock(computeStock(process.cwd()))}\n`);
@@ -114,7 +134,7 @@ if (import.meta.main) {
   const target = flag;
 
   if (!target) {
-    process.stderr.write('usage: certify.ts <skill-dir | plugin-dir | agent-md-path> | --stock | --diff <base-ref> | --install <skill-dir>\n');
+    process.stderr.write('usage: certify.ts <skill-dir | plugin-dir | agent-md-path> [--require-evals] | --stock | --diff <base-ref> | --install <skill-dir>\n');
     process.exit(2);
   }
 
@@ -130,15 +150,27 @@ if (import.meta.main) {
   if (isPluginDir) {
     const pluginName = target.replace(/\/+$/, '').split('/').pop();
     const repoRoot = dirname(dirname(target));
-    const verdicts = listSkills(repoRoot)
-      .filter((skill) => skill.plugin === pluginName)
-      .map((skill) => certify(skill.dir));
+    const skills = listSkills(repoRoot).filter((skill) => skill.plugin === pluginName);
+    const verdicts = skills.map((skill) => certify(skill.dir));
 
     for (const verdict of verdicts) {
       process.stdout.write(`${renderVerdict(verdict)}\n`);
     }
 
-    process.exit(verdicts.some((verdict) => verdict.status === 'fail') ? 1 : 0);
+    let evalsFailed = false;
+
+    if (requireEvals) {
+      for (const skill of skills) {
+        const finding = requireEvalsFinding(skill.dir);
+        process.stdout.write(`  [${finding.status.toUpperCase()}] ${finding.rule}: ${finding.detail} (source: ${finding.source})\n`);
+
+        if (finding.status === 'fail') {
+          evalsFailed = true;
+        }
+      }
+    }
+
+    process.exit(verdicts.some((verdict) => verdict.status === 'fail') || evalsFailed ? 1 : 0);
   }
 
   const verdict = certify(target);

@@ -19,9 +19,16 @@ non-blocking authoring advisories, and ships the authoring conventions those che
 
 ## Certification
 
+```text
+/skills:certify <skill-dir | plugin-dir | agent-md-path> [--require-evals]
+```
+
 ```bash
 # Certify one skill
 node plugins/skills/scripts/certify.ts <skill-dir>
+
+# Certify every skill under a plugin, requiring each one to ship evals/evals.json
+node plugins/skills/scripts/certify.ts <plugin-dir> --require-evals
 
 # Certify every skill under a plugin
 node plugins/skills/scripts/certify.ts <plugin-dir>
