@@ -6,6 +6,9 @@
 //
 // Usage: node certify.ts <skill-dir>
 
+import { dirname } from 'node:path';
+
+import { certifyAgent } from '../src/agents.ts';
 import { readFrontmatter } from '../src/frontmatter.ts';
 import { level2Findings } from '../src/rules/level2.ts';
 import { level3Findings } from '../src/rules/level3.ts';
@@ -57,14 +60,15 @@ export const renderVerdict = (verdict: Verdict): string => {
 };
 
 if (import.meta.main) {
-  const [skillDir] = process.argv.slice(2);
+  const [target] = process.argv.slice(2);
 
-  if (!skillDir) {
-    process.stderr.write('usage: certify.ts <skill-dir>\n');
+  if (!target) {
+    process.stderr.write('usage: certify.ts <skill-dir | agent-md-path>\n');
     process.exit(2);
   }
 
-  const verdict = certify(skillDir);
+  // plugins/<plugin>/agents/<agent>.md -> plugins is two levels above the agents dir.
+  const verdict = target.endsWith('.md') ? certifyAgent(target, dirname(dirname(dirname(target)))) : certify(target);
   process.stdout.write(`${renderVerdict(verdict)}\n`);
   process.exit(verdict.status === 'fail' ? 1 : 0);
 }
