@@ -4,14 +4,19 @@
 // advisories, non-blocking). A skill whose SKILL.md is missing or malformed fails levels 2 and 3
 // rather than being skipped — certification stays fail-closed.
 //
-// Usage: node certify.ts <skill-dir>
+// Usage: node certify.ts <skill-dir | plugin-dir>
+//
+// A plugin directory (one with a `skills/` subdirectory but no SKILL.md of its own) certifies
+// every skill it contains and aggregates their verdicts into a single exit code.
 
-import { dirname } from 'node:path';
+import { existsSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 
 import { certifyAgent } from '../src/agents.ts';
 import { runDiffGate } from '../src/diff.ts';
 import { readFrontmatter } from '../src/frontmatter.ts';
 import { installSandboxed } from '../src/install.ts';
+import { listSkills } from '../src/repo-coherence.ts';
 import { level2Findings } from '../src/rules/level2.ts';
 import { level3Findings } from '../src/rules/level3.ts';
 import { level4Findings } from '../src/rules/level4-advisory.ts';
@@ -109,12 +114,34 @@ if (import.meta.main) {
   const target = flag;
 
   if (!target) {
-    process.stderr.write('usage: certify.ts <skill-dir | agent-md-path> | --stock | --diff <base-ref> | --install <skill-dir>\n');
+    process.stderr.write('usage: certify.ts <skill-dir | plugin-dir | agent-md-path> | --stock | --diff <base-ref> | --install <skill-dir>\n');
     process.exit(2);
   }
 
-  // plugins/<plugin>/agents/<agent>.md -> plugins is two levels above the agents dir.
-  const verdict = target.endsWith('.md') ? certifyAgent(target, dirname(dirname(dirname(target)))) : certify(target);
+  if (target.endsWith('.md')) {
+    // plugins/<plugin>/agents/<agent>.md -> plugins is two levels above the agents dir.
+    const verdict = certifyAgent(target, dirname(dirname(dirname(target))));
+    process.stdout.write(`${renderVerdict(verdict)}\n`);
+    process.exit(verdict.status === 'fail' ? 1 : 0);
+  }
+
+  const isPluginDir = !existsSync(join(target, 'SKILL.md')) && existsSync(join(target, 'skills'));
+
+  if (isPluginDir) {
+    const pluginName = target.replace(/\/+$/, '').split('/').pop();
+    const repoRoot = dirname(dirname(target));
+    const verdicts = listSkills(repoRoot)
+      .filter((skill) => skill.plugin === pluginName)
+      .map((skill) => certify(skill.dir));
+
+    for (const verdict of verdicts) {
+      process.stdout.write(`${renderVerdict(verdict)}\n`);
+    }
+
+    process.exit(verdicts.some((verdict) => verdict.status === 'fail') ? 1 : 0);
+  }
+
+  const verdict = certify(target);
   process.stdout.write(`${renderVerdict(verdict)}\n`);
   process.exit(verdict.status === 'fail' ? 1 : 0);
 }

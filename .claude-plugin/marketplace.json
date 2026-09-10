@@ -101,8 +101,8 @@
     {
       "name": "tooling",
       "source": "./plugins/tooling",
-      "description": "Docker, Drizzle ORM, pnpm workspaces, Zod schemas, Claude Code plugin conventions, npx skills conventions",
-      "version": "1.0.1",
+      "description": "Docker, Drizzle ORM, pnpm workspaces, Zod schemas",
+      "version": "2.0.0",
       "author": { "name": "FabienSalles" },
       "category": "development",
       "license": "MIT",
@@ -314,8 +314,8 @@
     {
       "name": "skills",
       "source": "./plugins/skills",
-      "description": "Certifies any skill directory against the agentskills spec (level 2), hard platform limits from VS Code Copilot and the Codex loader (level 3), and non-blocking authoring advisories (level 4) — sourced, precise, fail-closed verdicts. Run with `node plugins/skills/scripts/certify.ts <skill-dir>`.",
-      "version": "0.1.0",
+      "description": "Certifies any skill directory against the agentskills spec (level 2), hard platform limits from VS Code Copilot and the Codex loader (level 3), and non-blocking authoring advisories (level 4) — sourced, precise, fail-closed verdicts. Ships the skill/agent/plugin authoring conventions themselves. Run with `node plugins/skills/scripts/certify.ts <skill-dir>`.",
+      "version": "0.2.0",
       "author": { "name": "FabienSalles" },
       "category": "development",
       "license": "MIT",

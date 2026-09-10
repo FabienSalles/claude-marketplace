@@ -1,21 +1,22 @@
 ---
-name: npx-skills-conventions
-description: "ACTIVATE when creating SKILL.md files, writing frontmatter (name/description/version), structuring skill packages for discovery, or publishing to the Agent Skills ecosystem. ACTIVATE for 'SKILL.md', 'npx skills', 'skillkit', 'skill frontmatter', 'skill discovery'. Covers: SKILL.md frontmatter schema (name constraints, description as routing mechanism), progressive disclosure (metadata/body/references), directory structure, discovery mechanics (npx skills add, skills.sh, Claude Code), installation scopes, validation checklist. DO NOT use for: Claude plugin structure (see claude-plugin-conventions), general markdown writing."
-version: "1.1"
+name: skill-authoring
+description: "ACTIVATE when creating SKILL.md files, writing frontmatter (name/description), structuring skill packages for discovery, or publishing to the Agent Skills ecosystem. ACTIVATE for 'SKILL.md', 'npx skills', 'skill frontmatter', 'skill discovery', 'skill description length'. Covers: SKILL.md frontmatter schema, description as routing mechanism, hard platform limits sourced across three loaders (Anthropic's agentskills.io spec, VS Code Copilot's agent-skills docs, the OpenAI Codex parser), progressive disclosure, directory structure, discovery mechanics. DO NOT use for: plugin.json/marketplace.json/hooks.json (see plugin-conventions), agent .md format (see agent-authoring)."
+metadata:
+  version: "1.0"
 ---
 
-# Agent Skills & npx skills Conventions
+# Skill Authoring Conventions
 
-Best practices for creating skills compatible with `npx skills add`, skills.sh leaderboard, and skillkit, based on the Agent Skills specification and ecosystem analysis.
+Best practices for writing `SKILL.md`, based on the specification and on the hard limits enforced by the three loaders this marketplace certifies against: `agentskills.io/specification`, `code.visualstudio.com/docs/agent-customization/agent-skills` (VS Code Copilot), and the OpenAI Codex parser (`openai/codex` `codex-rs/skills/src/parser.rs`, constant `MAX_DESCRIPTION_LEN`).
 
-## SKILL.md Frontmatter Schema
+## Frontmatter Schema
 
-### Agent Skills Standard (cross-platform)
+### Agent Skills Standard (cross-platform, agentskills.io/specification)
 
 | Field | Required | Constraints |
 |-------|----------|-------------|
 | `name` | **Yes** | Max 64 chars, `[a-z0-9-]` only, no leading/trailing/consecutive hyphens, **must match parent directory name** |
-| `description` | **Yes** | Max 1024 chars, no angle brackets, single-line string |
+| `description` | **Yes** | Max 1024 chars (the limit shared by agentskills.io, VS Code Copilot and the Codex parser — see Platform Limits below), no angle brackets, single-line string |
 | `license` | No | SPDX identifier (MIT, Apache-2.0) |
 | `compatibility` | No | Max 500 chars, platform/dependency requirements |
 | `metadata` | No | Arbitrary string->string key-value map |
@@ -43,23 +44,37 @@ php-8-3/          <- directory name
     name: php-8-3  <- must match exactly
 ```
 
+## Platform Limits — Sourced Across Three Loaders
+
+The `description` hard cap is 1024 characters on all three platforms this repo certifies against:
+
+| Platform | Source |
+|----------|--------|
+| Agent Skills spec | `agentskills.io/specification` |
+| VS Code Copilot | `code.visualstudio.com/docs/agent-customization/agent-skills` |
+| OpenAI Codex | `openai/codex` `codex-rs/skills/src/parser.rs`, constant `MAX_DESCRIPTION_LEN` |
+
+Beyond that shared hard limit, treat **300 characters as the advisory target**: a description that
+still fits in 300 chars stays legible in a `/` menu and in narrow routing UIs, while the 1024 cap
+exists to accommodate the trigger-phrase-heavy style this marketplace uses. Certification (level 4,
+non-blocking) does not enforce the 300-char target — it is prose guidance for authors, not a gate.
+
 ## Description -- The Most Important Field
 
 The `description` is the **primary routing mechanism** for both skills.sh indexing and Claude activation. Write it as activation triggers.
 
 **Rules:**
-- Third person: "This skill should be used when..."
+- Third person: "This skill should be used when..." or an `ACTIVATE when...` imperative
 - Include specific trigger phrases users would say
 - Single-line string (Claude Code indexer doesn't parse YAML multiline)
-- Under 1024 characters
+- Under 1024 characters (hard), aim for under 300 (advisory)
 - No angle brackets (`<` or `>`)
 
 ## Skill Directory Structure
 
-### Standard skill (recommended)
 ```
 skill-name/
-├── SKILL.md              # Core instructions (<2000 words)
+├── SKILL.md              # Core instructions (<2000 words, <=500 lines)
 ├── references/           # Detailed docs (loaded on demand)
 │   └── patterns.md
 └── examples/             # Working examples
@@ -101,6 +116,4 @@ Skills appear **automatically** when users install them via `npx skills add`. No
 | Personal | `~/.claude/skills/` | `npx skills add repo --global` |
 | Plugin | `<plugin>/skills/` | `claude plugin install` |
 
-> **When looking up CLI commands, environment variables, SkillKit compatibility, or the validation checklist**, read `references/skills-ecosystem-reference.md` for the complete reference.
-
-> **When writing descriptions or body text**, read `references/skills-ecosystem-reference.md` for good/bad examples and writing style rules.
+See also: `agent-authoring` for the agent `.md` format (VS Code Copilot custom agents, Claude Code subagents), `plugin-conventions` for `plugin.json`/`marketplace.json`/`hooks.json` and `evals/evals.json`.
