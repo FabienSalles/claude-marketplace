@@ -11,6 +11,7 @@ import { dirname } from 'node:path';
 import { certifyAgent } from '../src/agents.ts';
 import { runDiffGate } from '../src/diff.ts';
 import { readFrontmatter } from '../src/frontmatter.ts';
+import { installSandboxed } from '../src/install.ts';
 import { level2Findings } from '../src/rules/level2.ts';
 import { level3Findings } from '../src/rules/level3.ts';
 import { level4Findings } from '../src/rules/level4-advisory.ts';
@@ -84,10 +85,31 @@ if (import.meta.main) {
     process.exit(result.status === 'fail' ? 1 : 0);
   }
 
+  if (flag === '--install') {
+    if (!arg) {
+      process.stderr.write('usage: certify.ts --install <skill-dir>\n');
+      process.exit(2);
+    }
+
+    const frontmatterResult = readFrontmatter(arg);
+
+    if (!frontmatterResult.ok) {
+      process.stderr.write(`${frontmatterResult.reason}\n`);
+      process.exit(1);
+    }
+
+    const result = await installSandboxed(arg, String(frontmatterResult.frontmatter.fields.name));
+
+    process.stdout.write(`Install: ${result.skillName}\n`);
+    process.stdout.write(`  files complete: ${result.missingFiles.length === 0 ? 'yes' : `no (missing: ${result.missingFiles.join(', ')})`}\n`);
+    process.stdout.write(`  skills-lock.json entry: ${result.lockEntryFound ? 'yes' : 'no'}\n`);
+    process.exit(result.ok ? 0 : 1);
+  }
+
   const target = flag;
 
   if (!target) {
-    process.stderr.write('usage: certify.ts <skill-dir | agent-md-path> | --stock | --diff <base-ref>\n');
+    process.stderr.write('usage: certify.ts <skill-dir | agent-md-path> | --stock | --diff <base-ref> | --install <skill-dir>\n');
     process.exit(2);
   }
 
