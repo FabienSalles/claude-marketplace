@@ -9,10 +9,12 @@
 import { dirname } from 'node:path';
 
 import { certifyAgent } from '../src/agents.ts';
+import { runDiffGate } from '../src/diff.ts';
 import { readFrontmatter } from '../src/frontmatter.ts';
 import { level2Findings } from '../src/rules/level2.ts';
 import { level3Findings } from '../src/rules/level3.ts';
 import { level4Findings } from '../src/rules/level4-advisory.ts';
+import { computeStock, renderStock } from '../src/stock.ts';
 import { aggregateLevel, aggregateVerdict, type Finding, type LevelVerdict, type Verdict } from '../src/verdict.ts';
 
 export const certify = (skillDir: string): Verdict => {
@@ -60,10 +62,32 @@ export const renderVerdict = (verdict: Verdict): string => {
 };
 
 if (import.meta.main) {
-  const [target] = process.argv.slice(2);
+  const [flag, arg] = process.argv.slice(2);
+
+  if (flag === '--stock') {
+    process.stdout.write(`${renderStock(computeStock(process.cwd()))}\n`);
+    process.exit(0);
+  }
+
+  if (flag === '--diff') {
+    if (!arg) {
+      process.stderr.write('usage: certify.ts --diff <base-ref>\n');
+      process.exit(2);
+    }
+
+    const result = runDiffGate(arg, process.cwd());
+
+    for (const verdict of result.verdicts) {
+      process.stdout.write(`${renderVerdict(verdict)}\n`);
+    }
+
+    process.exit(result.status === 'fail' ? 1 : 0);
+  }
+
+  const target = flag;
 
   if (!target) {
-    process.stderr.write('usage: certify.ts <skill-dir | agent-md-path>\n');
+    process.stderr.write('usage: certify.ts <skill-dir | agent-md-path> | --stock | --diff <base-ref>\n');
     process.exit(2);
   }
 
