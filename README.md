@@ -114,7 +114,7 @@ These overlap: [**docs/workflows-decision-guide.md**](docs/workflows-decision-gu
 | [**astro**](plugins/astro/README.md) | Astro 5.x: routing, content collections, i18n, SEO, Tailwind, React islands, view transitions. |
 | [**frontend**](plugins/frontend/README.md) | Clean/hexagonal architecture, Container/Presentation, safe edits to existing UI. |
 | [**jquery**](plugins/jquery/README.md) | jQuery module structure, `js-*` selector hooks, per-block scoping, symmetric toggles. |
-| [**tooling**](plugins/tooling/README.md) | Docker, Drizzle ORM, pnpm workspaces, Zod, Claude plugin + npx skills conventions. |
+| [**tooling**](plugins/tooling/README.md) | Docker, Drizzle ORM, pnpm workspaces, Zod. |
 
 ### Security
 

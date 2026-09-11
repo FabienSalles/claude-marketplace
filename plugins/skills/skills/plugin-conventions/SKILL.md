@@ -1,7 +1,8 @@
 ---
-name: claude-plugin-conventions
-description: "ACTIVATE when creating a Claude Code plugin, writing plugin.json, marketplace.json, hooks.json, or structuring plugin directories. ACTIVATE for 'Claude plugin', 'plugin.json', 'marketplace.json', 'hooks.json', 'CLAUDE_PLUGIN_ROOT'. Covers: plugin directory structure, plugin.json/marketplace.json schemas, hooks.json format (matcher + hook types), CLAUDE_PLUGIN_ROOT portability, distribution best practices, validation commands. DO NOT use for: SKILL.md writing conventions (see npx-skills-conventions), general Claude Code usage."
-version: "1.1"
+name: plugin-conventions
+description: "ACTIVATE when creating a Claude Code plugin, writing plugin.json, marketplace.json, hooks.json, or an evals/evals.json file. ACTIVATE for 'Claude plugin', 'plugin.json', 'marketplace.json', 'hooks.json', 'CLAUDE_PLUGIN_ROOT', 'evals.json'. Covers: plugin directory structure, plugin.json/marketplace.json schemas, hooks.json format, CLAUDE_PLUGIN_ROOT portability, distribution best practices, the evals/evals.json format for a skill's routing and behaviour test cases, validation commands. DO NOT use for: SKILL.md writing conventions (see skill-authoring), agent .md format (see agent-authoring)."
+metadata:
+  version: "1.0"
 ---
 
 # Claude Code Plugin & Marketplace Conventions
@@ -21,7 +22,9 @@ plugin-name/
 │       ├── SKILL.md
 │       ├── scripts/
 │       ├── references/
-│       └── examples/
+│       ├── examples/
+│       └── evals/
+│           └── evals.json    # Routing + behaviour test cases (see below)
 ├── hooks/
 │   ├── hooks.json            # Hook configuration
 │   └── scripts/              # Hook scripts
@@ -157,18 +160,6 @@ The official format uses nested `matcher` + `hooks[]` with `type`:
           }
         ]
       }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/check.py",
-            "timeout": 10
-          }
-        ]
-      }
     ]
   }
 }
@@ -177,7 +168,7 @@ The official format uses nested `matcher` + `hooks[]` with `type`:
 ### Hook types
 
 | Type | Field | Description |
-|------|-------|-------------|
+|------|-------|--------------|
 | `command` | `command` | Shell command, receives JSON on stdin |
 | `http` | `url` | HTTP POST to endpoint |
 | `prompt` | `prompt` | Single-turn LLM evaluation |
@@ -206,6 +197,36 @@ Always use `${CLAUDE_PLUGIN_ROOT}` for intra-plugin path references. Never hardc
 **In hooks.json:** `"command": "${CLAUDE_PLUGIN_ROOT}/scripts/tool.sh"`
 **In MCP config:** `"args": ["${CLAUDE_PLUGIN_ROOT}/servers/server.js"]`
 **In shell scripts:** `source "${CLAUDE_PLUGIN_ROOT}/lib/common.sh"`
+
+## evals/evals.json Format
+
+A skill's `evals/evals.json` pins the test cases that prove it triggers on the right prompts and
+produces the right behaviour once loaded. This marketplace's convention (see
+`plugins/career/evals/evals.json` for a worked example):
+
+```json
+{
+  "$comment": "One object per case; `skills` names what should load, `expected_behavior` lists what a passing run must do.",
+  "routing": [
+    {
+      "query": "A prompt a real user would type",
+      "skills": ["plugin-name:skill-name"],
+      "expected_behavior": [
+        "loads plugin-name:skill-name, not a sibling skill",
+        "the specific guardrail that makes this skill different from its neighbours"
+      ]
+    }
+  ]
+}
+```
+
+- **`routing` cases** test discovery from the description alone: does the right skill load, and
+  not a sibling that could plausibly match the same query?
+- **`skills`** is an array of `plugin:skill-name` refs, same shape as an agent's `skills:` field.
+- **`expected_behavior`** lists assertions in plain language, not a machine-checked schema — a
+  human or an agent replays the case and checks each line.
+- Keep at least one case per skill that has caused a real false-positive or false-negative
+  activation; that is the evidence a routing rule was worth writing.
 
 ## Distribution Best Practices
 
@@ -241,3 +262,6 @@ claude plugin validate plugins/my-plugin
 | Config | Standard names | `hooks.json`, `.mcp.json` |
 
 Plugin skills are namespaced as `/plugin-name:skill-name` to prevent conflicts.
+
+See also: `skill-authoring` for the SKILL.md format itself, `agent-authoring` for the agent .md
+format referenced by `agents/`.

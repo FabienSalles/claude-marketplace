@@ -1,0 +1,23 @@
+{
+  "$comment": "One object per case; `skills` names what should load, `expected_behavior` lists what a passing run must do.",
+  "routing": [
+    {
+      "query": "How should I structure hooks.json for a new plugin?",
+      "skills": ["skills:plugin-conventions"],
+      "expected_behavior": [
+        "loads skills:plugin-conventions, not skills:skill-authoring",
+        "uses the nested matcher + hooks[] format with a type field, not a flat list",
+        "points at ${CLAUDE_PLUGIN_ROOT} for any path referenced from hooks.json"
+      ]
+    },
+    {
+      "query": "What goes in a skill's evals/evals.json?",
+      "skills": ["skills:plugin-conventions"],
+      "expected_behavior": [
+        "loads skills:plugin-conventions, not skills:skill-authoring",
+        "describes routing cases (query, skills, expected_behavior) as the convention",
+        "points at an existing worked example in the repo rather than inventing a new schema"
+      ]
+    }
+  ]
+}

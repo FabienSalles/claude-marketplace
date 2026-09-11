@@ -14,6 +14,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
       # check-doc-counts.sh recomputes the test count by running the suite, which strips types
       # at run time: without this the step cannot read a count and refuses.
@@ -21,6 +23,9 @@ jobs:
         uses: actions/setup-node@v5
         with:
           node-version: '24'
+
+      - name: Install dependencies
+        run: npm ci
 
       - name: Validate marketplace.json exists and is valid JSON
         run: |
@@ -71,8 +76,12 @@ jobs:
           fi
           echo "✓ marketplace.json and every plugin.json agree on name, version and description"
 
-      - name: Validate SKILL.md frontmatter and README skill counts
-        run: ./scripts/validate-skills.sh
+      - name: Certify skill stock coherence
+        run: node plugins/skills/scripts/certify.ts --stock
+
+      - name: Certify changed skills and agents against the diff
+        if: github.event_name == 'pull_request'
+        run: node plugins/skills/scripts/certify.ts --diff origin/${{ github.base_ref }}
 
       - name: Validate goal plugin doc anchors
         run: ./scripts/validate-anchors.sh plugins/goal
@@ -96,6 +105,41 @@ jobs:
             echo "::error::$errors broken marketplace references"
             exit 1
           fi
+
+  nightly-skills-certification:
+    name: Nightly install and upstream canary
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Install every skill in a sandbox
+        run: |
+          errors=0
+          for skill_dir in $(find plugins -type d -path '*/skills/*' -exec test -f '{}/SKILL.md' \; -print | sort); do
+            echo "== $skill_dir"
+            if node plugins/skills/scripts/certify.ts --install "$skill_dir"; then
+              echo "✓ $skill_dir"
+            else
+              echo "✗ $skill_dir"
+              errors=$((errors + 1))
+            fi
+          done
+          if [[ $errors -gt 0 ]]; then
+            echo "::error::$errors skill(s) failed sandboxed install"
+            exit 1
+          fi
+
+      - name: Cross-check against the upstream skills-ref validator
+        run: uvx --from git+https://github.com/agentskills/agentskills#subdirectory=skills-ref skills-ref validate plugins
 
   test-plugin-validate:
     name: Test claude plugin validate
@@ -192,7 +236,6 @@ jobs:
             plugins/security-runtime/tests/test_prompt-injection-detector.sh \
             plugins/security-runtime/tests/test_secret-file-guard.sh \
             plugins/superpowers/tests/test-find-polluter.sh \
-            scripts/tests/test-validate-skills.sh \
             scripts/tests/test-skill-coherence.sh; do
             echo "== $suite"
             if bash "$suite"; then

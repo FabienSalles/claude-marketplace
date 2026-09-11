@@ -1,0 +1,22 @@
+{
+  "$comment": "One object per case; `skills` names what should load, `expected_behavior` lists what a passing run must do.",
+  "routing": [
+    {
+      "query": "How do I set the model and tools for a Claude Code subagent?",
+      "skills": ["skills:agent-authoring"],
+      "expected_behavior": [
+        "loads skills:agent-authoring, not skills:skill-authoring",
+        "covers tools/model/skills frontmatter for Claude Code subagents",
+        "flags the VS Code Copilot custom agent format as a distinct, non-interchangeable convention"
+      ]
+    },
+    {
+      "query": "What's the difference between a VS Code Copilot custom agent and a Claude Code subagent file?",
+      "skills": ["skills:agent-authoring"],
+      "expected_behavior": [
+        "loads skills:agent-authoring, not skills:plugin-conventions",
+        "names the cross-platform differences explicitly rather than assuming one format"
+      ]
+    }
+  ]
+}

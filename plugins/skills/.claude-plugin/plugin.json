@@ -1,0 +1,9 @@
+{
+  "name": "skills",
+  "version": "0.2.0",
+  "description": "Certifies any skill directory against the agentskills spec (level 2), hard platform limits from VS Code Copilot and the Codex loader (level 3), and non-blocking authoring advisories (level 4) — sourced, precise, fail-closed verdicts. Ships the skill/agent/plugin authoring conventions themselves. Run with `node plugins/skills/scripts/certify.ts <skill-dir>`.",
+  "author": { "name": "FabienSalles" },
+  "license": "MIT",
+  "keywords": ["skills", "compliance", "certification", "spec", "copilot", "codex"],
+  "skills": "./skills/"
+}
