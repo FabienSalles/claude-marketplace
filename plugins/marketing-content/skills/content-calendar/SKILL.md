@@ -1,6 +1,5 @@
 ---
 name: content-calendar
-version: "1.0"
 description: "ACTIVATE when the user asks to plan/schedule social media or content calendars — monthly/weekly planning, content mix ratios, theme days, platform-specific timing, batch creation. Trigger phrases: 'content calendar', 'posting schedule', 'social media calendar', 'content plan', 'weekly schedule', 'monthly content plan', 'when to post', 'content cadence', 'batch content', 'plan my posts'. For higher-level topic mapping / buyer-journey editorial strategy, see content-strategy."
 ---
 

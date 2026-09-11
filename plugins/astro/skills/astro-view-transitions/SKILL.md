@@ -1,7 +1,6 @@
 ---
 name: astro-view-transitions
 description: "ACTIVATE when implementing page transitions, SPA-like navigation, transition:persist, or data-astro-reload in Astro. ACTIVATE for 'ClientRouter', 'transition:name', 'transition:animate', 'data-astro-reload', 'page transition'. Covers: ClientRouter setup, transition directives (name/animate/persist), custom animations, data-astro-reload for language switching, lifecycle events (astro:page-load), loading indicator pattern. DO NOT use for: general Astro routing, React component hydration."
-version: "1.1"
 ---
 
 # Astro View Transitions

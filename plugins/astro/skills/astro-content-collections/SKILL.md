@@ -1,7 +1,6 @@
 ---
 name: astro-content-collections
 description: "ACTIVATE when working with Astro content collections, markdown/MDX files, YAML frontmatter, Zod schemas for content, or content-driven pages. ACTIVATE for 'getCollection', 'getEntry', 'defineCollection', 'content collection', 'content.config.ts'. Covers: collection schema definition with Zod, loader-based collections, querying/filtering collections, dynamic routes with getStaticPaths, YAML meta files, MDX with components, collection references. DO NOT use for: routing logic (see astro-routing), general Astro components (see astro-basics)."
-version: "1.1"
 ---
 
 # Astro Content Collections

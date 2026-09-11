@@ -1,6 +1,5 @@
 ---
 name: social-content
-version: "1.0"
 description: "ACTIVATE when the user asks to create MULTI-PLATFORM social posts — Reddit, Twitter/X, LinkedIn, Instagram, Facebook, TikTok. Covers platform-specific formats, character limits, hashtag strategies, hooks. Can post directly to Reddit via API. Trigger phrases: 'social media post', 'tweet', 'Instagram caption', 'TikTok script', 'social content', 'social media strategy', 'hashtag strategy', 'post to reddit', 'share on social'. For LinkedIn-only depth (algorithm mechanics, thought-leadership templates), see linkedin-content. For Twitter/X threads specifically, see thread-writer."
 allowed-tools:
   - Bash

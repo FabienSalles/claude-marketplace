@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { join } from 'node:path';
 
 import { certify } from '../scripts/certify.ts';
+import { certifyPluginStructure } from '../src/plugin-structure.ts';
 
 const fixture = (name: string): string => join(import.meta.dirname, 'fixtures', name);
 
@@ -89,5 +90,39 @@ test('R1 — a body over the advisory line ceiling fails level 4 without failing
 
   assert.equal(level4?.status, 'fail');
   assert.equal(level4?.blocking, false);
+  assert.equal(verdict.status, 'pass');
+});
+
+// I2 — a plugin with no skills directory certifies on plugin structure alone: a valid
+// .claude-plugin/plugin.json is enough to pass.
+test('I2 — a skill-less plugin with a valid plugin.json passes on structure', () => {
+  const verdict = certifyPluginStructure(fixture('plugin-no-skills'));
+
+  assert.equal(verdict.status, 'pass');
+});
+
+// I2 — certification stays fail-closed: malformed JSON in plugin.json fails rather than being
+// skipped.
+test('I2 — a skill-less plugin with malformed plugin.json fails closed', () => {
+  const verdict = certifyPluginStructure(fixture('plugin-broken-json'));
+
+  assert.equal(verdict.status, 'fail');
+});
+
+// I2 — certification stays fail-closed: a missing plugin.json fails rather than being skipped.
+test('I2 — a skill-less plugin with no plugin.json fails closed', () => {
+  const verdict = certifyPluginStructure(fixture('plugin-no-manifest'));
+
+  assert.equal(verdict.status, 'fail');
+});
+
+// R4 — the Claude Code platform fields documented by skill-authoring (disable-model-invocation,
+// user-invocable, context, agent, model) are allowed by the whitelist alongside the spec fields.
+test('R4 — Claude Code platform fields pass the frontmatter whitelist', () => {
+  const verdict = certify(fixture('claude-code-fields'));
+  const level2 = verdict.levels.find((level) => level.level === 2);
+  const finding = level2?.findings.find((f) => f.rule === 'frontmatter-field-whitelist');
+
+  assert.equal(finding?.status, 'pass');
   assert.equal(verdict.status, 'pass');
 });

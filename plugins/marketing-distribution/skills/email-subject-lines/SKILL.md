@@ -1,6 +1,5 @@
 ---
 name: email-subject-lines
-version: "1.0"
 description: "ACTIVATE when the user asks to generate, evaluate, or A/B test email subject lines. Includes formulas for curiosity, urgency, personalization, benefit-driven, and social proof. Can send A/B test emails directly via the Resend API (requires user confirmation before sending). Trigger phrases: 'email subject line', 'subject line ideas', 'write subject lines', 'A/B test subject lines', 'improve open rates', 'email open rate', 'subject line formulas', 'send test email'. For full newsletter body content and cadence, see newsletter."
 allowed-tools:
   - Bash

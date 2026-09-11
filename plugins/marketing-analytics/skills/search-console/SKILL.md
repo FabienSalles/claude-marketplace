@@ -1,6 +1,5 @@
 ---
 name: search-console
-version: "1.0"
 description: "ACTIVATE when the user wants to PULL/REPORT Google Search Console data — search rankings, clicks, impressions, CTR, index coverage, Core Web Vitals, sitemap status. Trigger phrases: 'search console', 'GSC', 'search performance', 'clicks and impressions', 'CTR analysis', 'index coverage', 'core web vitals', 'URL inspection', 'sitemap status', 'ranking data', 'search queries', 'keyword positions'. For TECHNICAL SEO diagnostics on a specific site/URL, see marketing-content:seo-audit. For GA4 traffic reporting, see google-analytics."
 ---
 

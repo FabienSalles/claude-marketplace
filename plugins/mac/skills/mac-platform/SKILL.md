@@ -1,7 +1,6 @@
 ---
 name: mac-platform
 description: "ACTIVATE when writing or modifying shell scripts, setup scripts, hooks, or troubleshooting on macOS. ACTIVATE when commands like `grep -P`, `realpath`, `sed -i`, `mapfile`, `readlink -f`, `date -d`, `xargs -r`, or bash 4+ features are involved. ACTIVATE for shebangs `#!/bin/bash` or `#!/usr/bin/env bash`. Covers /bin/bash 3.2 (Apple-forced) vs Homebrew bash 5.3+, BSD vs GNU command differences, portable alternatives, common macOS pitfalls. DO NOT use for: general code style, non-shell work."
-version: "1.0"
 ---
 
 # macOS / BSD Platform Specifics

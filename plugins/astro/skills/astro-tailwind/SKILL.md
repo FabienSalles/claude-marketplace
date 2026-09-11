@@ -1,7 +1,6 @@
 ---
 name: astro-tailwind
 description: "ACTIVATE when styling Astro components with Tailwind CSS, configuring the `@theme` block, or implementing responsive layouts. ACTIVATE for 'Tailwind', 'utility classes', '@tailwindcss/typography', 'prose', 'dark mode'. Covers: Tailwind 4 CSS-first config (colors, fonts via `@theme`), common UI patterns (cards, nav, forms, grids, buttons), typography plugin for markdown content, responsive patterns, dark mode, CSS variables with Tailwind. DO NOT use for: general CSS questions, Astro scoped styles without Tailwind."
-version: "1.1"
 ---
 
 # Astro + Tailwind CSS

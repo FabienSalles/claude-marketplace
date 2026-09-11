@@ -1,7 +1,6 @@
 ---
 name: php-sql-conventions
 description: "ACTIVATE when writing SQL queries in PHP code, using Doctrine DBAL, or formatting database queries. ACTIVATE for 'SQL', 'query', 'DBAL', 'JOIN', 'SELECT'. Covers: query direction convention (start from known entity), nowdoc formatting for SQL, column listing, JOIN ordering. DO NOT use for: Doctrine ORM/DQL, database migrations, general PHP code conventions."
-version: "1.1"
 ---
 
 # SQL Conventions

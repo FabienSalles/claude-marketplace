@@ -1,6 +1,5 @@
 ---
 name: analytics-tracking
-version: "1.0"
 description: "ACTIVATE when the user wants to SET UP or audit analytics tracking — GA4 install, GTM setup, event tracking, UTM parameters, conversion tracking, tracking plan. Trigger phrases: 'set up tracking', 'GA4 setup', 'conversion tracking', 'event tracking', 'UTM parameters', 'tag manager', 'GTM', 'analytics implementation', 'tracking plan'. For PULLING/REPORTING GA4 data, see google-analytics. For search-side data, see search-console."
 ---
 

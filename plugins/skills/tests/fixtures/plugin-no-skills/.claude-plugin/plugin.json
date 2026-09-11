@@ -1,0 +1,7 @@
+{
+  "name": "plugin-no-skills",
+  "version": "1.0.0",
+  "description": "A skill-less plugin used to certify on structure alone.",
+  "author": { "name": "FabienSalles" },
+  "license": "MIT"
+}

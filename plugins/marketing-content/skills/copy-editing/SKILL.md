@@ -1,6 +1,5 @@
 ---
 name: copy-editing
-version: "1.0"
 description: "ACTIVATE when the user has EXISTING marketing copy and wants it polished — line-by-line editing for clarity, conciseness, impact, conversion. Trigger phrases: 'edit my copy', 'improve this copy', 'polish this text', 'copy edit', 'make this clearer', 'tighten this up', 'proofread', 'review my copy', 'make this more persuasive', 'fix my writing'. For WRITING new copy from scratch, see copywriting."
 ---
 

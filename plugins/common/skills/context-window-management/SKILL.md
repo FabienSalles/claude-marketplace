@@ -1,7 +1,6 @@
 ---
 name: context-window-management
 description: ACTIVATE when context is getting long, when quality of responses degrades, when working on large codebases, or when a session has been running for 30+ minutes. ACTIVATE for 'context too long', 'losing track', 'fresh session', 'context window'. Provides rules for managing context utilization to maintain response quality. DO NOT use at the start of short sessions.
-version: 1.0.0
 ---
 
 # Context Window Management

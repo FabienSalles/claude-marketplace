@@ -1,7 +1,6 @@
 ---
 name: php-8-0
 description: "ACTIVATE when calling a constructor, method or function with four or more arguments in a PHP 8.0+ project — value objects, contract requests, factories, projections, test fixtures. Covers: mandatory named arguments from the fourth argument on. DO NOT use for: calls of three arguments or fewer, PHP 8.1 features (see php-8-1), PHP 8.2 features (see php-8-2), PHP 8.3 features (see php-8-3)."
-version: "1.0"
 ---
 
 # PHP 8.0 Conventions

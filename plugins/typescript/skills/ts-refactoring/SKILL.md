@@ -1,7 +1,6 @@
 ---
 name: ts-refactoring
 description: "ACTIVATE when refactoring TypeScript code. ACTIVATE for 'refactor', 'extract', 'redesign', 'simplify', or 'clean up' in a TypeScript / Node / NestJS context. This skill provides TS-specific examples for the cross-language refactoring rules defined in craft:refactoring-principles. DO NOT use for: writing new features from scratch, general OOP patterns (see ts-oop)."
-version: "2.0"
 ---
 
 # Refactoring — TypeScript Examples

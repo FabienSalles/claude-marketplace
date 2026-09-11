@@ -1,7 +1,6 @@
 ---
 name: discovery
 description: ACTIVATE when starting work on an unfamiliar or legacy codebase — a new mission, an inherited project, audit preparation, onboarding. ACTIVATE for 'reverse engineer', 'code legacy', 'nouvelle mission', 'appréhender ce code', 'cartographier la codebase', 'comprendre l'existant', 'inherited codebase', 'audit preparation', 'préparer l'audit'. Builds a versioned knowledge base (shared brain) from the code — recon + git archaeology, architecture, use cases, entities, risks, glossary — consumable by future Claude sessions and human readers. Two depths, onboarding (dev) and audit-prep (adds a security-surface dossier, then bridges to the security-audit skills). DO NOT use for documenting a single feature branch (a PR description covers it), forward spec work from a requirement (see goal:spec / /spec-first-dev), or performing the actual security audit (see security-audit:security-audit — this skill only prepares its ground).
-version: 1.0.0
 ---
 
 # Legacy Discovery

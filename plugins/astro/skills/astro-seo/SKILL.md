@@ -1,7 +1,6 @@
 ---
 name: astro-seo
 description: "ACTIVATE when implementing SEO meta tags, Open Graph, Twitter cards, JSON-LD structured data, or canonical URLs in Astro. ACTIVATE for 'SEO', 'meta tags', 'og:image', 'structured data', 'JSON-LD', 'canonical'. Covers: reusable SEO component, Open Graph/Twitter card meta, JSON-LD structured data (Organization, Person, BlogPosting, Breadcrumbs), multilingual SEO with hreflang, blog post SEO. DO NOT use for: sitemap configuration (see astro-sitemap), general HTML head management."
-version: "1.1"
 ---
 
 # Astro SEO Patterns

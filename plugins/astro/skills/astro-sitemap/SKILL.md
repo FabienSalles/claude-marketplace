@@ -1,7 +1,6 @@
 ---
 name: astro-sitemap
 description: "ACTIVATE when configuring XML sitemaps, robots.txt, or page indexing in Astro. ACTIVATE for 'sitemap', 'robots.txt', '@astrojs/sitemap', 'sitemap filter'. Covers: @astrojs/sitemap setup, page filtering, custom priority/changefreq via serialize, multi-language sitemap with hreflang, robots.txt generation, dynamic content priority. DO NOT use for: SEO meta tags (see astro-seo), general routing."
-version: "1.1"
 ---
 
 # Astro Sitemap

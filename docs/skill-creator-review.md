@@ -421,7 +421,7 @@ Representative: `marketing-content:content-calendar` / `linkedin-content` embed 
 
 **P2**
 
-- `version-bump` Step 2's "stale before the branch" branch has no concrete detection command — add an explicit staleness check (diff the plugin's version at `last_bump` vs current `plugin.json`, or commit count on the plugin's path). File: `plugins/release/skills/version-bump/SKILL.md:32-40`.
+- `version-bump` Step 2's "stale before the branch" branch has no concrete detection command — add an explicit staleness check (diff the plugin's version at `last_bump` vs current `plugin.json`, or commit count on the plugin's path). File: `plugins/skills/skills/version-bump/SKILL.md:32-40`.
 - The bump-classification table is written out fully in both README.md:16-26 and SKILL.md:42-57 — keep it in SKILL.md only, README points to it.
 
 **P3**

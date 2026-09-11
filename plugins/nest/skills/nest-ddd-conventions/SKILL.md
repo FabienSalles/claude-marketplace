@@ -1,7 +1,6 @@
 ---
 name: nest-ddd-conventions
 description: "ACTIVATE when writing domain layer code in a NestJS project, defining ports/adapters, or structuring bounded contexts as NestJS modules. ACTIVATE for 'domain layer', 'DDD NestJS', 'port', 'adapter', 'bounded context', 'domain purity' in TypeScript/NestJS. Provides NestJS-specific examples for cross-language OOP DDD principles defined in craft:ddd-principles. DO NOT use for: NestJS module/controller setup (see nest-conventions), functional TypeScript DDD (see ddd-ts-fp)."
-version: "2.0"
 ---
 
 # DDD Conventions — NestJS

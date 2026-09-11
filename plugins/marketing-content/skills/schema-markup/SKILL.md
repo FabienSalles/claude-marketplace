@@ -1,6 +1,5 @@
 ---
 name: schema-markup
-version: "1.0"
 description: "ACTIVATE when the user asks for Schema.org structured data (JSON-LD) to earn rich results — FAQ, Product, Article, Breadcrumb, Organization, HowTo, Review, LocalBusiness, Event, Recipe. Trigger phrases: 'schema markup', 'structured data', 'JSON-LD', 'rich snippets', 'rich results', 'FAQ schema', 'product schema', 'article schema'. For technical SEO diagnostics, see seo-audit."
 ---
 

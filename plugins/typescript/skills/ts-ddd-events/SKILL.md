@@ -1,7 +1,6 @@
 ---
 name: ts-ddd-events
 description: "ACTIVATE when implementing domain events, event store, outbox pattern, or reliable event publishing in TypeScript. ACTIVATE for 'domain event', 'outbox', 'event store', 'event-driven', 'reliable publishing'. Covers: domain event structure and naming, event store (append-only), outbox pattern for reliable publishing (no dual-write), consumer pattern. DO NOT use for: aggregate modeling (see ddd-ts-fp), general async patterns, message queue configuration."
-version: "1.1"
 ---
 
 # Domain Events & Event Publishing

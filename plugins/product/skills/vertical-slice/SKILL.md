@@ -1,7 +1,6 @@
 ---
 name: vertical-slice
 description: "ACTIVATE whenever a functional spec, user story, Jira US, GitHub issue or feature request has to be broken into iterations, slices, tickets or steps — including any planning where you are about to write a list of iterations. ACTIVATE for 'découper', 'split this story', 'too big', 'vertical slicing', 'horizontal slicing', 'INVEST', 'SPIDR', 'iterations', 'MVP first', 'what do we build first', 'this story cannot be split'. Provides 17 splitting techniques, a selection procedure that picks and combines them from the feature's real axis of complexity, the technical constraints and the execution mode (human review vs autonomous agent), plus the anti-patterns that produce fake slices. DO NOT use for: sequencing work inside one already-thin slice (that is TDD — see craft:tdd-workflow-principles), or for how to ship a slice safely (see product:delivery)."
-version: "1.0"
 ---
 
 # Vertical Slicing — split any spec into shippable iterations

@@ -1,7 +1,6 @@
 ---
 name: claude-recovery
 description: ACTIVATE when files or a whole directory/worktree were deleted, lost, or overwritten and the user wants them back — especially gitignored files (.claude/, .env, plans, local settings) that no git command can restore. ACTIVATE for 'recover', 'récupérer', 'restore deleted', 'fichiers perdus', 'deleted workspace', 'deleted worktree', 'lost my .claude', 'undelete'. Rebuilds file contents from Claude Code session transcripts in ~/.claude/projects/ by replaying every Write/Edit/full-Read event chronologically, then restores them to their original location without silently overwriting anything. DO NOT use for git-tracked content (use git reflog/branches first) or files no Claude session ever read or wrote.
-version: 1.0.0
 ---
 
 # Claude Recovery

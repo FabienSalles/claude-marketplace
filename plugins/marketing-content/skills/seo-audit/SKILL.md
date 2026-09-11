@@ -1,6 +1,5 @@
 ---
 name: seo-audit
-version: "1.0"
 description: "ACTIVATE when the user provides a URL or asks to run a full technical + on-page SEO audit — meta tags, headings, canonical, sitemap, robots, redirects, structured data, page speed. Trigger phrases: 'audit my site', 'SEO check', 'technical SEO review', 'site health', 'check my SEO', 'what's wrong with my site'. For Search Console reporting data (rankings, clicks), see marketing-analytics:search-console."
 ---
 

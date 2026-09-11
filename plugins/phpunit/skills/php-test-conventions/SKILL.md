@@ -1,7 +1,6 @@
 ---
 name: php-test-conventions
-description: "ACTIVATE when writing or modifying PHPUnit tests, creating test classes, using Prophecy, test doubles, test factories, or data providers. ACTIVATE for 'test naming', 'test doubles', 'spy vs mock', 'serialization tests', 'deserialization tests', 'data provider', 'MockHandler' in PHP. Provides framework-agnostic PHPUnit/Prophecy patterns; cross-language testing principles (DAMP, AAA, spy>mock, what NOT to test, factories) live in craft:testing-principles. DO NOT use for: tests that boot Symfony — WebTestCase, KernelTestCase, TypeTestCase, crawler assertions, container doubles (see symfony:symfony-test-conventions), TDD workflow/iteration process (see phpunit:php-tdd-workflow)."
-version: "3.0"
+description: "ACTIVATE when writing or modifying PHPUnit tests, creating test classes, using Prophecy, test doubles, test factories, or data providers. ACTIVATE for 'test naming', 'test doubles', 'spy vs mock', 'serialization tests', 'deserialization tests', 'data provider', 'MockHandler' in PHP. Provides framework-agnostic PHPUnit/Prophecy patterns; cross-language testing principles (DAMP, AAA, spy over mock, what NOT to test, factories) live in craft:testing-principles. DO NOT use for: tests that boot Symfony — WebTestCase, KernelTestCase, TypeTestCase, crawler assertions, container doubles (see symfony:symfony-test-conventions), TDD workflow/iteration process (see phpunit:php-tdd-workflow)."
 ---
 
 # Test Conventions — PHP

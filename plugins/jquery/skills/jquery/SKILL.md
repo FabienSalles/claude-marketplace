@@ -1,7 +1,6 @@
 ---
 name: jquery
 description: "ACTIVATE when writing or modifying jQuery code — any file using `$(...)`, `$el.find(...)`, `$(document).ready(...)`, or a new feature whose page interaction will be handled by jQuery. ACTIVATE for 'jQuery', 'jQuery module', 'js- selector', 'init function', 'event delegation', 'toggleClass', 'show hide pair', 'reset to original value'. Covers: one ES module per feature with exported init, `js-*` selector classes (never form IDs, never `data-*` for hooks), per-block scoping via `.each()` + `find()`, original state captured in closure (not lazily in DOM), symmetric `toggleClass` over swap helpers, jQuery state mutations (`.val()`, `.attr()`, `.removeAttr()`). DO NOT use for: vanilla JS without jQuery, React/Vue/Astro components, TypeScript-specific patterns, or build-tool / template-engine wiring (those belong with the backend framework's frontend skill)."
-version: "1.0"
 ---
 
 # jQuery Conventions

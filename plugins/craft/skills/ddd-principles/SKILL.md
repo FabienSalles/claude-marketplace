@@ -1,7 +1,6 @@
 ---
 name: ddd-principles
 description: "ACTIVATE when designing the domain layer in OOP languages — bounded contexts, aggregates, value objects, layer purity, ports/adapters, dependency direction. ACTIVATE for 'domain', 'DDD', 'hexagonal', 'ports and adapters', 'domain purity', 'bounded context', 'aggregate'. Provides cross-language OOP-style DDD principles. For functional-style DDD (immutable records, smart constructors, pipelines) see craft:ddd-fp-principles. Language-specific examples live in php-ddd-conventions, nest-ddd-conventions."
-version: "1.0"
 ---
 
 # DDD — Cross-Language OOP Principles

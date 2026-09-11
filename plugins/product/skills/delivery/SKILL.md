@@ -1,7 +1,6 @@
 ---
 name: delivery
 description: "ACTIVATE whenever an iteration or slice has to reach production without blocking on the rest of the work, or when a change touches behaviour that already exists and users depend on. ACTIVATE for 'feature flag', 'can we ship this half-done', 'breaking change', 'BC break', 'backward compatible', 'schema migration', 'zero-downtime migration', 'expand contract', 'dark launch', 'canary', 'progressive rollout', 'strangler', 'branch by abstraction', 'kill switch', 'remove the flag', 'deploy vs release'. Picks the cheapest flag mechanism that fits THIS project (env var → config → DB → SaaS), designs the change as additive so nothing existing breaks, and plans the cleanup slice that deletes the flag and the old path once it is live. DO NOT use for: deciding how to cut the work into slices (see product:vertical-slice), Git branching workflow, or CI/CD pipeline configuration."
-version: "1.0"
 ---
 
 # Delivery — ship each slice without blocking

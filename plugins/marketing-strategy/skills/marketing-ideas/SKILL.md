@@ -1,6 +1,5 @@
 ---
 name: marketing-ideas
-version: "1.0"
 description: "ACTIVATE when the user asks for marketing ideas, growth tactics, or campaign brainstorms — 139 proven ideas organized by category with implementation guidance. Trigger phrases: 'marketing ideas', 'growth ideas', 'how to grow', 'marketing strategies', 'campaign ideas', 'promote my product', 'marketing brainstorm', 'growth tactics', 'what should I try', 'marketing playbook'."
 ---
 

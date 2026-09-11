@@ -1,7 +1,6 @@
 ---
 name: linkedin-profile
 description: "ACTIVATE when auditing or rewriting a LinkedIn profile so recruiters, ESN sourcers and prospective clients actually find it — headline, About, experience entries, skills, services. ACTIVATE for 'mon profil LinkedIn', 'optimiser LinkedIn', 'je ne reçois pas de sollicitations', 'quel titre mettre sur LinkedIn', 'bloc de mots-clés LinkedIn', 'être trouvé par les recruteurs', 'LinkedIn headline', 'LinkedIn profile audit'. Separates eligibility (entering a recruiter's result set) from ranking (the order within it), places each keyword once in the field whose filter actually reads it, and treats a freelance profile as a seller of services rather than a candidate. DO NOT use to write LinkedIn posts or content strategy (see marketing-content:linkedin-content), to build the underlying career referential (see career:career-evidence), or to produce a CV (see career:cv-tailor)."
-version: "1.0.0"
 ---
 
 # LinkedIn Profile

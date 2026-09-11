@@ -1,7 +1,6 @@
 ---
 name: cv-tailor
 description: "ACTIVATE when producing or reworking a CV, a résumé or an ESN dossier de compétences for the French market, or when adapting one to a specific job posting or mission brief. ACTIVATE for 'refais mon CV', 'adapte mon CV à cette offre', 'dossier de compétences', 'mon CV fait trop de pages', 'mon CV ne passe pas les ATS', 'CV freelance', 'tailor my resume', 'ATS check'. Compiles the career-evidence referential into a two-page ATS-safe CV or a mission-by-mission dossier, applies parsing rules taken from vendor documentation rather than folklore, and can never emit a client name whose disclosure level forbids it. DO NOT use to build or update the underlying referential (see career:career-evidence), to rewrite a LinkedIn profile (see career:linkedin-profile), or to write a cover letter or a commercial proposal."
-version: "1.0.0"
 ---
 
 # CV Tailor

@@ -1,7 +1,6 @@
 ---
 name: astro-react
 description: "ACTIVATE when integrating React components in Astro, choosing client directives, or implementing interactive islands. ACTIVATE for 'client:load', 'client:visible', 'client:idle', 'client:only', 'React island', 'nanostores'. Covers: client directive selection (load/idle/visible/media/only), props passing, MDX integration, cross-island state sharing with nanostores. DO NOT use for: pure Astro components (see astro-basics), general React patterns."
-version: "1.1"
 ---
 
 # Astro + React Integration

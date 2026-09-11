@@ -1,7 +1,6 @@
 ---
 name: version-bump
 description: "ACTIVATE before every `gh pr create` / `gh pr edit` in the claude-marketplace repo, and before any commit that touches files under plugins/. ACTIVATE for 'bump version', 'bump les versions', 'release plugin', 'version bump', 'semver', 'mets à jour les versions'. Classifies the pending changes per plugin into major/minor/patch from the conventional commits since that plugin's last bump, then updates plugin.json AND marketplace.json in the same PR, preserving the files' existing formatting. Claude Code caches plugins by version: a content change without a bump never reaches users. DO NOT use for: versioning application code outside this marketplace, changelog generation, or git tagging."
-version: "1.0"
 ---
 
 # version-bump — no plugin change ships without its semver bump
