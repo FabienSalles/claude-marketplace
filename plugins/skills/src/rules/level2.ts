@@ -1,7 +1,9 @@
 import type { Frontmatter } from '../frontmatter.ts';
 import type { Finding } from '../verdict.ts';
 
-const ALLOWED_FIELDS = ['name', 'description', 'license', 'allowed-tools', 'metadata', 'compatibility'];
+const SPEC_FIELDS = ['name', 'description', 'license', 'allowed-tools', 'metadata', 'compatibility'];
+const CLAUDE_CODE_FIELDS = ['disable-model-invocation', 'user-invocable', 'context', 'agent', 'model'];
+const ALLOWED_FIELDS = [...SPEC_FIELDS, ...CLAUDE_CODE_FIELDS];
 const REQUIRED_FIELDS = ['name', 'description'];
 const SPEC_SOURCE = 'agentskills.io/specification';
 const ANTHROPIC_SOURCE = 'platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices';

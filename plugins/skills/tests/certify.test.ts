@@ -115,3 +115,14 @@ test('I2 — a skill-less plugin with no plugin.json fails closed', () => {
 
   assert.equal(verdict.status, 'fail');
 });
+
+// R4 — the Claude Code platform fields documented by skill-authoring (disable-model-invocation,
+// user-invocable, context, agent, model) are allowed by the whitelist alongside the spec fields.
+test('R4 — Claude Code platform fields pass the frontmatter whitelist', () => {
+  const verdict = certify(fixture('claude-code-fields'));
+  const level2 = verdict.levels.find((level) => level.level === 2);
+  const finding = level2?.findings.find((f) => f.rule === 'frontmatter-field-whitelist');
+
+  assert.equal(finding?.status, 'pass');
+  assert.equal(verdict.status, 'pass');
+});
