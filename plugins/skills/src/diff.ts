@@ -46,7 +46,8 @@ const STATUS_BY_CODE: Readonly<Record<string, ArtifactStatus>> = {
 };
 
 const isTrackedArtifact = (path: string): boolean =>
-  path.endsWith('/SKILL.md') || (path.endsWith('.md') && path.includes('/agents/'));
+  !path.includes('/tests/') &&
+  (path.endsWith('/SKILL.md') || (path.endsWith('.md') && path.includes('/agents/')));
 
 export const changedArtifacts = (baseRef: string, repoRoot: string): ChangedArtifact[] => {
   const output = execFileSync('git', ['diff', '--name-status', baseRef, '--', 'plugins'], {

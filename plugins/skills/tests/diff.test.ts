@@ -71,6 +71,29 @@ test('R7 — the diff gate fails when the touched artifact is non-compliant', ()
   }
 });
 
+// R7 — test fixtures are not marketplace artifacts: a deliberately non-compliant SKILL.md
+// under a tests/ directory is outside the certified perimeter and never reaches the gate.
+test('R7 — the diff gate ignores artifacts under a tests directory', () => {
+  const repoRoot = initRepo();
+
+  try {
+    const base = git(repoRoot, 'rev-parse', 'HEAD').trim();
+    const fixtureDir = join(
+      repoRoot, 'plugins', 'demo', 'tests', 'fixtures', 'agent-plugins', 'nested', 'skills', 'invalid-skill',
+    );
+    mkdirSync(fixtureDir, { recursive: true });
+    cpSync(fixture('invalid-skill'), fixtureDir, { recursive: true });
+    commit(repoRoot, 'add test fixture');
+
+    const result = runDiffGate(base, repoRoot);
+
+    assert.equal(result.status, 'pass');
+    assert.equal(result.verdicts.length, 0);
+  } finally {
+    rmSync(repoRoot, { recursive: true, force: true });
+  }
+});
+
 // R7 — deleting a touched artifact is neutral: it never fails the gate, even when the artifact
 // being removed was non-compliant.
 test('R7 — deleting a touched artifact is neutral and does not fail the gate', () => {
