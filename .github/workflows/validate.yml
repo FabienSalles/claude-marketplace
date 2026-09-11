@@ -24,6 +24,9 @@ jobs:
         with:
           node-version: '24'
 
+      - name: Install dependencies
+        run: npm ci
+
       - name: Validate marketplace.json exists and is valid JSON
         run: |
           jq empty .claude-plugin/marketplace.json
