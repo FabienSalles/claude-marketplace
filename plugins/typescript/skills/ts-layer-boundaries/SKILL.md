@@ -1,7 +1,6 @@
 ---
 name: ts-layer-boundaries
 description: "ACTIVATE when wiring a Worker entry point, a Router, a controller, or a domain event consumer in a TypeScript CQRS codebase, or when deciding where a port belongs. ACTIVATE for 'composition root', 'layer boundary', 'ESLint zones', 'domain must not import infrastructure'. Covers: the *Worker.ts composition root, the curried consumer, Router wiring of command endpoints, the five-gesture controller, the domain-to-infrastructure import boundary enforced by ESLint, infrastructure-only ports, in-memory doubles for every port, the read-can-reach-write asymmetry, and read endpoints going through a domain handler. DO NOT use for: the port's own shape and adapter binding (see ts-ports-adapters), the Result type (see ts-functional), domain event structure (see ts-ddd-events)."
-version: "1.0"
 ---
 
 # Layer Boundaries — Domain, Application, Infrastructure

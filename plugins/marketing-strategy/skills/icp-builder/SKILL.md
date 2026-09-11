@@ -1,6 +1,5 @@
 ---
 name: icp-builder
-version: "1.0"
 description: "ACTIVATE when the user asks to define an Ideal Customer Profile or buyer personas — firmographics/demographics, psychographics, JTBD, segmentation, customer interview scripts. Trigger phrases: 'ideal customer profile', 'ICP', 'buyer persona', 'who is my customer', 'target audience', 'customer profile', 'persona', 'customer segmentation', 'user research', 'customer interview', 'who should I target'."
 ---
 

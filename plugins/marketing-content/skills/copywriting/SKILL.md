@@ -1,6 +1,5 @@
 ---
 name: copywriting
-version: "1.0"
 description: "ACTIVATE when the user asks to WRITE NEW marketing copy — landing pages, product pages, about pages, sales pages, ads. Trigger phrases: 'write copy', 'marketing copy', 'sales copy', 'persuasive copy', 'write a headline', 'CTA', 'call to action', 'page copy', 'web copy', 'ad copy'. For polishing EXISTING copy, see copy-editing."
 ---
 

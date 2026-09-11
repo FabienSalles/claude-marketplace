@@ -1,7 +1,6 @@
 ---
 name: php-composer-conventions
 description: "ACTIVATE when modifying composer.json, adding/updating dependencies, or running composer commands. ACTIVATE for 'composer require', 'composer update', version constraints. Covers: caret versioning policy, forbidden patterns (*, dev-master, exact versions), internal package exception (dev-main as x.y.z), update strategy. DO NOT use for: autoloading, PHP code, Symfony configuration."
-version: "1.1"
 ---
 
 # Composer Conventions

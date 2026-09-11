@@ -1,7 +1,6 @@
 ---
 name: php-oop
 description: "ACTIVATE when designing PHP classes, value objects, collections, or when the user asks about object design, encapsulation, or 'Tell Don't Ask' in PHP. Provides PHP-specific examples for the cross-language OOP rules defined in craft:oop-principles, plus PHP-specific patterns (readonly properties, IteratorAggregate). DO NOT use for: refactoring methodology (see php-refactoring), DDD domain modeling (see php-ddd-conventions)."
-version: "2.0"
 ---
 
 # OOP — PHP Examples

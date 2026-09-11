@@ -1,6 +1,5 @@
 ---
 name: product-marketing-context
-version: "1.0"
 description: "ACTIVATE when the user wants to create or update their shared product marketing context document — a `.claude/product-marketing-context.md` file read by product-marketing, marketing-psychology, and analytics-tracking to avoid repeating foundational info. Trigger phrases: 'product context', 'marketing context', 'set up context', 'positioning context', 'shared context', 'stop repeating myself'. For actual positioning/GTM strategy work, see product-marketing."
 ---
 

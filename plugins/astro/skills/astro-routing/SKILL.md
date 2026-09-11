@@ -1,7 +1,6 @@
 ---
 name: astro-routing
 description: "ACTIVATE when creating dynamic routes, catch-all routes, pagination, API endpoints, or static path generation in Astro. ACTIVATE for 'getStaticPaths', '[slug]', '[...slug]', 'paginate', 'API route', 'redirect'. Covers: file-based routing, single/multiple/nested dynamic parameters, catch-all routes with priority, built-in pagination, API routes (JSON/RSS), URL utilities, redirects. DO NOT use for: content collection queries (see astro-content-collections), i18n routes (see astro-i18n)."
-version: "1.1"
 ---
 
 # Astro Routing

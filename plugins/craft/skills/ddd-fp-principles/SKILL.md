@@ -1,7 +1,6 @@
 ---
 name: ddd-fp-principles
 description: "ACTIVATE when modeling DDD aggregates and domain logic using functional patterns — immutable records, curried operations, Result types, validation/enrichment pipelines, handler orchestration. ACTIVATE for 'aggregate', 'smart constructor', 'make*', 'validation pipeline', 'enrichment', 'domain handler' in a functional context. Provides cross-language functional DDD principles. For OOP-style DDD (classes, decorators, module-bounded contexts) see craft:ddd-principles. Companion examples: ddd-ts-fp."
-version: "1.0"
 ---
 
 # DDD — Functional Principles

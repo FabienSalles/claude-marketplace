@@ -1,6 +1,5 @@
 ---
 name: seo-content-brief
-version: "1.0"
 description: "ACTIVATE when the user asks to CREATE a structured SEO brief to hand off to a writer — target keyword, search intent, SERP analysis, required sections, word count, internal links, entities. Trigger phrases: 'content brief', 'SEO brief', 'writing brief', 'brief for', 'writer brief', 'outline for SEO'. For actually WRITING the article, see write-blog."
 ---
 

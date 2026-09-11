@@ -1,7 +1,6 @@
 ---
 name: astro-i18n
 description: "ACTIVATE when implementing multilingual Astro sites, language switching, translated routes, or translation patterns. ACTIVATE for 'i18n', 'multilingual', 'language switch', 'hreflang', 'translate route', 'getLang'. Covers: prefix-based routing (fr default, /en prefix), route mapping between languages, translation dictionary without external library, multilingual content collections, hreflang SEO tags, language switcher component. DO NOT use for: Astro routing basics (see astro-routing), SEO tags (see astro-seo)."
-version: "1.1"
 ---
 
 # Astro Internationalization (i18n)

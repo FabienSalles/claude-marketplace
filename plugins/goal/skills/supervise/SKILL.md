@@ -1,6 +1,6 @@
 ---
 name: supervise
-description: Launches `node goal-run.ts <plan>` in the background and watches it to the end. On a non-zero exit it classifies before repairing — plan at fault, implementation at fault, or unknown — never the reverse. A plan fault is repaired within a closed set (declared paths, max_diff, a mistyped path, prose) with plan-guard.ts proving no gate or dod line moved, then relaunched; an implementation fault discards the tree and relaunches unchanged; anything else stops and wakes the developer. One relaunch per iteration, then stop. Unproven — two prior halts are the whole evidence this classifier has ever seen.
+description: Launches `node goal-run.ts` with a plan path in the background and watches it to the end. On a non-zero exit it classifies before repairing — plan at fault, implementation at fault, or unknown — never the reverse. A plan fault is repaired within a closed set (declared paths, max_diff, a mistyped path, prose) with plan-guard.ts proving no gate or dod line moved, then relaunched; an implementation fault discards the tree and relaunches unchanged; anything else stops and wakes the developer. One relaunch per iteration, then stop. Unproven — two prior halts are the whole evidence this classifier has ever seen.
 disable-model-invocation: true
 ---
 

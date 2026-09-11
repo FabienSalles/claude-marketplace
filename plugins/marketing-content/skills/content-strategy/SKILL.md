@@ -1,6 +1,5 @@
 ---
 name: content-strategy
-version: "1.0"
 description: "ACTIVATE when the user asks to build a content strategy, topic clusters, or map content to the buyer journey. Covers editorial planning, pillar pages, content-to-funnel mapping, distribution planning. Trigger phrases: 'content strategy', 'content plan', 'topic clusters', 'editorial calendar', 'pillar page', 'content roadmap', 'buyer journey content', 'content funnel', 'content mapping'. For calendar scheduling (dates, cadence, batching), see content-calendar."
 ---
 

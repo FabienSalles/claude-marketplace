@@ -1,7 +1,6 @@
 ---
 name: crispi-planning
 description: ACTIVATE when planning a complex, multi-file task that is NOT a single feature — a migration, a cross-cutting refactor, a tooling/build change — where you want a phased plan persisted to .claude/plans/ across sessions. ACTIVATE for 'CRISPI', 'structured plan', 'plan this migration', 'plan this refactor'. Provides the 5-phase CRISPI framework (Context, Research, Implementation design, Structured Plan, Implementation). DO NOT use for a single feature or issue (use goal or /spec-first-dev), simple single-file changes, or quick in-session planning (use native plan mode).
-version: 1.0.0
 ---
 
 # CRISPI Planning Framework

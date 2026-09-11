@@ -1,7 +1,6 @@
 ---
 name: php-ddd-conventions
 description: "ACTIVATE when writing or modifying domain layer code in PHP/Symfony, creating value objects, specifications, domain services, or domain interfaces. ACTIVATE for 'domain', 'DDD', 'hexagonal', 'ports and adapters', 'domain purity' in PHP context. Provides PHP/Symfony-specific examples for cross-language OOP DDD principles defined in craft:ddd-principles. DO NOT use for: infrastructure/controller code, Doctrine mapping, general architecture questions."
-version: "2.0"
 ---
 
 # DDD Conventions — PHP / Symfony

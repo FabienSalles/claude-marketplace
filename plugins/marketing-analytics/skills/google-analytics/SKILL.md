@@ -1,6 +1,5 @@
 ---
 name: google-analytics
-version: "1.0"
 description: "ACTIVATE when the user wants to PULL/REPORT GA4 data via the Google Analytics Data API — traffic reports, user behavior, acquisition channels, conversions, audience segments. Trigger phrases: 'google analytics', 'GA4', 'traffic report', 'analytics data', 'user acquisition', 'engagement metrics', 'audience segments', 'page views', 'sessions'. For SETTING UP tracking (events, GTM, UTMs), see analytics-tracking. For search-side data (queries, rankings, CTR, impressions), see search-console."
 ---
 

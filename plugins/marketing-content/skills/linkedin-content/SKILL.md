@@ -1,6 +1,5 @@
 ---
 name: linkedin-content
-version: "1.0"
 description: "ACTIVATE when the user asks specifically for LinkedIn content — algorithm mechanics (dwell time, meaningful comments), hook templates, thought-leadership formats. Trigger phrases: 'LinkedIn post', 'write for LinkedIn', 'LinkedIn strategy', 'LinkedIn hook', 'professional post', 'thought leadership post'. For multi-platform social copy (Twitter, IG, TikTok, Reddit), see marketing-distribution:social-content."
 ---
 

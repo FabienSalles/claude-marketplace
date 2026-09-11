@@ -1,6 +1,5 @@
 ---
 name: marketing-psychology
-version: "1.0"
 description: "ACTIVATE when the user asks to apply psychological principles, mental models, or behavioral science to marketing — 70+ models organized for marketing application (cognitive biases, decision heuristics, persuasion frameworks). Trigger phrases: 'psychology', 'mental models', 'cognitive bias', 'persuasion', 'behavioral science', 'why people buy', 'decision-making', 'consumer behavior'."
 ---
 

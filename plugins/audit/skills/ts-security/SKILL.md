@@ -1,7 +1,6 @@
 ---
 name: ts-security
 description: "ACTIVATE when conducting security assessments, code review for vulnerabilities, or CVSS scoring in TypeScript/Node.js/NestJS projects. ACTIVATE for 'security audit', 'vulnerability', 'injection', 'XSS', 'OWASP' in a TS context. Provides TS/NestJS-specific security patterns (Drizzle parameterized queries, JWT setup, bcrypt rounds, execFile over exec, path traversal, Zod env validation, CSRF). Loads alongside security-audit:security-audit (comprehensive baseline) and audit:security-overrides (personal conventions). DO NOT use for: general code quality, performance optimization, authentication flow design."
-version: "2.0"
 ---
 
 # Security — TypeScript / Node.js Examples

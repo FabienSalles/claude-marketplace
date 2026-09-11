@@ -1,7 +1,6 @@
 ---
 name: ts-ports-adapters
 description: "ACTIVATE when a TypeScript codebase with no dependency-injection container has to declare a port and wire its adapter — a repository, a clock, an id generator, an event dispatcher the domain depends on. ACTIVATE for 'port', 'adapter', 'SPI', 'dependency inversion', 'composition root', 'inject without a container'. Covers: the port as a type of functions in the domain layer, the adapter as an object literal annotated with it, the handler that takes its dependencies first and its data second, the composition root in the infrastructure layer, and the in-memory stub that substitutes for the adapter in a unit test. DO NOT use for: container-based DI with decorators and tokens (see nest-ddd-conventions), aggregate operations and smart constructors (see ddd-ts-fp), the Result type itself (see ts-functional)."
-version: "1.0"
 ---
 
 # Ports & Adapters Without a Container

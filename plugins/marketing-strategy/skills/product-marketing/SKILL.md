@@ -1,6 +1,5 @@
 ---
 name: product-marketing
-version: "1.0"
 description: "ACTIVATE when the user asks for product marketing strategy — positioning (April Dunford), messaging hierarchy, go-to-market plan, battlecards, sales enablement, launch plan. Trigger phrases: 'positioning', 'messaging framework', 'go-to-market', 'GTM strategy', 'product marketing', 'competitive positioning', 'battlecard', 'sales enablement', 'launch plan'. For maintaining a shared context file consumed by other marketing skills, see product-marketing-context."
 ---
 

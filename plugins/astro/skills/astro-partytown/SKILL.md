@@ -1,7 +1,6 @@
 ---
 name: astro-partytown
 description: "ACTIVATE when integrating third-party scripts (Google Analytics, GTM, Facebook Pixel) in Astro via Partytown web worker. ACTIVATE for 'analytics', 'Partytown', 'GA4', 'GTM', 'tracking script', 'text/partytown'. Covers: Partytown setup, GA4/GTM/Facebook Pixel integration, forward configuration, custom events, conditional loading (prod only), cookie consent integration, debug mode. DO NOT use for: general script handling in Astro, SEO configuration."
-version: "1.1"
 ---
 
 # Astro + Partytown

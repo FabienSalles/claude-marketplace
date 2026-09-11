@@ -1,7 +1,6 @@
 ---
 name: career-evidence
 description: "ACTIVATE when building or maintaining the referential a CV and a LinkedIn profile are derived from — capturing a mission, an audit or a training session that was just delivered, importing an existing CV into structured evidence, recovering the numbers behind a claim, or deciding what may be said about a client under NDA. ACTIVATE for 'référentiel carrière', 'j'ai fini une mission', 'ajouter un audit', 'ajouter une formation', 'mon CV n'est plus à jour', 'quels chiffres je peux citer', 'ce client est sous NDA', 'career evidence', 'track my engagements'. Keeps one Markdown file per engagement, each carrying its own disclosure level, so no document can later emit a client name its contract forbids. DO NOT use to write a CV or a dossier de compétences (see career:cv-tailor), to rewrite a LinkedIn profile (see career:linkedin-profile), or to write case studies and marketing pages from missions (see marketing-content:copywriting)."
-version: "1.0.0"
 ---
 
 # Career Evidence

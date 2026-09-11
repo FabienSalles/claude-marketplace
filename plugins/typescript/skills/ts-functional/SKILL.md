@@ -1,7 +1,6 @@
 ---
 name: ts-functional
-description: "ACTIVATE when writing functional-style TypeScript: pipe, compose, currying, Result types, railway-oriented programming, or AsyncResult. ACTIVATE for 'pipe', 'Result type', 'railway', 'functional', 'chain'. Covers: type-safe pipe implementation, currying patterns, Result<T,E> type, railway-oriented error handling, AsyncResult for async pipelines. DO NOT use for: DDD aggregate modeling (see ddd-ts-fp), OOP patterns (see ts-oop), imperative code."
-version: "1.1"
+description: "ACTIVATE when writing functional-style TypeScript: pipe, compose, currying, Result types, railway-oriented programming, or AsyncResult. ACTIVATE for 'pipe', 'Result type', 'railway', 'functional', 'chain'. Covers: type-safe pipe implementation, currying patterns, generic Result type, railway-oriented error handling, AsyncResult for async pipelines. DO NOT use for: DDD aggregate modeling (see ddd-ts-fp), OOP patterns (see ts-oop), imperative code."
 ---
 
 # Functional Programming Patterns (TypeScript)

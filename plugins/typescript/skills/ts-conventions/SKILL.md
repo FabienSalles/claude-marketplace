@@ -1,7 +1,6 @@
 ---
 name: ts-conventions
 description: "ACTIVATE when writing TypeScript types, generics, branded types, discriminated unions, or configuring tsconfig. ACTIVATE for 'type vs interface', 'enum alternative', 'branded type', 'satisfies', 'strict mode'. Covers: strict mode policy, no-any/no-enum rules, type over interface, discriminated unions, satisfies operator, branded types for ID safety, utility types. DO NOT use for: code formatting (see ts-code-conventions), functional patterns (see ts-functional)."
-version: "1.1"
 ---
 
 # TypeScript Conventions

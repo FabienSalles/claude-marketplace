@@ -1,6 +1,5 @@
 ---
 name: newsletter
-version: "1.0"
 description: "ACTIVATE when the user asks to plan, grow, or monetize an email newsletter — Substack/Beehiiv strategy, subscriber growth, editorial structure, retention, monetization. Trigger phrases: 'newsletter strategy', 'grow my newsletter', 'newsletter content', 'email newsletter', 'subscriber growth', 'newsletter monetization', 'Substack strategy', 'Beehiiv'. For subject line optimization specifically, see email-subject-lines."
 ---
 

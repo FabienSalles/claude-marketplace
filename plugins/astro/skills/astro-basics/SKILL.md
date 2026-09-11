@@ -1,7 +1,6 @@
 ---
 name: astro-basics
 description: "ACTIVATE when creating Astro components, layouts, pages, or setting up Astro project structure. ACTIVATE for 'Astro component', 'slot', 'layout', 'Astro.props', 'class:list'. Covers: component anatomy (frontmatter/template/style/script), layout pattern with slot, props patterns, scoped vs global styles, script patterns (build-time vs client-side), path aliases. DO NOT use for: content collections (see astro-content-collections), routing (see astro-routing), React islands (see astro-react)."
-version: "1.1"
 ---
 
 # Astro Basics
