@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { join } from 'node:path';
 
 import { certify } from '../scripts/certify.ts';
+import { certifyPluginStructure } from '../src/plugin-structure.ts';
 
 const fixture = (name: string): string => join(import.meta.dirname, 'fixtures', name);
 
@@ -90,4 +91,27 @@ test('R1 — a body over the advisory line ceiling fails level 4 without failing
   assert.equal(level4?.status, 'fail');
   assert.equal(level4?.blocking, false);
   assert.equal(verdict.status, 'pass');
+});
+
+// I2 — a plugin with no skills directory certifies on plugin structure alone: a valid
+// .claude-plugin/plugin.json is enough to pass.
+test('I2 — a skill-less plugin with a valid plugin.json passes on structure', () => {
+  const verdict = certifyPluginStructure(fixture('plugin-no-skills'));
+
+  assert.equal(verdict.status, 'pass');
+});
+
+// I2 — certification stays fail-closed: malformed JSON in plugin.json fails rather than being
+// skipped.
+test('I2 — a skill-less plugin with malformed plugin.json fails closed', () => {
+  const verdict = certifyPluginStructure(fixture('plugin-broken-json'));
+
+  assert.equal(verdict.status, 'fail');
+});
+
+// I2 — certification stays fail-closed: a missing plugin.json fails rather than being skipped.
+test('I2 — a skill-less plugin with no plugin.json fails closed', () => {
+  const verdict = certifyPluginStructure(fixture('plugin-no-manifest'));
+
+  assert.equal(verdict.status, 'fail');
 });

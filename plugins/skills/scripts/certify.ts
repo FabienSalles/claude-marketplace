@@ -16,6 +16,7 @@ import { certifyAgent } from '../src/agents.ts';
 import { runDiffGate } from '../src/diff.ts';
 import { readFrontmatter } from '../src/frontmatter.ts';
 import { installSandboxed } from '../src/install.ts';
+import { certifyPluginStructure } from '../src/plugin-structure.ts';
 import { listSkills } from '../src/repo-coherence.ts';
 import { level2Findings } from '../src/rules/level2.ts';
 import { level3Findings } from '../src/rules/level3.ts';
@@ -173,7 +174,9 @@ if (import.meta.main) {
     process.exit(verdicts.some((verdict) => verdict.status === 'fail') || evalsFailed ? 1 : 0);
   }
 
-  const verdict = certify(target);
+  const isSkillLessPluginDir = !existsSync(join(target, 'SKILL.md')) && !existsSync(join(target, 'skills'));
+
+  const verdict = isSkillLessPluginDir ? certifyPluginStructure(target) : certify(target);
   process.stdout.write(`${renderVerdict(verdict)}\n`);
   process.exit(verdict.status === 'fail' ? 1 : 0);
 }
