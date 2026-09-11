@@ -127,6 +127,7 @@ These overlap: [**docs/workflows-decision-guide.md**](docs/workflows-decision-gu
 
 | Plugin | What it does |
 |---|---|
+| [**skills**](plugins/skills/README.md) | Certifies any skill/plugin/agent against the agentskills spec, hard platform limits (VS Code Copilot, Codex) and authoring advisories (`/skills:certify`), ships the authoring conventions, and carries the semver discipline (`version-bump`): every PR touching a plugin bumps its version. |
 | [**self-audit**](plugins/self-audit/README.md) | `/self-audit:compare` audits an external skill pack vs this marketplace into a prioritized gap backlog. |
 
 ### Platform & UX
@@ -144,6 +145,12 @@ These overlap: [**docs/workflows-decision-guide.md**](docs/workflows-decision-gu
 | [**marketing-strategy**](plugins/marketing-strategy/README.md) | ICP, mental models, 139 growth ideas, competitor analysis, positioning/GTM (April Dunford). |
 | [**marketing-distribution**](plugins/marketing-distribution/README.md) | Multi-platform social, Twitter/X + Reddit threads, email subject lines, newsletter growth. |
 | [**marketing-analytics**](plugins/marketing-analytics/README.md) | GA4/GTM/UTM tracking setup, Google Analytics Data API + Search Console reporting. |
+
+### Career
+
+| Plugin | What it does |
+|---|---|
+| [**career**](plugins/career/README.md) | French tech market career material, built once and projected per target: versioned engagement referential (`career-evidence`), ATS-safe CV / dossier de compétences (`cv-tailor`), LinkedIn Recruiter-aware profile rewrite (`linkedin-profile`). Rules sourced from vendor docs (Workday, Greenhouse, Ashby, Apec, LinkedIn Engineering). |
 
 ## Installation
 
