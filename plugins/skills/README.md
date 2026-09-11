@@ -9,13 +9,14 @@ non-blocking authoring advisories, and ships the authoring conventions those che
 /plugin install skills@fabien-claude-marketplace
 ```
 
-## Skills (3)
+## Skills (4)
 
 | Skill | Purpose |
 |---|---|
 | [`skill-authoring`](skills/skill-authoring/SKILL.md) | `SKILL.md` frontmatter schema, description as routing mechanism, platform limits sourced across agentskills.io/VS Code Copilot/Codex, progressive disclosure, directory structure |
 | [`agent-authoring`](skills/agent-authoring/SKILL.md) | Claude Code subagent frontmatter (`tools`/`model`/`skills`), VS Code Copilot custom agent format, cross-platform differences |
 | [`plugin-conventions`](skills/plugin-conventions/SKILL.md) | Plugin directory structure, `plugin.json`/`marketplace.json`/`hooks.json` schemas, `${CLAUDE_PLUGIN_ROOT}` portability, `evals/evals.json` format |
+| [`version-bump`](skills/version-bump/SKILL.md) | Which version does each changed plugin get, and where is it written — classified from the conventional commits since its last bump, written into `plugin.json` and `marketplace.json` in the same PR |
 
 ## Certification
 
