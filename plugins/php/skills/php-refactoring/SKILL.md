@@ -27,11 +27,11 @@ $uploadFile = new UploadFile($content, $fileName);
 
 ```php
 // ❌ AVOID — VO defined only from its creation point
-final class UploadFile
+final readonly class UploadFile
 {
     public function __construct(
-        public readonly string $content,
-        public readonly string $originalFileName,
+        public string $content,
+        public string $originalFileName,
     ) {}
 }
 
@@ -41,12 +41,12 @@ final class UploadFile
 //   → fileType comes from the file itself, NOT the request.
 
 // ✅ CORRECT — include FileTypeEnum because a consumer needs it
-final class UploadFile
+final readonly class UploadFile
 {
     public function __construct(
-        public readonly FileTypeEnum $type,
-        public readonly string $content,
-        public readonly string $originalFileName,
+        public FileTypeEnum $type,
+        public string $content,
+        public string $originalFileName,
     ) {}
 }
 ```

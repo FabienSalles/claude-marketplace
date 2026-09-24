@@ -1,6 +1,6 @@
 ---
 name: ddd-ts-fp
-description: "ACTIVATE when modeling DDD aggregates and domain logic in TypeScript using functional patterns. ACTIVATE for 'aggregate', 'smart constructor', 'make*', 'validation pipeline', 'enrichment', 'domain handler' in TypeScript. Provides TypeScript-specific examples for cross-language functional DDD principles defined in craft:ddd-fp-principles. DO NOT use for: infrastructure code, general FP patterns (see ts-functional), OOP modeling (see ts-oop)."
+description: "ACTIVATE when modeling DDD aggregates, value objects and domain logic in TypeScript using functional patterns. ACTIVATE for 'aggregate', 'smart constructor', 'make*', 'validation pipeline', 'enrichment', 'domain handler' in TypeScript. Provides TypeScript-specific examples for cross-language functional DDD principles defined in craft:ddd-fp-principles. DO NOT use for: infrastructure code, general FP patterns (see ts-functional), OOP modeling (see ts-oop)."
 ---
 
 # DDD Functional Patterns — TypeScript

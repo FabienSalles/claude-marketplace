@@ -1388,6 +1388,38 @@ assert_measured "C170 the Pact suite is isolated by suffix and script, never run
   "$CRAFT_TESTING"
 
 echo ""
+echo "== Iteration 11 (#78) — a trigger names its paradigm, so neither family answers for the other"
+
+TS_PORTS=plugins/typescript/skills/ts-ports-adapters/SKILL.md
+CRAFT_DDD_FP_S=plugins/craft/skills/ddd-fp-principles/SKILL.md
+DDD_TS_FP_S=plugins/typescript/skills/ddd-ts-fp/SKILL.md
+
+assert_present "T1 craft:oop-principles claims value objects only where they are classes" \
+  'the value objects or collections modelled as classes' "$CRAFT_OOP"
+
+assert_present "T2 craft:oop-principles sends a record-shaped value object away, not just an aggregate" \
+  'a value object or an aggregate modelled as an immutable record' "$CRAFT_OOP"
+
+assert_present "T3 ts-oop claims value objects only where they are classes" \
+  'the value objects or collections modelled as classes' "$TS_OOP"
+
+assert_present "T4 ts-oop sends a record-shaped value object away, not just functional DDD modelling" \
+  'a value object or an aggregate modelled as an immutable record rather than a class' "$TS_OOP"
+
+assert_present "T5 the functional families answer for a value object, so T2 and T4 have a destination" \
+  'aggregates, value objects and domain logic' "$CRAFT_DDD_FP_S" "$DDD_TS_FP_S"
+
+assert_absent "T6 ts-ports-adapters lists no bare port keyword a NestJS prompt would match" \
+  "ACTIVATE for 'port', 'adapter', 'SPI', 'dependency inversion', 'composition root', 'inject without a container'." \
+  "$TS_PORTS"
+
+assert_present "T7 ts-ports-adapters qualifies its keywords by the absence of a container" \
+  'in a codebase that wires its dependencies by hand' "$TS_PORTS"
+
+assert_present "T8 ts-ports-adapters names NestJS itself, not only the skill that owns it" \
+  'DO NOT use for: NestJS, or any container-based DI' "$TS_PORTS"
+
+echo ""
 if [[ $failures -gt 0 ]]; then
   echo "✗ $failures/$cases assertion(s) failed"
   exit 1

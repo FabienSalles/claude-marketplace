@@ -30,7 +30,7 @@ Astro 5.x conventions: components, routing, content collections, i18n, SEO, Tail
 
 | Skill | Purpose |
 |---|---|
-| [`astro-seo`](skills/astro-seo/SKILL.md) | Reusable SEO component, Open Graph/Twitter meta, JSON-LD (Organization/Person/BlogPosting/Breadcrumbs), hreflang |
+| [`astro-seo`](skills/astro-seo/SKILL.md) | Reusable SEO component, Open Graph/Twitter meta, JSON-LD (Organization/Person/BlogPosting/Breadcrumbs), canonical URLs |
 | [`astro-sitemap`](skills/astro-sitemap/SKILL.md) | `@astrojs/sitemap` setup, page filtering, custom priority/changefreq, multi-language sitemap with hreflang, robots.txt |
 | [`astro-i18n`](skills/astro-i18n/SKILL.md) | Prefix-based routing (default + `/en`), route mapping, dictionary without external lib, multilingual collections, language switcher |
 | [`astro-env`](skills/astro-env/SKILL.md) | Server vs client variables (`PUBLIC_` prefix), feature flags with centralized config, TypeScript env declarations, build-time vs runtime |

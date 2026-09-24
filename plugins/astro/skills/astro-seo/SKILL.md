@@ -1,6 +1,6 @@
 ---
 name: astro-seo
-description: "ACTIVATE when implementing SEO meta tags, Open Graph, Twitter cards, JSON-LD structured data, or canonical URLs in Astro. ACTIVATE for 'SEO', 'meta tags', 'og:image', 'structured data', 'JSON-LD', 'canonical'. Covers: reusable SEO component, Open Graph/Twitter card meta, JSON-LD structured data (Organization, Person, BlogPosting, Breadcrumbs), multilingual SEO with hreflang, blog post SEO. DO NOT use for: sitemap configuration (see astro-sitemap), general HTML head management."
+description: "ACTIVATE when implementing SEO meta tags, Open Graph, Twitter cards, JSON-LD structured data, or canonical URLs in Astro. ACTIVATE for 'SEO', 'meta tags', 'og:image', 'structured data', 'JSON-LD', 'canonical'. Covers: reusable SEO component, Open Graph/Twitter card meta, JSON-LD structured data (Organization, Person, BlogPosting, Breadcrumbs), blog post SEO. DO NOT use for: sitemap configuration (see astro-sitemap), hreflang and og:locale tags for a multilingual site (see astro-i18n), general HTML head management."
 ---
 
 # Astro SEO Patterns
@@ -48,7 +48,7 @@ const ogImage = new URL(image, siteUrl).toString();
 
 > **When adding JSON-LD structured data** (Organization, Person, BlogPosting, Breadcrumbs), read `references/seo-components-and-structured-data.md` for all schema.org patterns.
 
-> **When implementing multilingual SEO with hreflang**, read `references/seo-components-and-structured-data.md` for hreflang and og:locale patterns.
+> **When implementing multilingual SEO with hreflang**, read `astro-i18n`'s `references/i18n-implementation-patterns.md` — it holds the hreflang and og:locale markup, and the alternate-path computation they need.
 
 ## Quick Reference
 

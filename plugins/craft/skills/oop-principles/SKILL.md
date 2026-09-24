@@ -1,6 +1,6 @@
 ---
 name: oop-principles
-description: "ACTIVATE when designing classes, value objects, collections, or when the user asks about object design, encapsulation, or 'Tell Don't Ask' across languages. Covers cross-language OOP principles: Tell Don't Ask, collection over named properties, Whole Object pattern, iterable collections, self-describing value objects. Language-specific examples and constructs (IteratorAggregate, Symbol.iterator, branded types) live in companion skills (php-oop, ts-oop). DO NOT use for: immutable aggregates modeled as functional record types (see craft:ddd-fp-principles)."
+description: "ACTIVATE when designing classes, and the value objects or collections modelled as classes, or when the user asks about object design, encapsulation, or 'Tell Don't Ask' across languages. Covers cross-language OOP principles: Tell Don't Ask, collection over named properties, Whole Object pattern, iterable collections, self-describing value objects. Language-specific examples and constructs (IteratorAggregate, Symbol.iterator, branded types) live in companion skills (php-oop, ts-oop). DO NOT use for: a value object or an aggregate modelled as an immutable record with functions over it rather than as a class (see craft:ddd-fp-principles)."
 ---
 
 # OOP Design — Cross-Language Principles
