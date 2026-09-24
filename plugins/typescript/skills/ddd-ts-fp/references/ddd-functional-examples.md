@@ -89,17 +89,6 @@ const makeAddress =
     createdAt,
     updatedAt: createdAt,
   });
-
-const makeFormatter =
-  (logger: Logger) =>
-  (rawMessage: ExternalMessage): Result<CreateTenantCommand, DomainError> => {
-    logger.info('Formatting message', { id: rawMessage.id });
-    return success({
-      email: rawMessage.email,
-      firstName: rawMessage.firstName,
-      lastName: rawMessage.lastName,
-    });
-  };
 ```
 
 ### Usage in pipe

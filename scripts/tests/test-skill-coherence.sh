@@ -1420,6 +1420,28 @@ assert_present "T8 ts-ports-adapters names NestJS itself, not only the skill tha
   'DO NOT use for: NestJS, or any container-based DI' "$TS_PORTS"
 
 echo ""
+echo "== Iteration 1 (#73) — every checked example obeys the rule printed beside it"
+
+cases=$((cases + 1))
+if grep -qE "tag: '[a-z-]+'" "$TS_CONVENTIONS" && grep -qE "is[A-Z][a-zA-Z]*\(receipt\)" "$TS_CONVENTIONS" && ! grep -q 'receipt\.fetched' "$TS_CONVENTIONS"; then
+  echo "✓ R1+R2 ts-conventions' discriminated union example reads its tag through an isX predicate"
+else
+  echo "✗ R1+R2 ts-conventions' discriminated union example reads its tag through an isX predicate"
+  failures=$((failures + 1))
+fi
+
+cases=$((cases + 1))
+if grep -A1 -E '^\s*rawInput,\s*$' "$FP_EXAMPLES" | grep -q 'validateEmail,' && ! grep -q 'success(rawInput)' "$FP_EXAMPLES"; then
+  echo "✓ R3 the railway pipe takes its raw value, not a pre-wrapped success(rawInput)"
+else
+  echo "✗ R3 the railway pipe takes its raw value, not a pre-wrapped success(rawInput)"
+  failures=$((failures + 1))
+fi
+
+assert_absent "R4 the ddd-ts-fp maker example takes no Logger" \
+  '(logger: Logger)' "$DDD_EXAMPLES"
+
+echo ""
 if [[ $failures -gt 0 ]]; then
   echo "✗ $failures/$cases assertion(s) failed"
   exit 1
