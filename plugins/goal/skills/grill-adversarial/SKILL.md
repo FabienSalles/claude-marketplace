@@ -1,6 +1,6 @@
 ---
 name: grill-adversarial
-description: Opt-in adversarial plan-challenging pass for the goal workflow (invoked by /goal:spec when functional gaps are suspected, or on explicit request). Composes the Pocock grill skills (grill-me, grill-with-docs) and goes much further, hunting the functional and technical holes that survive a normal grill — broken invariants and broken execution schemas — BEFORE the iterations are frozen, so the plan is coherent and executable exactly as specified. Highest value on FRONT / interactive features where every user action is a state transition; lighter on pure back/transactional work. ACTIVATE for 'grill adversarial', 'grille adversariale', 'challenge the plan', 'trous fonctionnels', 'invariants', 'state machine', 'interaction coherence', 'front interactions', 'edge transitions'.
+description: Opt-in adversarial plan-challenging pass for the goal workflow (invoked by /goal:spec when functional gaps are suspected, or on explicit request). Composes the Pocock grill skills (grill-me, grill-with-docs) and goes much further, hunting the functional and technical holes that survive a normal grill — broken invariants and broken execution schemas — BEFORE the iterations are frozen, so the plan is coherent and executable exactly as specified. Highest value on a COMPLEX BEHAVIOUR, and equally on a SIMPLE CHANGE LANDING IN A DENSE ZONE — many invariants, many paths, many things to keep in sync — which is the case most often waved through, since a one-liner invites nobody to re-enumerate anything. ACTIVATE for 'grill adversarial', 'grille adversariale', 'challenge the plan', 'trous fonctionnels', 'incohérences', 'invariants', 'state machine', 'interaction coherence', 'front interactions', 'edge transitions', 'zone complexe', 'effets de bord'.
 ---
 
 # Adversarial grill — challenge the plan until no functional hole is left
@@ -15,15 +15,53 @@ what was never defined, never discussed, and never questioned.
 
 ## When to run / when to skip
 
-- **Run** when: the feature is **interactive / front**; state lives client-side;
-  you sense unspoken scenarios; a thin-AC Jira US; anything where "a control
-  exists" ≠ "the interaction stays coherent after any sequence of actions".
-- **Skip** when: a small US whose scenarios you fully enumerate and are confident
-  about; you can already name every state and every transition.
-- **Front vs back:** on **back**, actions are defined at a higher level (endpoints
-  / commands, usually transactional) → the state space is small and server-owned,
-  so this pass is light. On **front**, the state *is* the DOM and **every click is
-  a transition** → exhaustive coverage is essential. Lean hard into front.
+Value is the **product of two quantities**, and neither of them is how interactive
+the feature looks:
+
+- **how dense the zone already is** — how many invariants hold there, how many
+  paths reach it, how many things must stay in sync, how many abnormal states it
+  already names (degraded, expired, absent, disabled);
+- **how far the change reaches into it** — whether it adds an actor, a copy, a
+  path or a state, or only changes a value inside one path that already exists.
+
+A complex behaviour scores high on both. **A simple modification inside a dense
+zone scores high too — and that is the dangerous case**, because its author sees a
+one-liner and nobody re-enumerates anything.
+
+### The test
+
+Counting beats adjectives: every zone feels normal to whoever works in it, so
+"is this complex?" is answered *yes* far too rarely by the person best placed to
+answer it.
+
+1. **Count what the zone already guarantees** — invariants its contract states,
+   rules its checks assert, states its docs name. **If that count exceeds what can
+   be recited from memory, the zone is dense.**
+2. **Name what the change adds** to it: an actor, a copy, a path, a state. Each
+   one *multiplies* the space rather than extending it — the same states, crossed
+   with one more thing that can be in them.
+3. **Run the pass unless both come back small.**
+
+**Skip** only when the zone holds few invariants AND the change adds nothing to
+them: a copy change, a rename with no new caller, a refactor whose tests already
+pin the behaviour.
+
+### Two traps
+
+**The size of the diff is not the signal.** Neither is "it is only a rename / a
+second one of what already exists / one config line". Those describe the change;
+the holes come from the zone.
+
+**"The state space is inherited from the parent work" is not a reason to skip** —
+it is a reason to run. An inherited space is a *measured* count for step 1, and
+anything the change adds crosses it. Observed: a pass argued against on exactly
+those grounds surfaced three holes anyway, one of which became a new business
+rule — a newly added invocation path silently bypassed a guard the old one
+honoured.
+
+**Front vs back is a matter of degree, not of kind.** On back, actions are coarser
+and server-owned, so the matrix is smaller — not absent. Walk it anyway; a small
+matrix is cheap.
 
 ## Method
 
