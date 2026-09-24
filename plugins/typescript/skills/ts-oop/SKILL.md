@@ -1,6 +1,6 @@
 ---
 name: ts-oop
-description: "ACTIVATE when designing TypeScript classes, value objects, collections, or when the user asks about object design, encapsulation, Tell Don't Ask, or Symbol.iterator. Provides TS-specific examples for the cross-language OOP rules defined in craft:oop-principles, plus TS-specific patterns (Symbol.iterator, branded types for primitive identifiers). DO NOT use for: functional DDD modeling (see ddd-ts-fp), refactoring methodology (see ts-refactoring)."
+description: "ACTIVATE when designing TypeScript classes, and the value objects or collections modelled as classes, or when the user asks about object design, encapsulation, Tell Don't Ask, or Symbol.iterator. Provides TS-specific examples for the cross-language OOP rules defined in craft:oop-principles, plus TS-specific patterns (Symbol.iterator, branded types for primitive identifiers). DO NOT use for: a value object or an aggregate modelled as an immutable record rather than a class (see ddd-ts-fp), refactoring methodology (see ts-refactoring)."
 ---
 
 # OOP — TypeScript Examples
