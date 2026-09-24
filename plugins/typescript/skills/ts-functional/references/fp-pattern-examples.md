@@ -97,8 +97,8 @@ function createTenant(dto: CreateTenantDto): Result<Tenant, ValidationError> {
 
 ```typescript
 const result = pipe(
-  success(rawInput),
-  chain(validateEmail),
+  rawInput,
+  validateEmail,
   chain(normalizeEmail),
   chain(checkUniqueness),
 );

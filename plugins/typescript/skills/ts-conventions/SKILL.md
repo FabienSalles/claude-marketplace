@@ -144,11 +144,15 @@ type Receipt = {
 
 // ✅ CORRECT - Discriminated union = only valid states
 type Receipt =
-  | { fetched: true; data: ReceiptData }
-  | { fetched: false; error: string };
+  | { tag: 'fetched'; data: ReceiptData }
+  | { tag: 'not-fetched'; error: string };
+
+function isFetched(receipt: Receipt): receipt is Extract<Receipt, { tag: 'fetched' }> {
+  return receipt.tag === 'fetched';
+}
 
 function handle(receipt: Receipt) {
-  if (receipt.fetched) {
+  if (isFetched(receipt)) {
     console.log(receipt.data); // TypeScript knows data exists
   } else {
     console.error(receipt.error); // TypeScript knows error exists
