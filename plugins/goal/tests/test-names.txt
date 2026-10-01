@@ -132,6 +132,8 @@ a staged deletion counts against the budget
 a staged deletion halts on a plan that declares no delivery mode at all
 a staged deletion halts on a plan that declares no-bc-break
 a supporting command green without the implementation does not halt the iteration
+a swept command running a file an iteration declares and has not written yet is skipped, naming it
+a swept command running a missing file no iteration declares still refuses
 a tag created by the implementer halts the run, naming it
 a tamper on the first attempt survives a quota failure and retry
 a ticked iteration's gate2 is still swept

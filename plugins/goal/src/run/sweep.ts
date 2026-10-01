@@ -1,8 +1,9 @@
 import { command } from '../adapters/command.ts';
+import { fs } from '../adapters/fs.ts';
 import { doneSection, gateFence } from '../core/plan.ts';
 import { REFUSED } from '../core/verdict.ts';
 import { bounded, spawnOptions } from '../gate/bounded.ts';
-import { declaredKeys, iterationNumbers, iterationSection } from '../gate/plan.ts';
+import { declaredKeys, declaredPaths, iterationNumbers, iterationSection } from '../gate/plan.ts';
 import type { Reporter } from './report.ts';
 
 const swept = (block: string[], subject: string): string[] =>
@@ -16,18 +17,47 @@ const swept = (block: string[], subject: string): string[] =>
     return gate !== null && Number(gate[1]) >= 2;
   }).map(([, command]) => command);
 
+const iterationsOf = (source: string): string[] => [
+  ...new Set([...iterationNumbers(source, true), ...iterationNumbers(source, false)]),
+];
+
 const sweepCommands = (source: string): string[] => {
-  const numbers = [...new Set([...iterationNumbers(source, true), ...iterationNumbers(source, false)])];
-  const iterations = numbers.flatMap((iteration) =>
+  const iterations = iterationsOf(source).flatMap((iteration) =>
     swept(gateFence(iterationSection(source, iteration)) ?? [], `Iteration ${iteration}`),
   );
 
   return [...iterations, ...swept(gateFence(doneSection(source) ?? []) ?? [], "the plan's Definition of Done")];
 };
 
+const notWrittenYet = (source: string): Set<string> =>
+  new Set(
+    iterationsOf(source)
+      .flatMap((iteration) =>
+        declaredPaths(declaredKeys(gateFence(iterationSection(source, iteration)) ?? [], `Iteration ${iteration}`)),
+      )
+      .filter((path) => !fs.exists(path)),
+  );
+
+const pendingPath = (cmd: string, pending: Set<string>): string | undefined =>
+  cmd
+    .split(/\s+/)
+    .map((token) => token.replace(/^\.\//, ''))
+    .find((token) => pending.has(token));
+
 export const sweep = (source: string, reporter: Reporter): void => {
   const declared = sweepCommands(source);
-  const distinct = [...new Set(declared)];
+  const pending = notWrittenYet(source);
+  const distinct = [...new Set(declared)].filter((cmd) => {
+    const path = pendingPath(cmd, pending);
+
+    if (path === undefined) {
+      return true;
+    }
+
+    reporter.say(`RUN base sweep skipped \`${cmd}\`: ${path} is declared by the plan and not written yet`);
+
+    return false;
+  });
 
   for (const cmd of distinct) {
     const result = command.run(bounded(cmd), [], spawnOptions());

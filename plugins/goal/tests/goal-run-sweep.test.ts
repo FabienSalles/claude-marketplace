@@ -58,3 +58,31 @@ test('the Definition of Done block is still swept', () => {
   assert.match(output, /STOP the base is not green: `false` exited 1/, output);
   assert.ok(!existsSync(fixture.claudeLog), 'the Definition of Done block was skipped');
 });
+
+test('a swept command running a file an iteration declares and has not written yet is skipped, naming it', () => {
+  const planText = PLAN2.replace('test_files=t.txt', 'test_files=check.sh').replace(
+    '### Iteration 1',
+    '## Definition of Done\n\n```gate\ndod1=./check.sh\n```\n\n### Iteration 1',
+  );
+  const fixture = repo({ planText });
+
+  const { code, output } = run(fixture, [fixture.plan, '1'], { FAKE_CLAUDE_WRITES: join(fixture.dir, 'a.txt') });
+
+  assert.equal(code, 0, output);
+  assert.match(output, /RUN base sweep skipped `\.\/check\.sh`: check\.sh is declared by the plan and not written yet/, output);
+  assert.ok(existsSync(fixture.claudeLog), 'the run refused on a file the plan itself creates');
+});
+
+test('a swept command running a missing file no iteration declares still refuses', () => {
+  const planText = PLAN2.replace(
+    '### Iteration 1',
+    '## Definition of Done\n\n```gate\ndod1=./check.sh\n```\n\n### Iteration 1',
+  );
+  const fixture = repo({ planText });
+
+  const { code, output } = run(fixture, [fixture.plan, '1']);
+
+  assert.notEqual(code, 0);
+  assert.match(output, /STOP the base is not green: `\.\/check\.sh` exited 127/, output);
+  assert.ok(!existsSync(fixture.claudeLog), 'a missing file nobody declared was skipped');
+});
