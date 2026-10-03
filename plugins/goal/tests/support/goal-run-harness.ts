@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { chmodSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs';
+import { appendFileSync, chmodSync, cpSync, mkdirSync, readdirSync, symlinkSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
 import { command } from '../../src/adapters/command.ts';
@@ -81,29 +81,14 @@ export type FixtureOptions = {
   // A bare `origin` two path segments deep (`acme/demo.git`), so `repoOf`'s parse of a real
   // remote URL has something genuine to strip down to `acme/demo` rather than a stand-in.
   remote?: boolean;
+  shareBin?: boolean;
 };
 
-// Both binaries the script shells out to are faked first on PATH, so a test drives the whole
-// orchestration without spending a token or reaching the network. Each records its argv, which is
-// how "what was handed to the implementer" is asserted rather than assumed.
-//
-// The fake gate mimics the real one where it matters to this suite: `check` publishes a
-// plan_hash and a ticked= line on stdout (empty unless FAKE_GATE_TICKED says otherwise), `lock`
-// creates the same `<plan>.run.lock` directory, `unlock` removes it. That makes the lock
-// assertions, and the ticked set a caller wires from `check` through to `commit`, real rather
-// than a stand-in.
-export const repo = (options: FixtureOptions = {}): Fixture => {
-  const dir = tmpDir('goal-run-');
-  const bin = join(dir, 'fake-bin');
-  const claudeLog = join(dir, 'claude-args.txt');
-  const gateLog = join(dir, 'gate-args.txt');
-  const ghLog = join(dir, 'gh-args.txt');
-
-  mkdirSync(bin);
-
+const writeFakeBinaries = (bin: string, claudeLog: string, gateLog: string, ghLog: string, prelude: string) => {
   writeFileSync(
     join(bin, 'claude'),
     `#!/bin/sh
+${prelude}
 printf '%s\\n' "$@" >> ${claudeLog}
 printf 'env DISABLE_AUTOUPDATER=%s\\n' "$DISABLE_AUTOUPDATER" >> ${claudeLog}
 # Fails quota-shaped for the first FAKE_CLAUDE_QUOTA_UNTIL calls, tracked in a counter file
@@ -173,6 +158,7 @@ exit \${FAKE_CLAUDE_EXIT:-0}
   writeFileSync(
     join(bin, 'fake-gate'),
     `#!/bin/sh
+${prelude}
 printf '%s\\n' "$@" >> ${gateLog}
 case "$1" in
   check)  printf 'OK\\nplan_hash=${HASH}\\nticked=%s\\n' "$FAKE_GATE_TICKED"; [ -n "$FAKE_GATE_CHECK_FAIL_N" ] && [ "$3" = "$FAKE_GATE_CHECK_FAIL_N" ] && exit 1; exit \${FAKE_GATE_CHECK_EXIT:-0} ;;
@@ -197,6 +183,7 @@ exit 2
   writeFileSync(
     join(bin, 'gh'),
     `#!/bin/sh
+${prelude}
 { printf -- '--- call ---\\n'; printf '%s\\n' "$@"; } >> ${ghLog}
 case "$1 $2" in
   "pr view")
@@ -214,25 +201,87 @@ exit 0
   chmodSync(join(bin, 'claude'), 0o755);
   chmodSync(join(bin, 'fake-gate'), 0o755);
   chmodSync(join(bin, 'gh'), 0o755);
+};
 
-  git(dir, 'init', '-q', '-b', 'main');
-  git(dir, 'config', 'user.email', 'run@example.com');
-  git(dir, 'config', 'user.name', 'Run');
-  writeFileSync(join(dir, 'README.md'), '# scratch\n');
+let sharedBinDir: string | undefined;
+
+const sharedBinaries = (): string => {
+  if (sharedBinDir === undefined) {
+    sharedBinDir = tmpDir('goal-run-shared-bin-');
+    writeFakeBinaries(
+      sharedBinDir,
+      '"$d/claude-args.txt"',
+      '"$d/gate-args.txt"',
+      '"$d/gh-args.txt"',
+      'd=$(dirname "$0")/..\n',
+    );
+  }
+
+  return sharedBinDir;
+};
+
+let checkoutTemplate: string | undefined;
+
+const initialCheckout = (): string => {
+  if (checkoutTemplate === undefined) {
+    const dir = tmpDir('goal-run-checkout-');
+
+    git(dir, 'init', '-q', '-b', 'main');
+    git(dir, 'config', 'user.email', 'run@example.com');
+    git(dir, 'config', 'user.name', 'Run');
+    // A detached `git maintenance --auto` after the commit below writes and removes a lock under
+    // .git/objects while repo() copies this template, which surfaces as ENOENT on a random test.
+    git(dir, 'config', 'maintenance.auto', 'false');
+    writeFileSync(join(dir, 'README.md'), '# scratch\n');
+
+    // The plan's directory is gitignored, which the real preflight requires and this fixture has
+    // to honour: visible to git, the spec and the run's own log show up in `git status`, the tree
+    // is never clean, and "the implementer wrote nothing" could never be observed. `trackPlan`
+    // deliberately breaks that for the plan's own directory, to exercise the check that catches it
+    // — `.claude/` stays ignored either way, since that is where a run's own records land now,
+    // never inside the plan's directory.
+    writeFileSync(join(dir, '.gitignore'), '.claude/\nfake-bin/\n*-args.txt\n');
+
+    git(dir, 'add', '-A');
+    git(dir, 'commit', '-qm', 'init');
+    checkoutTemplate = dir;
+  }
+
+  return checkoutTemplate;
+};
+
+// Both binaries the script shells out to are faked first on PATH, so a test drives the whole
+// orchestration without spending a token or reaching the network. Each records its argv, which is
+// how "what was handed to the implementer" is asserted rather than assumed.
+//
+// The fake gate mimics the real one where it matters to this suite: `check` publishes a
+// plan_hash and a ticked= line on stdout (empty unless FAKE_GATE_TICKED says otherwise), `lock`
+// creates the same `<plan>.run.lock` directory, `unlock` removes it. That makes the lock
+// assertions, and the ticked set a caller wires from `check` through to `commit`, real rather
+// than a stand-in.
+export const repo = (options: FixtureOptions = {}): Fixture => {
+  const dir = tmpDir('goal-run-');
+  const bin = join(dir, 'fake-bin');
+  const claudeLog = join(dir, 'claude-args.txt');
+  const gateLog = join(dir, 'gate-args.txt');
+  const ghLog = join(dir, 'gh-args.txt');
+
+  mkdirSync(bin);
+
+  if (options.shareBin) {
+    const shared = sharedBinaries();
+
+    for (const name of ['claude', 'fake-gate', 'gh']) {
+      symlinkSync(join(shared, name), join(bin, name));
+    }
+  } else {
+    writeFakeBinaries(bin, claudeLog, gateLog, ghLog, '');
+  }
+
+  cpSync(initialCheckout(), dir, { recursive: true });
 
   const planFile = options.planFile ?? 'demo-spec.md';
   const planDir = options.trackPlan ? 'plans' : '.claude/plans';
-
-  // The plan's directory is gitignored, which the real preflight requires and this fixture has
-  // to honour: visible to git, the spec and the run's own log show up in `git status`, the tree
-  // is never clean, and "the implementer wrote nothing" could never be observed. `trackPlan`
-  // deliberately breaks that for the plan's own directory, to exercise the check that catches it
-  // — `.claude/` stays ignored either way, since that is where a run's own records land now,
-  // never inside the plan's directory.
-  writeFileSync(join(dir, '.gitignore'), '.claude/\nfake-bin/\n*-args.txt\n');
-
-  git(dir, 'add', '-A');
-  git(dir, 'commit', '-qm', 'init');
 
   if (options.remote) {
     const root = tmpDir('goal-run-remote-');
@@ -382,27 +431,38 @@ export const runInProcess = async (
   }
 
   let output = '';
+  let jsonl = '';
+  const emit = (event: string, fields: Record<string, unknown>): void => {
+    if (jsonl) {
+      appendFileSync(jsonl, `${JSON.stringify({ v: 1, ts: new Date().toISOString(), event, ...fields })}\n`);
+    }
+  };
   const reporter: Reporter = {
     say: (message) => {
       output += `${message}\n`;
+      emit('say', { message });
     },
     record: (text) => {
       if (text.trim() !== '') {
         output += `${text}\n`;
+        emit('record', { payload: text });
       }
     },
     stop: (message, code) => {
       output += `STOP ${message}\n`;
+      emit('stop', { message: `STOP ${message}`, exit: code });
       throw new PilotExit(code);
     },
-    setLog: () => {},
+    setLog: (dir) => {
+      jsonl = join(dir, '.run.jsonl');
+    },
   };
 
   process.exit = (code?: number) => {
     throw new PilotExit(code ?? 0);
   };
 
-  const gateLabel = join(fixture.bin, 'fake-gate');
+  const gateLabel = env.GOAL_GATE ?? join(fixture.bin, 'fake-gate');
   const gate = spawnGateAdapter(gateLabel);
   const double = doubleCommand();
   let lock: ReturnType<typeof createLock> | undefined;
