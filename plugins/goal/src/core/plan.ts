@@ -152,8 +152,8 @@ export const fileNameWorkId = (plan: string): string => {
 };
 
 // The `Work-id:` line of the plan's metadata block, read from the source the caller already holds.
-export const headerWorkId = (source: string): string | undefined => {
-  const top = source.split('\n');
+const rawHeaderWorkId = (source: string): string | undefined => {
+  const top = source.replace(/\r\n/g, '\n').split('\n');
   const end = top.findIndex((line) => /^#{2,3} /.test(line));
   const block = /^---\n([\s\S]*?)\n---[ \t]*$/m.exec(top.slice(0, end === -1 ? top.length : end).join('\n'))?.[1];
   const value = /^Work-id: *(.*)$/m.exec(block ?? '')?.[1]?.trim();
@@ -161,9 +161,32 @@ export const headerWorkId = (source: string): string | undefined => {
   return value === undefined || value === '' ? undefined : value;
 };
 
+// The work-id names a directory under .claude/goal-runs/ and a branch segment, so a header value
+// that could climb out of either is never used.
+const PATH_SEGMENT = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
+
+export const headerWorkId = (source: string): string | undefined => {
+  const value = rawHeaderWorkId(source);
+
+  return value !== undefined && PATH_SEGMENT.test(value) ? value : undefined;
+};
+
 // Every consumer that names a run's directory or checks the branch a plan expects reads it from
 // here: the header when present, the file name only when it is absent.
 export const workIdOf = (plan: string, source: string): string => headerWorkId(source) ?? fileNameWorkId(plan);
+
+export const workIdNotice = (plan: string, source: string): string | undefined => {
+  const raw = rawHeaderWorkId(source);
+  const fileName = fileNameWorkId(plan);
+
+  if (raw === undefined || raw === fileName) {
+    return undefined;
+  }
+
+  return PATH_SEGMENT.test(raw)
+    ? `the plan's Work-id header says ${raw} while its file name says ${fileName}; the header names this run`
+    : `the plan's Work-id header ${raw} is not a plain path segment, so it is ignored and the file name names this run: ${fileName}`;
+};
 
 // The bounds of an iteration's own section — from just after its "### Iteration N" heading to the
 // next "##"/"###" heading — undefined when the plan declares no such iteration. Distinct from

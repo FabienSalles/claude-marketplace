@@ -27,7 +27,7 @@ import {
   remoteDeclared,
   runnablePolicy,
 } from '../core/preflight.ts';
-import { fileNameWorkId, workIdOf } from '../core/plan.ts';
+import { fileNameWorkId, workIdNotice, workIdOf } from '../core/plan.ts';
 import { REFUSED } from '../core/verdict.ts';
 import { frontmatter, header, iterationNumbers, topRegion } from '../gate/plan.ts';
 import { autoUpdaterWarning } from './advisory.ts';
@@ -131,6 +131,13 @@ export const preflight = (plan: string, source: string, reporter: Reporter, gate
   reporter.say(`RUN preflight: Policy is ${policy}`);
   reporter.say(`RUN preflight: Remote is ${remote}`);
   reporter.say(`RUN preflight: branch is ${branch}`);
+
+  const notice = workIdNotice(plan, source);
+
+  if (notice !== undefined) {
+    reporter.say(`RUN preflight: ${notice}`);
+  }
+
   reporter.say('RUN preflight: the tree is clean');
   reporter.say(`RUN preflight: plan directory ${planDir} is git-ignored`);
 
