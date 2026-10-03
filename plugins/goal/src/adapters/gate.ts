@@ -37,7 +37,7 @@ const shell = (command: string, env?: Record<string, string>): GateResult => {
 export const spawnGateAdapter = (gate: string): GateAdapter => ({
   check: (plan, iteration) => shell(`${gate} check ${quote(plan)} ${quote(iteration)}`),
   commit: (plan, iteration, hash, ticked, jsonl) =>
-    shell(`${gate} commit ${quote(plan)} ${quote(iteration)} ${quote(hash)} ${quote(ticked)}`, jsonl ? { GOAL_RUN_JSONL: jsonl } : undefined),
+    shell(`${gate} commit ${quote(plan)} ${quote(iteration)} ${quote(hash)} ${quote(ticked)}`, jsonl !== undefined && jsonl !== '' ? { GOAL_RUN_JSONL: jsonl } : undefined),
   dod: (plan, hash) => shell(`${gate} dod ${quote(plan)}${hash !== undefined ? ` ${quote(hash)}` : ''}`),
   scan: () => shell(`${gate} scan`),
   lock: (plan) => shell(`${gate} lock ${quote(plan)}`),

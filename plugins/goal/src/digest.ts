@@ -13,11 +13,11 @@ export const digest = (transcriptPath: string): string[] => {
 
   for (const { line, event } of parseEvents(fs.readFile(transcriptPath))) {
     for (const block of event.message?.content ?? []) {
-      if (block.type === 'tool_use' && block.id && block.name) {
+      if (block.type === 'tool_use' && block.id !== undefined && block.id !== '' && block.name !== undefined && block.name !== '') {
         const target = block.input?.file_path ?? block.input?.command ?? '';
         calls.set(block.id, { line, name: block.name, target });
         order.push(block.id);
-      } else if (block.type === 'tool_result' && block.tool_use_id) {
+      } else if (block.type === 'tool_result' && block.tool_use_id !== undefined && block.tool_use_id !== '') {
         outcomes.set(block.tool_use_id, block.is_error === true);
       }
     }
@@ -30,7 +30,7 @@ export const digest = (transcriptPath: string): string[] => {
       return '';
     }
 
-    const status = outcomes.has(id) ? (outcomes.get(id) ? 'error' : 'ok') : 'pending';
+    const status = outcomes.has(id) ? (outcomes.get(id) === true ? 'error' : 'ok') : 'pending';
     return `${call.line}: ${call.name}${call.target ? ` ${call.target}` : ''} -> ${status}`;
   });
 };

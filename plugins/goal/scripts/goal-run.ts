@@ -31,7 +31,7 @@ const main = async (): Promise<void> => {
   const [plan, iteration] = process.argv.slice(2);
   const reporter: Reporter = createReporter();
 
-  if (!plan) {
+  if (plan === undefined || plan === '') {
     reporter.stop('usage: goal-run.ts <plan> [iteration]', REFUSED);
   }
 
@@ -98,7 +98,7 @@ const main = async (): Promise<void> => {
 
     const hash = /^plan_hash=([0-9a-f]*)$/m.exec(output)?.[1];
 
-    if (!hash) {
+    if (hash === undefined || hash === '') {
       reporter.say(`STOP the gate published no plan_hash for iteration ${n}, so nothing locks the contract:`);
       reporter.say(output);
       process.exit(REFUSED);

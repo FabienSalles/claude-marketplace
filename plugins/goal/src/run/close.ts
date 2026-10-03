@@ -165,7 +165,7 @@ this run: it is advisory only.`;
 
       const tokens = tokensLine(result.name, extraction);
 
-      if (tokens) {
+      if (tokens !== undefined && tokens !== '') {
         reporter.say(tokens);
       }
 
@@ -207,7 +207,7 @@ not stage anything, and do not judge whether the work was correct — the gate a
 
   const auditTokens = tokensLine('auditor', auditExtraction);
 
-  if (auditTokens) {
+  if (auditTokens !== undefined && auditTokens !== '') {
     reporter.say(auditTokens);
   }
 

@@ -135,6 +135,6 @@ test('an explicit GOAL_GATE still carries the ticked set check published through
   const calls = readFileSync(fixture.gateLog, 'utf8');
   const commitCall = calls.split(/^commit$/m).at(-1);
 
-  assert.ok(commitCall, `no commit call was recorded:\n${calls}`);
+  assert.ok(commitCall !== undefined && commitCall !== '', `no commit call was recorded:\n${calls}`);
   assert.match(commitCall!, /^3,4$/m, `the ticked set never reached commit:\n${calls}`);
 });

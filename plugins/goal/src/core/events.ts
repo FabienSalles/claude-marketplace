@@ -99,7 +99,7 @@ export const extract = (raw: string, onEvent?: (event: StreamEvent) => void): Ex
 export const lastSessionId = (raw: string): string | undefined => {
   let found: string | undefined;
   extract(raw, (event) => {
-    if (event.session_id) {
+    if (event.session_id !== undefined && event.session_id !== '') {
       found = event.session_id;
     }
   });
