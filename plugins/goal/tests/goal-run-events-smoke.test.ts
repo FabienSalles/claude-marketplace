@@ -272,6 +272,13 @@ test('tokensLine formats the four classes for a named stage', () => {
   assert.equal(line, 'RUN tokens stage=lens input_tokens=1 output_tokens=2 cache_creation_input_tokens=3 cache_read_input_tokens=4 compactions=0');
 });
 
+// R3 — a usage block missing a token class still prints a digit for it, never `undefined`.
+test('tokensLine prints 0 for a token class the usage block omits', () => {
+  const line = tokensLine('lens', { usage: { input_tokens: 1, output_tokens: 2 }, compactions: 0 });
+
+  assert.equal(line, 'RUN tokens stage=lens input_tokens=1 output_tokens=2 cache_creation_input_tokens=0 cache_read_input_tokens=0 compactions=0');
+});
+
 // R21 — the peak reads against the served model's own effective window: a known model carries
 // both the raw tokens and the percentage they represent of that window.
 test('tokensLine reads the peak against the served model\'s effective window', () => {

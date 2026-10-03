@@ -141,9 +141,9 @@ publication, the quota wait and the closing stage, against a gate split one modu
 business rules, each with its matching test file, a convention `goal-gate.ts` states in its own
 header and that the bash script was the one place in the plugin unable to follow.
 
-**What it cost, re-measured.** `scripts/goal-run.ts` + `src/run/` now stands at 1671 lines
+**What it cost, re-measured.** `scripts/goal-run.ts` + `src/run/` now stands at 1674 lines
 over 15 files, against `scripts/goal-gate.ts` + `src/gate/` at 1117 over 12; all of
-`scripts/` + `src/` is 3972 lines over 48 `.ts` files, covered by 54 test files and 450 passing tests.
+`scripts/` + `src/` is 3979 lines over 48 `.ts` files, covered by 54 test files and 453 passing tests.
 Most of the distance from the 594-line bash original is not the split: it is the mechanisms
 added since (`gitwatch.ts`, `postmortem.ts`, `quota.ts`), each of which is one of the modules the
 convention asked for. The second defect this question named (the orchestrator re-reading
@@ -452,3 +452,9 @@ plans or on runs.
 be classified. The two recorded halts were both diagnosed by a human reading a pasted terminal.
 Nobody has established which parts of that paste were load-bearing, and building the artifact
 before knowing repeats exactly what §8 did.
+
+## 7. A run under `Policy: commit` ended with no explanation: settled
+
+**Observed.** Under a non-publishing policy the publisher recorded why internally and said nothing: a run ended with commits on a branch and no line naming why none was pushed, where its three sibling branches (fixup, secret scan, push or `gh` failure) all reported themselves.
+
+**Settled.** `src/run/publish.ts` now sets `blocked`, `blockedReason` and a `RUN` line on that branch too, so the terminal line names it. `src/core/preflight.ts` refuses any `Policy:` outside `manual`, `commit`, `commit+pr`, naming the legal values, rather than silently degrading it to non-publishing.

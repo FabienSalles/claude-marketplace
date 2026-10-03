@@ -30,9 +30,21 @@ test('createPublisher exposes its own publish state directly on the object it re
   assert.equal(publisher.state.prOpen, false);
   assert.equal(publisher.state.blocked, false);
 
+  assert.equal(publisher.state.blocked, false, 'before any landing nothing is blocked');
+});
+
+// R1 — a run under a non-publishing policy ends with commits on a branch: it says why, in the
+// same RUN line and blockedReason its three siblings use.
+test('a non-publishing policy reports why nothing is pushed, like every other blocked publication', () => {
+  const said: string[] = [];
+  const reporter: Reporter = { ...silentReporter, say: (line) => said.push(line) };
+  const publisher = createPublisher(PLAN, PLAN, 'commit', 'origin', reporter, 'true');
+
   publisher.publish('1');
 
-  assert.equal(publisher.state.blocked, false, 'Policy: commit blocks nothing to publish, it never counts as a blocked publication');
+  assert.equal(publisher.state.blocked, true);
+  assert.match(publisher.state.blockedReason ?? '', /commit\+pr/);
+  assert.ok(said.some((line) => line.startsWith('RUN ') && /nothing leaves this machine/.test(line)), said.join('\n'));
 });
 
 const publish = (fixture: ReturnType<typeof repo>, args: string[], env: Record<string, string | undefined> = {}) =>

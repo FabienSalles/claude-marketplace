@@ -68,8 +68,8 @@ export const tokensLine = (stage: string, extraction?: Extraction): string | und
         : ` context_tokens=${peakTokens}`;
 
   return (
-    `RUN tokens stage=${stage} input_tokens=${usage.input_tokens} output_tokens=${usage.output_tokens} ` +
-    `cache_creation_input_tokens=${usage.cache_creation_input_tokens} cache_read_input_tokens=${usage.cache_read_input_tokens}` +
+    `RUN tokens stage=${stage} input_tokens=${usage.input_tokens ?? 0} output_tokens=${usage.output_tokens ?? 0} ` +
+    `cache_creation_input_tokens=${usage.cache_creation_input_tokens ?? 0} cache_read_input_tokens=${usage.cache_read_input_tokens ?? 0}` +
     `${model ? ` model=${model}` : ''}${peak} compactions=${compactions}`
   );
 };
