@@ -209,7 +209,7 @@ jobs:
           node-version: '24'
 
       - name: Run the gate suite under its ceiling
-        run: node plugins/goal/tests/support/budget.ts --runs 1 --wall 95
+        run: node plugins/goal/tests/support/budget.ts --runs 1 --wall 63
 
       - name: Prove the capture suite bites
         run: bash plugins/goal/tests/support/mutate.sh

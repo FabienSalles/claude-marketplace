@@ -461,4 +461,4 @@ before knowing repeats exactly what §8 did.
 
 ## 8. What ceiling should the suite answer to on CI: settled
 
-**Settled.** The `Test the goal gate` job fails when `tests/support/budget.ts --runs 1` reports a wall over 95 s. That is the job's own duration on this branch, 63 s (https://github.com/FabienSalles/claude-marketplace/actions/runs/37134176224), times 1.5, rounded up to the second. A test added later that pushes the suite past it fails CI, and `budget.ts` names the slowest file and test.
+**Settled.** The `Test the goal gate` job fails when `tests/support/budget.ts --runs 1` reports a wall over 63 s. That is the suite's own duration in that job on this branch, 41.98 s (`ℹ duration_ms 41981` in https://github.com/FabienSalles/claude-marketplace/actions/runs/37134176224), times 1.5, rounded up to the second — not the job's 63 s total, which also carries setup, lint and type-check. A test added later that pushes the suite past it fails CI, and `budget.ts` names the slowest file and test.
