@@ -458,3 +458,7 @@ before knowing repeats exactly what §8 did.
 **Observed.** Under a non-publishing policy the publisher recorded why internally and said nothing: a run ended with commits on a branch and no line naming why none was pushed, where its three sibling branches (fixup, secret scan, push or `gh` failure) all reported themselves.
 
 **Settled.** `src/run/publish.ts` now sets `blocked`, `blockedReason` and a `RUN` line on that branch too, so the terminal line names it. `src/core/preflight.ts` refuses any `Policy:` outside `manual`, `commit`, `commit+pr`, naming the legal values, rather than silently degrading it to non-publishing.
+
+## 8. What ceiling should the suite answer to on CI: settled
+
+**Settled.** The `Test the goal gate` job fails when `tests/support/budget.ts --runs 1` reports a wall over 95 s. That is the job's own duration on this branch, 63 s (https://github.com/FabienSalles/claude-marketplace/actions/runs/37134176224), times 1.5, rounded up to the second. A test added later that pushes the suite past it fails CI, and `budget.ts` names the slowest file and test.
