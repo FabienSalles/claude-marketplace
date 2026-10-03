@@ -3,11 +3,13 @@ import assert from 'node:assert/strict';
 import { chmodSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { FAKE_REPO, HASH, PLAN, git, repo, run, runInProcess } from './support/goal-run-harness.ts';
+import { FAKE_REPO, HASH, PLAN, git, repo as baseRepo, run, runInProcess } from './support/goal-run-harness.ts';
 import { tmpDir } from './support/tmp.ts';
 import { createPublisher } from '../src/run/publish.ts';
 import { close, LANDED } from '../src/run/close.ts';
 import type { Reporter } from '../src/run/report.ts';
+
+const repo = (options: Parameters<typeof baseRepo>[0] = {}) => baseRepo({ ...options, shareBin: true });
 
 const PLAN_PR = PLAN.replace('Policy: commit\n', 'Policy: commit+pr\n');
 
@@ -50,6 +52,27 @@ test('a non-publishing policy reports why nothing is pushed, like every other bl
 const publish = (fixture: ReturnType<typeof repo>, args: string[], env: Record<string, string | undefined> = {}) =>
   runInProcess(fixture, args, { FAKE_GATE_COMMITS: '1', ...env });
 
+let stubGhDir: string | undefined;
+
+const stubGh = (): string => {
+  if (stubGhDir === undefined) {
+    stubGhDir = tmpDir('goal-run-stub-gh-');
+    writeFileSync(
+      join(stubGhDir, 'gh'),
+      `#!/bin/sh
+printf -- '--- call ---\\n%s\\n' "$*" >> "$STUB_GH_LOG"
+case "$1 $2" in
+  "pr view")   printf '%s\\n' "$STUB_PR_VIEW"; exit 0 ;;
+  *)           exit 0 ;;
+esac
+`,
+    );
+    chmodSync(join(stubGhDir, 'gh'), 0o755);
+  }
+
+  return stubGhDir;
+};
+
 // A `gh` stub that answers `pr view` with the given JSON body and swallows every other call, so
 // a test can drive `createPublisher` straight through a chosen `gh pr view` response instead of
 // the shared harness's fixture, which never carries a `state`.
@@ -58,25 +81,14 @@ const publishAgainstPrView = (
   prView: string,
   iteration: string,
 ): { calls: string; publisher: ReturnType<typeof createPublisher> } => {
-  const ghBin = tmpDir('goal-run-stub-gh-');
-  const ghLog = join(ghBin, 'gh-calls.txt');
-
-  writeFileSync(
-    join(ghBin, 'gh'),
-    `#!/bin/sh
-printf -- '--- call ---\\n%s\\n' "$*" >> ${ghLog}
-case "$1 $2" in
-  "pr view")   printf '%s\\n' '${prView}'; exit 0 ;;
-  *)           exit 0 ;;
-esac
-`,
-  );
-  chmodSync(join(ghBin, 'gh'), 0o755);
+  const ghLog = join(fixture.dir, 'stub-gh-calls.txt');
 
   const originalCwd = process.cwd();
   const originalPath = process.env.PATH;
   process.chdir(fixture.dir);
-  process.env.PATH = `${ghBin}:${fixture.bin}:${originalPath ?? ''}`;
+  process.env.PATH = `${stubGh()}:${fixture.bin}:${originalPath ?? ''}`;
+  process.env.STUB_GH_LOG = ghLog;
+  process.env.STUB_PR_VIEW = prView;
 
   try {
     const publisher = createPublisher(fixture.plan, fixture.plan, 'commit+pr', 'origin', silentReporter, 'true');
@@ -87,6 +99,8 @@ esac
   } finally {
     process.chdir(originalCwd);
     process.env.PATH = originalPath;
+    delete process.env.STUB_GH_LOG;
+    delete process.env.STUB_PR_VIEW;
   }
 };
 
@@ -209,40 +223,12 @@ test('resuming a single iteration when the pull request already exists edits it,
 // this run's open one: its state is read alongside its number, and only OPEN keeps it that way.
 test('a pull request already merged is not treated as open, and a new one is opened instead of edited', () => {
   const fixture = repo({ planText: PLAN_PR, remote: true });
-  const originalCwd = process.cwd();
-  const originalPath = process.env.PATH;
-  const ghBin = tmpDir('goal-run-merged-gh-');
-  const ghLog = join(ghBin, 'gh-calls.txt');
+  const { calls, publisher } = publishAgainstPrView(fixture, '{"number":28,"state":"MERGED"}', '1');
 
-  writeFileSync(
-    join(ghBin, 'gh'),
-    `#!/bin/sh
-printf -- '--- call ---\\n%s\\n' "$*" >> ${ghLog}
-case "$1 $2" in
-  "pr view")   printf '{"number":28,"state":"MERGED"}\\n'; exit 0 ;;
-  *)           exit 0 ;;
-esac
-`,
-  );
-  chmodSync(join(ghBin, 'gh'), 0o755);
-
-  process.chdir(fixture.dir);
-  process.env.PATH = `${ghBin}:${fixture.bin}:${originalPath ?? ''}`;
-
-  try {
-    const publisher = createPublisher(fixture.plan, fixture.plan, 'commit+pr', 'origin', silentReporter, 'true');
-
-    publisher.publish('1');
-
-    const calls = readFileSync(ghLog, 'utf8');
-    assert.match(calls, /pr view/, `the merged pull request was never looked up:\n${calls}`);
-    assert.match(calls, /pr create/, `a merged pull request was edited instead of opening a new one:\n${calls}`);
-    assert.ok(!calls.includes('pr edit'), `a merged pull request was edited as though it were still open:\n${calls}`);
-    assert.equal(publisher.state.prOpen, true, 'the newly opened pull request should be reflected in the publisher\'s own state');
-  } finally {
-    process.chdir(originalCwd);
-    process.env.PATH = originalPath;
-  }
+  assert.match(calls, /pr view/, `the merged pull request was never looked up:\n${calls}`);
+  assert.match(calls, /pr create/, `a merged pull request was edited instead of opening a new one:\n${calls}`);
+  assert.ok(!calls.includes('pr edit'), `a merged pull request was edited as though it were still open:\n${calls}`);
+  assert.equal(publisher.state.prOpen, true, 'the newly opened pull request should be reflected in the publisher\'s own state');
 });
 
 // R7 hole — a pull request `gh` still resolves by branch name after it was closed without

@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { chmodSync, mkdirSync, readdirSync, symlinkSync, writeFileSync } from 'node:fs';
+import { chmodSync, cpSync, mkdirSync, readdirSync, symlinkSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
 import { command } from '../../src/adapters/command.ts';
@@ -220,6 +220,33 @@ const sharedBinaries = (): string => {
   return sharedBinDir;
 };
 
+let checkoutTemplate: string | undefined;
+
+const initialCheckout = (): string => {
+  if (checkoutTemplate === undefined) {
+    const dir = tmpDir('goal-run-checkout-');
+
+    git(dir, 'init', '-q', '-b', 'main');
+    git(dir, 'config', 'user.email', 'run@example.com');
+    git(dir, 'config', 'user.name', 'Run');
+    writeFileSync(join(dir, 'README.md'), '# scratch\n');
+
+    // The plan's directory is gitignored, which the real preflight requires and this fixture has
+    // to honour: visible to git, the spec and the run's own log show up in `git status`, the tree
+    // is never clean, and "the implementer wrote nothing" could never be observed. `trackPlan`
+    // deliberately breaks that for the plan's own directory, to exercise the check that catches it
+    // — `.claude/` stays ignored either way, since that is where a run's own records land now,
+    // never inside the plan's directory.
+    writeFileSync(join(dir, '.gitignore'), '.claude/\nfake-bin/\n*-args.txt\n');
+
+    git(dir, 'add', '-A');
+    git(dir, 'commit', '-qm', 'init');
+    checkoutTemplate = dir;
+  }
+
+  return checkoutTemplate;
+};
+
 // Both binaries the script shells out to are faked first on PATH, so a test drives the whole
 // orchestration without spending a token or reaching the network. Each records its argv, which is
 // how "what was handed to the implementer" is asserted rather than assumed.
@@ -248,24 +275,10 @@ export const repo = (options: FixtureOptions = {}): Fixture => {
     writeFakeBinaries(bin, claudeLog, gateLog, ghLog, '');
   }
 
-  git(dir, 'init', '-q', '-b', 'main');
-  git(dir, 'config', 'user.email', 'run@example.com');
-  git(dir, 'config', 'user.name', 'Run');
-  writeFileSync(join(dir, 'README.md'), '# scratch\n');
+  cpSync(initialCheckout(), dir, { recursive: true });
 
   const planFile = options.planFile ?? 'demo-spec.md';
   const planDir = options.trackPlan ? 'plans' : '.claude/plans';
-
-  // The plan's directory is gitignored, which the real preflight requires and this fixture has
-  // to honour: visible to git, the spec and the run's own log show up in `git status`, the tree
-  // is never clean, and "the implementer wrote nothing" could never be observed. `trackPlan`
-  // deliberately breaks that for the plan's own directory, to exercise the check that catches it
-  // — `.claude/` stays ignored either way, since that is where a run's own records land now,
-  // never inside the plan's directory.
-  writeFileSync(join(dir, '.gitignore'), '.claude/\nfake-bin/\n*-args.txt\n');
-
-  git(dir, 'add', '-A');
-  git(dir, 'commit', '-qm', 'init');
 
   if (options.remote) {
     const root = tmpDir('goal-run-remote-');
