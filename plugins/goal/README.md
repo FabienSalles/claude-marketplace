@@ -84,6 +84,8 @@ why the plan is grilled and frozen before anything starts.
 
 Switching later means editing the `Policy:` line in the plan. The runner **refuses a `manual` plan
 outright** rather than quietly committing under a policy that says it may not.
+The `Policy:` line is a closed set, `manual`, `commit` or `commit+pr`: any other value is refused at
+preflight, naming the legal ones. Under `commit` the run's last line says why nothing was pushed.
 
 ## Quick start
 

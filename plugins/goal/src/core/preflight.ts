@@ -22,6 +22,10 @@ export const runnablePolicy = (policy: string | undefined): Result<string, strin
     );
   }
 
+  if (policy !== 'commit' && policy !== 'commit+pr') {
+    return err(`Policy is ${policy || 'empty'}, which is not one of the legal values: manual, commit, commit+pr.`);
+  }
+
   return ok(policy);
 };
 

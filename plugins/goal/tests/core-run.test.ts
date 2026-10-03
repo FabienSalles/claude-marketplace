@@ -46,6 +46,18 @@ test('runnablePolicy refuses an absent Policy line and a manual one, passes anyt
   assert.equal((result as { value: string }).value, 'commit');
 });
 
+test('runnablePolicy refuses any policy outside the closed set, naming the legal values', () => {
+  for (const policy of ['commit', 'commit+pr']) {
+    assert.equal(runnablePolicy(policy).ok, true);
+  }
+
+  for (const policy of ['', 'commit+PR', 'push', 'commit pr']) {
+    const result = runnablePolicy(policy);
+    assert.equal(result.ok, false, policy);
+    assert.match((result as { error: string }).error, /manual, commit, commit\+pr/);
+  }
+});
+
 test('remoteDeclared refuses an absent Remote line, passes a declared one through', () => {
   assert.equal(remoteDeclared(undefined).ok, false);
   assert.equal(remoteDeclared('').ok, false);

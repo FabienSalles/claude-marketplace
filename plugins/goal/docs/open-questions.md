@@ -452,3 +452,9 @@ plans or on runs.
 be classified. The two recorded halts were both diagnosed by a human reading a pasted terminal.
 Nobody has established which parts of that paste were load-bearing, and building the artifact
 before knowing repeats exactly what §8 did.
+
+## 7. A run under `Policy: commit` ended with no explanation: settled
+
+**Observed.** Under a non-publishing policy the publisher recorded why internally and said nothing: a run ended with commits on a branch and no line naming why none was pushed, where its three sibling branches (fixup, secret scan, push or `gh` failure) all reported themselves.
+
+**Settled.** `src/run/publish.ts` now sets `blocked`, `blockedReason` and a `RUN` line on that branch too, so the terminal line names it. `src/core/preflight.ts` refuses any `Policy:` outside `manual`, `commit`, `commit+pr`, naming the legal values, rather than silently degrading it to non-publishing.
