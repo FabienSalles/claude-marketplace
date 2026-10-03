@@ -7,6 +7,7 @@ import { withinBudget, noBcBreak } from '../src/core/rules/bounds.ts';
 import { resolvablePaths, selectReplay } from '../src/core/rules/cross-iteration.ts';
 import { determinismHeld, gatePassed } from '../src/core/rules/commands.ts';
 import { noIgnoredPaths, noScopeLeak, shapedPaths } from '../src/core/rules/scope.ts';
+import { makePlan } from '../src/core/plan.ts';
 
 // P2 — each gate rule proves itself in-process as a Result<_, Halt>, with no process to exit and
 // no command to spawn: every case below is a plain value in, a plain value out.
@@ -132,4 +133,12 @@ test('scope: noScopeLeak halts on a changed path the plan never declared', () =>
   assert.match(leaked.error.reason, /Scope leak on iteration 1/);
   assert.match(leaked.error.detail, /src\/b\.ts/);
   assert.equal(declared.ok, true);
+});
+
+test('plan: makePlan refuses with the rules own sentence, not a second copy', () => {
+  const secret = makePlan('1', new Map([['impl_files', '.env'], ['gate1', 'true'], ['commit_msg', 'x']]));
+  const rule = noNeverVersionedPaths(['.env'], 'Iteration 1');
+  assert.equal(secret.ok, false);
+  assert.equal(rule.ok, false);
+  assert.equal(secret.error.detail, rule.error.detail);
 });

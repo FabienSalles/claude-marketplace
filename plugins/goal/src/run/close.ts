@@ -13,18 +13,11 @@ import { git } from '../adapters/git.ts';
 import { header, iterationNumbers, readPlan } from '../gate/plan.ts';
 import { HALTED, LANDED, PAUSED } from '../core/verdict.ts';
 import { resultEnvelope, tokensLine } from './narrate.ts';
-import { blockedNote, type Publisher } from './publish.ts';
+import { blockedNote, repoOf, type Publisher } from './publish.ts';
 import type { Reporter } from './report.ts';
 import { quote } from './shell.ts';
 
 export { HALTED, LANDED } from '../core/verdict.ts';
-
-// `gh` needs owner/name, git gives a URL: SSH, HTTPS, with or without the `.git` suffix.
-const repoOf = (remote: string): string =>
-  git('remote', 'get-url', remote)
-    .stdout.trim()
-    .replace(/\.git$/, '')
-    .replace(/^.*[:/]([^/]+\/[^/]+)$/, '$1');
 
 type AgentJob = { name: string; args: string[] };
 
