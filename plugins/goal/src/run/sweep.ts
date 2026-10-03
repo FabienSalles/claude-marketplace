@@ -6,7 +6,10 @@ import { bounded, spawnOptions } from '../gate/bounded.ts';
 import { declaredKeys, declaredPaths, iterationNumbers, iterationSection } from '../gate/plan.ts';
 import type { Reporter } from './report.ts';
 
-const swept = (block: string[], subject: string): string[] =>
+const DOD_GUIDANCE =
+  '\nThe Definition of Done holds only invariants true on any intermediate base; a final-state check belongs in the `gate1` of the iteration that makes it true.';
+
+const swept = (block: string[], subject: string): [string, string][] =>
   [...declaredKeys(block, subject)].filter(([key]) => {
     if (/^dod[0-9]+$/.test(key)) {
       return true;
@@ -15,13 +18,13 @@ const swept = (block: string[], subject: string): string[] =>
     const gate = /^gate([0-9]+)$/.exec(key);
 
     return gate !== null && Number(gate[1]) >= 2;
-  }).map(([, command]) => command);
+  }).map(([key, command]) => [key, command]);
 
 const iterationsOf = (source: string): string[] => [
   ...new Set([...iterationNumbers(source, true), ...iterationNumbers(source, false)]),
 ];
 
-const sweepCommands = (source: string): string[] => {
+const sweepCommands = (source: string): [string, string][] => {
   const iterations = iterationsOf(source).flatMap((iteration) =>
     swept(gateFence(iterationSection(source, iteration)) ?? [], `Iteration ${iteration}`),
   );
@@ -45,7 +48,9 @@ const pendingPath = (cmd: string, pending: Set<string>): string | undefined =>
     .find((token) => pending.has(token));
 
 export const sweep = (source: string, reporter: Reporter): void => {
-  const declared = sweepCommands(source);
+  const keyed = sweepCommands(source);
+  const declared = keyed.map(([, cmd]) => cmd);
+  const dodCommands = new Set(keyed.filter(([key]) => key.startsWith('dod')).map(([, cmd]) => cmd));
   const pending = notWrittenYet(source);
   const distinct = [...new Set(declared)].filter((cmd) => {
     const path = pendingPath(cmd, pending);
@@ -64,7 +69,7 @@ export const sweep = (source: string, reporter: Reporter): void => {
 
     if (result.status !== 0) {
       reporter.stop(
-        `the base is not green: \`${cmd}\` exited ${result.status} before this run wrote a line:\n${result.stdout}${result.stderr}`,
+        `the base is not green: \`${cmd}\` exited ${result.status} before this run wrote a line:\n${result.stdout}${result.stderr}${dodCommands.has(cmd) ? DOD_GUIDANCE : ''}`,
         REFUSED,
       );
     }

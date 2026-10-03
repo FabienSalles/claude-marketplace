@@ -141,9 +141,9 @@ publication, the quota wait and the closing stage, against a gate split one modu
 business rules, each with its matching test file, a convention `goal-gate.ts` states in its own
 header and that the bash script was the one place in the plugin unable to follow.
 
-**What it cost, re-measured.** `scripts/goal-run.ts` + `src/run/` now stands at 1680 lines
+**What it cost, re-measured.** `scripts/goal-run.ts` + `src/run/` now stands at 1685 lines
 over 15 files, against `scripts/goal-gate.ts` + `src/gate/` at 1111 over 12; all of
-`scripts/` + `src/` is 4004 lines over 48 `.ts` files, covered by 58 test files and 482 passing tests.
+`scripts/` + `src/` is 4009 lines over 48 `.ts` files, covered by 59 test files and 484 passing tests.
 Most of the distance from the 594-line bash original is not the split: it is the mechanisms
 added since (`gitwatch.ts`, `postmortem.ts`, `quota.ts`), each of which is one of the modules the
 convention asked for. The second defect this question named (the orchestrator re-reading
@@ -462,3 +462,9 @@ before knowing repeats exactly what §8 did.
 ## 8. What ceiling should the suite answer to on CI: settled
 
 **Settled.** The `Test the goal gate` job fails when `tests/support/budget.ts --runs 1` reports a wall over 63 s. That is the suite's own duration in that job on this branch, 41.98 s (`ℹ duration_ms 41981` in https://github.com/FabienSalles/claude-marketplace/actions/runs/37134176224), times 1.5, rounded up to the second — not the job's 63 s total, which also carries setup, lint and type-check. A test added later that pushes the suite past it fails CI, and `budget.ts` names the slowest file and test.
+
+## 9. A final-state check in the Definition of Done refused the run: settled
+
+**Observed.** A `dodN` line that only turns true once the plan has landed fails the preflight base sweep, and the refusal named the command without saying why a DoD line was swept against the base at all.
+
+**Settled.** `/goal:plan` now states that the Definition of Done holds only invariants true on any intermediate base, and that a final-state check goes into the `gate1` of the iteration that makes it true. A base-sweep refusal on a `dodN` line appends that alternative after the unchanged refusal sentence; a `gateN` refusal is left as it was.
