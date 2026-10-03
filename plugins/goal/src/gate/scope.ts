@@ -3,7 +3,7 @@ import { git } from '../adapters/git.ts';
 import { covers } from '../core/plan.ts';
 import { ok, type Result } from '../core/result.ts';
 import { noNeverVersionedPaths } from '../core/rules/never.ts';
-import { noIgnoredPaths, noScopeLeak, shapedPaths } from '../core/rules/scope.ts';
+import { noIgnoredPaths, noScopeLeak } from '../core/rules/scope.ts';
 import type { Halt } from '../core/verdict.ts';
 import { halt, heldLocks } from './halt.ts';
 import { sectionBounds } from './plan.ts';
@@ -15,12 +15,6 @@ export const scopeCheck = (
   iteration: string,
   incidental: string[] = [],
 ): Result<Set<string>, Halt> => {
-  const shape = shapedPaths([...paths, ...incidental], iteration);
-
-  if (!shape.ok) {
-    return shape;
-  }
-
   const ignored = paths.filter((path) => git('check-ignore', '-q', path).status === 0);
   const ignoredResult = noIgnoredPaths(ignored, iteration);
 
