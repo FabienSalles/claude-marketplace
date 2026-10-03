@@ -43,7 +43,8 @@ const main = async (): Promise<void> => {
     reporter.stop(`the iteration must be a number, got: ${iteration}`, REFUSED);
   }
 
-  const dir = runDir(workIdOf(plan));
+  const source = fs.readFile(plan);
+  const dir = runDir(workIdOf(plan, source));
   reporter.setLog(dir);
   reporter.say(`RUN writing this run's records to ${dir}`);
 
@@ -54,7 +55,6 @@ const main = async (): Promise<void> => {
   // run by hand whichever channel this run itself took.
   const gateLabel = process.env.GOAL_GATE ?? `node ${quote(resolve(import.meta.dirname, 'goal-gate.ts'))}`;
   const gate: GateAdapter = process.env.GOAL_GATE !== undefined ? spawnGateAdapter(gateLabel) : inProcessGateAdapter();
-  const source = fs.readFile(plan);
 
   const preflightStart = Date.now();
   const { policy, remote } = preflight(plan, source, reporter, gateLabel);

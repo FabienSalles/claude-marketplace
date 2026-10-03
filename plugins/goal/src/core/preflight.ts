@@ -32,14 +32,24 @@ export const runnablePolicy = (policy: string | undefined): Result<string, strin
 export const remoteDeclared = (remote: string | undefined): Result<string, string> =>
   remote !== undefined && remote !== '' ? ok(remote) : err('the plan declares no Remote line');
 
-export const featureBranch = (isGitRepo: boolean, branch: string, workId: string): Result<string, string> => {
+export const featureBranch = (
+  isGitRepo: boolean,
+  branch: string,
+  workId: string,
+  fileName: string = workId,
+): Result<string, string> => {
   if (!isGitRepo) {
     return err('not a git repository');
   }
 
   return branch === `feature/${workId}` || branch.startsWith(`feature/${workId}-`)
     ? ok(branch)
-    : err(`the checkout stands on ${branch}, not feature/${workId} (or feature/${workId}-...)`);
+    : err(
+        `the checkout stands on ${branch}, not feature/${workId} (or feature/${workId}-...)` +
+          (fileName === workId
+            ? ''
+            : `. The plan's Work-id header says ${workId} while its file name says ${fileName}; the header wins.`),
+      );
 };
 
 export const goalRunsIgnored = (ignored: boolean, goalRunsDir: string): Result<void, string> =>

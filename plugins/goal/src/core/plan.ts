@@ -135,10 +135,9 @@ export const makePlan = (
   );
 };
 
-// A plan's work-id from its filename: everything before the -spec.md / -cleanup-spec.md suffix,
-// or before .md when neither applies. Every consumer that names a run's own directory or checks
-// the branch a plan expects reads it from here rather than repeating the suffix stripping.
-export const workIdOf = (plan: string): string => {
+// A plan's work-id from its file name: everything before the -spec.md / -cleanup-spec.md suffix,
+// or before .md when neither applies.
+export const fileNameWorkId = (plan: string): string => {
   const base = basename(plan);
 
   if (base.endsWith('-cleanup-spec.md')) {
@@ -151,6 +150,20 @@ export const workIdOf = (plan: string): string => {
 
   return base.replace(/\.md$/, '');
 };
+
+// The `Work-id:` line of the plan's metadata block, read from the source the caller already holds.
+export const headerWorkId = (source: string): string | undefined => {
+  const top = source.split('\n');
+  const end = top.findIndex((line) => /^#{2,3} /.test(line));
+  const block = /^---\n([\s\S]*?)\n---[ \t]*$/m.exec(top.slice(0, end === -1 ? top.length : end).join('\n'))?.[1];
+  const value = /^Work-id: *(.*)$/m.exec(block ?? '')?.[1]?.trim();
+
+  return value === undefined || value === '' ? undefined : value;
+};
+
+// Every consumer that names a run's directory or checks the branch a plan expects reads it from
+// here: the header when present, the file name only when it is absent.
+export const workIdOf = (plan: string, source: string): string => headerWorkId(source) ?? fileNameWorkId(plan);
 
 // The bounds of an iteration's own section — from just after its "### Iteration N" heading to the
 // next "##"/"###" heading — undefined when the plan declares no such iteration. Distinct from

@@ -18,7 +18,7 @@ export { projectDir } from './core/events.ts';
 const PROJECTS_ROOT = join(fs.homeDir(), '.claude', 'projects');
 
 export const recordedTranscripts = (plan: string, dir: string, cwd: string): string[] => {
-  const runsRoot = join(cwd, '.claude', 'goal-runs', workIdOf(plan));
+  const runsRoot = join(cwd, '.claude', 'goal-runs', workIdOf(plan, fs.exists(plan) ? fs.readFile(plan) : ''));
 
   if (!fs.exists(runsRoot)) {
     return [];
