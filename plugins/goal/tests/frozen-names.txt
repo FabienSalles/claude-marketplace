@@ -1,0 +1,194 @@
+gate-bite-verb.test.ts	bite reports OK and exits 0 when gate1 fails without the implementation
+gate-bite-verb.test.ts	bite halts when gate1 passes without the implementation
+gate-bite-verb.test.ts	bite restores the implementation by overwrite once it is done
+gate-bite-verb.test.ts	bite does not commit or tick the box it just checked
+gate-bite.test.ts	an acceptance command that passes without the implementation halts the iteration
+gate-bite.test.ts	an acceptance command that fails without the implementation passes the gate
+gate-bite.test.ts	a supporting command green without the implementation does not halt the iteration
+gate-bite.test.ts	an implementation that is a whole new file is set aside as well
+gate-bite.test.ts	a tracked implementation is restored even beside an intent-to-add file
+gate-bite.test.ts	an iteration declaring no test_files is not bitten, and the skip is said out loud
+gate-bite.test.ts	a ${label} bite check leaves no backup behind and puts the tree back
+gate-bite.test.ts	the bite check says where the implementation is set aside before running the command
+gate-bite.test.ts	a bite check signalled mid-window still puts the implementation back
+gate-bite.test.ts	an implementation rewritten during the window is restored by overwrite, not merged
+gate-bounds.test.ts	a slice whose diff exceeds its declared budget halts
+gate-bounds.test.ts	a slice inside its declared budget passes
+gate-bounds.test.ts	a staged deletion counts against the budget
+gate-bounds.test.ts	a budget that is not a number is refused
+gate-bounds.test.ts	a slice declaring no budget is not bounded
+gate-bounds.test.ts	a staged deletion halts on a plan that ${label}
+gate-bounds.test.ts	a rename halts under no-bc-break
+gate-bounds.test.ts	the same deletion passes under allow-bc-break
+gate-bounds.test.ts	the acceptance command runs three times on a green slice
+gate-bounds.test.ts	a command that fails on its second run halts, naming the run
+gate-bounds.test.ts	the bite window spawns the acceptance command once beyond the three runs
+gate-commit.test.ts	a gate block declaring the same key twice is refused
+gate-commit.test.ts	an iteration whose only changes are declared passes verify
+gate-commit.test.ts	a tracked file changed but not declared halts the iteration
+gate-commit.test.ts	an undeclared ${label} file halts the iteration
+gate-commit.test.ts	an iteration declaring a gitignored path halts
+gate-commit.test.ts	a declared non-ASCII path is not read as a scope leak
+gate-commit.test.ts	the path a rename left behind is a change the iteration has to declare
+gate-commit.test.ts	a worktree-side rename with both paths declared is not a scope leak
+gate-commit.test.ts	a run lock is exclusive, and unlock hands it back
+gate-commit.test.ts	a commit is refused while another writer holds the tick lock
+gate-commit.test.ts	a failing acceptance command leaves no commit and no tick
+gate-commit.test.ts	a scope leak leaves no commit and no tick
+gate-commit.test.ts	a passing iteration is committed under its message, then ticked
+gate-commit.test.ts	an already ticked iteration is not committed twice
+gate-cross-iteration.test.ts	a command an earlier checked iteration passed on halts the slice that breaks it
+gate-cross-iteration.test.ts	a command declared by two checked iterations is replayed once
+gate-cross-iteration.test.ts	the slice being verified does not replay its own command
+gate-cross-iteration.test.ts	an earlier iteration nobody has checked yet is not replayed
+gate-cross-iteration.test.ts	a later iteration's declared directory renamed away halts before the commit
+gate-cross-iteration.test.ts	a slice whose own deletion empties a declared directory is not judged by it
+gate-cross-iteration.test.ts	a later iteration declaring ${label} is resolvable
+gate-events.test.ts	a gate handed an unwritable GOAL_RUN_JSONL still judges instead of crashing
+gate-events.test.ts	a commit run with GOAL_RUN_JSONL set appends an event for gate1, each determinism run, and the bite check
+gate-events.test.ts	a commit run with GOAL_RUN_JSONL unset writes no event file at all
+gate-events.test.ts	a replayed wall command is appended as its own event, apart from the slice’s own gateN
+gate-never.test.ts	an undeclared .env halts before the scope check
+gate-never.test.ts	a .env declared in impl_files is refused rather than staged
+gate-never.test.ts	.env.example is not refused
+gate-never.test.ts	a node_modules path is refused
+gate-never.test.ts	a .pem file is refused
+gate-never.test.ts	a .env named on the Incidental header is still refused
+gate-never.test.ts	a source file whose name contains env is left alone
+gate-never.test.ts	an incidental path is tolerated, then committed
+gate-never.test.ts	an unrelated file still halts when incidental is declared
+gate-never.test.ts	an incidental path does not count against max_diff
+gate-overlap.test.ts	${verb} halts an iteration whose impl_files covers its test_files
+gate-overlap.test.ts	the halt names the overlapping pair and the fix, excluding the tests
+gate-overlap.test.ts	a trailing-slash impl_files subtree covering a test_files path is refused too
+gate-overlap.test.ts	an iteration with empty test_files is exempt from the overlap check
+gate-overlap.test.ts	non-overlapping impl_files and test_files pass the check verb
+gate-ship.test.ts	a plan whose global Definition of Done passes may ship
+gate-ship.test.ts	a failing Definition of Done command halts, naming it
+gate-ship.test.ts	every declared Definition of Done command is replayed exactly once
+gate-ship.test.ts	a plan declaring no Definition of Done cannot ship
+gate-ship.test.ts	a Definition of Done block declaring no command cannot ship
+gate-ship.test.ts	a Definition of Done block declaring a key it may not set is refused
+gate-ship.test.ts	betterleaks is the scanner when both are installed
+gate-ship.test.ts	gitleaks is the scanner when betterleaks is not installed
+gate-ship.test.ts	a scanner that reports a finding refuses the push
+gate-ship.test.ts	no scanner installed refuses the push, naming what it looked for
+gate-ship.test.ts	a pre-push scan judges committed content, not the working directory
+gate-ticked.test.ts	check publishes the ticked set beside plan_hash=
+gate-ticked.test.ts	check publishes an empty ticked set when nothing is ticked yet
+gate-ticked.test.ts	commit refuses when a locked iteration was unticked before the commit
+gate-ticked.test.ts	commit passes when the ticked set handed to it is still a subset of what the plan ticks
+gate-ticked.test.ts	commit is unaffected by an untick when it is handed no ticked set
+gate-ticked.test.ts	commit ignores a ticked set parked in the environment
+gate-ticked.test.ts	a run refuses to commit once an earlier landed iteration was unticked while it ran
+goal-run-args.test.ts	it refuses when no plan is named
+goal-run-args.test.ts	it refuses when the plan is not readable
+goal-run-args.test.ts	it refuses when the iteration is not a number
+goal-run-brief.test.ts	it hands the implementer the iteration section, and never the plan path
+goal-run-brief.test.ts	it pins the implementer to its own agent, in a mode that never prompts
+goal-run-brief.test.ts	it asks the implementer for a streamed, verbose account of its own actions
+goal-run-brief.test.ts	it renders each of the implementer tool uses as one line
+goal-run-brief.test.ts	a tool use with no file_path renders its command as the target
+goal-run-brief.test.ts	it records the implementer session id beside the run
+goal-run-gitdir.test.ts	the implementer changing a file inside .git/ halts the run, naming the artifact
+goal-run-gitdir.test.ts	a git-directory tamper is diagnosed by name, not read as an empty tree
+goal-run-gitdir.test.ts	a self-committed implementer is still diagnosed as that, unaffected by the new check
+goal-run-gitdir.test.ts	a tamper on the first attempt survives a quota failure and retry
+goal-run-gitdir.test.ts	an ordinary run that never touches .git/ is not stopped by this check
+goal-run-halt-log.test.ts	a gate refusal records the verdict in the run log and the STOP line names it
+goal-run-halt-log.test.ts	a gate refusal is recorded exactly once in the log
+goal-run-halt-log.test.ts	a gate pass also records the verdict in the run log
+goal-run-lock-signals.test.ts	it releases the lock on the way out, whatever the outcome
+goal-run-lock-signals.test.ts	it releases the lock when the run is killed mid-implementation
+goal-run-lock-signals.test.ts	SIGINT releases the lock createLock() holds and exits 130
+goal-run-lock-signals.test.ts	SIGINT sent to goal-run.ts mid-implementation exits 130 and releases the lock
+goal-run-log-lines.test.ts	every log line says whether the run is advancing or stopped
+goal-run-log-lines.test.ts	it writes the same account to a log file beside the plan
+goal-run-preflight.test.ts	it refuses before any other check when the plan carries no --- metadata block
+goal-run-preflight.test.ts	it refuses when the plan declares no Policy line
+goal-run-preflight.test.ts	it refuses when the plan is Policy: manual
+goal-run-preflight.test.ts	it refuses when the plan declares no Remote line
+goal-run-preflight.test.ts	it refuses when the checkout stands on the wrong branch
+goal-run-preflight.test.ts	a preflight refusal exits exactly 2
+goal-run-preflight.test.ts	it refuses when .claude/goal-runs is visible to git, naming the directory and the gitignore line, before the clean-tree check
+goal-run-preflight.test.ts	it is valid on a first run, before .claude/goal-runs ever exists
+goal-run-preflight.test.ts	it refuses when the tree carries uncommitted work
+goal-run-preflight.test.ts	it refuses when the plan's own directory is visible to git
+goal-run-preflight.test.ts	it refuses a cleanup iteration (a Trigger line) sitting inside a feature plan
+goal-run-preflight.test.ts	a Trigger line is left alone in a *-cleanup-spec.md plan
+goal-run-preflight.test.ts	it refuses when another run already holds the plan
+goal-run-preflight.test.ts	it refuses when the base is already red
+goal-run-preflight.test.ts	it refuses when a later gate in the sweep (gate2..N) fails on the untouched tree
+goal-run-preflight.test.ts	the base sweep is skipped while the Bootstrap iteration is still unchecked
+goal-run-preflight.test.ts	the base sweep runs once the Bootstrap iteration is ticked
+goal-run-preflight.test.ts	it refuses when the branch is behind the base it forked from
+goal-run-preflight.test.ts	it falls back to comparing the branch against itself when no remote exists at all
+goal-run-preflight.test.ts	it refuses against the plan\'s PR base:, even while origin/HEAD stays green
+goal-run-preflight.test.ts	it refuses against <remote>/HEAD when the plan declares no PR base, so a fork is checked against itself
+goal-run-preflight.test.ts	a command declared identically by two iterations runs once, not once per declaration
+goal-run-preflight.test.ts	the sweep announces the reduction from declared commands to the distinct ones it ran
+goal-run-preflight.test.ts	it warns but continues when settings.json neither disables the auto-updater nor pins a stable channel
+goal-run-preflight.test.ts	it does not warn when env.DISABLE_AUTOUPDATER is set
+goal-run-preflight.test.ts	it does not warn when autoUpdatesChannel is stable
+goal-run-preflight.test.ts	a missing settings.json produces no warning and no crash
+goal-run-preflight.test.ts	an unparseable settings.json produces no warning and no crash
+goal-run-preflight.test.ts	every preflight check narrates on stdout once it passes
+goal-run-push.test.ts	the implementer pushing halts the run, naming the moved ref
+goal-run-push.test.ts	a push on the first attempt survives a quota failure and retry
+goal-run-push.test.ts	a blocked publication is named in the run's terminal line
+goal-run-push.test.ts	a halt after an earlier publication block names it too
+goal-run-push.test.ts	a pause after an earlier publication block names it too
+goal-run-push.test.ts	an ordinary run that never pushes is not stopped by this check
+goal-run-real-gate.test.ts	a real gate resolved with no GOAL_GATE override refuses to commit once an earlier landed iteration was unticked while the run was going
+goal-run-real-gate.test.ts	a real gate resolved with no GOAL_GATE override refuses to certify a run whose Definition of Done fails
+goal-run-real-gate.test.ts	an explicit GOAL_GATE still carries the ticked set check published through to the commit it drives
+goal-run-records.test.ts	a run writes .run.log, .run.jsonl and .run.session under .claude/goal-runs/<work-id>/<run-id>/
+goal-run-records.test.ts	nothing is written beside the plan anymore
+goal-run-records.test.ts	the runner prints the run directory at launch
+goal-run-records.test.ts	close briefs the auditor to write its report in the run\'s own directory
+goal-run-refs.test.ts	git stash push halts the run, naming refs/stash rather than reading an empty tree
+goal-run-refs.test.ts	a tag created by the implementer halts the run, naming it
+goal-run-refs.test.ts	a push still reads as a push, unaffected by the widened ref snapshot
+goal-run-refs.test.ts	an ordinary run that moves no ref is not stopped by this check
+goal-run-survey.test.ts	it refuses when ${claim}
+goal-run-survey.test.ts	it surveys the unchecked iterations and runs them in order when no iteration is named
+goal-run-survey.test.ts	it proves every unchecked iteration runnable before implementing any
+goal-run-survey.test.ts	it stops at the first iteration the gate refuses, and never attempts the next
+goal-run-survey.test.ts	with an iteration named, only that one runs
+goal-run-sweep.test.ts	a ```gate fence quoted in prose is not swept, even when its gate2 would fail
+goal-run-sweep.test.ts	a ticked iteration\'s gate2 is still swept
+goal-run-sweep.test.ts	the Definition of Done block is still swept
+goal-run-sweep.test.ts	a swept command running a file an iteration declares and has not written yet is skipped, naming it
+goal-run-sweep.test.ts	a swept command running a missing file no iteration declares still refuses
+goal-run-verdict.test.ts	it carries the hash check published into the commit call
+goal-run-verdict.test.ts	an implementer that wrote nothing is reported as such, and no verdict is asked for
+goal-run-verdict.test.ts	an implementer that committed is not mistaken for one that wrote nothing
+goal-run-verdict.test.ts	a gate that could not run is not reported as a refusal
+goal-run-verdict.test.ts	a gate that refuses the work halts the run and says so
+goal-run-verdict.test.ts	a gate that refuses the work exits exactly 1
+goal-run-verdict.test.ts	a gate installed under a path holding a space still runs
+goal-run-verdict.test.ts	a plan the gate refuses to check never reaches an implementer
+implementer-report.test.ts	the implementer's brief requires it to report a failing check outside its own gate
+implementer-report.test.ts	the rule is load-bearing inside the report section, not a stray sentence
+implementer-report.test.ts	the brief never orders loading convention skills
+plan-closing.test.ts	the plan closing leads with /goal:supervise, not the manual loop, when every iteration is gateable under commit+pr
+plan-closing.test.ts	the manual closing (clipboard offer + per-iteration loop) stays as the fallback
+plan-closing.test.ts	Phase 5 orders the per-iteration /goal block withheld under commit+pr when every iteration is gateable, and its routing table agrees with the closing
+plan-guard.test.ts	a plan prints a hash of its gate and dod lines
+plan-guard.test.ts	the same hash given back matches
+plan-guard.test.ts	a rewritten gate line is refused
+plan-guard.test.ts	a rewritten dod line is refused
+plan-guard.test.ts	a change that touches no gate or dod line does not move the hash
+plan-guard.test.ts	a mistyped test_files path repaired to another path does not halt
+plan-guard.test.ts	emptying an iteration\'s test_files is refused
+plan-guard.test.ts	a gate fence quoted in prose outside any iteration section does not move the hash
+plan-guard.test.ts	a comment line added inside the gate fence does not move the hash
+plan-guard.test.ts	an unreadable plan is a misuse, not a crash
+plan-guard.test.ts	called with no plan at all is a misuse
+report-format.test.ts	the auditor's Cost section prescribes the two validated tables verbatim
+report-format.test.ts	the auditor's attribution table carries its modifiers
+report-format.test.ts	neither file lets the per-model rates reappear under the table
+report-format.test.ts	the supervising row is scoped to the run's window, never the whole transcript
+report-format.test.ts	the supervise skill carries the same two table shapes as the auditor
+report-format.test.ts	the supervise skill states that it extends the tables, never reshapes them
+report-format.test.ts	both files state the % cache read formula in the same sentence shape
