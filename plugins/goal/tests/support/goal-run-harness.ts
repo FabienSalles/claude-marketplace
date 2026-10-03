@@ -229,6 +229,9 @@ const initialCheckout = (): string => {
     git(dir, 'init', '-q', '-b', 'main');
     git(dir, 'config', 'user.email', 'run@example.com');
     git(dir, 'config', 'user.name', 'Run');
+    // A detached `git maintenance --auto` after the commit below writes and removes a lock under
+    // .git/objects while repo() copies this template, which surfaces as ENOENT on a random test.
+    git(dir, 'config', 'maintenance.auto', 'false');
     writeFileSync(join(dir, 'README.md'), '# scratch\n');
 
     // The plan's directory is gitignored, which the real preflight requires and this fixture has
