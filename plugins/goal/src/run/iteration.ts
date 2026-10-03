@@ -12,6 +12,7 @@ import type { GateAdapter } from '../adapters/gate.ts';
 import { git } from '../adapters/git.ts';
 import { ceiling } from '../gate/bounded.ts';
 import { iterationSection } from '../gate/plan.ts';
+import { rulesContext } from '../core/plan.ts';
 import { detectTamper } from '../core/tamper.ts';
 import { HALTED, PAUSED, REFUSED } from '../core/verdict.ts';
 import { brief } from './brief.ts';
@@ -91,7 +92,7 @@ export const runIteration = async (
         '--output-format',
         'stream-json',
         '--verbose',
-        brief(iteration, process.cwd(), branch, section),
+        brief(iteration, process.cwd(), branch, section, rulesContext(source)),
       ],
       { encoding: 'utf8', env: { ...process.env, DISABLE_AUTOUPDATER: '1' } },
     );

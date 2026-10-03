@@ -235,3 +235,21 @@ export const goalOf = (source: string, iteration: string): string | undefined =>
     .join(' ')
     .replace(/^- \*\*Goal:\*\* */, '');
 };
+
+const headedSection = (lines: string[], heading: string): string[] => {
+  const start = lines.findIndex((line) => line.startsWith(`## ${heading}`));
+
+  if (start === -1) {
+    return [];
+  }
+
+  const next = lines.slice(start + 1).findIndex((line) => /^#{2,3} /.test(line));
+
+  return lines.slice(start, next === -1 ? lines.length : start + 1 + next);
+};
+
+export const rulesContext = (source: string): string => {
+  const lines = source.split('\n');
+
+  return [...headedSection(lines, 'Business rules'), ...headedSection(lines, 'Technical decisions')].join('\n').trim();
+};
