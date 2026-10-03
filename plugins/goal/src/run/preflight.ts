@@ -27,7 +27,7 @@ import {
   remoteDeclared,
   runnablePolicy,
 } from '../core/preflight.ts';
-import { workIdOf } from '../core/plan.ts';
+import { fileNameWorkId, workIdNotice, workIdOf } from '../core/plan.ts';
 import { REFUSED } from '../core/verdict.ts';
 import { frontmatter, header, iterationNumbers, topRegion } from '../gate/plan.ts';
 import { autoUpdaterWarning } from './advisory.ts';
@@ -50,7 +50,7 @@ export type PreflightResult = {
 
 export const preflight = (plan: string, source: string, reporter: Reporter, gate: string): PreflightResult => {
   const planBase = basename(plan);
-  const workId = workIdOf(plan);
+  const workId = workIdOf(plan, source);
   const cleanup = planBase.endsWith('-cleanup-spec.md');
 
   // 0. Metadata block — every Key: line the plan declares belongs in one `---`-delimited block
@@ -90,7 +90,7 @@ export const preflight = (plan: string, source: string, reporter: Reporter, gate
   // 3. Branch — the checkout must stand on the branch this run is meant to advance, or it
   // publishes the wrong one.
   const branchOut = git('rev-parse', '--abbrev-ref', 'HEAD');
-  const branchResult = featureBranch(branchOut.status === 0, branchOut.stdout.trim(), workId);
+  const branchResult = featureBranch(branchOut.status === 0, branchOut.stdout.trim(), workId, fileNameWorkId(plan));
 
   if (!branchResult.ok) {
     reporter.stop(branchResult.error, REFUSED);
@@ -131,6 +131,13 @@ export const preflight = (plan: string, source: string, reporter: Reporter, gate
   reporter.say(`RUN preflight: Policy is ${policy}`);
   reporter.say(`RUN preflight: Remote is ${remote}`);
   reporter.say(`RUN preflight: branch is ${branch}`);
+
+  const notice = workIdNotice(plan, source);
+
+  if (notice !== undefined) {
+    reporter.say(`RUN preflight: ${notice}`);
+  }
+
   reporter.say('RUN preflight: the tree is clean');
   reporter.say(`RUN preflight: plan directory ${planDir} is git-ignored`);
 

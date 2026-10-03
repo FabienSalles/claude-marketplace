@@ -514,6 +514,14 @@ introduces in a file outside its own scope, but every later iteration's regressi
 wall and the DoD already cover that same regression before the plan ships — so the redundant
 whole-suite run inside `gate1` buys nothing the run doesn't already pay for once.
 
+**The Definition of Done holds only invariants true on any intermediate base.** The preflight
+base sweep replays every `dodN` against the untouched tree, so a `dodN` that only becomes true
+once the plan has landed refuses the run before the first slice. A final-state check (a file
+that must exist, a form that must be gone, a count that must have changed) goes into the
+`gate1` of the iteration that makes it true, where the bite proves it failed first and the
+regression wall carries it into every later iteration. The DoD keeps what holds throughout: the
+whole-scope suite, the typecheck, the lint.
+
 **The project's typecheck is the one whole-scope command every gate block carries.** A type
 break is cross-file by nature: the slice that writes it stays green under its own scoped tests,
 every later slice inherits a red base its gates never read, and the failure surfaces only at the

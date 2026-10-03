@@ -135,10 +135,9 @@ export const makePlan = (
   );
 };
 
-// A plan's work-id from its filename: everything before the -spec.md / -cleanup-spec.md suffix,
-// or before .md when neither applies. Every consumer that names a run's own directory or checks
-// the branch a plan expects reads it from here rather than repeating the suffix stripping.
-export const workIdOf = (plan: string): string => {
+// A plan's work-id from its file name: everything before the -spec.md / -cleanup-spec.md suffix,
+// or before .md when neither applies.
+export const fileNameWorkId = (plan: string): string => {
   const base = basename(plan);
 
   if (base.endsWith('-cleanup-spec.md')) {
@@ -150,6 +149,43 @@ export const workIdOf = (plan: string): string => {
   }
 
   return base.replace(/\.md$/, '');
+};
+
+// The `Work-id:` line of the plan's metadata block, read from the source the caller already holds.
+const rawHeaderWorkId = (source: string): string | undefined => {
+  const top = source.replace(/\r\n/g, '\n').split('\n');
+  const end = top.findIndex((line) => /^#{2,3} /.test(line));
+  const block = /^---\n([\s\S]*?)\n---[ \t]*$/m.exec(top.slice(0, end === -1 ? top.length : end).join('\n'))?.[1];
+  const value = /^Work-id: *(.*)$/m.exec(block ?? '')?.[1]?.trim();
+
+  return value === undefined || value === '' ? undefined : value;
+};
+
+// The work-id names a directory under .claude/goal-runs/ and a branch segment, so a header value
+// that could climb out of either is never used.
+const PATH_SEGMENT = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
+
+export const headerWorkId = (source: string): string | undefined => {
+  const value = rawHeaderWorkId(source);
+
+  return value !== undefined && PATH_SEGMENT.test(value) ? value : undefined;
+};
+
+// Every consumer that names a run's directory or checks the branch a plan expects reads it from
+// here: the header when present, the file name only when it is absent.
+export const workIdOf = (plan: string, source: string): string => headerWorkId(source) ?? fileNameWorkId(plan);
+
+export const workIdNotice = (plan: string, source: string): string | undefined => {
+  const raw = rawHeaderWorkId(source);
+  const fileName = fileNameWorkId(plan);
+
+  if (raw === undefined || raw === fileName) {
+    return undefined;
+  }
+
+  return PATH_SEGMENT.test(raw)
+    ? `the plan's Work-id header says ${raw} while its file name says ${fileName}; the header names this run`
+    : `the plan's Work-id header ${raw} is not a plain path segment, so it is ignored and the file name names this run: ${fileName}`;
 };
 
 // The bounds of an iteration's own section — from just after its "### Iteration N" heading to the
@@ -221,4 +257,22 @@ export const goalOf = (source: string, iteration: string): string | undefined =>
     .map((line) => line.trim())
     .join(' ')
     .replace(/^- \*\*Goal:\*\* */, '');
+};
+
+const headedSection = (lines: string[], heading: string): string[] => {
+  const start = lines.findIndex((line) => line.startsWith(`## ${heading}`));
+
+  if (start === -1) {
+    return [];
+  }
+
+  const next = lines.slice(start + 1).findIndex((line) => /^#{2,3} /.test(line));
+
+  return lines.slice(start, next === -1 ? lines.length : start + 1 + next);
+};
+
+export const rulesContext = (source: string): string => {
+  const lines = source.split('\n');
+
+  return [...headedSection(lines, 'Business rules'), ...headedSection(lines, 'Technical decisions')].join('\n').trim();
 };

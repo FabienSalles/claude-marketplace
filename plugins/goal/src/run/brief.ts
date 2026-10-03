@@ -1,7 +1,7 @@
 // The prompt handed to the implementer: the iteration travels as text, verbatim, and the plan's
 // path never does.
 
-export const brief = (iteration: string, cwd: string, branch: string, section: string): string => `Implement iteration ${iteration} of a plan somebody else locked.
+export const brief = (iteration: string, cwd: string, branch: string, section: string, rules = ''): string => `Implement iteration ${iteration} of a plan somebody else locked.
 
 You are working in ${cwd}, on branch ${branch}. Every path
 you read or write lives inside that tree.
@@ -11,7 +11,7 @@ covers, every decision bullet and its gate block.
 
 --- iteration ---
 ${section}
---- end ---
+--- end ---${rules === '' ? '' : `\n\nThe plan's rules and decisions, so that an identifier named above arrives with its text.\n\n--- rules ---\n${rules}\n--- end ---`}
 
 Work test-first, and show the RED: the gate sets your implementation aside and requires gate1 to
 fail without it, so a test that passes either way halts the slice.

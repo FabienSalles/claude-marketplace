@@ -194,7 +194,7 @@ More, including the axes that are entirely empty: [`docs/comparison.md`](docs/co
 | [`/goal:plan`](skills/plan/SKILL.md) | `skills/` | The technical grill → command-mapped DoD, slices, policy, remote → the locked plan on a branch |
 | [`/goal:supervise`](skills/supervise/SKILL.md) | `skills/` | Launches the runner, classifies a halt, repairs or discards once. **Never exercised by a real run** |
 | [`/goal:next`](skills/next/SKILL.md) | `skills/` | Manual-loop checkpoint: replay the DoD, reconcile plan against code, emit the next handoff |
-| `goal-run.ts` + `run/*.ts` | `scripts/` + `src/run/` | The runner: 1,668 lines, the entry point plus 14 modules (preflight, sweep, lock, iteration, publish, close, report) |
+| `goal-run.ts` + `run/*.ts` | `scripts/` + `src/run/` | The runner: 1,692 lines, the entry point plus 14 modules (preflight, sweep, lock, iteration, publish, close, report) |
 | `goal-gate.ts` + `gate/*.ts` | `scripts/` + `src/gate/` | The judge, and the only committer: 1,111 lines, the entry point plus 11 modules. Exit 0 runnable · 1 `HALT` with a reason · 2 misuse |
 | `ports.ts` + `adapters/*.ts` | `src/` | The `CommandRunner`, `Clock` and `FileSystem` ports, and the real adapters that back them: every process spawn, wait and disk access in production code goes through one, so a rule is observable against a double instead of a repository fixture |
 | `core/*.ts` | `src/core/` | The pure business rules (scope, bounds, commands, ticked, cross-iteration, never) the gate evaluates, plus verdict and preflight: no process, no clock, no disk |
@@ -204,7 +204,7 @@ More, including the axes that are entirely empty: [`docs/comparison.md`](docs/co
 | `goal-run-reviewer` · `goal-session-auditor` | `agents/` | Post-publication review and transcript audit. **Never fired** |
 | [`grill-adversarial`](skills/grill-adversarial/SKILL.md) | `skills/` | Opt-in, loaded during `/goal:spec`'s grill |
 | [`product:vertical-slice`](../product/skills/vertical-slice/SKILL.md) · [`product:delivery`](../product/skills/delivery/SKILL.md) | *(plugin `product`)* | Loaded by `/goal:plan` to split the work and give each slice a shipping strategy |
-| `tests/run.sh` | `tests/` | 472 tests across 55 files. Wraps `node --test` and additionally refuses a zero-pass run, an undeclared skip, and a missing summary (a bare `node --test` exits 0 on a glob matching nothing) |
+| `tests/run.sh` | `tests/` | 489 tests across 59 files. Wraps `node --test` and additionally refuses a zero-pass run, an undeclared skip, and a missing summary (a bare `node --test` exits 0 on a glob matching nothing) |
 | `tests/support/frozen.ts` · `tests/support/budget.ts` | `tests/support/` | `node tests/support/frozen.ts` checks that every test name in `tests/frozen-names.txt` (the names the 28 frozen files declared on `aef0e8d`) is declared exactly once across `tests/*.test.ts` and never skipped or todo'd, and names each one lost, renamed, skipped or duplicated. `node tests/support/budget.ts [--runs N] [--wall S] [--file S] [--test S] [--only <file>]` runs `run.sh` N times (default 3), refuses any run that is not green, and reports the median wall, the slowest file and the slowest test, failing on every one over its ceiling in seconds. CI runs it as `--runs 1 --wall 95`, the ceiling being the job's measured 63 s plus 50 % (see `docs/open-questions.md` §8). A file's time is the sum of its tests' times, so process start-up is not in it |
 | `done-criteria.template` · `goal-handoff.template` · `post-merge.template` | `templates/` | The DoD baseline, the handoff `/goal:next` fills, and the merge-day checklist. Printed, never executed |
 
@@ -213,6 +213,8 @@ key (`ct-1234`) for Jira, a slug for a file or inline source. The plan lives at
 `.claude/plans/<work-id>-spec.md`; a run's records go to
 `.claude/goal-runs/<work-id>/<run-id>/`: `.run.log`, `.run.jsonl`, `.run.session` and the
 auditor's `report.md`. Only `<plan>.run.lock` stays beside the plan.
+The plan's `Work-id:` header names the run and the expected branch when present; the file name
+is the fallback only when the header is absent, and a branch refusal names both when they differ.
 
 ## Troubleshooting
 
@@ -220,7 +222,7 @@ Every row is a refusal the code can still reach today.
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| Exit 2, "the base is not green" | a command the plan holds every slice to already fails on the untouched tree | Fix the base. The sweep runs before a byte is written, so nothing needs undoing |
+| Exit 2, "the base is not green" | a command the plan holds every slice to already fails on the untouched tree | Fix the base. The sweep runs before a byte is written, so nothing needs undoing. When the command is a `dodN` line, the refusal adds that a final-state check belongs in the `gate1` of the iteration that makes it true |
 | Exit 2, "the plan's directory is visible to git" | `.claude/plans/` is not git-ignored | Ignore that directory, untracking any spec already committed |
 | Exit 2, "Policy is manual" | the runner has nowhere to put the work | That plan is for the manual loop: run it with `/goal` and `/goal:next`, or change the `Policy:` line |
 | Exit 2, "the plan declares no Remote line" | never defaulted to `origin` | Write the remote on the plan. Guessing here pushes a fork's work to its parent |
@@ -244,7 +246,7 @@ rate limit gets seconds of backoff instead.
 **Observed, 2026-08-05:** installing an update to Claude Code shuts down every running instance on
 the machine, including a `claude -p` implementer mid-slice. A run left unattended for hours is
 exactly the shape an update lands under. The runner absorbs this: exit 143 is classified as a
-shutdown rather than quota exhaustion and retried after a fixed 5s backoff, up to 5 attempts; every
+shutdown rather than quota exhaustion and retried after a fixed 5s backoff, up to 3 attempts (`GOAL_RUN_SHUTDOWN_MAX_RETRIES` overrides), after which the run stops saying the iteration is not converging; every non-zero implementer exit logs its exit code or signal and elapsed time; the implementer has no time ceiling of its own, by choice; every
 implementer is spawned with `DISABLE_AUTOUPDATER=1`; and preflight *warns*, never refuses, when
 your own `~/.claude/settings.json` sets neither `env.DISABLE_AUTOUPDATER` nor
 `"autoUpdatesChannel": "stable"`. Setting one of those stops the updater shutting down *other*

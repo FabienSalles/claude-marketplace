@@ -476,7 +476,7 @@ export const runInProcess = async (
       reporter.stop(`the iteration must be a number, got: ${iterationArg}`, REFUSED);
     }
 
-    const dir = runDir(workIdOf(plan!));
+    const dir = runDir(workIdOf(plan!, fs.readFile(plan!)));
     reporter.setLog(dir);
     reporter.say(`RUN writing this run's records to ${dir}`);
 
@@ -579,7 +579,7 @@ export { workIdOf };
 
 // The one run directory a fixture's single launch wrote under `.claude/goal-runs/<work-id>/`.
 export const runDirOf = (fixture: Fixture): string => {
-  const root = join(fixture.dir, '.claude', 'goal-runs', workIdOf(fixture.plan));
+  const root = join(fixture.dir, '.claude', 'goal-runs', workIdOf(fixture.plan, fs.readFile(fixture.plan)));
   const [runId] = readdirSync(root);
 
   return join(root, runId!);
