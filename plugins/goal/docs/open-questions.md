@@ -141,9 +141,9 @@ publication, the quota wait and the closing stage, against a gate split one modu
 business rules, each with its matching test file, a convention `goal-gate.ts` states in its own
 header and that the bash script was the one place in the plugin unable to follow.
 
-**What it cost, re-measured.** `scripts/goal-run.ts` + `src/run/` now stands at 1669 lines
+**What it cost, re-measured.** `scripts/goal-run.ts` + `src/run/` now stands at 1680 lines
 over 15 files, against `scripts/goal-gate.ts` + `src/gate/` at 1111 over 12; all of
-`scripts/` + `src/` is 3993 lines over 48 `.ts` files, covered by 57 test files and 480 passing tests.
+`scripts/` + `src/` is 4004 lines over 48 `.ts` files, covered by 58 test files and 482 passing tests.
 Most of the distance from the 594-line bash original is not the split: it is the mechanisms
 added since (`gitwatch.ts`, `postmortem.ts`, `quota.ts`), each of which is one of the modules the
 convention asked for. The second defect this question named (the orchestrator re-reading
@@ -401,7 +401,7 @@ Definition of Done) runs under a wall clock: `gate/bounded.ts#GOAL_CMD_TIMEOUT` 
 default 900 seconds, and applies it as `spawnSync`'s `timeout` with
 `killSignal: 'SIGKILL'`, since the default `SIGTERM` is the signal a hung process is already
 ignoring. A test waiting on a port cannot hold an unattended run open. The **implementer session**
-is spawned with no `timeout` at all (`run/iteration.ts`), and it is the one that can loop.
+is spawned with no `timeout` at all (`run/iteration.ts`), by choice, and it is the one that can loop. A killed implementer is bounded and diagnosed instead: every non-zero exit logs its exit code or signal and elapsed time, and the third killed attempt stops the run as not converging.
 Its only brake is the quota wait (thirty minutes, three times), which arms only when the output
 matches a rate-limit string.
 

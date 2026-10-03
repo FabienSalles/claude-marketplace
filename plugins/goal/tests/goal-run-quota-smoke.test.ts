@@ -167,13 +167,13 @@ test('exit 143 classifies as shutdown regardless of output, bypassing quota clas
   assert.equal(classifyFailure(1, 'nothing quota-shaped here'), null);
 });
 
-// R18 — the shutdown retry bound defaults to 5 and honours GOAL_RUN_SHUTDOWN_MAX_RETRIES, the
+// R18 — the shutdown retry bound defaults to 3 and honours GOAL_RUN_SHUTDOWN_MAX_RETRIES, the
 // same shape as the quota bound's own env override.
-test('the shutdown retry bound defaults to 5 and honours GOAL_RUN_SHUTDOWN_MAX_RETRIES', () => {
+test('the shutdown retry bound defaults to 3 and honours GOAL_RUN_SHUTDOWN_MAX_RETRIES', () => {
   const previous = process.env.GOAL_RUN_SHUTDOWN_MAX_RETRIES;
   delete process.env.GOAL_RUN_SHUTDOWN_MAX_RETRIES;
 
-  assert.equal(shutdownMaxRetries(), 5);
+  assert.equal(shutdownMaxRetries(), 3);
 
   process.env.GOAL_RUN_SHUTDOWN_MAX_RETRIES = '2';
   assert.equal(shutdownMaxRetries(), 2);

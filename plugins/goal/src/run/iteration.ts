@@ -112,6 +112,10 @@ export const runIteration = async (
       break;
     }
 
+    const signal = (implemented as { signal?: string | null }).signal ?? null;
+    const cause = signal === null ? `exit code ${implemented.status ?? 1}` : `signal ${signal}`;
+    reporter.say(`RUN the implementer failed on iteration ${iteration}: ${cause}, after ${Math.round((clock.now() - implementerStart) / 1000)}s`);
+
     const output = `${implemented.stdout}${implemented.stderr}`;
     postmortem(reporter, dir, attempt, process.cwd(), implemented.status ?? 1, implemented.stdout, implemented.stderr, binaryBefore);
     const quotaClass = classifyFailure(implemented.status ?? 1, output);
@@ -124,6 +128,13 @@ export const runIteration = async (
     }
 
     const maxRetries = quotaClass === 'shutdown' ? shutdownMaxRetries() : quotaMax;
+    if (attempt >= maxRetries && quotaClass === 'shutdown') {
+      reporter.stop(
+        `iteration ${iteration} is not converging: the implementer was killed on each of ${attempt} attempt(s). Pausing rather than relaunching it again: relaunch resumes here.${blockedNote(publisher)}`,
+        PAUSED,
+      );
+    }
+
     if (attempt >= maxRetries) {
       reporter.stop(
         `the quota still looks exhausted after ${attempt} attempt(s) on iteration ${iteration}. Pausing rather than spinning through a window that is not reopening: relaunch resumes here.${blockedNote(publisher)}`,
