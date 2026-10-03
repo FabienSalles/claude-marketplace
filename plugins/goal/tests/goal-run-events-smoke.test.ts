@@ -7,7 +7,7 @@ import { join, resolve } from 'node:path';
 import { narrate, resultEnvelope, tokensLine } from '../src/run/narrate.ts';
 import { createReporter } from '../src/run/report.ts';
 import { tmpDir } from './support/tmp.ts';
-import { jsonlOf, PLAN, repo, run } from './support/goal-run-harness.ts';
+import { jsonlOf, PLAN, repo, run, runInProcess } from './support/goal-run-harness.ts';
 
 const dir = (): string => tmpDir('goal-run-events-');
 
@@ -109,10 +109,10 @@ test('before setLog, say renders to stdout only and writes no jsonl file at all'
 // R19 — every stage the runner times — preflight, the implementer session, the gate verdict
 // call, and the push — writes a `stage=<name> duration_ms=<n> exit=<n>` event into the run's own
 // jsonl, so the next run report has a real column per stage instead of one elapsed figure.
-test('a landed run records a stage event with duration_ms and exit for preflight, implementer, gate and push', () => {
+test('a landed run records a stage event with duration_ms and exit for preflight, implementer, gate and push', async () => {
   const fixture = repo();
 
-  const { code, output } = run(fixture, [fixture.plan], {
+  const { code, output } = await runInProcess(fixture, [fixture.plan], {
     FAKE_GATE_COMMITS: '1',
     FAKE_CLAUDE_WRITES: join(fixture.dir, 'a.txt'),
   });
@@ -361,16 +361,16 @@ const assertPlainSay = (event: object): void => {
   assert.equal('exit' in event, false, JSON.stringify(event));
 };
 
-test('the "gate will not run iteration" STOP (goal-run.ts) stays a say event with no exit field', () => {
+test('the "gate will not run iteration" STOP (goal-run.ts) stays a say event with no exit field', async () => {
   const fixture = repo();
 
-  const { code } = run(fixture, [fixture.plan, '1'], { FAKE_GATE_CHECK_EXIT: '1' });
+  const { code } = await runInProcess(fixture, [fixture.plan, '1'], { FAKE_GATE_CHECK_EXIT: '1' });
 
   assert.equal(code, 2);
   assertPlainSay(sayEvent(fixture, 'STOP the gate will not run iteration'));
 });
 
-test('the "gate published no plan_hash" STOP (goal-run.ts) stays a say event with no exit field', () => {
+test('the "gate published no plan_hash" STOP (goal-run.ts) stays a say event with no exit field', async () => {
   const fixture = repo();
   const gate = join(fixture.bin, 'no-hash-gate');
 
@@ -387,16 +387,16 @@ exit 2
   );
   chmodSync(gate, 0o755);
 
-  const { code } = run(fixture, [fixture.plan, '1'], { GOAL_GATE: gate });
+  const { code } = await runInProcess(fixture, [fixture.plan, '1'], { GOAL_GATE: gate });
 
   assert.equal(code, 2);
   assertPlainSay(sayEvent(fixture, 'STOP the gate published no plan_hash'));
 });
 
-test('the "iteration(s) landed" STOP (goal-run.ts) stays a say event with no exit field', () => {
+test('the "iteration(s) landed" STOP (goal-run.ts) stays a say event with no exit field', async () => {
   const fixture = repo();
 
-  const { code } = run(fixture, [fixture.plan, '1'], {
+  const { code } = await runInProcess(fixture, [fixture.plan, '1'], {
     FAKE_GATE_COMMITS: '1',
     FAKE_CLAUDE_WRITES: join(fixture.dir, 'a.txt'),
   });
@@ -405,10 +405,10 @@ test('the "iteration(s) landed" STOP (goal-run.ts) stays a say event with no exi
   assertPlainSay(sayEvent(fixture, 'STOP 1 iteration(s) landed'));
 });
 
-test('the "gate could not be run" STOP (iteration.ts) stays a say event with no exit field', () => {
+test('the "gate could not be run" STOP (iteration.ts) stays a say event with no exit field', async () => {
   const fixture = repo();
 
-  const { code } = run(fixture, [fixture.plan, '1'], {
+  const { code } = await runInProcess(fixture, [fixture.plan, '1'], {
     FAKE_CLAUDE_WRITES: join(fixture.dir, 'a.txt'),
     FAKE_GATE_COMMIT_EXIT: '2',
   });
@@ -417,10 +417,10 @@ test('the "gate could not be run" STOP (iteration.ts) stays a say event with no 
   assertPlainSay(sayEvent(fixture, 'STOP the gate could not be run'));
 });
 
-test('the "refused by the gate" STOP (iteration.ts) stays a say event with no exit field', () => {
+test('the "refused by the gate" STOP (iteration.ts) stays a say event with no exit field', async () => {
   const fixture = repo();
 
-  const { code } = run(fixture, [fixture.plan, '1'], {
+  const { code } = await runInProcess(fixture, [fixture.plan, '1'], {
     FAKE_CLAUDE_WRITES: join(fixture.dir, 'a.txt'),
     FAKE_GATE_COMMIT_EXIT: '1',
   });
@@ -429,10 +429,10 @@ test('the "refused by the gate" STOP (iteration.ts) stays a say event with no ex
   assertPlainSay(sayEvent(fixture, 'STOP iteration 1 was refused by the gate'));
 });
 
-test('the "Definition of Done could not be run" STOP (close.ts) stays a say event with no exit field', () => {
+test('the "Definition of Done could not be run" STOP (close.ts) stays a say event with no exit field', async () => {
   const fixture = repo();
 
-  const { code } = run(fixture, [fixture.plan, '1'], {
+  const { code } = await runInProcess(fixture, [fixture.plan, '1'], {
     FAKE_GATE_COMMITS: '1',
     FAKE_CLAUDE_WRITES: join(fixture.dir, 'a.txt'),
     FAKE_GATE_DOD_EXIT: '2',
@@ -442,10 +442,10 @@ test('the "Definition of Done could not be run" STOP (close.ts) stays a say even
   assertPlainSay(sayEvent(fixture, 'STOP the global Definition of Done could not be run'));
 });
 
-test('the "Definition of Done refused this run" STOP (close.ts) stays a say event with no exit field', () => {
+test('the "Definition of Done refused this run" STOP (close.ts) stays a say event with no exit field', async () => {
   const fixture = repo();
 
-  const { code } = run(fixture, [fixture.plan, '1'], {
+  const { code } = await runInProcess(fixture, [fixture.plan, '1'], {
     FAKE_GATE_COMMITS: '1',
     FAKE_CLAUDE_WRITES: join(fixture.dir, 'a.txt'),
     FAKE_GATE_DOD_EXIT: '1',

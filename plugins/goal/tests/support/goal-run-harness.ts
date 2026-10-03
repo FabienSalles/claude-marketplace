@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { chmodSync, cpSync, mkdirSync, readdirSync, symlinkSync, writeFileSync } from 'node:fs';
+import { appendFileSync, chmodSync, cpSync, mkdirSync, readdirSync, symlinkSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
 import { command } from '../../src/adapters/command.ts';
@@ -428,27 +428,38 @@ export const runInProcess = async (
   }
 
   let output = '';
+  let jsonl = '';
+  const emit = (event: string, fields: Record<string, unknown>): void => {
+    if (jsonl) {
+      appendFileSync(jsonl, `${JSON.stringify({ v: 1, ts: new Date().toISOString(), event, ...fields })}\n`);
+    }
+  };
   const reporter: Reporter = {
     say: (message) => {
       output += `${message}\n`;
+      emit('say', { message });
     },
     record: (text) => {
       if (text.trim() !== '') {
         output += `${text}\n`;
+        emit('record', { payload: text });
       }
     },
     stop: (message, code) => {
       output += `STOP ${message}\n`;
+      emit('stop', { message: `STOP ${message}`, exit: code });
       throw new PilotExit(code);
     },
-    setLog: () => {},
+    setLog: (dir) => {
+      jsonl = join(dir, '.run.jsonl');
+    },
   };
 
   process.exit = (code?: number) => {
     throw new PilotExit(code ?? 0);
   };
 
-  const gateLabel = join(fixture.bin, 'fake-gate');
+  const gateLabel = env.GOAL_GATE ?? join(fixture.bin, 'fake-gate');
   const gate = spawnGateAdapter(gateLabel);
   const double = doubleCommand();
   let lock: ReturnType<typeof createLock> | undefined;
