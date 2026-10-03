@@ -6,7 +6,8 @@
 import { basename } from 'node:path';
 
 import { err, ok, type Result } from './result.ts';
-import { NEVER_VERSIONED } from './rules/never.ts';
+import { noNeverVersionedPaths } from './rules/never.ts';
+import { shapedPaths } from './rules/scope.ts';
 import { numericBudget } from './rules/bounds.ts';
 import { halt, type Halt } from './verdict.ts';
 
@@ -86,32 +87,6 @@ const noOverlap = (
   );
 };
 
-const shapedPaths = (paths: readonly string[], iteration: string): Halt | undefined => {
-  const unusable = paths.filter((path) => /[`()*?[\]]/.test(path));
-
-  if (unusable.length === 0) {
-    return undefined;
-  }
-
-  return halt(
-    `Iteration ${iteration} does not declare a list of paths.`,
-    `Unusable: ${unusable.join(' ')}\n\ntest_files and impl_files hold bare, space-separated, repo-relative paths and nothing else: no glob, no backtick, no markdown annotation. A whole subtree is declared by a trailing slash (plugins/goal/).`,
-  );
-};
-
-const declaredSecrets = (paths: readonly string[], iteration: string): Halt | undefined => {
-  const refused = [...new Set(paths)].filter((path) => NEVER_VERSIONED.some((pattern) => pattern.test(path)));
-
-  if (refused.length === 0) {
-    return undefined;
-  }
-
-  return halt(
-    `Iteration ${iteration} would version a file that must never be committed.`,
-    `Refused: ${refused.join(' ')}\n\nThese paths carry credentials or vendored dependencies, so no declaration makes them committable, whatever the gate block says. Add them to .gitignore. If one is already committed, treat whatever it holds as disclosed and rotate it: a later deletion does not remove it from history.`,
-  );
-};
-
 export const makePlan = (
   iteration: string,
   declared: ReadonlyMap<string, string>,
@@ -123,13 +98,22 @@ export const makePlan = (
   const allPaths = [...testFiles, ...implFiles, ...incidental];
 
   const refusal =
-    legalKeys(declared, iteration) ??
-    noOverlap(testFiles, implFiles, iteration) ??
-    shapedPaths(allPaths, iteration) ??
-    declaredSecrets(allPaths, iteration);
+    legalKeys(declared, iteration) ?? noOverlap(testFiles, implFiles, iteration);
 
   if (refusal !== undefined) {
     return err(refusal);
+  }
+
+  const shaped = shapedPaths(allPaths, iteration);
+
+  if (!shaped.ok) {
+    return shaped;
+  }
+
+  const secrets = noNeverVersionedPaths(allPaths, `Iteration ${iteration}`);
+
+  if (!secrets.ok) {
+    return secrets;
   }
 
   const maxDiff = numericBudget(declared.get('max_diff') ?? '', iteration);

@@ -26,7 +26,7 @@ export type PublishState = {
 };
 
 // `gh` needs owner/name, git gives a URL: SSH, HTTPS, with or without the `.git` suffix.
-const repoOf = (remote: string): string =>
+export const repoOf = (remote: string): string =>
   git('remote', 'get-url', remote)
     .stdout.trim()
     .replace(/\.git$/, '')
