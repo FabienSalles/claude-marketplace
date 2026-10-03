@@ -23,13 +23,13 @@ const EFFECTIVE_WINDOWS: Record<string, number> = {
 export const narrate = (stdout: string, reporter: Reporter): Extraction => {
   const { usage, model, peakTokens, compactions } = extract(stdout, (event) => {
     for (const block of event.message?.content ?? []) {
-      if (block.type === 'tool_use' && block.name) {
+      if (block.type === 'tool_use' && block.name !== undefined && block.name !== '') {
         const target = block.input?.file_path ?? block.input?.command;
-        reporter.say(`RUN implementer: ${block.name}${target ? ` ${target}` : ''}`);
+        reporter.say(`RUN implementer: ${block.name}${target !== undefined && target !== '' ? ` ${target}` : ''}`);
       }
     }
 
-    if (event.session_id) {
+    if (event.session_id !== undefined && event.session_id !== '') {
       reporter.session?.(event.session_id);
     }
   });
@@ -54,22 +54,22 @@ export const resultEnvelope = (raw: string): Extraction & { text: string } => {
 // line is emitted. The unknown-model rule: a served model absent from EFFECTIVE_WINDOWS still
 // reports its peak in tokens, just with no percentage to read it against.
 export const tokensLine = (stage: string, extraction?: Extraction): string | undefined => {
-  if (!extraction?.usage) {
+  if (extraction?.usage === undefined) {
     return undefined;
   }
 
   const { usage, model, peakTokens, compactions } = extraction;
-  const window = model ? EFFECTIVE_WINDOWS[model] : undefined;
+  const window = model !== undefined && model !== '' ? EFFECTIVE_WINDOWS[model] : undefined;
   const peak =
     peakTokens === undefined
       ? ''
-      : window
+      : window !== undefined && window !== 0
         ? ` context_tokens=${peakTokens} context_pct=${Math.round((peakTokens / window) * 100)}%`
         : ` context_tokens=${peakTokens}`;
 
   return (
     `RUN tokens stage=${stage} input_tokens=${usage.input_tokens ?? 0} output_tokens=${usage.output_tokens ?? 0} ` +
     `cache_creation_input_tokens=${usage.cache_creation_input_tokens ?? 0} cache_read_input_tokens=${usage.cache_read_input_tokens ?? 0}` +
-    `${model ? ` model=${model}` : ''}${peak} compactions=${compactions}`
+    `${model !== undefined && model !== '' ? ` model=${model}` : ''}${peak} compactions=${compactions}`
   );
 };

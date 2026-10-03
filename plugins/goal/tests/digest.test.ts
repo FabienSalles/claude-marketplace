@@ -54,8 +54,8 @@ test('digest carries the is_error flag from the matching tool_result', () => {
   const lines = digest(path);
 
   assert.equal(lines.length, 2);
-  assert.ok(lines[0]?.endsWith('-> error'));
-  assert.ok(lines[1]?.endsWith('-> error'));
+  assert.ok(lines[0]?.endsWith('-> error') === true);
+  assert.ok(lines[1]?.endsWith('-> error') === true);
 });
 
 // R11 — the digest keeps the line index of the tool_use itself, so the auditor can reopen the
@@ -85,6 +85,6 @@ test('digest marks a tool_use with no matching tool_result as pending, and a res
   const lines = digest(path);
 
   assert.equal(lines.length, 2);
-  assert.ok(lines[0]?.endsWith('-> pending'), `expected pending, got: ${lines[0]}`);
-  assert.ok(lines[1]?.endsWith('-> ok'), `expected ok, got: ${lines[1]}`);
+  assert.ok(lines[0]?.endsWith('-> pending') === true, `expected pending, got: ${lines[0]}`);
+  assert.ok(lines[1]?.endsWith('-> ok') === true, `expected ok, got: ${lines[1]}`);
 });

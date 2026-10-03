@@ -179,7 +179,7 @@ export const preflight = (plan: string, source: string, reporter: Reporter, gate
   // the plan declares neither, or declares a base this checkout has not fetched.
   git('fetch', '--prune', '--quiet');
   const prBase = header(source, 'PR base:');
-  const candidates = [...(prBase ? [`${remote}/${prBase}`] : []), `${remote}/HEAD`, 'origin/HEAD'];
+  const candidates = [...(prBase !== undefined && prBase !== '' ? [`${remote}/${prBase}`] : []), `${remote}/HEAD`, 'origin/HEAD'];
 
   // Tried batched first: one process for every candidate, in priority order, is enough whenever
   // they all resolve — the common case. A single one of them failing makes git abort the whole
@@ -213,7 +213,7 @@ export const preflight = (plan: string, source: string, reporter: Reporter, gate
 
   const warning = autoUpdaterWarning();
 
-  if (warning) {
+  if (warning !== undefined && warning !== '') {
     reporter.say(`RUN preflight: warning — ${warning}`);
   }
 

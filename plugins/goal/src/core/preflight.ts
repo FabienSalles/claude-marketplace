@@ -30,7 +30,7 @@ export const runnablePolicy = (policy: string | undefined): Result<string, strin
 };
 
 export const remoteDeclared = (remote: string | undefined): Result<string, string> =>
-  remote ? ok(remote) : err('the plan declares no Remote line');
+  remote !== undefined && remote !== '' ? ok(remote) : err('the plan declares no Remote line');
 
 export const featureBranch = (isGitRepo: boolean, branch: string, workId: string): Result<string, string> => {
   if (!isGitRepo) {

@@ -12,7 +12,7 @@ import { bounded, spawnOptions } from './bounded.ts';
 export const emitCommand = (key: string, command: string, durationMs: number, exit: number | null): void => {
   const jsonl = process.env.GOAL_RUN_JSONL;
 
-  if (!jsonl) {
+  if (jsonl === undefined || jsonl === '') {
     return;
   }
 

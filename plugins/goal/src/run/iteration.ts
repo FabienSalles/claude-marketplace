@@ -103,7 +103,7 @@ export const runIteration = async (
 
     const tokens = tokensLine('implementer', extraction);
 
-    if (tokens) {
+    if (tokens !== undefined && tokens !== '') {
       reporter.say(tokens);
     }
 

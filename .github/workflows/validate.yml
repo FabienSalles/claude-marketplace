@@ -214,6 +214,11 @@ jobs:
       - name: Prove the capture suite bites
         run: bash plugins/goal/tests/support/mutate.sh
 
+      - name: Lint the gate
+        run: |
+          npm ci
+          npx eslint --config eslint.config.js plugins/goal
+
       - name: Type-check the gate
         run: |
           # node strips types at run time without checking them — verified. This is the

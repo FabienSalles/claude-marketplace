@@ -121,7 +121,7 @@ Exit `0` landed · `1` the gate refused a slice · `2` refused before anything w
 
 | Item | Needed for | Note |
 |---|---|---|
-| Node 24 | the runner and the gate | Types are stripped at run time, never checked; `tsc --noEmit` is a CI concern |
+| Node 24 | the runner and the gate | Types are stripped at run time, never checked; `tsc --noEmit` and `eslint` (`strict-boolean-expressions`) are CI concerns |
 | Git-ignored `.claude/plans/` and `.claude/goal-runs/` | every run | Preflight refuses a plan directory git can see. The run records must be out of git's sight too: the gate would read them as an undeclared scope leak. The rest of `.claude/` may stay tracked |
 | `betterleaks` or `gitleaks` | any push | The push is refused, not skipped, when neither is installed |
 | `gh` authenticated | `Policy: commit+pr`, or a GitHub source | `gh auth login` |
@@ -194,7 +194,7 @@ More, including the axes that are entirely empty: [`docs/comparison.md`](docs/co
 | [`/goal:plan`](skills/plan/SKILL.md) | `skills/` | The technical grill → command-mapped DoD, slices, policy, remote → the locked plan on a branch |
 | [`/goal:supervise`](skills/supervise/SKILL.md) | `skills/` | Launches the runner, classifies a halt, repairs or discards once. **Never exercised by a real run** |
 | [`/goal:next`](skills/next/SKILL.md) | `skills/` | Manual-loop checkpoint: replay the DoD, reconcile plan against code, emit the next handoff |
-| `goal-run.ts` + `run/*.ts` | `scripts/` + `src/run/` | The runner: 1,667 lines, the entry point plus 14 modules (preflight, sweep, lock, iteration, publish, close, report) |
+| `goal-run.ts` + `run/*.ts` | `scripts/` + `src/run/` | The runner: 1,668 lines, the entry point plus 14 modules (preflight, sweep, lock, iteration, publish, close, report) |
 | `goal-gate.ts` + `gate/*.ts` | `scripts/` + `src/gate/` | The judge, and the only committer: 1,117 lines, the entry point plus 11 modules. Exit 0 runnable · 1 `HALT` with a reason · 2 misuse |
 | `ports.ts` + `adapters/*.ts` | `src/` | The `CommandRunner`, `Clock` and `FileSystem` ports, and the real adapters that back them: every process spawn, wait and disk access in production code goes through one, so a rule is observable against a double instead of a repository fixture |
 | `core/*.ts` | `src/core/` | The pure business rules (scope, bounds, commands, ticked, cross-iteration, never) the gate evaluates, plus verdict and preflight: no process, no clock, no disk |

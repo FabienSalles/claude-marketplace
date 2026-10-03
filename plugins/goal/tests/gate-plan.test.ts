@@ -49,7 +49,7 @@ const check = (plan: string, ...rest: string[]) => runGate(['check', plan, '1', 
 const hashOf = (plan: string): string => {
   const { output } = check(plan);
   const line = output.split('\n').find((l) => l.startsWith('plan_hash='));
-  assert.ok(line, `no plan_hash in output:\n${output}`);
+  assert.ok(line !== undefined && line !== '', `no plan_hash in output:\n${output}`);
 
   return line.slice('plan_hash='.length);
 };
