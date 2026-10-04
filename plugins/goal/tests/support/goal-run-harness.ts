@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { appendFileSync, chmodSync, cpSync, mkdirSync, readdirSync, symlinkSync, writeFileSync } from 'node:fs';
+import { appendFileSync, chmodSync, cpSync, mkdirSync, readFileSync, readdirSync, symlinkSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
 import { command } from '../../src/adapters/command.ts';
@@ -93,6 +93,9 @@ const writeFakeBinaries = (bin: string, claudeLog: string, gateLog: string, ghLo
 ${prelude}
 printf '%s\\n' "$@" >> ${claudeLog}
 printf 'env DISABLE_AUTOUPDATER=%s\\n' "$DISABLE_AUTOUPDATER" >> ${claudeLog}
+if [ -n "$FAKE_CLAUDE_LAUNCH_LOG" ]; then
+  FAKE_CLAUDE_ULIMIT=$(ulimit -u) node -e 'require("node:fs").appendFileSync(process.env.FAKE_CLAUDE_LAUNCH_LOG, JSON.stringify({ argv: process.argv.slice(1), env: process.env, ulimit: process.env.FAKE_CLAUDE_ULIMIT }) + "\\n")' -- "$@"
+fi
 # Fails quota-shaped for the first FAKE_CLAUDE_QUOTA_UNTIL calls, tracked in a counter file
 # because each call is a fresh process. Lets a test prove a bounded number of relaunches
 # without waiting on a real 5-hour window.
@@ -606,3 +609,26 @@ export const logOf = (fixture: Fixture) => join(runDirOf(fixture), '.run.log');
 export const jsonlOf = (fixture: Fixture) => join(runDirOf(fixture), '.run.jsonl');
 
 export const sessionOf = (fixture: Fixture) => join(runDirOf(fixture), '.run.session');
+
+export type LaunchRecord = { argv: string[]; env: Record<string, string>; ulimit: string };
+
+const SHELL_MANAGED = new Set(['_', 'SHLVL', 'PWD', 'OLDPWD', 'FAKE_CLAUDE_ULIMIT']);
+
+// One record per fake `claude` call, the env reduced to what the runner added or changed against
+// the baseline the test handed the run.
+export const launchesOf = (log: string, baseline: Record<string, string | undefined>): LaunchRecord[] =>
+  readFileSync(log, 'utf8')
+    .split('\n')
+    .filter((line) => line !== '')
+    .map((line) => {
+      const raw = JSON.parse(line) as LaunchRecord;
+      const env: Record<string, string> = {};
+
+      for (const key of Object.keys(raw.env).sort()) {
+        if (!SHELL_MANAGED.has(key) && raw.env[key] !== baseline[key]) {
+          env[key] = raw.env[key]!;
+        }
+      }
+
+      return { argv: raw.argv, env, ulimit: raw.ulimit };
+    });
