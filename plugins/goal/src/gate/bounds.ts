@@ -27,9 +27,12 @@ export const budgetCheck = (declared: Map<string, string>, paths: string[], iter
     budget === ''
       ? 0
       : headDiff('--numstat', paths, iteration).reduce((total, line) => {
-          const [added, removed] = line.split('\t');
+          const [addedText, removedText] = line.split('\t');
 
-          return total + (Number(added) || 0) + (Number(removed) || 0);
+          const added = Number(addedText);
+          const removed = Number(removedText);
+
+          return total + (Number.isNaN(added) ? 0 : added) + (Number.isNaN(removed) ? 0 : removed);
         }, 0);
 
   return withinBudget(budget, written, paths, iteration);

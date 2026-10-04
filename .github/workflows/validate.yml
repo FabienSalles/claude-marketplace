@@ -17,94 +17,13 @@ jobs:
         with:
           fetch-depth: 0
 
-      # check-doc-counts.sh recomputes the test count by running the suite, which strips types
-      # at run time: without this the step cannot read a count and refuses.
       - name: Setup Node.js
         uses: actions/setup-node@v5
         with:
           node-version: '24'
 
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Validate marketplace.json exists and is valid JSON
-        run: |
-          jq empty .claude-plugin/marketplace.json
-          echo "✓ marketplace.json is valid JSON"
-
-      - name: Validate each plugin has plugin.json
-        run: |
-          errors=0
-          for plugin_dir in plugins/*/; do
-            plugin_name=$(basename "$plugin_dir")
-            plugin_json="$plugin_dir.claude-plugin/plugin.json"
-            if [[ ! -f "$plugin_json" ]]; then
-              echo "✗ Missing: $plugin_json"
-              errors=$((errors + 1))
-            else
-              if ! jq empty "$plugin_json" 2>/dev/null; then
-                echo "✗ Invalid JSON: $plugin_json"
-                errors=$((errors + 1))
-              else
-                echo "✓ $plugin_name — plugin.json valid"
-              fi
-            fi
-          done
-          if [[ $errors -gt 0 ]]; then
-            echo "::error::$errors plugin.json errors found"
-            exit 1
-          fi
-
-      - name: Validate marketplace.json agrees with each plugin.json
-        run: |
-          errors=0
-          for plugin_dir in plugins/*/; do
-            plugin_name=$(basename "$plugin_dir")
-            plugin_json="$plugin_dir.claude-plugin/plugin.json"
-            for field in name version description; do
-              catalog=$(jq -r --arg n "$plugin_name" --arg f "$field" '.plugins[] | select(.name == $n) | .[$f] // empty' .claude-plugin/marketplace.json)
-              manifest=$(jq -r --arg f "$field" '.[$f] // empty' "$plugin_json")
-              if [[ "$catalog" != "$manifest" ]]; then
-                echo "✗ $plugin_name — $field disagrees: marketplace.json='$catalog' vs plugin.json='$manifest'"
-                errors=$((errors + 1))
-              fi
-            done
-          done
-          if [[ $errors -gt 0 ]]; then
-            echo "::error::$errors manifest parity errors found"
-            exit 1
-          fi
-          echo "✓ marketplace.json and every plugin.json agree on name, version and description"
-
-      - name: Certify skill stock coherence
-        run: node plugins/skills/scripts/certify.ts --stock
-
-      - name: Certify changed skills and agents against the diff
-        if: github.event_name == 'pull_request'
-        run: node plugins/skills/scripts/certify.ts --diff origin/${{ github.base_ref }}
-
-      - name: Validate goal plugin doc anchors
-        run: ./scripts/validate-anchors.sh plugins/goal
-
-      - name: Validate goal plugin doc counts
-        run: ./scripts/check-doc-counts.sh plugins/goal
-
-      - name: Validate marketplace references exist
-        run: |
-          errors=0
-          # Only validate local paths; remote sources (e.g. GitHub) are objects.
-          for source in $(jq -r '.plugins[] | select(.source | type == "string") | .source' .claude-plugin/marketplace.json); do
-            if [[ ! -d "$source" ]]; then
-              echo "✗ marketplace.json references non-existent: $source"
-              errors=$((errors + 1))
-            else
-              echo "✓ $source exists"
-            fi
-          done
-          if [[ $errors -gt 0 ]]; then
-            echo "::error::$errors broken marketplace references"
-            exit 1
-          fi
+      - name: Run the checks
+        run: npm run verify -- structure
 
   nightly-skills-certification:
     name: Nightly install and upstream canary
@@ -147,31 +66,16 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+
       - name: Install Claude Code
         run: npm install -g @anthropic-ai/claude-code
 
-      - name: Validate marketplace manifest
-        run: |
-          claude plugin validate .
-          echo "✓ Marketplace manifest valid"
-
-      - name: Validate each plugin
-        run: |
-          errors=0
-          for plugin_dir in plugins/*/; do
-            plugin_name=$(basename "$plugin_dir")
-            if claude plugin validate "$plugin_dir" 2>&1; then
-              echo "✓ $plugin_name — plugin valid"
-            else
-              echo "✗ $plugin_name — validation failed"
-              errors=$((errors + 1))
-            fi
-            echo ""
-          done
-          if [[ $errors -gt 0 ]]; then
-            echo "::error::$errors plugins failed validation"
-            exit 1
-          fi
+      - name: Run the checks
+        run: npm run verify -- plugin-validate
 
   test-npx-skills:
     name: Test npx skills discovery
@@ -182,20 +86,10 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v5
         with:
-          node-version: '20'
+          node-version: '24'
 
-      - name: Test skills discovery
-        run: |
-          # `npx skills` v1.5+ no longer prints raw `SKILL.md` paths in --list output;
-          # it prints a TUI summary line `Found <N> skills` instead. Parse that.
-          npx skills add . --list 2>&1 | tee /tmp/skills-output.txt
-          skill_count=$(grep -oE 'Found [0-9]+ skills' /tmp/skills-output.txt | grep -oE '[0-9]+' | head -1)
-          skill_count=${skill_count:-0}
-          echo "Discovered $skill_count skills"
-          if [[ $skill_count -lt 40 ]]; then
-            echo "::warning::Expected at least 40 skills discovered, got $skill_count"
-          fi
-          echo "✓ npx skills add --list completed"
+      - name: Run the checks
+        run: npm run verify -- skills-discovery
 
   test-goal-gate:
     name: Test the goal gate
@@ -208,24 +102,8 @@ jobs:
         with:
           node-version: '24'
 
-      - name: Run the gate suite under its ceiling
-        run: node plugins/goal/tests/support/budget.ts --runs 1 --wall 63
-
-      - name: Prove the capture suite bites
-        run: bash plugins/goal/tests/support/mutate.sh
-
-      - name: Lint the gate
-        run: |
-          npm ci
-          npx eslint --config eslint.config.js plugins/goal
-
-      - name: Type-check the gate
-        run: |
-          # node strips types at run time without checking them — verified. This is the
-          # only place the gate's types are actually verified, which is why the compiler
-          # is installed here and deliberately not vendored in the repository.
-          npm install --no-save --no-package-lock typescript@5.9 @types/node@24
-          npx tsc --noEmit
+      - name: Run the checks
+        run: npm run verify -- goal-gate
 
   test-shell-suites:
     name: Run the shell test suites
@@ -233,27 +111,13 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - name: Run every shell suite
-        run: |
-          errors=0
-          for suite in \
-            plugins/security-runtime/tests/test_claudemd-scanner.sh \
-            plugins/security-runtime/tests/test_prompt-injection-detector.sh \
-            plugins/security-runtime/tests/test_secret-file-guard.sh \
-            plugins/superpowers/tests/test-find-polluter.sh \
-            scripts/tests/test-skill-coherence.sh; do
-            echo "== $suite"
-            if bash "$suite"; then
-              echo "✓ $suite"
-            else
-              echo "✗ $suite"
-              errors=$((errors + 1))
-            fi
-          done
-          if [[ $errors -gt 0 ]]; then
-            echo "::error::$errors shell suite(s) failed"
-            exit 1
-          fi
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+
+      - name: Run the checks
+        run: npm run verify -- shell-suites
 
   health-check:
     name: Run health-check.sh (${{ matrix.os }})
@@ -265,8 +129,13 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+
       - name: Install Claude Code
         run: npm install -g @anthropic-ai/claude-code
 
-      - name: Run health-check.sh
-        run: ./scripts/health-check.sh
+      - name: Run the checks
+        run: npm run verify -- health-check

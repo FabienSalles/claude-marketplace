@@ -62,7 +62,7 @@ export const frozenProblems = (
       return [`duplicated: "${name}" (frozen in ${file}) is declared ${found.length} times: ${where}`];
     }
 
-    return found[0]?.skipped
+    return found[0]?.skipped === true
       ? [`skipped: "${name}" (frozen in ${file}) is skipped or todo'd in ${found[0].file}`]
       : [];
   });

@@ -29,7 +29,7 @@ export const gateAdapterOf = (gate: string | GateAdapter): GateAdapter => (typeo
 // -- spawn+scrape: the channel a run has always driven, unchanged behind GOAL_GATE -------------
 
 const shell = (command: string, env?: Record<string, string>): GateResult => {
-  const result = spawnSync(command, { shell: true, encoding: 'utf8', ...(env ? { env: { ...process.env, ...env } } : {}) });
+  const result = spawnSync(command, { shell: true, encoding: 'utf8', ...(env !== undefined ? { env: { ...process.env, ...env } } : {}) });
 
   return { status: result.status ?? 1, stdout: result.stdout ?? '', stderr: result.stderr ?? '' };
 };

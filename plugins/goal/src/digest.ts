@@ -26,12 +26,12 @@ export const digest = (transcriptPath: string): string[] => {
   return order.map((id) => {
     const call = calls.get(id);
 
-    if (!call) {
+    if (call === undefined) {
       return '';
     }
 
     const status = outcomes.has(id) ? (outcomes.get(id) === true ? 'error' : 'ok') : 'pending';
-    return `${call.line}: ${call.name}${call.target ? ` ${call.target}` : ''} -> ${status}`;
+    return `${call.line}: ${call.name}${call.target !== undefined && call.target !== '' ? ` ${call.target}` : ''} -> ${status}`;
   });
 };
 

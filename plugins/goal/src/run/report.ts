@@ -43,7 +43,7 @@ export const createReporter = (): Reporter => {
   // The ingestible twin of the prose log: one versioned JSON line per call, alongside whatever
   // that call already rendered.
   const emit = (event: string, fields: Record<string, unknown>): void => {
-    if (jsonl) {
+    if (jsonl !== '') {
       append(jsonl, `${JSON.stringify({ v: 1, ts: new Date().toISOString(), event, ...fields })}\n`);
     }
   };
@@ -51,7 +51,7 @@ export const createReporter = (): Reporter => {
   const say = (message: string): void => {
     process.stdout.write(`${message}\n`);
 
-    if (log) {
+    if (log !== '') {
       append(log, `${message}\n`);
       emit('say', { message });
     }
@@ -60,7 +60,7 @@ export const createReporter = (): Reporter => {
   // An advisory agent's own words, kept out of stdout so the account there stays one state per
   // line, and into the run log, so a lens finding outlives the process that asked for it.
   const record = (text: string): void => {
-    if (log && text.trim() !== '') {
+    if (log !== '' && text.trim() !== '') {
       append(log, `${text}\n`);
       emit('record', { payload: text });
     }
@@ -70,7 +70,7 @@ export const createReporter = (): Reporter => {
     const line = `STOP ${message}`;
     process.stdout.write(`${line}\n`);
 
-    if (log) {
+    if (log !== '') {
       append(log, `${line}\n`);
       emit('stop', { message: line, exit: code });
     }
@@ -88,7 +88,7 @@ export const createReporter = (): Reporter => {
   // so a transcript already written to `~/.claude/projects/<encoded-path>/<session-id>.jsonl` can
   // be found later without correlating timestamps.
   const session = (id: string): void => {
-    if (sessionPath) {
+    if (sessionPath !== '') {
       append(sessionPath, `${id}\n`);
       emit('session', { payload: id });
     }

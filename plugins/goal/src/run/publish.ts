@@ -99,7 +99,7 @@ export const createPublisher = (
     }
 
     if (!publishes) {
-      blocked = `Policy is ${policy || 'unreadable'}, not commit+pr, so nothing leaves this machine and no pull request is opened. The commits are on the branch, where the developer asked them to stay.`;
+      blocked = `Policy is ${policy !== '' ? policy : 'unreadable'}, not commit+pr, so nothing leaves this machine and no pull request is opened. The commits are on the branch, where the developer asked them to stay.`;
       state.blocked = true;
       state.blockedReason = blocked;
       reporter.say(`RUN ${blocked}`);
