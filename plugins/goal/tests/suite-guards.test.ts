@@ -1,11 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
 import { bounded } from '../src/gate/bounded.ts';
 import { median, offenders, parseTests, perFile } from './support/budget.ts';
+import { fixedWaits } from './support/fixed-waits.ts';
 import { checkFrozen, declaredTests, frozenProblems, parseFrozen } from './support/frozen.ts';
 import { tmpDir } from './support/tmp.ts';
 
@@ -214,4 +215,60 @@ test('an unknown option is a misuse, not a measurement', () => {
 
   assert.equal(code, 2, output);
   assert.match(output, /unknown option --bogus/);
+});
+
+const fixedWaitsIn = (files: Record<string, string>): readonly string[] => {
+  const root = tmpDir('goal-suite-guards-waits-');
+
+  for (const [file, body] of Object.entries(files)) {
+    writeFileSync(join(root, file), body);
+  }
+
+  return fixedWaits(root);
+};
+
+test('a fixed wait is flagged with its file and line, whatever the spelling', () => {
+  const problems = fixedWaitsIn({
+    'a.test.ts': ['const ok = 1;', "run('sleep 1; kill -TERM $pid');"].join('\n'),
+    'b.test.ts': ["const gate = 'sleep 4';", 'await new Promise((r) => setTimeout(r, 5));'].join('\n'),
+    'c.test.ts': 'Atomics.wait(cell, 0, 0, 10);\nclock.sleepSeconds(0.3);',
+  });
+
+  assert.deepEqual(problems, [
+    'a.test.ts:2',
+    'b.test.ts:1',
+    'b.test.ts:2',
+    'c.test.ts:1',
+    'c.test.ts:2',
+  ]);
+});
+
+test('the named exemptions and a wait on a computed duration are not flagged', () => {
+  const wait = "run('sleep 1');\nsetTimeout(done, 1);";
+
+  assert.deepEqual(
+    fixedWaitsIn({
+      'adapter-clock.test.ts': wait,
+      'bounded.test.ts': wait,
+      'suite-guards.test.ts': wait,
+      'd.test.ts': 'clock.sleepSeconds(seconds);',
+    }),
+    [],
+  );
+});
+
+test('a fixed wait in a support or fixtures directory is flagged with its relative path, the exempted support file apart', () => {
+  const root = tmpDir('goal-suite-guards-waits-');
+
+  mkdirSync(join(root, 'support'));
+  mkdirSync(join(root, 'fixtures'));
+  writeFileSync(join(root, 'support', 'await-state.ts'), 'setTimeout(done, 20);');
+  writeFileSync(join(root, 'support', 'other.ts'), 'setTimeout(done, 20);');
+  writeFileSync(join(root, 'fixtures', 'f.ts'), "spawn('sleep 2');");
+
+  assert.deepEqual(fixedWaits(root), ['fixtures/f.ts:1', 'support/other.ts:1']);
+});
+
+test('the goal tests carry no fixed wait outside the named exemptions', () => {
+  assert.deepEqual(fixedWaits(TESTS), []);
 });

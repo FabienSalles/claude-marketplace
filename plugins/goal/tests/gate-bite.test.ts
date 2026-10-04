@@ -4,9 +4,12 @@ import { spawnSync } from 'node:child_process';
 import { mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
+import { AWAIT_DEADLINE_MS, signalWhenHeld } from './support/await-state.ts';
 import { tmpDir } from './support/tmp.ts';
 
 const GATE = resolve(import.meta.dirname, '..', 'scripts', 'goal-gate.ts');
+
+const AWAIT_MARKER = resolve(import.meta.dirname, 'support', 'await-marker.sh');
 
 const BITING = 'grep -q "a = 2" src/a.ts';
 
@@ -171,15 +174,19 @@ test('the bite check says where the implementation is set aside before running t
 
 // R9 — node fires no 'exit' on a default-disposition INT or TERM, so a signal during the window
 // used to leave the tree holding HEAD's blob and the work in a directory nothing ever named.
-test('a bite check signalled mid-window still puts the implementation back', () => {
-  const { repo, plan } = fixture(withGate1('sleep 4'));
+test('a bite check signalled mid-window still puts the implementation back', async () => {
+  const marks = tmpDir('goal-gate-bite-marks-');
+  const open = join(marks, 'window.open');
+  const release = join(marks, 'window.release');
+  const { repo, plan } = fixture(withGate1(`touch ${open}; sh ${AWAIT_MARKER} ${release} ${AWAIT_DEADLINE_MS}`));
   touchDeclared(repo);
 
-  spawnSync(
-    'bash',
-    ['-c', `node "${GATE}" bite "${plan}" 1 & pid=$!; sleep 1.5; kill -TERM $pid; wait $pid`],
-    { cwd: repo, encoding: 'utf8' },
-  );
+  await signalWhenHeld('node', [GATE, 'bite', plan, '1'], { cwd: repo }, {
+    state: 'the bite window open',
+    markers: [open],
+    signal: 'SIGTERM',
+    release: [release],
+  });
 
   assert.equal(readFileSync(join(repo, 'src', 'a.ts'), 'utf8'), 'export const a = 2;\n');
   assert.deepEqual(backups(repo), []);
