@@ -16,6 +16,7 @@ import { runDir, type Reporter } from '../../src/run/report.ts';
 import { tmpDir } from './tmp.ts';
 
 export const RUN_NODE = resolve(import.meta.dirname, '..', '..', 'scripts', 'goal-run.ts');
+const AWAIT_MARKER = resolve(import.meta.dirname, 'await-marker.sh');
 
 export const git = (cwd: string, ...args: string[]) => spawnSync('git', args, { cwd, encoding: 'utf8' });
 
@@ -110,6 +111,10 @@ fi
 # stays untouched for them. Pushes HEAD to origin's current branch, which is what moves the local
 # remote-tracking ref this guard watches.
 [ -n "$FAKE_CLAUDE_PUSHES" ] && git push -q origin "HEAD:$(git rev-parse --abbrev-ref HEAD)" 2>/dev/null
+if [ -n "$FAKE_CLAUDE_RELEASE" ]; then
+  : > "$FAKE_CLAUDE_STARTED"
+  sh "${AWAIT_MARKER}" "$FAKE_CLAUDE_RELEASE" 30000 || exit 1
+fi
 # Records the sleep's start/end instants (node, not BSD date -%N, for millisecond precision) into
 # a per-invocation file, so a concurrency test can assert the lens and reviewer intervals overlap
 # instead of budgeting a wall-clock ceiling that machine load can blow.
