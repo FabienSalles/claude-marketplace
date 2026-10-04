@@ -269,6 +269,6 @@ test('a fixed wait in a support or fixtures directory is flagged with its relati
   assert.deepEqual(fixedWaits(root), ['fixtures/f.ts:1', 'support/other.ts:1']);
 });
 
-test('the goal tests carry no fixed wait outside the named exemptions', () => {
+test('no line of the goal tests matches a fixed-wait pattern outside the named exemptions', () => {
   assert.deepEqual(fixedWaits(TESTS), []);
 });
