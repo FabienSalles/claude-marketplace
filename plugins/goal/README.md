@@ -194,7 +194,7 @@ More, including the axes that are entirely empty: [`docs/comparison.md`](docs/co
 | [`/goal:plan`](skills/plan/SKILL.md) | `skills/` | The technical grill → command-mapped DoD, slices, policy, remote → the locked plan on a branch |
 | [`/goal:supervise`](skills/supervise/SKILL.md) | `skills/` | Launches the runner, classifies a halt, repairs or discards once. **Never exercised by a real run** |
 | [`/goal:next`](skills/next/SKILL.md) | `skills/` | Manual-loop checkpoint: replay the DoD, reconcile plan against code, emit the next handoff |
-| `goal-run.ts` + `run/*.ts` | `scripts/` + `src/run/` | The runner: 1,692 lines, the entry point plus 14 modules (preflight, sweep, lock, iteration, publish, close, report) |
+| `goal-run.ts` + `run/*.ts` | `scripts/` + `src/run/` | The runner: 1,696 lines, the entry point plus 14 modules (preflight, sweep, lock, iteration, publish, close, report) |
 | `goal-gate.ts` + `gate/*.ts` | `scripts/` + `src/gate/` | The judge, and the only committer: 1,089 lines, the entry point plus 11 modules. Exit 0 runnable · 1 `HALT` with a reason · 2 misuse |
 | `ports.ts` + `adapters/*.ts` | `src/` | The `CommandRunner`, `Clock` and `FileSystem` ports, and the real adapters that back them: every process spawn, wait and disk access in production code goes through one, so a rule is observable against a double instead of a repository fixture |
 | `core/*.ts` | `src/core/` | The pure business rules (scope, bounds, commands, ticked, cross-iteration, never) the gate evaluates, plus verdict and preflight: no process, no clock, no disk |
@@ -204,7 +204,7 @@ More, including the axes that are entirely empty: [`docs/comparison.md`](docs/co
 | `goal-run-reviewer` · `goal-session-auditor` | `agents/` | Post-publication review and transcript audit. **Never fired** |
 | [`grill-adversarial`](skills/grill-adversarial/SKILL.md) | `skills/` | Opt-in, loaded during `/goal:spec`'s grill |
 | [`product:vertical-slice`](../product/skills/vertical-slice/SKILL.md) · [`product:delivery`](../product/skills/delivery/SKILL.md) | *(plugin `product`)* | Loaded by `/goal:plan` to split the work and give each slice a shipping strategy |
-| `tests/run.sh` | `tests/` | 491 tests across 59 files. Wraps `node --test` and additionally refuses a zero-pass run, an undeclared skip, and a missing summary (a bare `node --test` exits 0 on a glob matching nothing) |
+| `tests/run.sh` | `tests/` | 496 tests across 59 files. Wraps `node --test` and additionally refuses a zero-pass run, an undeclared skip, and a missing summary (a bare `node --test` exits 0 on a glob matching nothing) |
 | `tests/support/frozen.ts` · `tests/support/budget.ts` | `tests/support/` | `node tests/support/frozen.ts` checks that every test name in `tests/frozen-names.txt` (the names the 28 frozen files declared on `aef0e8d`) is declared exactly once across `tests/*.test.ts` and never skipped or todo'd, and names each one lost, renamed, skipped or duplicated. `node tests/support/budget.ts [--runs N] [--wall S] [--file S] [--test S] [--only <file>]` runs `run.sh` N times (default 3), refuses any run that is not green, and reports the median wall, the slowest file and the slowest test, failing on every one over its ceiling in seconds. CI runs it through `npm run verify`, whose ceiling lives in `scripts/verify/checks.ts` (see `docs/open-questions.md` §8). A file's time is the sum of its tests' times, so process start-up is not in it |
 | `done-criteria.template` · `goal-handoff.template` · `post-merge.template` | `templates/` | The DoD baseline, the handoff `/goal:next` fills, and the merge-day checklist. Printed, never executed |
 
@@ -222,7 +222,7 @@ Every row is a refusal the code can still reach today.
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| Exit 2, "the base is not green" | a command the plan holds every slice to already fails on the untouched tree | Fix the base. The sweep runs before a byte is written, so nothing needs undoing. When the command is a `dodN` line, the refusal adds that a final-state check belongs in the `gate1` of the iteration that makes it true |
+| Exit 2, "the base is not green" | a command the plan holds every slice to already fails on the untouched tree | Fix the base. The sweep runs before a byte is written, so nothing needs undoing. The refusal ends with `declared by:` and every swept line that declares the command (`Iteration <n> gate<k>`, `the plan's Definition of Done dod<k>`); when one of them is a `dodN` line, it adds that a final-state check belongs in the `gate1` of the iteration that makes it true |
 | Exit 2, "the plan's directory is visible to git" | `.claude/plans/` is not git-ignored | Ignore that directory, untracking any spec already committed |
 | Exit 2, "Policy is manual" | the runner has nowhere to put the work | That plan is for the manual loop: run it with `/goal` and `/goal:next`, or change the `Policy:` line |
 | Exit 2, "the plan declares no Remote line" | never defaulted to `origin` | Write the remote on the plan. Guessing here pushes a fork's work to its parent |
