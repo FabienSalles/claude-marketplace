@@ -3,35 +3,13 @@
 The risk register mitigates untested hotspots with "characterization test". This
 file is how that row gets executed on a PHP system nobody in the room has read.
 
-A characterization test does not assert what the code *should* do. It records what
-it *currently* does — bugs, quirks and 500s included — so that any change becomes a
-visible diff instead of a hope. The pin has to be reproducible (same input, same
-output, every run), explainable (the scrub rules are readable), and verifiable by
-sampling (a human opens N recorded outputs and confirms they describe the system).
-The reviewable unit is the harness, not the conclusion it produces.
+The definition, when a net is required, the order of its steps and the gate between
+them are owned by `craft:testing-principles` §16. This file keeps what is specific to
+a PHP/Symfony system: the recipes, the scrubbers and the tool checks.
 
 Every tool below was checked on 2026-08-16 with the command shown next to it.
 Re-check liveness before quoting anything to a client — three of these entries
 exist here specifically because their public signal lies.
-
-## The order, and why inverting it wastes the week
-
-| # | Step | Deliverable | Gate before moving on |
-|---|---|---|---|
-| 1 | Inventory the observable surface | committed `routes.json` (or console commands, consumers, cron) | inventory diffs clean against the live app |
-| 2 | Freeze the inputs | fixed DB state, fixed clock, fixed locale/timezone, seeded randomness | same request twice, byte-identical body |
-| 3 | Pin the outputs | snapshots or recorded traffic, committed | first full run green on unmodified code |
-| 4 | Prove the pin | Infection report on the pinned module | surviving mutants triaged, not counted |
-| 5 | Change | the risk register's *safe first changes* | steps 3 and 4 re-run and still green |
-
-Steps 3 and 5 are the ones that get inverted under deadline pressure, and the cost
-is asymmetric: a change made before the pin cannot be distinguished afterwards from
-a pre-existing defect, because the reference no longer exists. Step 2 is the one
-that gets skipped, and it fails loudly one hour later — an unfrozen clock or an
-autoincrement ID turns every snapshot red on the second run and the harness gets
-abandoned as noisy. Step 4 is the one that gets skipped silently, which is worse:
-a green suite that catches nothing is indistinguishable from a green suite that
-catches everything, until production says otherwise.
 
 ## The PHP reality: the famous library is not installable
 
@@ -375,8 +353,8 @@ what it demonstrably did not exercise, next to the pass rate.
 
 ## Prove the pin: mutation, not coverage
 
-A characterization suite that passes proves nothing about its own sensitivity.
-Mutation testing injects faults and reports which ones the suite fails to detect.
+Why the net must be proven able to fail is in `craft:testing-principles` §16. On PHP,
+mutation testing injects faults and reports which ones the suite fails to detect.
 
 **Infection** (github.com/infection/infection — BSD-3-Clause, 2,233 stars, 0.34.2
 of 2026-08-07) is the PHP engine. Sourced from the 0.34.2 source, unrun here:

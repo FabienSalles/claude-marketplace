@@ -158,10 +158,10 @@ Produce `risk-register.md`. The high-signal intersection is
 **churn hotspot × complexity × no tests** — those files break first and cost most.
 For each risk: what, evidence (file, command output), impact, and the cheapest
 mitigation (characterization test, extraction, upgrade). "Characterization test"
-is the mitigation this register writes most and explains least:
-[references/safety-net.md](references/safety-net.md) turns it into an executable
-order — inventory the observable surface, freeze the inputs, pin the outputs,
-prove the pin with mutation, then change.
+is the mitigation this register writes most and explains least: the doctrine and
+its order live in `craft:testing-principles` §16, and
+[references/safety-net.md](references/safety-net.md) holds the PHP/Symfony recipes
+that execute it.
 
 Run the deterministic pass before writing a single row: dead code, distance to a
 modern target, type-safety debt, architecture violations, mutation score and
@@ -307,8 +307,8 @@ Then the internal coherence checks:
 - **[references/artifact-templates.md](references/artifact-templates.md)** —
   skeletons for every artifact: recon, architecture, glossary, use case, entity
   model, risk register, open questions, shared-brain README.
-- **[references/safety-net.md](references/safety-net.md)** — how "characterization
-  test" and "safe first changes" get executed: the five-step order and its gates,
+- **[references/safety-net.md](references/safety-net.md)** — the PHP/Symfony
+  recipes for the characterization net (doctrine: `craft:testing-principles` §16):
   the Symfony route-inventory plus snapshot recipe, scrubbers and their two silent
   failure modes, record-replay and differential testing when the code has no
   seams, mutation testing as the gate on the net itself, and the honest warning

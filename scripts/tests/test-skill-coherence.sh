@@ -1691,6 +1691,30 @@ assert_absent "R10 no characterization example uses a snapshot matcher" \
 assert_absent "R10 no characterization example uses the node:test snapshot assertion" \
   'assert.snapshot' "$NODE_TEST_SKILL" "$VITEST_CONVENTIONS" "$NODE_TEST_REFERENCES/examples.test.ts"
 
+assert_present "R8 delivery points to the craft doctrine" \
+  'craft:testing-principles. §16' plugins/product/skills/delivery/SKILL.md plugins/product/skills/delivery/references/additive-change.md
+
+assert_present "R8 legacy discovery points to the craft doctrine" \
+  'craft:testing-principles. §16' plugins/legacy/skills/discovery/SKILL.md
+
+assert_present "R9 safety-net points to the craft doctrine" \
+  'craft:testing-principles. §16' plugins/legacy/skills/discovery/references/safety-net.md
+
+assert_absent "R1 safety-net has no order table of its own" \
+  'The order, and why inverting it' plugins/legacy/skills/discovery/references/safety-net.md
+
+assert_absent "R1 legacy discovery does not restate the five-step order" \
+  'five-step order' plugins/legacy/skills/discovery/SKILL.md plugins/legacy/README.md
+
+assert_absent "R1 safety-net does not define the characterization test itself" \
+  'does not assert what the code' plugins/legacy/skills/discovery/references/safety-net.md
+
+assert_present "R9 safety-net keeps its Symfony recipe" \
+  'The Symfony recipe: walk the routes' plugins/legacy/skills/discovery/references/safety-net.md
+
+assert_present "R9 safety-net keeps its Infection recipe" \
+  'vendor/bin/infection run src/Billing' plugins/legacy/skills/discovery/references/safety-net.md
+
 echo ""
 if [[ $failures -gt 0 ]]; then
   echo "✗ $failures/$cases assertion(s) failed"
