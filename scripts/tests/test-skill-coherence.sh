@@ -1603,6 +1603,71 @@ assert_absent "R9 the save example does not double the repository with vi.fn" \
   'const save = vi.fn' "$VITEST_EXAMPLES"
 
 echo ""
+echo "== Characterization doctrine — one home in craft, a bounded exception to one owner per rule"
+
+CRAFT_REFACTORING=plugins/craft/skills/refactoring-principles/SKILL.md
+
+assert_pins "R1 craft testing-principles defines the characterization net once" \
+  'A characterization net records what the code does today, bugs and quirks included' "$CRAFT_TESTING"
+
+assert_pins "R1 the order is stated once, with its two-runs gate" \
+  'net passes twice in a row on unmodified code' "$CRAFT_TESTING"
+
+assert_present "R1 the description triggers a testing session on characterization wording" \
+  'description:.*characterization test.*golden master.*safety net' "$CRAFT_TESTING"
+
+assert_present "R2 a net never records what the code should do" \
+  'never what it should do' "$CRAFT_TESTING"
+
+assert_present "R3 the inventory covers only the surface the change touches" \
+  'never "characterize everything"' "$CRAFT_TESTING"
+
+assert_present "R3 a net is skipped when existing tests already pin the behaviour" \
+  'existing tests already pin it' "$CRAFT_TESTING"
+
+assert_present "R3 a net is skipped when the behaviour is meant to change" \
+  'its behaviour is meant to change' "$CRAFT_TESTING"
+
+assert_present "R4 inputs are frozen before outputs are pinned" \
+  'Freeze the inputs (clock, randomness, ids, locale)' "$CRAFT_TESTING"
+
+assert_present "R4 the net lands as its own step before any change" \
+  'lands as its own step before any change' "$CRAFT_TESTING"
+
+assert_present "R4 a net recorded late is recorded against the unmodified revision" \
+  'recorded against the unmodified revision' "$CRAFT_TESTING"
+
+assert_present "R5 the net is proven able to fail with one deliberate break" \
+  'one deliberate break of the pinned behaviour' "$CRAFT_TESTING"
+
+assert_present "R5 the method is deferred to #159" \
+  '#159' "$CRAFT_TESTING"
+
+assert_present "R6 an intended change updates exactly the cases it names" \
+  'updates exactly the net cases it targets, in the same change, and names them' "$CRAFT_TESTING"
+
+assert_present "R6 an unnamed red case is a regression, never re-recorded" \
+  'A red case nobody named is a regression and is never re-recorded' "$CRAFT_TESTING"
+
+assert_present "R6 the bug-fix rule is pointed to, not restated" \
+  'craft:tdd-workflow-principles' "$CRAFT_TESTING"
+
+assert_present "R7 rule 5 of section 14 names the exception and points to section 16" \
+  'The one declared exception is a characterization net (§16)' "$CRAFT_TESTING"
+
+assert_present "R7 the net is marked and its retirement trigger is written at creation" \
+  'its retirement trigger is written when the net is created' "$CRAFT_TESTING"
+
+assert_present "R7 a part with no other owner stays and becomes its owner" \
+  'A part with no other owner stays' "$CRAFT_TESTING"
+
+assert_present "R8 refactoring-principles points to the craft doctrine" \
+  'craft:testing-principles. §16' "$CRAFT_REFACTORING"
+
+assert_absent "R8 refactoring-principles does not restate the order" \
+  'passes twice in a row' "$CRAFT_REFACTORING"
+
+echo ""
 if [[ $failures -gt 0 ]]; then
   echo "✗ $failures/$cases assertion(s) failed"
   exit 1

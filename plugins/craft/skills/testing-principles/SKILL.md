@@ -1,6 +1,6 @@
 ---
 name: testing-principles
-description: "ACTIVATE when writing or modifying tests, creating test classes/files, using test doubles, factories, or data providers. ACTIVATE for 'DAMP', 'spy vs mock', 'what NOT to test', 'AAA', 'test naming', 'factory test', 'parameterized test', 'interface test', 'UI test', 'assert visible content', 'locate vs assert', 'selector', 'count by class'. Covers cross-language testing principles: DAMP over DRY, AAA/GWT pattern, spy over mock, what NOT to test, factory functions, parameterized tests, structured assertions, interface tests coupling to perceivable content not technical wiring. Language-specific tooling (Prophecy, vi.fn/vi.mock, PHPUnit annotations, it.each syntax, node:test and node:assert) lives in phpunit:php-test-conventions / vitest:vitest-test-conventions / node-test:node-test-conventions."
+description: "ACTIVATE when writing or modifying tests, creating test classes/files, using test doubles, factories, or data providers. ACTIVATE for 'DAMP', 'spy vs mock', 'what NOT to test', 'AAA', 'test naming', 'factory test', 'parameterized test', 'interface test', 'UI test', 'assert visible content', 'locate vs assert', 'selector', 'count by class', 'characterization test', 'golden master', 'safety net'. Covers cross-language testing principles: DAMP over DRY, AAA/GWT pattern, spy over mock, what NOT to test, factory functions, parameterized tests, structured assertions, interface tests coupling to perceivable content not technical wiring, characterization nets that pin today's behaviour before a change. Language-specific tooling (Prophecy, vi.fn/vi.mock, PHPUnit annotations, it.each syntax, node:test and node:assert) lives in phpunit:php-test-conventions / vitest:vitest-test-conventions / node-test:node-test-conventions."
 ---
 
 # Testing — Cross-Language Principles
@@ -249,7 +249,7 @@ at the class that implements it, and not mechanically end-to-end either.
    assert **what transits** (the captured arguments). The top hides the glue inside its
    outcome; the bottom cannot see who wires it.
 5. **One owner per rule.** Wherever the rule lands, other levels do not re-verify it —
-   each keeps only what it alone can observe.
+   each keeps only what it alone can observe. The one declared exception is a characterization net (§16), temporary and marked.
 
 **Criterion:** read the test's name and assertions alone — they must state the business
 rule in domain terms. If they describe scraping mechanics, descend one level and retry.
@@ -284,6 +284,31 @@ Zero Gherkin step definitions in this pack open an HTTP client or a database con
 In a Jest + Cucumber codebase, the Pact suite stays outside the normal run: a `*.pact.spec.ts` suffix, a dedicated script, a CI job in `allow_failure`, and a published, versioned pact.
 Zero `*.pact.spec.ts` files run inside the default test script; the `allow_failure` job is the only runner that executes them.
 
+## 16. Characterization Net — Pin Today's Behaviour Before Changing It
+
+A characterization net records what the code does today, bugs and quirks included, never what it should do. Its examples pin a current output, even a wrong one, not a corrected one.
+
+**When it is required:** a change must preserve an observable behaviour that no existing test pins. It is skipped, with one stated reason, when existing tests already pin it, when the code is new, or when its behaviour is meant to change. It is never "characterize everything": the inventory covers only the surface the change touches.
+
+**The order, with its gate between each step:**
+
+1. Inventory the observable surface the change touches. Gate: every output the change can alter is listed.
+2. Freeze the inputs (clock, randomness, ids, locale). Gate: two runs with the same inputs give the same raw output.
+3. Pin the outputs, with readable scrub rules for what cannot be frozen. Gate: each scrub rule names what it masks.
+4. Prove the pin can fail: one deliberate break of the pinned behaviour turns the net red, then revert it. The method for proving a test bites is owned by #159 (its future home); until it ships, do only this one break and teach nothing more here.
+5. The net passes twice in a row on unmodified code and lands as its own step before any change. Gate: two green runs, committed apart from the change.
+6. Change, net still green.
+
+If code was already modified before a net existed, the net is recorded against the unmodified revision.
+
+**Intended changes on a pinned surface.** A change that deliberately alters pinned behaviour (a bug fix, an intended change on part of the surface) updates exactly the net cases it targets, in the same change, and names them. Every other case stays green untouched. A red case nobody named is a regression and is never re-recorded. A bug's correct behaviour also gets its own failing-first test: see the Bug-Fix Workflow in `craft:tdd-workflow-principles`.
+
+**Bounded exception to one owner per rule (§14 rule 5).** A net may re-verify rules owned at lower levels while the change it guards is in flight.
+
+- It is marked as a net (name or location), and its retirement trigger is written when the net is created.
+- Each part is retired once the change is done and that behaviour has an owning test at its proper level.
+- A part with no other owner stays, and becomes that behaviour's owner.
+
 ## Quick Reference
 
 | Rule | Principle |
@@ -311,4 +336,5 @@ Zero `*.pact.spec.ts` files run inside the default test script; the `allow_failu
 | Absence of rule | Never prove that unwired code does not run — scope lives in the plan, not in a test |
 | Unwired capability | A generic mechanism is tested only through the concrete class production wires to it |
 | Test-only classes | No production-shaped class living only for tests — the fixture is the real concrete class |
+| Characterization net | Before changing unpinned behaviour: freeze inputs, pin today's output (bugs included), prove it can fail, land it first; a temporary, marked exception to one owner per rule (§16) |
 | Vocabulary | Identifiers reuse the codebase's exact terms — no synonyms ("client" for `Subscriber`), no reserved-term collisions ("offered" vs `Offer`) |
