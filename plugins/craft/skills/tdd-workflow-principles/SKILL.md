@@ -8,6 +8,7 @@ description: "ACTIVATE when the user wants to build, implement, or develop any n
 > The **process** below is language-agnostic. Test-runner commands and framework specifics (PHPUnit with Symfony container, vitest with NestJS modules, etc.) live in:
 > - `phpunit:php-tdd-workflow`
 > - `vitest:vitest-tdd-workflow`
+> - `node-test:node-test-conventions` (a file importing `node:test`, or a package whose test script runs `node --test`)
 
 > For test-writing conventions (DAMP, AAA, spy vs mock, factories), see `testing-principles`.
 

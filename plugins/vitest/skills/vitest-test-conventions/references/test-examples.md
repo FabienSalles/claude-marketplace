@@ -130,7 +130,6 @@ it('should throw InvalidPeriodError when end before start', () => {
     .toThrow(InvalidPeriodError);
 });
 
-// Test name includes exception class name
 it('should throw MissingLeaseError when lease not found', async () => {
   const repo = { findById: vi.fn().mockResolvedValue(null) };
 
