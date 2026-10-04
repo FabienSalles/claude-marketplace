@@ -10,20 +10,18 @@
 
 ## Test Doubles with Vitest
 
-### vi.fn() -- Simple stubs
+### In-memory stub -- the double for a port
 
 ```typescript
 it('should call repository save', async () => {
-  const save = vi.fn();
-  const repo = { save } satisfies Pick<ReceiptRepository, 'save'>;
+  const repo = new InMemoryReceiptRepository();
 
   const useCase = new GenerateReceipt(repo);
   await useCase.execute(leaseId);
 
-  expect(save).toHaveBeenCalledWith(expect.objectContaining({
-    leaseId,
-    amount: 850_00,
-  }));
+  expect(repo.saved).toEqual([
+    expect.objectContaining({ leaseId, amount: 850_00 }),
+  ]);
 });
 ```
 
@@ -57,7 +55,7 @@ vi.mock('../infrastructure/email-service', () => ({
 
 // Spy pattern -- verification after act
 useCase.execute();
-expect(repo.save).toHaveBeenCalledWith(expectedReceipt);
+expect(repo.saved).toContainEqual(expectedReceipt);
 ```
 
 ## it.each() Parameterized Tests
@@ -130,9 +128,8 @@ it('should throw InvalidPeriodError when end before start', () => {
     .toThrow(InvalidPeriodError);
 });
 
-// Test name includes exception class name
 it('should throw MissingLeaseError when lease not found', async () => {
-  const repo = { findById: vi.fn().mockResolvedValue(null) };
+  const repo = new InMemoryLeaseRepository();
 
   await expect(useCase.execute('unknown'))
     .rejects.toThrow(MissingLeaseError);

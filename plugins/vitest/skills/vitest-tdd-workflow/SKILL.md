@@ -1,6 +1,6 @@
 ---
 name: vitest-tdd-workflow
-description: "ACTIVATE when building new features, endpoints, or user stories using TDD with Vitest in a TypeScript/NestJS context. ACTIVATE for '/feature-tdd-dev', 'TDD', 'red-green-refactor' in TS context. Provides Vitest/NestJS-specific TDD examples and commands; cross-language TDD workflow (cross-layer iterations, RED-GREEN-REFACTOR, working app, bug-fix-first-test, mocks-hiding-bugs) lives in craft:tdd-workflow-principles. DO NOT use for: test writing conventions (see vitest:vitest-test-conventions), PHP TDD (see phpunit:php-tdd-workflow)."
+description: "ACTIVATE when building new features, endpoints, or user stories using TDD with Vitest in a TypeScript/NestJS context. ACTIVATE for '/feature-tdd-dev', 'TDD', 'red-green-refactor' in TS context. Provides Vitest/NestJS-specific TDD examples and commands; cross-language TDD workflow (cross-layer iterations, RED-GREEN-REFACTOR, working app, bug-fix-first-test, mocks-hiding-bugs) lives in craft:tdd-workflow-principles. DO NOT use for: node:test files (a file importing node:test) or a project whose tests run under node --test (see node-test:node-test-conventions), test writing conventions (see vitest:vitest-test-conventions), PHP TDD (see phpunit:php-tdd-workflow)."
 ---
 
 # TDD Workflow — Vitest / NestJS
@@ -75,7 +75,7 @@ In addition to the cross-language checklist (see `craft:tdd-workflow-principles`
 
 ```typescript
 // ❌ This test passes but hides a calculation bug
-const repo = { findLease: vi.fn().mockResolvedValue(mockLease) };
+const repo = new InMemoryLeaseRepository([mockLease]);
 
 // ✅ Use real domain objects to catch real problems
 const lease = Lease.create(realLeaseData);
@@ -91,7 +91,7 @@ Whether a unit earns a test at all is `craft:testing-principles`' call, not this
 | Domain model | Unit test for business logic |
 | Controller | E2E test (`supertest`) for endpoint |
 | Repository | Integration test with database |
-| Use case | Unit test with mocked ports |
+| Use case | Unit test with in-memory port stubs |
 | The access rule a guard enforces | Wherever refusal is observable, usually E2E |
 
 ## Vitest-specific: Commands

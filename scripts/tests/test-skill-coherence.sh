@@ -811,36 +811,39 @@ assert_pins "C148 Command publishes a named handler type alias, Query lets it in
 echo ""
 echo "== Iteration 8 — the ten test-strategy conventions are stated in craft:testing-principles"
 
-assert_pins "C154 jest.mock is only a module-level dependency injector redirecting to a hand-written stub" \
-  "\`jest.mock\` exists only as a module-level dependency injector, to redirect an infrastructure singleton to a hand-written stub." \
+assert_pins "C154 a module-level replacement is only a dependency injector redirecting a singleton to a hand-written stub" \
+  "A module-level replacement exists only as a dependency injector, to redirect an infrastructure singleton that cannot be injected to a hand-written stub." \
   "$CRAFT_TESTING"
 
-assert_pins "C155 never a jest double for a port, an in-memory stub applied to the curried handler" \
-  "Never a jest double for a port: write an in-memory stub in tests/Helpers and apply it to the curried handler." \
+assert_pins "C155 never a mocking-tool double for a port, an in-memory stub applied to the curried handler" \
+  "Never a mocking-tool double for a port: write an in-memory stub in tests/Helpers and apply it to the curried handler." \
   "$CRAFT_TESTING"
 
 assert_pins "C156 the stub is typed Port & test accessors, its own spy, asserted on state" \
   "it is its own spy, and you assert on its state rather than a call registry." \
   "$CRAFT_TESTING"
 
-assert_pins "C157 the stub resets in beforeEach on Jest, a tagged Before/After hook on Cucumber" \
-  "The stub's state resets in \`beforeEach\` on the Jest side, and through a tagged Before/After hook on the Cucumber side." \
+assert_pins "C157 the stub's state resets before each test, whatever the runner" \
+  "The stub's state resets before each test, through the runner's own per-test hook." \
   "$CRAFT_TESTING"
 
-assert_pins "C159 determinism comes from injected stub generators, never useFakeTimers" \
-  "Determinism comes from stub generators injected over a fixed list, never from \`useFakeTimers\`." \
+assert_pins "C159 determinism comes from injected stub generators, never a fake clock" \
+  "Determinism comes from stub generators injected over a fixed list, never from a fake clock." \
   "$CRAFT_TESTING"
 
-assert_pins "C160 node:assert in Cucumber, expect everywhere else" \
-  "Two assertion vocabularies stay strictly separated by runner: \`node:assert\` in Cucumber, \`expect\` everywhere else." \
+assert_pins "C160 one assertion vocabulary per runner, never two in one file" \
+  "One assertion vocabulary per runner, never two in one file: \`node:assert\` under node:test, \`expect\` under Jest or Vitest." \
   "$CRAFT_TESTING"
+
+assert_absent "C160 no rule makes expect the universal vocabulary" \
+  "expect\` everywhere else" plugins
 
 assert_pins "C163 AAA separated by blank lines, Result guard before the payload, several assertions allowed" \
   "AAA stays separated by blank lines, a Result guard precedes the payload assertion, and several assertions per test are allowed." \
   "$CRAFT_TESTING"
 
-assert_pins "C164 toMatchSnapshot only on a whole value, always paired with a discrete assertion" \
-  "\`toMatchSnapshot\` applies only to a whole value (an aggregate, an HTTP body, a rendered template) and is always paired with a discrete assertion in the same test." \
+assert_pins "C164 a snapshot only on a whole value, always paired with a discrete assertion" \
+  "A snapshot applies only to a whole value (an aggregate, an HTTP body, a rendered template) and is always paired with a discrete assertion in the same test." \
   "$CRAFT_TESTING"
 
 assert_pins "C166 Gherkin owns business acceptance criteria, steps run handlers against stubs, no HTTP or DB" \
@@ -848,7 +851,7 @@ assert_pins "C166 Gherkin owns business acceptance criteria, steps run handlers 
   "$CRAFT_TESTING"
 
 assert_pins "C169 the Pact suite stays outside the normal run" \
-  "The Pact suite stays outside the normal run: a \`\*.pact.spec.ts\` suffix, a dedicated script, a CI job in \`allow_failure\`, and a published, versioned pact." \
+  "the Pact suite stays outside the normal run: a \`\*.pact.spec.ts\` suffix, a dedicated script, a CI job in \`allow_failure\`, and a published, versioned pact." \
   "$CRAFT_TESTING"
 
 assert_pins "C158 the stub's type is the port intersected with its own test accessors" \
@@ -858,6 +861,52 @@ assert_pins "C158 the stub's type is the port intersected with its own test acce
 assert_pins "C173 the Pact CI job stays non-blocking behind a published, versioned pact" \
   "a CI job in \`allow_failure\`, and a published, versioned pact." \
   "$CRAFT_TESTING"
+
+cases=$((cases + 1))
+unscoped=$(awk 'BEGIN{RS="";ORS="\n"} /^## 15\./{f=1;next} /^## Quick Reference/{f=0} f{gsub(/\n/," ");print}' "$CRAFT_TESTING" \
+  | grep -E 'jest|Jest|Cucumber|Pact|Gherkin|Vitest|vi\.|expect|toMatchSnapshot|useFakeTimers|node:assert|Before/After|beforeEach' \
+  | grep -v '^In a Jest + Cucumber codebase' | grep -v '^One assertion vocabulary per runner')
+if [[ -n "$unscoped" ]]; then
+  echo "✗ R6 a §15 paragraph names a runner outside the Jest + Cucumber condition"
+  echo "$unscoped" | sed 's/^/    /'
+  failures=$((failures + 1))
+else
+  echo "✓ R6 every §15 paragraph naming a runner is conditioned on a Jest + Cucumber codebase"
+fi
+
+assert_pins "R6 the Jest module injector sentence is conditioned" \
+  "In a Jest + Cucumber codebase, \`jest.mock\` is the module-level dependency injector" \
+  "$CRAFT_TESTING"
+
+assert_pins "R6 the Cucumber reset sentence is conditioned" \
+  "In a Jest + Cucumber codebase, the stub resets in \`beforeEach\` on the Jest side, and through a tagged Before/After hook on the Cucumber side." \
+  "$CRAFT_TESTING"
+
+assert_present "R3 testing-principles lists the node:test companion" \
+  'node-test:node-test-conventions' "$CRAFT_TESTING"
+
+assert_present "R3 tdd-workflow-principles lists the node:test companion" \
+  'node-test:node-test-conventions' "$CRAFT_TDD"
+
+assert_present "R3 the refactoring-principles description names the node:test guidance" \
+  '^description:.*node-test:node-test-conventions' "$CRAFT_REFACTORING"
+
+assert_present "R3 the testing-principles description names the node:test guidance" \
+  '^description:.*node-test:node-test-conventions' "$CRAFT_TESTING"
+
+assert_pins "R8 factory overrides are a runner-neutral principle" \
+  "A factory takes a partial override of its defaults, so each test states only the field it varies." \
+  "$CRAFT_TESTING"
+
+assert_pins "R8 an exception test names the error it expects, runner-neutral" \
+  "An exception test names the error it expects (its class or code), never only that something threw." \
+  "$CRAFT_TESTING"
+
+assert_absent "R8 the vitest reference no longer states the exception-name rule as its own" \
+  "Test name includes exception class name" plugins/vitest/skills/vitest-test-conventions
+
+assert_absent "R7 no craft or vitest skill says node:assert is wrong outside Cucumber" \
+  "node:assert\` in Cucumber" plugins
 
 echo ""
 echo "== Iteration 9 — the seven aliasing, build and environment-config conventions"
@@ -1440,6 +1489,118 @@ fi
 
 assert_absent "R4 the ddd-ts-fp maker example takes no Logger" \
   '(logger: Logger)' "$DDD_EXAMPLES"
+
+echo ""
+echo "== Iteration 1 (#157) — node:test is a first-class runner with its own guidance"
+
+NODE_TEST_DIR=plugins/node-test/skills/node-test-conventions
+NODE_TEST_SKILL=$NODE_TEST_DIR/SKILL.md
+NODE_TEST_EXAMPLES=$NODE_TEST_DIR/references/examples.test.ts
+NODE_TEST_EVALS=$NODE_TEST_DIR/evals/evals.json
+
+assert_present "R1 the skill routes on a node:test import" \
+  "imports .node:test" "$NODE_TEST_SKILL"
+
+assert_present "R1 the skill routes on a node --test package" \
+  'node --test' "$NODE_TEST_SKILL"
+
+assert_present "R4 the skill teaches the loop counterpart of it.each" \
+  'it.each' "$NODE_TEST_SKILL"
+
+assert_present "R4 the skill teaches strictEqual and deepStrictEqual" \
+  'deepStrictEqual' "$NODE_TEST_SKILL"
+
+assert_present "R4 the skill teaches throws/rejects with a matcher" \
+  'assert.rejects' "$NODE_TEST_SKILL"
+
+assert_present "R4 the skill names the flag mock.module needs" \
+  '--experimental-test-module-mocks' "$NODE_TEST_SKILL"
+
+assert_present "R4 the examples exercise mock.fn, mock.method and mock.module" \
+  'mock.module(' "$NODE_TEST_EXAMPLES"
+assert_present "R4 the examples exercise mock.method" 'mock.method(' "$NODE_TEST_EXAMPLES"
+assert_present "R4 the examples exercise mock.fn" 'mock.fn(' "$NODE_TEST_EXAMPLES"
+
+assert_present "R5 mock.timers is restricted to a clock that cannot be injected" \
+  'mock.timers. only for a clock that cannot be injected' "$NODE_TEST_SKILL"
+
+assert_present "R5 mock.module is restricted to a singleton that cannot be injected" \
+  'mock.module. only to redirect a singleton that cannot be injected' "$NODE_TEST_SKILL"
+
+assert_present "R5 a port is never doubled with mock.fn" \
+  'port is never doubled with .mock.fn' "$NODE_TEST_SKILL"
+
+assert_absent "R5 no example doubles a port with mock.fn" \
+  'mock.fn(.*[Pp]ort' "$NODE_TEST_EXAMPLES"
+
+assert_present "R10 a mixed project follows the runner the file imports" \
+  'follows the runner it imports' "$NODE_TEST_SKILL"
+
+assert_present "R10 a new file in a mixed project follows the package test script" \
+  'package whose test script' "$NODE_TEST_SKILL"
+
+assert_present "R11 no runner yet: ask which runner, node:test as the zero-install option" \
+  'zero-install' "$NODE_TEST_SKILL"
+
+assert_present "R11 nothing is installed before the answer" \
+  'installs or configures nothing' "$NODE_TEST_SKILL"
+
+assert_present "R1 an eval routes a node:test file to node-test, not vitest" \
+  'node-test:node-test-conventions' "$NODE_TEST_EVALS"
+
+assert_present "R1 an eval routes a Vitest file to vitest, not node-test" \
+  'vitest:vitest-test-conventions' "$NODE_TEST_EVALS"
+
+assert_present "R10 the marketplace lists node-test under testing" \
+  '"source": "./plugins/node-test"' .claude-plugin/marketplace.json
+
+assert_present "R10 the README catalogue lists node-test" \
+  'plugins/node-test/README.md' README.md
+
+echo ""
+echo "== Iteration 3 (#157) — the Vitest skills never fire on node:test, and double ports with in-memory stubs"
+
+VITEST_EXAMPLES=plugins/vitest/skills/vitest-test-conventions/references/test-examples.md
+
+for skill in "$VITEST_CONVENTIONS" "$VITEST_TDD"; do
+  cases=$((cases + 1))
+  description=$(grep -m1 '^description:' "$skill")
+  if grep -q 'DO NOT use for:.*node:test' <<<"$description" && grep -q 'node --test' <<<"$description" && grep -q 'node-test:node-test-conventions' <<<"$description"; then
+    echo "✓ R2 $skill excludes node:test and points to its guidance"
+  else
+    echo "✗ R2 $skill excludes node:test and points to its guidance"
+    failures=$((failures + 1))
+  fi
+done
+
+for skill in "$VITEST_CONVENTIONS" "$VITEST_TDD"; do
+  cases=$((cases + 1))
+  description=$(grep -m1 '^description:' "$skill")
+  if grep -Eq "ACTIVATE.*(vi\.fn|'TDD')" <<<"$description"; then
+    echo "✓ R2 $skill keeps its Vitest and TDD triggers"
+  else
+    echo "✗ R2 $skill keeps its Vitest and TDD triggers"
+    failures=$((failures + 1))
+  fi
+done
+
+assert_absent "R9 no Vitest skill recommends mocked ports" \
+  'mocked ports' plugins/vitest
+
+assert_absent "R9 the quick reference no longer doubles dependencies with vi.fn" \
+  'Complex dependencies | `vi.fn()`' "$VITEST_CONVENTIONS"
+
+assert_present "R9 the quick reference teaches in-memory port stubs" \
+  'Port dependency | In-memory stub' "$VITEST_CONVENTIONS"
+
+assert_present "R9 the use case row teaches in-memory port stubs" \
+  'Unit test with in-memory port stubs' "$VITEST_TDD"
+
+assert_absent "R9 no example doubles a port with vi.fn" \
+  'repo = .*vi\.fn' "$VITEST_EXAMPLES" "$VITEST_TDD"
+
+assert_absent "R9 the save example does not double the repository with vi.fn" \
+  'const save = vi.fn' "$VITEST_EXAMPLES"
 
 echo ""
 if [[ $failures -gt 0 ]]; then

@@ -1,6 +1,6 @@
 ---
 name: testing-principles
-description: "ACTIVATE when writing or modifying tests, creating test classes/files, using test doubles, factories, or data providers. ACTIVATE for 'DAMP', 'spy vs mock', 'what NOT to test', 'AAA', 'test naming', 'factory test', 'parameterized test', 'interface test', 'UI test', 'assert visible content', 'locate vs assert', 'selector', 'count by class'. Covers cross-language testing principles: DAMP over DRY, AAA/GWT pattern, spy over mock, what NOT to test, factory functions, parameterized tests, structured assertions, interface tests coupling to perceivable content not technical wiring. Language-specific tooling (Prophecy, vi.fn/vi.mock, PHPUnit annotations, it.each syntax) lives in phpunit:php-test-conventions / vitest:vitest-test-conventions."
+description: "ACTIVATE when writing or modifying tests, creating test classes/files, using test doubles, factories, or data providers. ACTIVATE for 'DAMP', 'spy vs mock', 'what NOT to test', 'AAA', 'test naming', 'factory test', 'parameterized test', 'interface test', 'UI test', 'assert visible content', 'locate vs assert', 'selector', 'count by class'. Covers cross-language testing principles: DAMP over DRY, AAA/GWT pattern, spy over mock, what NOT to test, factory functions, parameterized tests, structured assertions, interface tests coupling to perceivable content not technical wiring. Language-specific tooling (Prophecy, vi.fn/vi.mock, PHPUnit annotations, it.each syntax, node:test and node:assert) lives in phpunit:php-test-conventions / vitest:vitest-test-conventions / node-test:node-test-conventions."
 ---
 
 # Testing — Cross-Language Principles
@@ -9,6 +9,7 @@ description: "ACTIVATE when writing or modifying tests, creating test classes/fi
 > - `phpunit:php-test-conventions`
 > - `symfony:symfony-test-conventions` (anything booting a Symfony kernel — `WebTestCase`, crawler, container doubles)
 > - `vitest:vitest-test-conventions`
+> - `node-test:node-test-conventions` (a file importing `node:test`, or a package whose test script runs `node --test`)
 
 ## 1. Test Types
 
@@ -104,6 +105,10 @@ test name is a future misreading.
 ## 8. Factory Methods / Functions
 
 Create helper methods in the test class (or shared module) to build test fixtures. When duplicated across multiple test files, extract to a dedicated `Factory` class / file.
+
+A factory takes a partial override of its defaults, so each test states only the field it varies.
+
+An exception test names the error it expects (its class or code), never only that something threw.
 
 ## 9. Structured Assertions Over Property-By-Property
 
@@ -251,30 +256,32 @@ rule in domain terms. If they describe scraping mechanics, descend one level and
 
 ## 15. Test Doubles — the Doctrine the Reference Code Proves
 
-`jest.mock` exists only as a module-level dependency injector, to redirect an infrastructure singleton to a hand-written stub.
+A module-level replacement exists only as a dependency injector, to redirect an infrastructure singleton that cannot be injected to a hand-written stub.
 
-Never a jest double for a port: write an in-memory stub in tests/Helpers and apply it to the curried handler.
+In a Jest + Cucumber codebase, `jest.mock` is the module-level dependency injector.
+
+Never a mocking-tool double for a port: write an in-memory stub in tests/Helpers and apply it to the curried handler.
 
 The stub is typed `Port & { test accessors }`: it is its own spy, and you assert on its state rather than a call registry.
 
-The stub's state resets in `beforeEach` on the Jest side, and through a tagged Before/After hook on the Cucumber side.
+The stub's state resets before each test, through the runner's own per-test hook.
 
-Determinism comes from stub generators injected over a fixed list, never from `useFakeTimers`.
+In a Jest + Cucumber codebase, the stub resets in `beforeEach` on the Jest side, and through a tagged Before/After hook on the Cucumber side.
 
-Two assertion vocabularies stay strictly separated by runner: `node:assert` in Cucumber, `expect` everywhere else.
+Determinism comes from stub generators injected over a fixed list, never from a fake clock.
+
+One assertion vocabulary per runner, never two in one file: `node:assert` under node:test, `expect` under Jest or Vitest.
 
 AAA stays separated by blank lines, a Result guard precedes the payload assertion, and several assertions per test are allowed.
 
 Nothing asserts a payload field ahead of that guard: the guard runs first, or the payload assertion is unreachable when the Result failed.
 
-`toMatchSnapshot` applies only to a whole value (an aggregate, an HTTP body, a rendered template) and is always paired with a discrete assertion in the same test.
+A snapshot applies only to a whole value (an aggregate, an HTTP body, a rendered template) and is always paired with a discrete assertion in the same test.
 
-Gherkin owns the business acceptance criteria: Feature/Scenario/Given-When-Then in English with data tables, and steps that run the handlers against stubs, with no HTTP and no database.
-
+In a Jest + Cucumber codebase, Gherkin owns the business acceptance criteria: Feature/Scenario/Given-When-Then in English with data tables, and steps that run the handlers against stubs, with no HTTP and no database.
 Zero Gherkin step definitions in this pack open an HTTP client or a database connection — every step reaches the handler through its stub.
 
-The Pact suite stays outside the normal run: a `*.pact.spec.ts` suffix, a dedicated script, a CI job in `allow_failure`, and a published, versioned pact.
-
+In a Jest + Cucumber codebase, the Pact suite stays outside the normal run: a `*.pact.spec.ts` suffix, a dedicated script, a CI job in `allow_failure`, and a published, versioned pact.
 Zero `*.pact.spec.ts` files run inside the default test script; the `allow_failure` job is the only runner that executes them.
 
 ## Quick Reference
