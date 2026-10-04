@@ -23,7 +23,7 @@ const SHELL_SUITES = [
 const VALIDATE_EACH_PLUGIN =
   'for plugin_dir in plugins/*/; do claude plugin validate "$plugin_dir" || exit 1; done';
 
-export const CHECKS: readonly Check[] = [
+const DECLARED: readonly Check[] = [
   { name: 'marketplace.json is valid', group: 'structure', requirements: [], inline: catalogValid },
   { name: 'every plugin has a valid plugin.json', group: 'structure', requirements: [], inline: pluginManifests },
   { name: 'marketplace.json agrees with each plugin.json', group: 'structure', requirements: [], inline: catalogParity },
@@ -65,3 +65,10 @@ export const CHECKS: readonly Check[] = [
   ...SHELL_SUITES.map((suite): Check => ({ name: suite, group: 'shell-suites', requirements: [], command: ['bash', suite] })),
   { name: 'health-check.sh', group: 'health-check', requirements: ['claude'], command: ['./scripts/health-check.sh', '--quick'] },
 ];
+
+const runsOnNode = (check: Check): boolean =>
+  'inline' in check || ['node', 'npx'].includes(check.command[0] ?? '');
+
+export const CHECKS: readonly Check[] = DECLARED.map((check) =>
+  runsOnNode(check) ? { ...check, requirements: [...check.requirements, 'node24'] } : check,
+);

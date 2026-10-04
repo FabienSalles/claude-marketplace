@@ -1,4 +1,4 @@
-export type Requirement = 'claude' | 'network';
+export type Requirement = 'claude' | 'network' | 'node24';
 
 type Described = {
   readonly name: string;
@@ -24,3 +24,5 @@ export type Outcome = { readonly status: Status; readonly detail: string };
 export type Execute = (check: Check) => Outcome;
 
 export type Write = (text: string) => void;
+
+export type Probe = (requirement: Requirement) => string | undefined;

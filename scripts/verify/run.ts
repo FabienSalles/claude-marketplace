@@ -1,4 +1,4 @@
-import type { Check, Execute, Outcome, Write } from './ports.ts';
+import type { Check, Execute, Outcome, Probe, Write } from './ports.ts';
 
 export const selectChecks = (checks: readonly Check[], groups: readonly string[]): readonly Check[] => {
   const known = new Set(checks.map((check) => check.group));
@@ -22,9 +22,12 @@ export type Verification = {
   readonly groups: readonly string[];
   readonly execute: Execute;
   readonly write: Write;
+  readonly probe?: Probe;
+  readonly gaps?: readonly string[];
+  readonly uncommitted?: readonly string[];
 };
 
-export const runVerify = ({ prepare, checks, groups, execute, write }: Verification): number => {
+export const runVerify = ({ prepare, checks, groups, execute, write, probe = () => undefined, gaps = [], uncommitted = [] }: Verification): number => {
   let selected: readonly Check[];
 
   try {
@@ -36,7 +39,9 @@ export const runVerify = ({ prepare, checks, groups, execute, write }: Verificat
   }
 
   const results = [prepare, ...selected].map((check) => {
-    const outcome = execute(check);
+    const missing = check.requirements.flatMap((requirement) => probe(requirement) ?? []);
+    const outcome: Outcome =
+      missing.length > 0 ? { status: 'failed', detail: `missing: ${missing.join(', ')}` } : execute(check);
 
     if (outcome.status === 'failed' && outcome.detail !== '') {
       write(`--- ${check.name}\n${outcome.detail.trimEnd()}\n`);
@@ -53,7 +58,15 @@ export const runVerify = ({ prepare, checks, groups, execute, write }: Verificat
     write(`${line(check, outcome)}\n`);
   }
 
+  for (const path of uncommitted) {
+    write(`uncommitted work judged as it is: ${path}\n`);
+  }
+
   write(failed === 0 ? 'green: every check passed or was not reproduced\n' : `red: ${failed} check(s) failed\n`);
+
+  for (const gap of gaps) {
+    write(`not reproduced on this Mac: ${gap}\n`);
+  }
 
   return failed === 0 ? 0 : 1;
 };
