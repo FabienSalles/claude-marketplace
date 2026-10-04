@@ -1442,6 +1442,73 @@ assert_absent "R4 the ddd-ts-fp maker example takes no Logger" \
   '(logger: Logger)' "$DDD_EXAMPLES"
 
 echo ""
+echo "== Iteration 1 (#157) — node:test is a first-class runner with its own guidance"
+
+NODE_TEST_DIR=plugins/node-test/skills/node-test-conventions
+NODE_TEST_SKILL=$NODE_TEST_DIR/SKILL.md
+NODE_TEST_EXAMPLES=$NODE_TEST_DIR/references/examples.test.ts
+NODE_TEST_EVALS=$NODE_TEST_DIR/evals/evals.json
+
+assert_present "R1 the skill routes on a node:test import" \
+  "imports .node:test" "$NODE_TEST_SKILL"
+
+assert_present "R1 the skill routes on a node --test package" \
+  'node --test' "$NODE_TEST_SKILL"
+
+assert_present "R4 the skill teaches the loop counterpart of it.each" \
+  'it.each' "$NODE_TEST_SKILL"
+
+assert_present "R4 the skill teaches strictEqual and deepStrictEqual" \
+  'deepStrictEqual' "$NODE_TEST_SKILL"
+
+assert_present "R4 the skill teaches throws/rejects with a matcher" \
+  'assert.rejects' "$NODE_TEST_SKILL"
+
+assert_present "R4 the skill names the flag mock.module needs" \
+  '--experimental-test-module-mocks' "$NODE_TEST_SKILL"
+
+assert_present "R4 the examples exercise mock.fn, mock.method and mock.module" \
+  'mock.module(' "$NODE_TEST_EXAMPLES"
+assert_present "R4 the examples exercise mock.method" 'mock.method(' "$NODE_TEST_EXAMPLES"
+assert_present "R4 the examples exercise mock.fn" 'mock.fn(' "$NODE_TEST_EXAMPLES"
+
+assert_present "R5 mock.timers is restricted to a clock that cannot be injected" \
+  'mock.timers. only for a clock that cannot be injected' "$NODE_TEST_SKILL"
+
+assert_present "R5 mock.module is restricted to a singleton that cannot be injected" \
+  'mock.module. only to redirect a singleton that cannot be injected' "$NODE_TEST_SKILL"
+
+assert_present "R5 a port is never doubled with mock.fn" \
+  'port is never doubled with .mock.fn' "$NODE_TEST_SKILL"
+
+assert_absent "R5 no example doubles a port with mock.fn" \
+  'mock.fn(.*[Pp]ort' "$NODE_TEST_EXAMPLES"
+
+assert_present "R10 a mixed project follows the runner the file imports" \
+  'follows the runner it imports' "$NODE_TEST_SKILL"
+
+assert_present "R10 a new file in a mixed project follows the package test script" \
+  'package whose test script' "$NODE_TEST_SKILL"
+
+assert_present "R11 no runner yet: ask which runner, node:test as the zero-install option" \
+  'zero-install' "$NODE_TEST_SKILL"
+
+assert_present "R11 nothing is installed before the answer" \
+  'installs or configures nothing' "$NODE_TEST_SKILL"
+
+assert_present "R1 an eval routes a node:test file to node-test, not vitest" \
+  'node-test:node-test-conventions' "$NODE_TEST_EVALS"
+
+assert_present "R1 an eval routes a Vitest file to vitest, not node-test" \
+  'vitest:vitest-test-conventions' "$NODE_TEST_EVALS"
+
+assert_present "R10 the marketplace lists node-test under testing" \
+  '"source": "./plugins/node-test"' .claude-plugin/marketplace.json
+
+assert_present "R10 the README catalogue lists node-test" \
+  'plugins/node-test/README.md' README.md
+
+echo ""
 if [[ $failures -gt 0 ]]; then
   echo "✗ $failures/$cases assertion(s) failed"
   exit 1

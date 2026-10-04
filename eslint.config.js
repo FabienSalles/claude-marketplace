@@ -1,7 +1,7 @@
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config({
-  files: ['plugins/goal/**/*.ts', 'scripts/**/*.ts'],
+  files: ['plugins/goal/**/*.ts', 'plugins/node-test/**/*.ts', 'scripts/**/*.ts'],
   languageOptions: {
     parser: tseslint.parser,
     parserOptions: { project: './tsconfig.json' },

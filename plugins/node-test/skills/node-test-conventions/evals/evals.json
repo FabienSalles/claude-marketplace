@@ -1,0 +1,31 @@
+{
+  "$comment": "One object per case; `skills` names what should load, `expected_behavior` lists what a passing run must do.",
+  "routing": [
+    {
+      "query": "Review src/receipt.test.ts, it starts with `import { describe, it } from 'node:test'`",
+      "skills": ["node-test:node-test-conventions"],
+      "expected_behavior": [
+        "loads node-test:node-test-conventions, not vitest:vitest-test-conventions",
+        "checks the file uses node:assert, not expect",
+        "also applies craft:testing-principles"
+      ]
+    },
+    {
+      "query": "Add a test for the new parseAmount function in this package, its package.json test script is `node --test`",
+      "skills": ["node-test:node-test-conventions"],
+      "expected_behavior": [
+        "loads node-test:node-test-conventions, not vitest:vitest-test-conventions",
+        "writes the new file with node:test and node:assert",
+        "declares one test per case in a loop rather than reaching for it.each"
+      ]
+    },
+    {
+      "query": "Write a spec for the OrderService in src/order.service.spec.ts, the file already imports `vi` and `describe` from 'vitest'",
+      "skills": ["vitest:vitest-test-conventions"],
+      "expected_behavior": [
+        "loads vitest:vitest-test-conventions, not node-test:node-test-conventions",
+        "keeps the file on Vitest, no runner migration"
+      ]
+    }
+  ]
+}

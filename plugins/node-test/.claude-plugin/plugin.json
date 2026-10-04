@@ -1,0 +1,12 @@
+{
+  "name": "node-test",
+  "version": "1.0.0",
+  "description": "node:test conventions: declaring tests, node:assert vocabulary, mocks and timers, running TypeScript tests with node --test",
+  "author": {
+    "name": "FabienSalles"
+  },
+  "repository": "https://github.com/FabienSalles/claude-marketplace",
+  "license": "MIT",
+  "keywords": ["node-test", "node", "testing", "conventions"],
+  "skills": "./skills/"
+}
