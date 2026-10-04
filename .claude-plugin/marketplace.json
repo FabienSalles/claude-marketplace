@@ -92,7 +92,7 @@
       "name": "vitest",
       "source": "./plugins/vitest",
       "description": "Vitest TDD workflow, test conventions and patterns",
-      "version": "1.0.4",
+      "version": "1.0.5",
       "author": { "name": "FabienSalles" },
       "category": "testing",
       "license": "MIT",

@@ -1,6 +1,6 @@
 ---
 name: vitest-test-conventions
-description: "ACTIVATE when writing Vitest tests, creating test files, using vi.fn()/vi.mock()/vi.spyOn(), or test factories. ACTIVATE for 'Vitest', 'it.each', 'NestJS testing module', 'supertest', 'vi.fn', 'vi.mock', 'spyOn'. Provides Vitest/NestJS-specific testing patterns; cross-language testing principles (DAMP, AAA, spy over mock, what NOT to test) live in craft:testing-principles. DO NOT use for: TDD workflow/iterations (see vitest:vitest-tdd-workflow), PHP/PHPUnit tests (see phpunit:php-test-conventions)."
+description: "ACTIVATE when writing Vitest tests, creating test files, using vi.fn()/vi.mock()/vi.spyOn(), or test factories. ACTIVATE for 'Vitest', 'it.each', 'NestJS testing module', 'supertest', 'vi.fn', 'vi.mock', 'spyOn'. Provides Vitest/NestJS-specific testing patterns; cross-language testing principles (DAMP, AAA, spy over mock, what NOT to test) live in craft:testing-principles. DO NOT use for: node:test files (a file importing node:test) or a project whose tests run under node --test (see node-test:node-test-conventions), TDD workflow/iterations (see vitest:vitest-tdd-workflow), PHP/PHPUnit tests (see phpunit:php-test-conventions)."
 ---
 
 # Test Conventions — Vitest
@@ -20,7 +20,7 @@ description: "ACTIVATE when writing Vitest tests, creating test files, using vi.
 ## Vitest-specific: Test Doubles
 
 ```typescript
-vi.fn()    // Standalone double for an injected dependency
+vi.fn()    // Standalone callback or function double; a port gets an in-memory stub instead
 vi.spyOn() // Wraps one method of a real object, leaving the rest real
 vi.mock()  // Module-level replacement, for what cannot be injected
 ```
@@ -60,7 +60,7 @@ const service = module.get(ReceiptService);
 | Situation | Approach |
 |-----------|----------|
 | Simple value objects | Direct instantiation |
-| Complex dependencies | `vi.fn()` stubs |
+| Port dependency | In-memory stub that is its own spy |
 | Spy on real method | `vi.spyOn()` |
 | Module replacement | `vi.mock()` |
 | Same logic, different data | `it.each()` (object or template literal) |

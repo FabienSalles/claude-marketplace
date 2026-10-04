@@ -1558,6 +1558,51 @@ assert_present "R10 the README catalogue lists node-test" \
   'plugins/node-test/README.md' README.md
 
 echo ""
+echo "== Iteration 3 (#157) — the Vitest skills never fire on node:test, and double ports with in-memory stubs"
+
+VITEST_EXAMPLES=plugins/vitest/skills/vitest-test-conventions/references/test-examples.md
+
+for skill in "$VITEST_CONVENTIONS" "$VITEST_TDD"; do
+  cases=$((cases + 1))
+  description=$(grep -m1 '^description:' "$skill")
+  if grep -q 'DO NOT use for:.*node:test' <<<"$description" && grep -q 'node --test' <<<"$description" && grep -q 'node-test:node-test-conventions' <<<"$description"; then
+    echo "✓ R2 $skill excludes node:test and points to its guidance"
+  else
+    echo "✗ R2 $skill excludes node:test and points to its guidance"
+    failures=$((failures + 1))
+  fi
+done
+
+for skill in "$VITEST_CONVENTIONS" "$VITEST_TDD"; do
+  cases=$((cases + 1))
+  description=$(grep -m1 '^description:' "$skill")
+  if grep -Eq "ACTIVATE.*(vi\.fn|'TDD')" <<<"$description"; then
+    echo "✓ R2 $skill keeps its Vitest and TDD triggers"
+  else
+    echo "✗ R2 $skill keeps its Vitest and TDD triggers"
+    failures=$((failures + 1))
+  fi
+done
+
+assert_absent "R9 no Vitest skill recommends mocked ports" \
+  'mocked ports' plugins/vitest
+
+assert_absent "R9 the quick reference no longer doubles dependencies with vi.fn" \
+  'Complex dependencies | `vi.fn()`' "$VITEST_CONVENTIONS"
+
+assert_present "R9 the quick reference teaches in-memory port stubs" \
+  'Port dependency | In-memory stub' "$VITEST_CONVENTIONS"
+
+assert_present "R9 the use case row teaches in-memory port stubs" \
+  'Unit test with in-memory port stubs' "$VITEST_TDD"
+
+assert_absent "R9 no example doubles a port with vi.fn" \
+  'repo = .*vi\.fn' "$VITEST_EXAMPLES" "$VITEST_TDD"
+
+assert_absent "R9 the save example does not double the repository with vi.fn" \
+  'const save = vi.fn' "$VITEST_EXAMPLES"
+
+echo ""
 if [[ $failures -gt 0 ]]; then
   echo "✗ $failures/$cases assertion(s) failed"
   exit 1
