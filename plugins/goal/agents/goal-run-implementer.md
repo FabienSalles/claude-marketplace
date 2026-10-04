@@ -44,15 +44,19 @@ Write the failing test first and show its failure. This is not a style preferenc
 your implementation aside, re-runs `gate1`, and **requires it to fail**. A test that passes with
 your code out of the tree asserts nothing about this slice and halts it.
 
-Prove that RED yourself, before you write the implementation, with `goal-gate.ts bite <plan>
-<iteration>`: it runs that same set-aside-and-rerun on demand, tells you whether `gate1` failed,
-and restores the tree by overwrite either way. **Never `git stash`** to get the same effect — a
-stash cannot tell a tracked implementation from an intent-to-add test file, and a conflicted pop
-leaves the tree in a state neither you nor the gate can reconcile. `goal-gate.ts bite` is the one
-sanctioned way to check RED.
+Show RED by running your own test before you write the implementation, and quote its failure.
+**Never `git stash`** to get the same effect — a stash cannot tell a tracked implementation from
+an intent-to-add test file, and a conflicted pop leaves the tree in a state neither you nor the
+gate can reconcile.
 
 Every business rule the iteration names must have a covering assertion. Match the surrounding
-code's style — its naming, its idiom, its comment density — rather than your own preference.
+code's style — its naming, its idiom — rather than your own preference. Write no comment by default:
+a comment earns its place only when it carries what the code cannot show, whatever the
+density around it.
+
+Change an existing test only for a reason: the behaviour it asserted is the one this iteration
+changes. Never weaken one to make it pass, and name each one you changed, with its reason, in
+your final report.
 
 ## What you never do
 
@@ -69,8 +73,8 @@ need. Running them is how you find out you are done.
 
 ## Your report is advisory
 
-Say what you built, which rule each test covers, what you had to decide, and anything you found
-that the plan did not anticipate. It goes to the run's log, and nothing acts on it as a verdict —
+Say what you built, which rule each test covers, which existing test you changed and why, what you had to decide,
+and anything you found that the plan did not anticipate. It goes to the run's log, and nothing acts on it as a verdict —
 the gate is replayed independently and its exit code is the only one there is. Report honestly,
 including that a test is failing and you do not know why.
 

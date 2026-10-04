@@ -143,7 +143,7 @@ header and that the bash script was the one place in the plugin unable to follow
 
 **What it cost, re-measured.** `scripts/goal-run.ts` + `src/run/` now stands at 1831 lines
 over 15 files, against `scripts/goal-gate.ts` + `src/gate/` at 1102 over 12; all of
-`scripts/` + `src/` is 4231 lines over 48 `.ts` files, covered by 66 test files and 532 passing tests.
+`scripts/` + `src/` is 4231 lines over 48 `.ts` files, covered by 67 test files and 535 passing tests.
 Most of the distance from the 594-line bash original is not the split: it is the mechanisms
 added since (`gitwatch.ts`, `postmortem.ts`, `quota.ts`), each of which is one of the modules the
 convention asked for. The second defect this question named (the orchestrator re-reading
