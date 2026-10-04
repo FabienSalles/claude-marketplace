@@ -1668,6 +1668,30 @@ assert_absent "R8 refactoring-principles does not restate the order" \
   'passes twice in a row' "$CRAFT_REFACTORING"
 
 echo ""
+echo "== Characterization — one runnable pin per TypeScript runner"
+
+NODE_TEST_SKILL=plugins/node-test/skills/node-test-conventions/SKILL.md
+NODE_TEST_REFERENCES=plugins/node-test/skills/node-test-conventions/references
+
+assert_present "R10 node-test points to the craft doctrine" \
+  'craft:testing-principles. §16' "$NODE_TEST_SKILL"
+
+assert_present "R10 vitest points to the craft doctrine" \
+  'craft:testing-principles. §16' "$VITEST_CONVENTIONS"
+
+assert_present "R10 the node:test pin compares against a committed golden file" \
+  'readFileSync' "$NODE_TEST_REFERENCES/examples.test.ts"
+
+assert_present "R2 the golden fixture is committed beside the examples" \
+  'total 0 EUR' "$NODE_TEST_REFERENCES/receipt-summary.golden.txt"
+
+assert_absent "R10 no characterization example uses a snapshot matcher" \
+  'MatchSnapshot' "$NODE_TEST_SKILL" "$VITEST_CONVENTIONS" "$NODE_TEST_REFERENCES/examples.test.ts"
+
+assert_absent "R10 no characterization example uses the node:test snapshot assertion" \
+  'assert.snapshot' "$NODE_TEST_SKILL" "$VITEST_CONVENTIONS" "$NODE_TEST_REFERENCES/examples.test.ts"
+
+echo ""
 if [[ $failures -gt 0 ]]; then
   echo "✗ $failures/$cases assertion(s) failed"
   exit 1

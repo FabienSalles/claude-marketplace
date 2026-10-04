@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { describe, it, mock, test } from 'node:test';
 
 type Result = { tag: 'success'; value: number } | { tag: 'failure'; reason: string };
@@ -101,5 +102,21 @@ describe('mock.module', () => {
 
     assert.strictEqual(os.hostname(), 'fake-host');
     mocked.restore();
+  });
+});
+
+const summarize = (id: string, amounts: number[]): string => {
+  const total = amounts.length === 0 ? '0' : amounts.reduce((sum, a) => sum + a, 0).toFixed(2);
+
+  return `receipt ${id}: ${String(amounts.length)} lines, total ${total} EUR`;
+};
+
+describe('characterization pin', () => {
+  it('keeps today\'s summaries, quirk included', () => {
+    const frozen = [summarize('R-1', [10, 2.5, 0]), summarize('R-0', [])];
+
+    const golden = readFileSync(new URL('./receipt-summary.golden.txt', import.meta.url), 'utf8');
+
+    assert.strictEqual(`${frozen.join('\n')}\n`, golden);
   });
 });
