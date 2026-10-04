@@ -83,7 +83,7 @@ const noOverlap = (
 
   return halt(
     `Iteration ${iteration} declares impl_files that covers its own test_files.`,
-    `Overlapping: ${pairs.join(', ')}\n\nA bite check sets impl_files aside and reruns gate1: an impl_files path that also covers the test removes the test along with the implementation, so gate1 cannot fail for the right reason. Declare impl_files as: ${fix.join(' ') || '(none — every declared impl file covers a test)'}`,
+    `Overlapping: ${pairs.join(', ')}\n\nA bite check sets impl_files aside and reruns gate1: an impl_files path that also covers the test removes the test along with the implementation, so gate1 cannot fail for the right reason. Declare impl_files as: ${fix.length > 0 ? fix.join(' ') : '(none — every declared impl file covers a test)'}`,
   );
 };
 

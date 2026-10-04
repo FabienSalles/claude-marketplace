@@ -13,7 +13,7 @@ export const parseTests = (output: string): readonly Timed[] =>
   output.split('\n').flatMap((line) => {
     const match = RESULT_LINE.exec(line);
 
-    if (!match) {
+    if (match === null) {
       return [];
     }
 

@@ -351,7 +351,7 @@ const sayEvent = (fixture: ReturnType<typeof repo>, prefix: string): { event: st
   const events = lines.map((line) => JSON.parse(line) as { event: string; message?: string });
   const found = events.find((event) => (event.message ?? '').startsWith(prefix));
 
-  assert.ok(found, `no event found for prefix "${prefix}":\n${events.map((event) => event.message).join('\n')}`);
+  assert.ok(found !== undefined, `no event found for prefix "${prefix}":\n${events.map((event) => event.message).join('\n')}`);
 
   return found as { event: string; message: string };
 };

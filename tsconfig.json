@@ -15,5 +15,5 @@
     "skipLibCheck": true,
     "allowImportingTsExtensions": true
   },
-  "include": ["plugins/goal/scripts/**/*.ts", "plugins/goal/src/**/*.ts", "plugins/goal/tests/*.ts"]
+  "include": ["plugins/goal/**/*.ts", "scripts/**/*.ts"]
 }

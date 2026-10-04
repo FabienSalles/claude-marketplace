@@ -68,9 +68,9 @@ export const extract = (raw: string, onEvent?: (event: StreamEvent) => void): Ex
   for (const { event } of parseEvents(raw)) {
     onEvent?.(event);
 
-    model ??= event.message?.model ?? (event.type === 'result' && event.modelUsage ? Object.keys(event.modelUsage)[0] : undefined);
+    model ??= event.message?.model ?? (event.type === 'result' && event.modelUsage !== undefined ? Object.keys(event.modelUsage)[0] : undefined);
 
-    if (event.type === 'assistant' && event.message?.usage) {
+    if (event.type === 'assistant' && event.message?.usage !== undefined) {
       const { input_tokens, cache_read_input_tokens, cache_creation_input_tokens } = event.message.usage;
       const total = (input_tokens ?? 0) + (cache_read_input_tokens ?? 0) + (cache_creation_input_tokens ?? 0);
       peakTokens = peakTokens === undefined ? total : Math.max(peakTokens, total);
@@ -82,7 +82,7 @@ export const extract = (raw: string, onEvent?: (event: StreamEvent) => void): Ex
     }
 
     if (event.type === 'result') {
-      if (event.usage) {
+      if (event.usage !== undefined) {
         usage = event.usage;
       }
 

@@ -268,7 +268,7 @@ export const repo = (options: FixtureOptions = {}): Fixture => {
 
   mkdirSync(bin);
 
-  if (options.shareBin) {
+  if (options.shareBin === true) {
     const shared = sharedBinaries();
 
     for (const name of ['claude', 'fake-gate', 'gh']) {
@@ -281,9 +281,9 @@ export const repo = (options: FixtureOptions = {}): Fixture => {
   cpSync(initialCheckout(), dir, { recursive: true });
 
   const planFile = options.planFile ?? 'demo-spec.md';
-  const planDir = options.trackPlan ? 'plans' : '.claude/plans';
+  const planDir = options.trackPlan === true ? 'plans' : '.claude/plans';
 
-  if (options.remote) {
+  if (options.remote === true) {
     const root = tmpDir('goal-run-remote-');
     const originDir = join(root, 'acme', 'demo.git');
     mkdirSync(join(root, 'acme'), { recursive: true });
@@ -311,11 +311,11 @@ export const repo = (options: FixtureOptions = {}): Fixture => {
     git(clone, 'push', '-q', 'origin', branchName);
   };
 
-  if (options.staleOrigin) {
+  if (options.staleOrigin === true) {
     advanceBase('origin', 'main');
   }
 
-  if (options.staleBase) {
+  if (options.staleBase !== undefined) {
     advanceBase(options.staleBase.remote, options.staleBase.branch);
   }
 
@@ -327,14 +327,14 @@ export const repo = (options: FixtureOptions = {}): Fixture => {
 
   let planText = options.planText ?? PLAN;
 
-  if (options.prBase) {
+  if (options.prBase !== undefined && options.prBase !== '') {
     planText = planText.replace(/^Remote:.*$/m, (line) => `${line}\nPR base: ${options.prBase}`);
   }
 
   mkdirSync(join(dir, planDir), { recursive: true });
   writeFileSync(join(dir, planDir, planFile), planText);
 
-  if (options.trackPlan) {
+  if (options.trackPlan === true) {
     git(dir, 'add', '-A');
     git(dir, 'commit', '-qm', 'track plan');
   }
@@ -433,7 +433,7 @@ export const runInProcess = async (
   let output = '';
   let jsonl = '';
   const emit = (event: string, fields: Record<string, unknown>): void => {
-    if (jsonl) {
+    if (jsonl !== '') {
       appendFileSync(jsonl, `${JSON.stringify({ v: 1, ts: new Date().toISOString(), event, ...fields })}\n`);
     }
   };
@@ -506,7 +506,7 @@ export const runInProcess = async (
 
       const hash = /^plan_hash=([0-9a-f]*)$/m.exec(checkedOutput)?.[1];
 
-      if (!hash) {
+      if (hash === undefined || hash === '') {
         reporter.say(`STOP the gate published no plan_hash for iteration ${n}, so nothing locks the contract:`);
         reporter.say(checkedOutput);
         process.exit(REFUSED);

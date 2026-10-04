@@ -128,7 +128,7 @@ export const biteCheck = (declared: Map<string, string>, iteration: string, chan
   if (run.status === 0) {
     halt(
       `Iteration ${iteration}'s tests pass without its implementation.`,
-      `Command: ${declared.get('gate1')}\nSet aside: ${aside.join(' ') || '(nothing — impl_files declares no changed path)'}\n\nThe acceptance command exited 0 with the implementation out of the tree, so it asserts nothing this slice built. The tree was restored; rewrite the test until it fails without ${declared.get('impl_files')}.`,
+      `Command: ${declared.get('gate1')}\nSet aside: ${aside.length > 0 ? aside.join(' ') : '(nothing — impl_files declares no changed path)'}\n\nThe acceptance command exited 0 with the implementation out of the tree, so it asserts nothing this slice built. The tree was restored; rewrite the test until it fails without ${declared.get('impl_files')}.`,
     );
   }
 

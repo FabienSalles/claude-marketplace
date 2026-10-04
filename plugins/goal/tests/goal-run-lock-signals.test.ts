@@ -16,7 +16,7 @@ test('it releases the lock on the way out, whatever the outcome', () => {
   ] as const) {
     const fixture = repo();
 
-    run(fixture, [fixture.plan, '1'], { ...env, ...(env.FAKE_CLAUDE_WRITES ? { FAKE_CLAUDE_WRITES: join(fixture.dir, 'a.txt') } : {}) });
+    run(fixture, [fixture.plan, '1'], { ...env, ...(env.FAKE_CLAUDE_WRITES !== undefined ? { FAKE_CLAUDE_WRITES: join(fixture.dir, 'a.txt') } : {}) });
 
     assert.ok(!existsSync(lockOf(fixture)), `the lock survived when ${claim}`);
   }
