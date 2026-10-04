@@ -115,18 +115,28 @@ if [ -n "$FAKE_CLAUDE_RELEASE" ]; then
   : > "$FAKE_CLAUDE_STARTED"
   sh "${AWAIT_MARKER}" "$FAKE_CLAUDE_RELEASE" 30000 || exit 1
 fi
-# Records the sleep's start/end instants (node, not BSD date -%N, for millisecond precision) into
-# a per-invocation file, so a concurrency test can assert the lens and reviewer intervals overlap
-# instead of budgeting a wall-clock ceiling that machine load can blow.
-if [ -n "$FAKE_CLAUDE_SLEEPS" ]; then
+if [ -n "$FAKE_CLAUDE_RENDEZVOUS" ]; then
   case "$*" in
-    *goal-run-lens*)     out="$FAKE_CLAUDE_LENS_TIMING" ;;
-    *goal-run-reviewer*) out="$FAKE_CLAUDE_REVIEWER_TIMING" ;;
-    *)                   out= ;;
+    *goal-run-lens*)     me=lens;     other=reviewer ;;
+    *goal-run-reviewer*) me=reviewer; other=lens ;;
+    *)                   me= ;;
   esac
-  start=$(node -e 'console.log(Date.now())')
-  sleep "$FAKE_CLAUDE_SLEEPS"
-  [ -n "$out" ] && printf '%s %s\n' "$start" "$(node -e 'console.log(Date.now())')" > "$out"
+  if [ -n "$me" ]; then
+    d="$FAKE_CLAUDE_RENDEZVOUS"
+    ms="\${FAKE_CLAUDE_RENDEZVOUS_DEADLINE_MS:-30000}"
+    if [ -e "$d/$other.verdict" ]; then
+      text="the lens and reviewer never ran concurrently: the $other had finished before the $me started"
+      printf '%s\\n' "$text" > "$d/$other.verdict"
+      printf '%s\\n' "$text" > "$d/$me.verdict"
+    else
+      : > "$d/$me.arrived"
+      if sh "${AWAIT_MARKER}" "$d/$other.arrived" "$ms" 2>/dev/null; then
+        printf 'met\\n' > "$d/$me.verdict"
+      else
+        printf 'the %s is missing: it never started within %s ms of the %s, so they never ran concurrently\\n' "$other" "$ms" "$me" > "$d/$me.verdict"
+      fi
+    fi
+  fi
 fi
 # Only when the caller passed --output-format stream-json does the fixture answer in JSON: the
 # bash runner never asks for it and keeps grepping this same fixture's plain prose for a quota
