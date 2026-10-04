@@ -145,36 +145,47 @@ unattended runs. That Workflow generation has since been deleted.
 Ordered by **what it costs to lose**, not by effort. The competitive reading behind items 4–10 is
 [`plugins/goal/docs/comparison.md`](plugins/goal/docs/comparison.md) §Where the field wins.
 
+> Since 2026-10-04 the open items below are tracked as issues: the multi-provider work in the
+> [goal-multi-provider](https://github.com/FabienSalles/claude-marketplace/milestone/3) milestone,
+> the plugin's own code and suite in
+> [goal-stack-refactor](https://github.com/FabienSalles/claude-marketplace/milestone/1). Each item
+> names its issue. The issues hold the status; this section keeps the reasoning.
+
 > Items 1, 3 and 11 were re-confirmed independently on 2026-08-20 by
 > [`theme-workflow.md`](plugins/self-audit/audits/theme-workflow.md), reading eleven packs from fresh
 > clones: the fuse, the report on a halted run and the machine critic are the same three gaps, still
 > open, and still the ones where superpowers and BMAD are ahead. No new workflow gap was found.
 
 ### 1. A fuse — an iteration ceiling and a clock on the implementer
+- **Tracked:** #132.
 - **Why:** the single largest gap, and the cheapest to close. `gate/bounded.ts` puts a 900s SIGKILL clock on every *declared command*, but the implementer session is spawned with no timeout, no turn cap and no iteration ceiling. A session circling an impossible slice circles until the usage allowance runs out — and `templates/done-criteria.template` already promises "maximum 15 turns per iteration", which nothing enforces. `SwarmOps` caps everything numerically; `Rel(AI)Build` ships a hard 3-iteration auto-fix cap; Anthropic's own `ralph-wiggum` says to "always rely on a maximum iteration count as the primary safety mechanism".
 - **Effort:** ~1 h. `spawnSync` already accepts `timeout` + `killSignal` — `run/iteration.ts` simply does not pass them. The turn cap needs `--max-turns` on the `claude -p` call; verify it exists before promising it.
 - **Trigger:** now. Every unattended run without this is unbounded.
 - **Path:** `src/run/iteration.ts`, plus a `GOAL_RUN_IMPLEMENTER_TIMEOUT` beside the existing env knobs.
 
 ### 2. Detect a weakened pre-existing test
+- **Tracked:** #134.
 - **Why:** this protects the one differentiator nobody else has. The bite check proves the *new* test bites; it does not prove that a pre-existing test living inside the same declared files was not gutted. Three assertions removed of four, keeping the one that fails without the implementation, passes every check today and fits under any diff budget. The failure mode has a stable taxonomy — assertions deleted, tolerances widened, tests marked skip, snapshots regenerated — and the formula worth keeping is *in an agent's PR the tests are part of the claim, not part of the proof*.
 - **Effort:** ~2 h. `greenproof` (<https://github.com/zxyasfas/greenproof>) is a working implementation of exactly half of this in ~200 lines: snapshot the test files before the slice, then re-run the **originals** against the new code. Same shape as the bite check, opposite direction, and it composes rather than competes.
 - **Trigger:** now, and before any further competitive claim rests on the bite check.
 - **Path:** a new `src/gate/` module, run beside `bite.ts` in `verify`.
 
 ### 3. A run report for a halted run
+- **Tracked:** #132 (every halted run leaves a handoff), after #147 (a run's outcome is a value).
 - **Why:** a structural blind spot in the evidence base. `run/iteration.ts` exits at `:195`/`:199` before `close()`, and `close()` is the only caller that spawns the auditor — so **no report can exist for a run that halted.** The six reports on disk are successful-runs-only by construction, and the auditor's brief promises it a halt input that never arrives. That is the opposite of what you want: the runs worth auditing are the ones that stopped.
 - **Effort:** ~1 h. Call the auditor on the halt path too, briefed that the run stopped.
 - **Trigger:** the next halt.
 - **Path:** `src/run/iteration.ts` halt/pause paths, `src/run/close.ts`.
 
 ### 4. Make the run's own records survive
+- **Tracked in part:** #133 exports versioned proof files; the retention rule itself has no issue yet.
 - **Why:** every run report lives under a fully git-ignored `.claude/`, and reports **have already been lost** — `e39e66d.md` cites six earlier reports (`a7289c3`, `bf532d1`, `c767072`, `b843981`, `fdc8928`, `ea236ba`) that are no longer on disk, including the one holding half the evidence for the closing-iteration-halt pattern. Not one `.run.jsonl` or `.run.log` survives anywhere, so no figure in any of the six reports can be re-derived. Separately: the current records layout (`<work-id>/<run-id>/`) has never been exercised by a real run — all six reports are still flat `<sha>.md` files — so the first auditor to run under it will find zero prior reports rather than "the other reports".
 - **Effort:** ~1 h.
 - **Trigger:** before the next run, or the next comparison is against nothing.
 - **Path:** decide a retention rule; `src/run/report.ts` and the auditor brief in `src/run/close.ts`.
 
 ### 5. Finish the structured-events work the plan claimed
+- **Tracked:** #148.
 - **Why:** `goal-run-remaining-events-spec.md` is ticked and its stated payoff never arrived. It promised that "iteration 7 took 3044s" would become "implementer 2610s, gate 380s, push 54s". Every runner-level stage still folds its timings into a formatted string handed to `reporter.say`, so they land as prose inside a `message` field — exactly the parsing problem the plan says it exists to remove. The lens caught this at the time and it was recorded as advisory. Its own acceptance test asserts a regex over concatenated `message` strings, so it passes on precisely the shape the rule forbids. No per-`dodN` event is emitted at all.
 - **Why it matters beyond tidiness:** *"a run's first entered iteration costs far more than its diff explains"* has now hit three runs across three plans, and the instrumentation cannot separate setup cost from implementation cost — so a recurring finding stays undiagnosable.
 - **Effort:** ~1 h.
@@ -182,36 +193,42 @@ Ordered by **what it costs to lose**, not by effort. The competitive reading beh
 - **Path:** `src/run/report.ts`, `src/run/close.ts`, `src/gate/ship.ts`, and the test at `tests/goal-run-events.test.ts:124`.
 
 ### 6. Close the test-coverage holes in the harness itself
+- **Partly shipped:** the skip guard now matches a skip at any nesting depth. Still open: `quote()` has no test of its own, and no test sees `run.sh`'s zero-pass refusal fire. Tracked by #154 and #58.
 - **Why:** eleven of the 25 modules under `src/gate/` and `src/run/` have no test file of their own, including `gate/scope.ts`, `gate/commands.ts`, `run/iteration.ts` and `run/report.ts` — and the README's "each with its own test file" is written as though they all did. Worse, four of `tests/run.sh`'s five refusals are untested, including the missing-summary halt; and the skip guard that *is* tested is blind to any skip nested inside a `describe()` or a subtest, because its pattern is anchored at column 0 and node indents those. `run/shell.ts`'s `quote()` is the only shell-injection barrier for four command strings and has zero tests.
 - **Effort:** ~3 h.
 - **Trigger:** the next change to any of those modules.
 - **Path:** `plugins/goal/tests/`.
 
 ### 7. Make the documents machine-checkable
+- **Shipped:** `scripts/validate-anchors.sh` runs in CI. #63 extends it to the anchors that name a symbol.
 - **Why:** a full audit found 12 high-severity claims in `docs/` that the code contradicted — in both directions, including several mechanisms that *ship and work* but appear only as admitted gaps. Roughly a third of the ~95 `file:line` anchors point at blank lines or unrelated code. These documents are unusually honest and that is exactly why they are worth keeping true; drift is the only thing that devalues them.
 - **Effort:** ~2 h for a CI check that resolves every `path:line` anchor in `docs/` and fails on one pointing at a blank line or a file that does not exist. Line-content matching is over-engineering; existence and non-blankness catch nearly all of it.
 - **Trigger:** after the current correction pass, so the check starts green.
 - **Path:** `scripts/`, wired into `.github/workflows/validate.yml`.
 
 ### 8. Bind evidence freshness beyond plan time
+- **Tracked:** #133.
 - **Why:** the plan is hashed once, at plan time. *Proof-or-Stop* (<https://arxiv.org/abs/2607.14890>) binds a `materialHash` over the live tracked source tree at **every** gate, which is strictly stronger. Related measured result: using a stale verification trace against current code broke 34 of 135 otherwise-correct attempts, against 4 of 135 with a fresh one.
 - **Effort:** ~2 h.
 - **Trigger:** after items 1–3.
 - **Path:** `src/gate/plan.ts`, extending `lockedHash`.
 
 ### 9. An observe mode
+- **Tracked:** #131 (each rule switchable between observe and enforce).
 - **Why:** there is currently no way to try a new refusal without it being able to stop a run. `axiom` installs every rule recording-only — "it records what it *would* have blocked and blocks nothing" — and enforcement is turned on per rule once its findings have earned it. That is how items 2 and 9 should ship rather than going straight to blocking.
 - **Effort:** ~1 h.
 - **Trigger:** together with item 2.
 - **Path:** `src/gate/halt.ts`, plus a `GOAL_GATE_OBSERVE` list.
 
 ### 10. Exportable proof
+- **Tracked:** #133.
 - **Why:** "every claim is a command that ran" is a promise about how the code is written; no artefact exists that a third party could verify without re-running everything. `Bernstein` keeps a signed audit chain checkable offline, `axiom` a custody chain, `HORKOS` a receipt ledger. The `.run.jsonl` stream is most of the raw material already — it needs a stable schema and a signature, not a new mechanism.
 - **Effort:** ~2 h.
 - **Trigger:** the first time someone other than the author needs to trust a run.
 - **Path:** `src/run/report.ts`.
 
 ### 11. A machine critic of the plan, before it freezes
+- **Not ticketed:** judged likely covered by the existing preflight, to re-measure before an issue is cut.
 - **Why:** Google's `Jules` added a critic reading self-approved plans before any code, for a measured 9.5% drop in failure rate. Keeping the *human* grill is deliberate and well supported; having **nothing** mechanical read a plan before freezing is a separate decision that was never actually taken. A plan defect is also the most common thing `/goal:supervise`'s classifier has to handle — and both halts on record were plan-vs-implementation calls.
 - **Effort:** ~2 h.
 - **Trigger:** after three more plans, so there is a defect corpus to write the critic against.
@@ -225,7 +242,7 @@ Ordered by **what it costs to lose**, not by effort. The competitive reading beh
 
 ### Deliberately not planned
 
-- **A sandbox.** `OpenHands` protects the machine from the agent; this protects the repository from the agent. That is an accepted debt: the harness is pointed at a repository whose owner trusts it. The day it is pointed at somebody else's, this whole axis is missing — recorded so the decision is visible, not so it gets built.
+- **A sandbox.** `OpenHands` protects the machine from the agent; this protects the repository from the agent. That is an accepted debt: the harness is pointed at a repository whose owner trusts it. The day it is pointed at somebody else's, this whole axis is missing — recorded so the decision is visible, not so it gets built. **Superseded:** #135 runs Codex under its sandbox, and #136 adds an untrusted-repository mode.
 - **Parallel tracks.** Built, measured over two real runs, and removed. Reasoning and numbers in [`plugins/goal/docs/why-not-parallel.md`](plugins/goal/docs/why-not-parallel.md). Several plans a night, run in sequence, is the replacement.
 - **Reading issue or PR text.** The write-only invariant is the answer to a real attack class (a malicious GitHub issue *title* drove a chain ending with attacker code in a coding agent's own npm package, February 2026). The cost — you cannot steer a run by commenting — is accepted.
 
@@ -236,6 +253,7 @@ Ordered by **what it costs to lose**, not by effort. The competitive reading beh
 Verified against the code, not against memory: the **secret scan before any push** ships and refuses rather than degrades when no scanner is installed (`gate/ship.ts`); **smoke-testing the gate commands** ships as the base sweep, deduplicated, in preflight (`run/sweep.ts`); **reporting whether a failing gate is deterministic** ships as a three-run replay of `gate1` (`gate/commands.ts`); **the environment fingerprint on halt** ships in part, as the post-mortem that records the failing attempt, the dying session's transcript tail and whether the `claude` binary changed underneath it (`run/postmortem.ts`); **track disjointness** and the `--dry-run` mode are moot — tracks were removed, and every unfinished slice is already proven runnable before any is implemented (`goal-run.ts:72-106`).
 
 ### Port the goal commands to skills, with a declared portability boundary
+- **Shipped:** the goal commands are skills (`plugins/goal/skills/`).
 - **Why:** the doc confirms commands and skills are equivalent at invocation ("Custom commands have been merged into skills", code.claude.com/docs/en/skills), and skills add what goal wants: `npx skills` distribution, `disable-model-invocation` (a model must never launch `supervise` on its own), a support-files directory. The boundary to declare per skill: `tickets`/`spec`/`plan`/`next` are portable prose (degrade AskUserQuestion → plain question, MCP → inline paste, pbcopy → print), `supervise` is Claude Code only (the runner spawns `claude -p --agent`, see ADR 0001).
 - **Not one plugin split in two:** the gate serves the manual loop too, and `plan`/`next` reference `supervise`; a structural split creates cross-plugin drift for nothing a frontmatter line does not already say.
 - **Effort:** 2–3 slices (mechanical move + reference sweep, then the degradation pass and postures).
