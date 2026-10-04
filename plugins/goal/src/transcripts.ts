@@ -7,7 +7,7 @@
 // found by its content naming the plan. The scan alone would also match every earlier run of the
 // same plan, so the recorded ids are what make this run's own sessions identifiable among them.
 
-import { basename, join } from 'node:path';
+import { basename, isAbsolute, join } from 'node:path';
 
 import { fs } from './adapters/fs.ts';
 import { projectDir } from './core/events.ts';
@@ -17,8 +17,8 @@ export { projectDir } from './core/events.ts';
 
 const PROJECTS_ROOT = join(fs.homeDir(), '.claude', 'projects');
 
-export const recordedTranscripts = (plan: string, dir: string, cwd: string): string[] => {
-  const runsRoot = join(cwd, '.claude', 'goal-runs', workIdOf(plan, fs.exists(plan) ? fs.readFile(plan) : ''));
+export const recordedTranscripts = (plan: string, source: string, dir: string, cwd: string): string[] => {
+  const runsRoot = join(cwd, '.claude', 'goal-runs', workIdOf(plan, source));
 
   if (!fs.exists(runsRoot)) {
     return [];
@@ -41,7 +41,7 @@ export const recordedTranscripts = (plan: string, dir: string, cwd: string): str
   return ids.map((id) => join(dir, `${id}.jsonl`)).filter((path) => fs.exists(path));
 };
 
-export const runTranscripts = (cwd: string, plan: string, root: string = PROJECTS_ROOT): string[] => {
+export const runTranscripts = (cwd: string, plan: string, source: string, root: string = PROJECTS_ROOT): string[] => {
   const dir = projectDir(cwd, root);
 
   if (!fs.exists(dir)) {
@@ -56,7 +56,7 @@ export const runTranscripts = (cwd: string, plan: string, root: string = PROJECT
     .map((entry) => join(dir, entry))
     .filter((path) => fs.readFile(path).includes(needle));
 
-  return [...new Set([...recordedTranscripts(plan, dir, cwd), ...scanned])];
+  return [...new Set([...recordedTranscripts(plan, source, dir, cwd), ...scanned])];
 };
 
 // Usage: node transcripts.ts <cwd> <plan> — one transcript path per line.
@@ -68,7 +68,14 @@ if (import.meta.main) {
     process.exit(2);
   }
 
-  for (const path of runTranscripts(cwd, plan)) {
+  const planPath = isAbsolute(plan) ? plan : join(cwd, plan);
+
+  if (!fs.exists(planPath)) {
+    process.stderr.write(`plan not readable: ${planPath}\n`);
+    process.exit(2);
+  }
+
+  for (const path of runTranscripts(cwd, plan, fs.readFile(planPath))) {
     process.stdout.write(`${path}\n`);
   }
 }
