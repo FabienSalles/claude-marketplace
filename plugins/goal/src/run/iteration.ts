@@ -22,7 +22,7 @@ import { changedGitDirPaths, changedRefs, snapshotGitDir, snapshotRefs } from '.
 import { endOf, narrate, tokensLine } from './narrate.ts';
 import { claudeBinaryMtime, claudeBinaryPath, postmortem } from './postmortem.ts';
 import { blockedNote, type Publisher } from './publish.ts';
-import { burstBackoffSeconds, classifyTerminal, shutdownBackoffSeconds, shutdownMaxRetries, sleepInSlices } from './quota.ts';
+import { burstBackoffSeconds, classifyTerminal, shutdownBackoffSeconds, sleepInSlices } from './quota.ts';
 import type { Reporter } from './report.ts';
 
 export { HALTED, PAUSED } from '../core/verdict.ts';
@@ -66,6 +66,18 @@ export const runIteration = async (
   // outside this call, so lifting the snapshot into a wider loop would catch its own push.
   const refsBefore = snapshotRefs();
 
+  const readTamper = () => {
+    const refChanges = changedRefs(refsBefore);
+    const after = {
+      head: git('rev-parse', 'HEAD').stdout.trim(),
+      gitDirChanges: changedGitDirPaths(gitDirBefore),
+      remoteRefChanges: refChanges.filter((ref) => ref.startsWith('refs/remotes/')),
+      otherRefChanges: refChanges.filter((ref) => !ref.startsWith('refs/remotes/')),
+    };
+
+    return detectTamper({ head: headBefore, gitDirChanges: [], remoteRefChanges: [], otherRefChanges: [] }, after);
+  };
+
   // A quota window is not a failure, so it is not diagnosed like one: it is detected from the
   // shape of a failed call, slept through, and retried against the same iteration — bounded, so
   // a window that never reopens still ends in a pause rather than a run spinning until the
@@ -73,6 +85,7 @@ export const runIteration = async (
   const quotaSleep = process.env.GOAL_RUN_QUOTA_SLEEP ?? '1800';
   const quotaMax = Number(process.env.GOAL_RUN_QUOTA_MAX_RETRIES ?? '3');
   let attempt = 1;
+  const history: string[] = [];
 
   for (;;) {
     reporter.say(`RUN handing iteration ${iteration} to the implementer`);
@@ -119,6 +132,12 @@ export const runIteration = async (
       reporter.say(tokens);
     }
 
+    const tamper = readTamper();
+
+    if (!tamper.ok) {
+      reporter.stop(`${tamper.error}${blockedNote(publisher)}`, PAUSED);
+    }
+
     const outcome = classifyTerminal({ status: implemented.status, signal: implemented.signal ?? null, stdout: implemented.stdout, stderr: implemented.stderr });
 
     if (!outcome.failed) {
@@ -139,17 +158,11 @@ export const runIteration = async (
       );
     }
 
-    const maxRetries = quotaClass === 'signal' ? shutdownMaxRetries() : quotaMax;
-    if (attempt >= maxRetries && quotaClass === 'signal') {
-      reporter.stop(
-        `iteration ${iteration} is not converging: the implementer was killed on each of ${attempt} attempt(s). Pausing rather than relaunching it again: relaunch resumes here.${blockedNote(publisher)}`,
-        PAUSED,
-      );
-    }
+    history.push(`attempt ${attempt}: ${quotaClass}`);
 
-    if (attempt >= maxRetries) {
+    if (attempt >= quotaMax) {
       reporter.stop(
-        `the quota still looks exhausted after ${attempt} attempt(s) on iteration ${iteration}. Pausing rather than spinning through a window that is not reopening: relaunch resumes here.${blockedNote(publisher)}`,
+        `iteration ${iteration} is not converging: paused after ${attempt} attempt(s), the ceiling GOAL_RUN_QUOTA_MAX_RETRIES=${quotaMax}: ${history.join(', ')}. Pausing rather than relaunching it again: relaunch resumes here.${blockedNote(publisher)}`,
         PAUSED,
       );
     }
@@ -158,32 +171,16 @@ export const runIteration = async (
 
     if (quotaClass === 'signal') {
       const seconds = shutdownBackoffSeconds();
-      reporter.say(`RUN the implementer exited 143 (shutdown), backing off ${seconds}s before relaunching iteration ${iteration} (attempt ${attempt} of ${maxRetries})`);
+      reporter.say(`RUN the implementer exited 143 (shutdown), backing off ${seconds}s before relaunching iteration ${iteration} (attempt ${attempt} of ${quotaMax})`);
       clock.sleepSeconds(seconds);
     } else if (quotaClass === 'burst') {
       const seconds = burstBackoffSeconds(attempt - 1);
-      reporter.say(`RUN the implementer hit a burst rate limit, backing off ${seconds}s before relaunching iteration ${iteration} (attempt ${attempt} of ${maxRetries})`);
+      reporter.say(`RUN the implementer hit a burst rate limit, backing off ${seconds}s before relaunching iteration ${iteration} (attempt ${attempt} of ${quotaMax})`);
       clock.sleepSeconds(seconds);
     } else {
-      reporter.say(`RUN the implementer looks quota-exhausted, sleeping ${quotaSleep}s before relaunching iteration ${iteration} (attempt ${attempt} of ${maxRetries})`);
+      reporter.say(`RUN the implementer looks quota-exhausted, sleeping ${quotaSleep}s before relaunching iteration ${iteration} (attempt ${attempt} of ${quotaMax})`);
       sleepInSlices(Number(quotaSleep), (remaining) => reporter.say(`RUN quota sleep continues, ${remaining}s remaining`));
     }
-  }
-
-  // Read exactly once, after the loop settles: every fact detectTamper decides over comes from
-  // this one pass, rather than a fresh git call per case it might report.
-  const refChanges = changedRefs(refsBefore);
-  const after = {
-    head: git('rev-parse', 'HEAD').stdout.trim(),
-    gitDirChanges: changedGitDirPaths(gitDirBefore),
-    remoteRefChanges: refChanges.filter((ref) => ref.startsWith('refs/remotes/')),
-    otherRefChanges: refChanges.filter((ref) => !ref.startsWith('refs/remotes/')),
-  };
-  const before = { head: headBefore, gitDirChanges: [], remoteRefChanges: [], otherRefChanges: [] };
-  const tamper = detectTamper(before, after);
-
-  if (!tamper.ok) {
-    reporter.stop(`${tamper.error}${blockedNote(publisher)}`, PAUSED);
   }
 
   const touched = git('status', '--porcelain').stdout;

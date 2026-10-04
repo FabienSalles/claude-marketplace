@@ -57,7 +57,11 @@ disappeared (`goal-gate.ts`), for the length of this run.
 
 A quota window is detected from the shape of a failed implementer call, slept through, and the
 **same** iteration retried, bounded by `GOAL_RUN_QUOTA_MAX_RETRIES` (default 3) and defaulting
-to a 1800-second sleep.
+to a 1800-second sleep. That one ceiling bounds the attempts of an iteration whatever their
+class (exhausted, burst, signal), and the pause lists each attempt with its class.
+`GOAL_RUN_SHUTDOWN_MAX_RETRIES` is retired: setting it refuses the run (exit 2). After every
+attempt, before any wait or relaunch, the tamper read runs and wins over the failure class: an
+implementer commit stops the run at once with its SHA.
 
 This is the line this document previously got wrong, and getting it wrong had a cost: it said a
 script cannot sleep, so the waiting had to be lifted to the session with `/loop` and

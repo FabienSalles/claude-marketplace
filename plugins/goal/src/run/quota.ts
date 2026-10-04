@@ -59,8 +59,6 @@ export const classifyTerminal = (end: { status: number | null; signal?: NodeJS.S
 // GOAL_RUN_SHUTDOWN_BACKOFF, defaulting to the 5s the constant used to pin.
 export const shutdownBackoffSeconds = (): number => Number(process.env.GOAL_RUN_SHUTDOWN_BACKOFF ?? '5');
 
-export const shutdownMaxRetries = (): number => Number(process.env.GOAL_RUN_SHUTDOWN_MAX_RETRIES ?? '3');
-
 // A loop of short slices, not one call to the Clock port for the whole totalSeconds whose return
 // value is discarded: a long wait is then a sequence of small, observable steps, each reported
 // through onSlice, rather than one opaque wait that a run can only sit through in full. `clock`

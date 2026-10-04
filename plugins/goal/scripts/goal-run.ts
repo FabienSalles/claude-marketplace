@@ -43,6 +43,10 @@ const main = async (): Promise<void> => {
     reporter.stop(`the iteration must be a number, got: ${iteration}`, REFUSED);
   }
 
+  if (process.env.GOAL_RUN_SHUTDOWN_MAX_RETRIES !== undefined) {
+    reporter.stop('GOAL_RUN_SHUTDOWN_MAX_RETRIES is retired: one ceiling bounds the attempts of an iteration, whatever their class. Unset it and use GOAL_RUN_QUOTA_MAX_RETRIES.', REFUSED);
+  }
+
   const source = fs.readFile(plan);
   const dir = runDir(workIdOf(plan, source));
   reporter.setLog(dir);
