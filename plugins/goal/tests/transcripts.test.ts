@@ -1,7 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { spawnSync } from 'node:child_process';
+import { join, resolve } from 'node:path';
 
 import { projectDir, runTranscripts } from '../src/transcripts.ts';
 import { tmpDir } from './support/tmp.ts';
@@ -37,7 +38,7 @@ test('runTranscripts returns every transcript under the project dir that names t
   writeFileSync(join(dir, 'lens.jsonl'), 'Refute the iteration(s) 3 of my-plan-spec.md\n');
   writeFileSync(join(dir, 'unrelated.jsonl'), 'Some other session entirely\n');
 
-  const found = runTranscripts('/Users/dev/my-repo', 'my-plan-spec.md', root);
+  const found = runTranscripts('/Users/dev/my-repo', 'my-plan-spec.md', '', root);
 
   assert.deepEqual(found.sort(), [join(dir, 'implementer.jsonl'), join(dir, 'lens.jsonl')].sort());
 });
@@ -47,7 +48,7 @@ test('runTranscripts returns every transcript under the project dir that names t
 test('runTranscripts returns nothing when the project dir does not exist', () => {
   const root = projectRoot();
 
-  assert.deepEqual(runTranscripts('/Users/dev/never-ran', 'my-plan-spec.md', root), []);
+  assert.deepEqual(runTranscripts('/Users/dev/never-ran', 'my-plan-spec.md', '', root), []);
 });
 
 // R9 — the ids `report.ts` records for the sessions the runner spawned resolve exactly, without
@@ -66,7 +67,7 @@ test('runTranscripts unions the recorded session ids with the content scan, with
   mkdirSync(runDir, { recursive: true });
   writeFileSync(join(runDir, '.run.session'), 'implementer\nsilent\nvanished\n');
 
-  const found = runTranscripts(repoDir, plan, root);
+  const found = runTranscripts(repoDir, plan, '', root);
 
   assert.deepEqual(found.sort(), [join(dir, 'implementer.jsonl'), join(dir, 'silent.jsonl')].sort());
 });
@@ -79,5 +80,35 @@ test('runTranscripts ignores non-jsonl entries even when they name the plan', ()
   mkdirSync(dir, { recursive: true });
   writeFileSync(join(dir, 'notes.txt'), 'my-plan-spec.md\n');
 
-  assert.deepEqual(runTranscripts('/Users/dev/my-repo', 'my-plan-spec.md', root), []);
+  assert.deepEqual(runTranscripts('/Users/dev/my-repo', 'my-plan-spec.md', '', root), []);
 });
+
+// #142 — the plan's own Work-id header names its run directory, read from the source the caller
+// passes rather than from a second read of the file.
+test('runTranscripts finds the recorded sessions under the run directory the Work-id header names', () => {
+  const root = projectRoot();
+  const repoDir = tmpDir('transcripts-repo-');
+  const dir = join(root, repoDir.replace(/[/.]/g, '-'));
+  const plan = join(repoDir, '.claude', 'plans', 'renamed-spec.md');
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(join(dir, 'implementer.jsonl'), 'a session that never names the plan\n');
+
+  const runDir = join(repoDir, '.claude', 'goal-runs', 'issue-9', 'run-1');
+  mkdirSync(runDir, { recursive: true });
+  writeFileSync(join(runDir, '.run.session'), 'implementer\n');
+
+  const source = '# Spec: x\n\n---\nWork-id: issue-9\n---\n\n## Rules\n';
+
+  assert.deepEqual(runTranscripts(repoDir, plan, source, root), [join(dir, 'implementer.jsonl')]);
+});
+
+// #142 — a plan the command line cannot read is refused by name, never silently resolved to the
+// work-id its file name would give.
+test('the transcripts command refuses a plan it cannot read', () => {
+  const script = resolve(import.meta.dirname, '..', 'src', 'transcripts.ts');
+  const result = spawnSync('node', [script, tmpDir('transcripts-cwd-'), 'missing-spec.md'], { encoding: 'utf8' });
+
+  assert.equal(result.status, 2, result.stderr);
+  assert.match(result.stderr, /plan not readable: .*missing-spec\.md/);
+});
+
