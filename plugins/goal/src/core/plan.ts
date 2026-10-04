@@ -152,11 +152,35 @@ export const fileNameWorkId = (plan: string): string => {
 };
 
 // The `Work-id:` line of the plan's metadata block, read from the source the caller already holds.
+// The region above the plan's first `##`/`###` heading — title and metadata, nothing else —
+// which is where the `---`-delimited metadata block lives.
+export const topRegion = (source: string): string => {
+  const lines = source.replace(/\r\n/g, '\n').split('\n');
+  const end = lines.findIndex((line) => /^#{2,3} /.test(line));
+
+  return lines.slice(0, end === -1 ? lines.length : end).join('\n');
+};
+
+// The `---`-delimited block at the top of the file, its fences excluded — undefined when the
+// plan carries none. Every `Key:` line the plan declares lives in here; the `# Spec:` title is
+// the one exception, kept outside as an H1.
+export const frontmatter = (source: string): string | undefined =>
+  /^---\n([\s\S]*?)\n---[ \t]*$/m.exec(topRegion(source))?.[1];
+
+// A single-line declaration, read the way `sed -n 's/^Prefix *//p' | head -1` reads one: the
+// first line starting with `prefix`, trimmed. `# Heading:` prefixes (the plan's own `# Spec:`
+// title) are read against the whole file; every `Key:` prefix is scoped to the frontmatter
+// block, so a stray `Policy:` sitting in prose further down is never mistaken for the plan's own.
+export const header = (source: string, prefix: string): string | undefined => {
+  const escaped = prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const scope = prefix.startsWith('#') ? source : (frontmatter(source) ?? '');
+  const match = new RegExp(`^${escaped} *(.*)$`, 'm').exec(scope);
+
+  return match?.[1];
+};
+
 const rawHeaderWorkId = (source: string): string | undefined => {
-  const top = source.replace(/\r\n/g, '\n').split('\n');
-  const end = top.findIndex((line) => /^#{2,3} /.test(line));
-  const block = /^---\n([\s\S]*?)\n---[ \t]*$/m.exec(top.slice(0, end === -1 ? top.length : end).join('\n'))?.[1];
-  const value = /^Work-id: *(.*)$/m.exec(block ?? '')?.[1]?.trim();
+  const value = header(source, 'Work-id:')?.trim();
 
   return value === undefined || value === '' ? undefined : value;
 };
