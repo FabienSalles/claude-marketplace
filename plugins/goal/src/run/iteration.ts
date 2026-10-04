@@ -22,7 +22,7 @@ import { changedGitDirPaths, changedRefs, snapshotGitDir, snapshotRefs } from '.
 import { endOf, narrate, tokensLine } from './narrate.ts';
 import { claudeBinaryMtime, claudeBinaryPath, postmortem } from './postmortem.ts';
 import { blockedNote, type Publisher } from './publish.ts';
-import { burstBackoffSeconds, classifyFailure, shutdownBackoffSeconds, shutdownMaxRetries, sleepInSlices } from './quota.ts';
+import { burstBackoffSeconds, classifyTerminal, shutdownBackoffSeconds, shutdownMaxRetries, sleepInSlices } from './quota.ts';
 import type { Reporter } from './report.ts';
 
 export { HALTED, PAUSED } from '../core/verdict.ts';
@@ -119,7 +119,9 @@ export const runIteration = async (
       reporter.say(tokens);
     }
 
-    if ((implemented.status ?? 1) === 0) {
+    const outcome = classifyTerminal({ status: implemented.status, signal: implemented.signal ?? null, stdout: implemented.stdout, stderr: implemented.stderr });
+
+    if (!outcome.failed) {
       break;
     }
 
@@ -127,19 +129,18 @@ export const runIteration = async (
     const cause = signal === null ? `exit code ${implemented.status ?? 1}` : `signal ${signal}`;
     reporter.say(`RUN the implementer failed on iteration ${iteration}: ${cause}, after ${Math.round((clock.now() - implementerStart) / 1000)}s`);
 
-    const output = `${implemented.stdout}${implemented.stderr}`;
     postmortem(reporter, dir, attempt, process.cwd(), implemented.status ?? 1, implemented.stdout, implemented.stderr, binaryBefore);
-    const quotaClass = classifyFailure(implemented.status ?? 1, output);
+    const quotaClass = outcome.class;
 
-    if (quotaClass === null) {
+    if (quotaClass === 'unrecognised') {
       reporter.stop(
-        `the implementer exited ${implemented.status}. The tree holds whatever it wrote and no gate has judged it: review it before relaunching.${blockedNote(publisher)}`,
+        `the implementer exited ${implemented.status ?? 1} and ended unrecognised:${outcome.quote === '' ? 'no final result and no stderr' : outcome.quote}. The tree holds whatever it wrote and no gate has judged it: review it before relaunching.${blockedNote(publisher)}`,
         PAUSED,
       );
     }
 
-    const maxRetries = quotaClass === 'shutdown' ? shutdownMaxRetries() : quotaMax;
-    if (attempt >= maxRetries && quotaClass === 'shutdown') {
+    const maxRetries = quotaClass === 'signal' ? shutdownMaxRetries() : quotaMax;
+    if (attempt >= maxRetries && quotaClass === 'signal') {
       reporter.stop(
         `iteration ${iteration} is not converging: the implementer was killed on each of ${attempt} attempt(s). Pausing rather than relaunching it again: relaunch resumes here.${blockedNote(publisher)}`,
         PAUSED,
@@ -155,7 +156,7 @@ export const runIteration = async (
 
     attempt += 1;
 
-    if (quotaClass === 'shutdown') {
+    if (quotaClass === 'signal') {
       const seconds = shutdownBackoffSeconds();
       reporter.say(`RUN the implementer exited 143 (shutdown), backing off ${seconds}s before relaunching iteration ${iteration} (attempt ${attempt} of ${maxRetries})`);
       clock.sleepSeconds(seconds);

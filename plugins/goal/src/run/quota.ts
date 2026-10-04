@@ -5,6 +5,7 @@
 // 200-line ceiling.
 
 import { clock as realClock } from '../adapters/clock.ts';
+import { parseEvents, type StreamEvent } from '../core/events.ts';
 import type { Clock } from '../ports.ts';
 
 export type QuotaClass = 'burst' | 'exhausted' | null;
@@ -27,13 +28,31 @@ export const classifyQuotaFailure = (output: string): QuotaClass =>
 export const burstBackoffSeconds = (attempt: number): number =>
   Math.min(2 ** (attempt - 1), Number(process.env.GOAL_RUN_BURST_CAP ?? '8'));
 
-export type FailureClass = 'shutdown' | QuotaClass;
+export type FailureClass = 'exhausted' | 'burst' | 'signal' | 'unrecognised';
 
-// Exit 143 is SIGTERM, the shape of a self-update or platform-triggered shutdown, not a quota
-// window: checked first, so the quota regex never even runs against its output and a run/
-// iteration.ts loop never waits out GOAL_RUN_QUOTA_SLEEP for something a few seconds will clear.
-export const classifyFailure = (status: number | null, output: string): FailureClass =>
-  status === 143 ? 'shutdown' : classifyQuotaFailure(output);
+export type TerminalOutcome = { failed: boolean; class: FailureClass; quote: string };
+
+const finalResult = (stdout: string): { text: string; isError: boolean } | undefined => {
+  const last = parseEvents(stdout)
+    .map(({ event }) => event as StreamEvent & { is_error?: boolean })
+    .filter((event) => event.type === 'result')
+    .pop();
+
+  return last === undefined ? undefined : { text: last.result ?? '', isError: last.is_error === true };
+};
+
+export const classifyTerminal = (end: { status: number | null; signal?: NodeJS.Signals | null; stdout: string; stderr: string }): TerminalOutcome => {
+  const final = finalResult(end.stdout);
+  const quote = [final?.isError === true || end.status !== 0 ? final?.text : undefined, end.stderr.trim()].filter((part) => part !== undefined && part !== '').join(' | ');
+  const failed = end.status !== 0 || final?.isError === true;
+  const killed = end.status === 143 || (end.signal !== undefined && end.signal !== null);
+
+  if (killed) {
+    return { failed, class: 'signal', quote };
+  }
+
+  return { failed, class: classifyQuotaFailure(quote) ?? 'unrecognised', quote };
+};
 
 // Fixed, not exponential like a burst: a shutdown is not a load signal to back off from, just a
 // process that needs a moment to exit before the same iteration is handed to it again. Read from

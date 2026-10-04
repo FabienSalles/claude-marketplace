@@ -103,7 +103,7 @@ if [ -n "$FAKE_CLAUDE_QUOTA_UNTIL" ]; then
   n=$(cat "$FAKE_CLAUDE_QUOTA_COUNTER" 2>/dev/null || echo 0)
   if [ "$n" -lt "$FAKE_CLAUDE_QUOTA_UNTIL" ]; then
     echo $((n + 1)) > "$FAKE_CLAUDE_QUOTA_COUNTER"
-    printf '%s\\n' "\${FAKE_CLAUDE_QUOTA_MESSAGE:-Claude AI usage limit reached|1735689600}"
+    printf '{"type":"result","is_error":true,"result":"%s"}\\n' "\${FAKE_CLAUDE_QUOTA_MESSAGE:-Claude AI usage limit reached|1735689600}"
     exit 1
   fi
 fi
@@ -160,9 +160,15 @@ case "$*" in
     [ -n "$FAKE_CLAUDE_TOOL_NAME" ] &&
       printf '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"%s","input":{"file_path":"%s"}}]}}\\n' "$FAKE_CLAUDE_TOOL_NAME" "$FAKE_CLAUDE_TOOL_ARG"
     printf '{"type":"assistant","message":{"model":"%s","usage":{"input_tokens":%s,"output_tokens":100,"cache_creation_input_tokens":0,"cache_read_input_tokens":0}}}\\n' "$model" "\${FAKE_CLAUDE_CONTEXT_TOKENS:-50000}"
+    [ -n "$FAKE_CLAUDE_MIDSTREAM" ] &&
+      printf '{"type":"user","message":{"content":[{"type":"tool_result","content":"%s"}]}}\\n' "$FAKE_CLAUDE_MIDSTREAM"
     [ -n "$FAKE_CLAUDE_COMPACT" ] && printf '{"type":"system","subtype":"compact_boundary"}\\n'
     [ -n "$FAKE_CLAUDE_OUTPUT_BYTES" ] && { head -c "$FAKE_CLAUDE_OUTPUT_BYTES" /dev/zero | tr '\\0' 'x'; printf '\\n'; }
-    printf '{"type":"result","session_id":"%s","result":"fake advisory finding","usage":{"input_tokens":10,"output_tokens":20,"cache_creation_input_tokens":30,"cache_read_input_tokens":40},"modelUsage":{"%s":{}}}\\n' "$sid" "$model"
+    if [ -n "$FAKE_CLAUDE_FINAL_ERROR" ]; then
+      printf '{"type":"result","is_error":true,"session_id":"%s","result":"%s"}\\n' "$sid" "$FAKE_CLAUDE_FINAL_ERROR"
+    else
+      printf '{"type":"result","session_id":"%s","result":"fake advisory finding","usage":{"input_tokens":10,"output_tokens":20,"cache_creation_input_tokens":30,"cache_read_input_tokens":40},"modelUsage":{"%s":{}}}\\n' "$sid" "$model"
+    fi
     ;;
 esac
 # Dies by the named signal, on the call whose argv carries FAKE_CLAUDE_KILL_ON (the implementer
