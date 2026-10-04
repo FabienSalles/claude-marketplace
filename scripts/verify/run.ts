@@ -25,9 +25,10 @@ export type Verification = {
   readonly probe?: Probe;
   readonly gaps?: readonly string[];
   readonly uncommitted?: readonly string[];
+  readonly notes?: readonly string[];
 };
 
-export const runVerify = ({ prepare, checks, groups, execute, write, probe = () => undefined, gaps = [], uncommitted = [] }: Verification): number => {
+export const runVerify = ({ prepare, checks, groups, execute, write, probe = () => undefined, gaps = [], uncommitted = [], notes = [] }: Verification): number => {
   let selected: readonly Check[];
 
   try {
@@ -60,6 +61,10 @@ export const runVerify = ({ prepare, checks, groups, execute, write, probe = () 
 
   for (const path of uncommitted) {
     write(`uncommitted work judged as it is: ${path}\n`);
+  }
+
+  for (const note of notes) {
+    write(`${note}\n`);
   }
 
   write(failed === 0 ? 'green: every check passed or was not reproduced\n' : `red: ${failed} check(s) failed\n`);
