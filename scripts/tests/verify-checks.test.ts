@@ -5,6 +5,8 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
 import { CEILING_SECONDS, CHECKS, GROUPS } from '../verify/checks.ts';
+import { execute } from '../verify/execute.ts';
+import type { Check } from '../verify/ports.ts';
 import { selectChecks } from '../verify/run.ts';
 import { catalogParity, catalogSources, catalogValid, pluginManifests } from '../verify/manifests.ts';
 
@@ -164,4 +166,16 @@ test('a local source that does not exist is named, a remote one is ignored', () 
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
+});
+
+test('expected output is found through the colours a CI terminal adds', () => {
+  const coloured: Check = {
+    name: 'coloured',
+    group: 'structure',
+    requirements: [],
+    command: ['printf', 'Found \\033[32m109\\033[39m skills\\n'],
+    expectOutput: /Found \d+ skills/,
+  };
+
+  assert.equal(execute(coloured, tmpdir()).status, 'passed');
 });
