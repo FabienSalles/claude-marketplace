@@ -178,7 +178,7 @@ test('a bite check signalled mid-window still puts the implementation back', asy
   const marks = tmpDir('goal-gate-bite-marks-');
   const open = join(marks, 'window.open');
   const release = join(marks, 'window.release');
-  const { repo, plan } = fixture(withGate1(`touch ${open}; sh ${AWAIT_MARKER} ${release} ${AWAIT_DEADLINE_MS}`));
+  const { repo, plan } = fixture(withGate1(`touch "${open}"; sh "${AWAIT_MARKER}" "${release}" ${AWAIT_DEADLINE_MS}`));
   touchDeclared(repo);
 
   await signalWhenHeld('node', [GATE, 'bite', plan, '1'], { cwd: repo }, {

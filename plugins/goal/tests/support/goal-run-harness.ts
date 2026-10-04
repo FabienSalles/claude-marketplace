@@ -13,6 +13,7 @@ import { close } from '../../src/run/close.ts';
 import { preflight, workIdOf } from '../../src/run/preflight.ts';
 import { blockedNote, createPublisher } from '../../src/run/publish.ts';
 import { runDir, type Reporter } from '../../src/run/report.ts';
+import { AWAIT_DEADLINE_MS } from './await-state.ts';
 import { tmpDir } from './tmp.ts';
 
 export const RUN_NODE = resolve(import.meta.dirname, '..', '..', 'scripts', 'goal-run.ts');
@@ -113,7 +114,7 @@ fi
 [ -n "$FAKE_CLAUDE_PUSHES" ] && git push -q origin "HEAD:$(git rev-parse --abbrev-ref HEAD)" 2>/dev/null
 if [ -n "$FAKE_CLAUDE_RELEASE" ]; then
   : > "$FAKE_CLAUDE_STARTED"
-  sh "${AWAIT_MARKER}" "$FAKE_CLAUDE_RELEASE" 30000 || exit 1
+  sh "${AWAIT_MARKER}" "$FAKE_CLAUDE_RELEASE" ${AWAIT_DEADLINE_MS} || exit 1
 fi
 if [ -n "$FAKE_CLAUDE_RENDEZVOUS" ]; then
   case "$*" in
@@ -123,7 +124,7 @@ if [ -n "$FAKE_CLAUDE_RENDEZVOUS" ]; then
   esac
   if [ -n "$me" ]; then
     d="$FAKE_CLAUDE_RENDEZVOUS"
-    ms="\${FAKE_CLAUDE_RENDEZVOUS_DEADLINE_MS:-30000}"
+    ms="\${FAKE_CLAUDE_RENDEZVOUS_DEADLINE_MS:-${AWAIT_DEADLINE_MS}}"
     if [ -e "$d/$other.verdict" ]; then
       text="the lens and reviewer never ran concurrently: the $other had finished before the $me started"
       printf '%s\\n' "$text" > "$d/$other.verdict"
