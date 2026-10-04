@@ -9,5 +9,8 @@
   },
   "dependencies": {
     "yaml": "2.9.0"
+  },
+  "scripts": {
+    "verify": "node scripts/verify.ts"
   }
 }
