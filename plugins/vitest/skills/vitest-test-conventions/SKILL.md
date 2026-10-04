@@ -55,6 +55,21 @@ const module = await Test.createTestingModule({
 const service = module.get(ReceiptService);
 ```
 
+## Vitest-specific: Characterization Pin
+
+Before changing behaviour no test pins, freeze the inputs and compare today's output, quirks included, to a committed golden file. The order, the gates and the retirement rules live in `craft:testing-principles` §16.
+
+```typescript
+it('keeps today\'s summaries, quirk included', () => {
+  const frozen = [summarize('R-1', [10, 2.5, 0]), summarize('R-0', [])];
+  const golden = readFileSync(new URL('./receipt-summary.golden.txt', import.meta.url), 'utf8');
+
+  expect(`${frozen.join('\n')}\n`).toBe(golden);
+});
+```
+
+The golden file is plain text read with `node:fs`: no snapshot API.
+
 ## Quick Reference (Vitest-specific)
 
 | Situation | Approach |

@@ -1,0 +1,2 @@
+receipt R-1: 3 lines, total 12.50 EUR
+receipt R-0: 0 lines, total 0 EUR

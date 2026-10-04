@@ -69,6 +69,10 @@ Before keeping a wrapper, layer, or indirection, imagine deleting it and inlinin
 
 **Exemption:** a seam mandated by the project's layered architecture (e.g. a mapper enforcing the domain/infrastructure boundary) is exempt from this test — it earns its keep by enforcing the dependency direction, not by hiding complexity.
 
+## 5. Pin Unpinned Behaviour First
+
+When the refactoring must preserve an observable behaviour no existing test pins, set up a characterization net before touching the code: see `craft:testing-principles` §16.
+
 ## Quick Reference
 
 | Rule | Principle |
@@ -77,4 +81,5 @@ Before keeping a wrapper, layer, or indirection, imagine deleting it and inlinin
 | Trace consumers | List all usages to define a value object's structure |
 | Imports = coupling | Imports reveal dependencies; verify their consistency |
 | Complete value objects | Include everything consumers need; no external mappings |
+| Pin first | Unpinned behaviour gets a characterization net before the refactoring (`craft:testing-principles` §16) |
 | Deletion test | An abstraction earns its keep only if deleting it duplicates complexity across callers |

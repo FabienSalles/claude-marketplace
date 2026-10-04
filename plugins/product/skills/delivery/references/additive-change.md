@@ -32,6 +32,8 @@ exits 0, which is what an autonomous run needs to advance.
 ## 3. Replacing an implementation — branch by abstraction
 
 For legacy code with no seam, or any swap of a component the whole app depends on.
+Behaviour of the current implementation that no test pins gets a characterization net
+before step 1: see `craft:testing-principles` §16.
 
 1. **Introduce the abstraction over the current implementation.** Pure refactor, no
    behaviour change, tests green. Shippable on its own.

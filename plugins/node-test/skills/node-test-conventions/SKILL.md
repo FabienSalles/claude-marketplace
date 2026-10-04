@@ -70,6 +70,21 @@ A throw test always names the error it expects (class or `name`, and message mat
 
 `mock.module` needs the flag `--experimental-test-module-mocks` on Node 24 (without it: `TypeError: mock.module is not a function`). Restore mocks with `mock.restoreAll()` or the context `t.mock`, which restores itself at the end of the test.
 
+## Characterization pin
+
+Before changing behaviour no test pins, freeze the inputs and compare today's output, quirks included, to a committed golden file. The order, the gates and the retirement rules live in `craft:testing-principles` §16.
+
+```typescript
+it('keeps today\'s summaries, quirk included', () => {
+  const frozen = [summarize('R-1', [10, 2.5, 0]), summarize('R-0', [])];
+  const golden = readFileSync(new URL('./receipt-summary.golden.txt', import.meta.url), 'utf8');
+
+  assert.strictEqual(`${frozen.join('\n')}\n`, golden);
+});
+```
+
+The golden file is plain text read with `node:fs`: no snapshot API.
+
 ## Running the suite
 
 ```bash

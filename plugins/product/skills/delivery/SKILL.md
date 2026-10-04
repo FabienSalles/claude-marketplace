@@ -146,7 +146,7 @@ batching releases:
 
 - **Tests that cover the existing behaviour** — the ones you didn't write are the ones
   that make you afraid to deploy. When a slice touches an untested existing path, adding
-  its characterization test *is* part of that slice.
+  its characterization test *is* part of that slice (doctrine: `craft:testing-principles` §16).
 - **Observability** — logs, metrics and errors on both the old and the new path. Without
   it you cannot know the flag rollout is safe, and you cannot know the old path is dead.
 - **Small and frequent deploys** — a deploy containing one slice is diagnosable; one
