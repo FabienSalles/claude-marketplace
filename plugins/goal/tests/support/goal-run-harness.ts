@@ -161,9 +161,17 @@ case "$*" in
       printf '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"%s","input":{"file_path":"%s"}}]}}\\n' "$FAKE_CLAUDE_TOOL_NAME" "$FAKE_CLAUDE_TOOL_ARG"
     printf '{"type":"assistant","message":{"model":"%s","usage":{"input_tokens":%s,"output_tokens":100,"cache_creation_input_tokens":0,"cache_read_input_tokens":0}}}\\n' "$model" "\${FAKE_CLAUDE_CONTEXT_TOKENS:-50000}"
     [ -n "$FAKE_CLAUDE_COMPACT" ] && printf '{"type":"system","subtype":"compact_boundary"}\\n'
+    [ -n "$FAKE_CLAUDE_OUTPUT_BYTES" ] && { head -c "$FAKE_CLAUDE_OUTPUT_BYTES" /dev/zero | tr '\\0' 'x'; printf '\\n'; }
     printf '{"type":"result","session_id":"%s","result":"fake advisory finding","usage":{"input_tokens":10,"output_tokens":20,"cache_creation_input_tokens":30,"cache_read_input_tokens":40},"modelUsage":{"%s":{}}}\\n' "$sid" "$model"
     ;;
 esac
+# Dies by the named signal, on the call whose argv carries FAKE_CLAUDE_KILL_ON (the implementer
+# by default), after everything above has been written.
+if [ -n "$FAKE_CLAUDE_KILL_SIGNAL" ]; then
+  case "$*" in
+    *"\${FAKE_CLAUDE_KILL_ON:-goal-run-implementer}"*) kill -s "$FAKE_CLAUDE_KILL_SIGNAL" $$ ;;
+  esac
+fi
 # The closing sequence hands the same binary a lens call and an audit call, each identified by
 # the agent it is pinned to — an exit code of its own is what proves neither can block the run.
 case "$*" in

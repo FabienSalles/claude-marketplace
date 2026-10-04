@@ -4,10 +4,12 @@
 // wrong tree with a correct cwd throughout. HEAD before and after tells a committed implementer
 // apart from one that wrote nothing, and only a moved tree is handed to the gate for a verdict.
 
+import { closeSync, openSync } from 'node:fs';
 import { basename, join } from 'node:path';
 
 import { command } from '../adapters/command.ts';
 import { clock } from '../adapters/clock.ts';
+import { fs } from '../adapters/fs.ts';
 import type { GateAdapter } from '../adapters/gate.ts';
 import { git } from '../adapters/git.ts';
 import { ceiling } from '../gate/bounded.ts';
@@ -17,7 +19,7 @@ import { detectTamper } from '../core/tamper.ts';
 import { HALTED, PAUSED, REFUSED } from '../core/verdict.ts';
 import { brief } from './brief.ts';
 import { changedGitDirPaths, changedRefs, snapshotGitDir, snapshotRefs } from './gitwatch.ts';
-import { narrate, tokensLine } from './narrate.ts';
+import { endOf, narrate, tokensLine } from './narrate.ts';
 import { claudeBinaryMtime, claudeBinaryPath, postmortem } from './postmortem.ts';
 import { blockedNote, type Publisher } from './publish.ts';
 import { burstBackoffSeconds, classifyFailure, shutdownBackoffSeconds, shutdownMaxRetries, sleepInSlices } from './quota.ts';
@@ -77,7 +79,11 @@ export const runIteration = async (
 
     const binaryBefore = claudeBinaryMtime(claudeBinaryPath());
     const implementerStart = clock.now();
-    const implemented = command.run(
+    const outPath = join(dir, `implementer-attempt-${attempt}.out`);
+    const errPath = join(dir, `implementer-attempt-${attempt}.err`);
+    const fdOut = openSync(outPath, 'w');
+    const fdErr = openSync(errPath, 'w');
+    const spawned = command.run(
       '/bin/sh',
       [
         '-c',
@@ -94,13 +100,18 @@ export const runIteration = async (
         '--verbose',
         brief(iteration, process.cwd(), branch, section, rulesContext(source)),
       ],
-      { encoding: 'utf8', env: { ...process.env, DISABLE_AUTOUPDATER: '1' } },
+      { encoding: 'utf8', env: { ...process.env, DISABLE_AUTOUPDATER: '1' }, stdio: ['ignore', fdOut, fdErr] },
     );
+
+    closeSync(fdOut);
+    closeSync(fdErr);
+
+    const implemented = { ...spawned, stdout: fs.readFile(outPath), stderr: fs.readFile(errPath) };
 
     await yieldToLoop();
 
     const extraction = narrate(implemented.stdout, reporter);
-    reporter.say(`RUN stage=implementer duration_ms=${clock.now() - implementerStart} exit=${implemented.status ?? 1}`);
+    reporter.say(`RUN stage=implementer duration_ms=${clock.now() - implementerStart} ${endOf(implemented)}`);
 
     const tokens = tokensLine('implementer', extraction);
 
@@ -112,7 +123,7 @@ export const runIteration = async (
       break;
     }
 
-    const signal = (implemented as { signal?: string | null }).signal ?? null;
+    const signal = implemented.signal ?? null;
     const cause = signal === null ? `exit code ${implemented.status ?? 1}` : `signal ${signal}`;
     reporter.say(`RUN the implementer failed on iteration ${iteration}: ${cause}, after ${Math.round((clock.now() - implementerStart) / 1000)}s`);
 

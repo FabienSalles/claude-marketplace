@@ -9,12 +9,15 @@ export type CommandOptions = {
   killSignal?: NodeJS.Signals;
   maxBuffer?: number;
   encoding?: 'utf8';
+  stdio?: ('ignore' | number)[];
 };
 
 export type CommandResult = {
   status: number | null;
   stdout: string;
   stderr: string;
+  signal?: NodeJS.Signals | null;
+  error?: NodeJS.ErrnoException;
 };
 
 export type BinaryResult = {

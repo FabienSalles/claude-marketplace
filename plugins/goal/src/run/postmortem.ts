@@ -37,7 +37,11 @@ export const claudeBinaryMtime = (path: string | undefined): number | undefined 
 
 const persistAttemptOutput = (dir: string, attempt: number, output: string): void => {
   try {
-    fs.writeFile(join(dir, `implementer-attempt-${attempt}.out`), output);
+    const path = join(dir, `implementer-attempt-${attempt}.out`);
+
+    if (!fs.exists(path)) {
+      fs.writeFile(path, output);
+    }
   } catch {
     // An unwritable run directory degrades to less evidence, never to a crash.
   }
