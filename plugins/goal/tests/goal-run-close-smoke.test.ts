@@ -518,20 +518,18 @@ test('an envelope beside stderr noise still yields the token line and text, nois
   }
 });
 
-// one advisory duration — the lens and reviewer run concurrently, so their sleeps overlap in
-// time rather than the reviewer only starting once the lens has finished.
+// R7 — the lens and reviewer each wait for the other's arrival marker, so both verdicts read `met`
+// only when they were running at the same time; no instant is compared.
 test('the lens and reviewer run concurrently rather than one after the other', () => {
   const fixture = repo({ planText: PLAN_PR, remote: true });
   const originalCwd = process.cwd();
   const originalPath = process.env.PATH;
-  const lensTiming = join(fixture.dir, 'lens.timing');
-  const reviewerTiming = join(fixture.dir, 'reviewer.timing');
+  const rendezvous = tmpDir('goal-close-rendezvous-');
 
   process.chdir(fixture.dir);
   process.env.PATH = `${fixture.bin}:${originalPath ?? ''}`;
-  process.env.FAKE_CLAUDE_SLEEPS = '0.3';
-  process.env.FAKE_CLAUDE_LENS_TIMING = lensTiming;
-  process.env.FAKE_CLAUDE_REVIEWER_TIMING = reviewerTiming;
+  process.env.FAKE_CLAUDE_RENDEZVOUS = rendezvous;
+  process.env.FAKE_CLAUDE_RENDEZVOUS_DEADLINE_MS = '10000';
 
   try {
     const reporter: Reporter = {
@@ -555,23 +553,17 @@ test('the lens and reviewer run concurrently rather than one after the other', (
     );
 
     assert.equal(code, LANDED);
-    const interval = (path: string) => {
-      const [start, end] = readFileSync(path, 'utf8').trim().split(' ').map(Number);
-      return { start: start!, end: end! };
-    };
-    const lens = interval(lensTiming);
-    const reviewer = interval(reviewerTiming);
+    for (const agent of ['lens', 'reviewer']) {
+      const path = join(rendezvous, `${agent}.verdict`);
 
-    assert.ok(
-      lens.start <= reviewer.end && reviewer.start <= lens.end,
-      `expected the lens [${lens.start}, ${lens.end}] and reviewer [${reviewer.start}, ${reviewer.end}] intervals to overlap`,
-    );
+      assert.ok(existsSync(path), `the ${agent} never ran: no verdict file was written`);
+      assert.equal(readFileSync(path, 'utf8').trim(), 'met', `the ${agent} reported no rendezvous`);
+    }
   } finally {
     process.chdir(originalCwd);
     process.env.PATH = originalPath;
-    delete process.env.FAKE_CLAUDE_SLEEPS;
-    delete process.env.FAKE_CLAUDE_LENS_TIMING;
-    delete process.env.FAKE_CLAUDE_REVIEWER_TIMING;
+    delete process.env.FAKE_CLAUDE_RENDEZVOUS;
+    delete process.env.FAKE_CLAUDE_RENDEZVOUS_DEADLINE_MS;
   }
 });
 
