@@ -194,7 +194,7 @@ More, including the axes that are entirely empty: [`docs/comparison.md`](docs/co
 | [`/goal:plan`](skills/plan/SKILL.md) | `skills/` | The technical grill → command-mapped DoD, slices, policy, remote → the locked plan on a branch |
 | [`/goal:supervise`](skills/supervise/SKILL.md) | `skills/` | Launches the runner, classifies a halt, repairs or discards once. **Never exercised by a real run** |
 | [`/goal:next`](skills/next/SKILL.md) | `skills/` | Manual-loop checkpoint: replay the DoD, reconcile plan against code, emit the next handoff |
-| `goal-run.ts` + `run/*.ts` | `scripts/` + `src/run/` | The runner: 1,696 lines, the entry point plus 14 modules (preflight, sweep, lock, iteration, publish, close, report) |
+| `goal-run.ts` + `run/*.ts` | `scripts/` + `src/run/` | The runner: 1,831 lines, the entry point plus 14 modules (preflight, sweep, lock, iteration, publish, close, report) |
 | `goal-gate.ts` + `gate/*.ts` | `scripts/` + `src/gate/` | The judge, and the only committer: 1,089 lines, the entry point plus 11 modules. Exit 0 runnable · 1 `HALT` with a reason · 2 misuse |
 | `ports.ts` + `adapters/*.ts` | `src/` | The `CommandRunner`, `Clock` and `FileSystem` ports, and the real adapters that back them: every process spawn, wait and disk access in production code goes through one, so a rule is observable against a double instead of a repository fixture |
 | `core/*.ts` | `src/core/` | The pure business rules (scope, bounds, commands, ticked, cross-iteration, never) the gate evaluates, plus verdict and preflight: no process, no clock, no disk |
@@ -204,7 +204,7 @@ More, including the axes that are entirely empty: [`docs/comparison.md`](docs/co
 | `goal-run-reviewer` · `goal-session-auditor` | `agents/` | Post-publication review and transcript audit. **Never fired** |
 | [`grill-adversarial`](skills/grill-adversarial/SKILL.md) | `skills/` | Opt-in, loaded during `/goal:spec`'s grill |
 | [`product:vertical-slice`](../product/skills/vertical-slice/SKILL.md) · [`product:delivery`](../product/skills/delivery/SKILL.md) | *(plugin `product`)* | Loaded by `/goal:plan` to split the work and give each slice a shipping strategy |
-| `tests/run.sh` | `tests/` | 508 tests across 61 files. Wraps `node --test` and additionally refuses a zero-pass run, an undeclared skip, and a missing summary (a bare `node --test` exits 0 on a glob matching nothing) |
+| `tests/run.sh` | `tests/` | 530 tests across 66 files. Wraps `node --test` and additionally refuses a zero-pass run, an undeclared skip, and a missing summary (a bare `node --test` exits 0 on a glob matching nothing) |
 | `tests/support/frozen.ts` · `tests/support/budget.ts` | `tests/support/` | `node tests/support/frozen.ts` checks that every test name in `tests/frozen-names.txt` (the names the 28 frozen files declared on `aef0e8d`) is declared exactly once across `tests/*.test.ts` and never skipped or todo'd, and names each one lost, renamed, skipped or duplicated. `node tests/support/budget.ts [--runs N] [--wall S] [--file S] [--test S] [--only <file>]` runs `run.sh` N times (default 3), refuses any run that is not green, and reports the median wall, the slowest file and the slowest test, failing on every one over its ceiling in seconds. CI runs it through `npm run verify`, whose ceiling lives in `scripts/verify/checks.ts` (see `docs/open-questions.md` §8). A file's time is the sum of its tests' times, so process start-up is not in it |
 | `done-criteria.template` · `goal-handoff.template` · `post-merge.template` | `templates/` | The DoD baseline, the handoff `/goal:next` fills, and the merge-day checklist. Printed, never executed |
 
@@ -229,7 +229,9 @@ Every row is a refusal the code can still reach today.
 | Exit 2, "the branch is behind &lt;base&gt;" | the base moved after the branch was cut | Rebase, then relaunch. A green sweep against a stale base certifies nothing anyone will merge into |
 | Exit 2, "another run holds this plan" | a `<plan>.run.lock` survived a dead run | `node <plugin>/scripts/goal-gate.ts unlock <plan>` once you know the holder is gone |
 | Exit 1, a slice was refused | the gate halted | The reason is in the run log and on the terminal. Reproduce it from the repo root: `node <plugin>/scripts/goal-gate.ts verify <plan> <n>` |
-| Exit 3, "the quota still looks exhausted" | the usage window did not reopen within the retries | Relaunch when it has. Checkboxes are the whole state, so it resumes at the first unticked box |
+| Exit 3, "is not converging: paused after N attempt(s)" | the attempt ceiling `GOAL_RUN_QUOTA_MAX_RETRIES` was reached; the pause lists each attempt with its class (exhausted, burst, signal) | Relaunch when the cause has cleared. Checkboxes are the whole state, so it resumes at the first unticked box |
+| Exit 3, "the implementer committed on its own" | the implementer ran `git commit` (or moved `.git/`, pushed, moved a ref) in an attempt, even one that then failed | Review the commit named by its SHA before relaunching: only the gate commits. The runner resets nothing |
+| Exit 2, "GOAL_RUN_SHUTDOWN_MAX_RETRIES is retired" | the setting no longer exists | Unset it and use `GOAL_RUN_QUOTA_MAX_RETRIES`: one ceiling bounds the attempts whatever their class |
 | Exit 3, "the implementer wrote nothing in this tree" | the work went somewhere else | Look for it in another checkout before assuming it does not exist: this is what a wrong working directory looks like from here |
 | The gate halts on files you considered in scope | the slice's declared paths do not match reality | The declared list is the contract. Fix it in the plan, or keep the change out of this slice |
 | The run finishes but the review is not on the pull request | a safety hook refuses to post under your GitHub identity without explicit consent | Expected, and not a failure: the review text is in the run log; posting is opt-in via a `Review: comment` header |
@@ -246,7 +248,7 @@ rate limit gets seconds of backoff instead.
 **Observed, 2026-08-05:** installing an update to Claude Code shuts down every running instance on
 the machine, including a `claude -p` implementer mid-slice. A run left unattended for hours is
 exactly the shape an update lands under. The runner absorbs this: exit 143 is classified as a
-shutdown rather than quota exhaustion and retried after a fixed 5s backoff, up to 3 attempts (`GOAL_RUN_SHUTDOWN_MAX_RETRIES` overrides), after which the run stops saying the iteration is not converging; every non-zero implementer exit logs its exit code or signal and elapsed time; the implementer has no time ceiling of its own, by choice; every
+shutdown rather than quota exhaustion and retried after a fixed 5s backoff, within the one attempt ceiling `GOAL_RUN_QUOTA_MAX_RETRIES` (default 3), after which the run pauses listing each attempt with its class (`GOAL_RUN_SHUTDOWN_MAX_RETRIES` is retired and refused); every non-zero implementer exit logs its exit code or signal and elapsed time; the implementer has no time ceiling of its own, by choice; every
 implementer is spawned with `DISABLE_AUTOUPDATER=1`; and preflight *warns*, never refuses, when
 your own `~/.claude/settings.json` sets neither `env.DISABLE_AUTOUPDATER` nor
 `"autoUpdatesChannel": "stable"`. Setting one of those stops the updater shutting down *other*

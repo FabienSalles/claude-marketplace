@@ -10,6 +10,7 @@ export type CommandOptions = {
   maxBuffer?: number;
   encoding?: 'utf8';
   stdio?: ('ignore' | number)[];
+  signal?: AbortSignal;
 };
 
 export type CommandResult = {
@@ -28,6 +29,7 @@ export type BinaryResult = {
 
 export type CommandRunner = {
   run: (command: string, args: string[], options?: CommandOptions) => CommandResult;
+  spawn: (command: string, args: string[], options?: CommandOptions) => Promise<CommandResult>;
   runBinary: (command: string, args: string[], options?: CommandOptions) => BinaryResult;
 };
 
@@ -58,4 +60,8 @@ export type FileSystem = {
 export type Clock = {
   now: () => number;
   sleepSeconds: (seconds: number) => void;
+};
+
+export type WaitingClock = Clock & {
+  sleep: (seconds: number, signal?: AbortSignal) => Promise<void>;
 };

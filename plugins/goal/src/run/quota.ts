@@ -6,7 +6,7 @@
 
 import { clock as realClock } from '../adapters/clock.ts';
 import { parseEvents, type StreamEvent } from '../core/events.ts';
-import type { Clock } from '../ports.ts';
+import type { Clock, WaitingClock } from '../ports.ts';
 
 export type QuotaClass = 'burst' | 'exhausted' | null;
 
@@ -77,6 +77,24 @@ export const sleepInSlices = (
 
     onSlice(remaining);
     clock.sleepSeconds(slice);
+    remaining -= slice;
+  }
+};
+
+export const waitInSlices = async (
+  totalSeconds: number,
+  onSlice: (remainingSeconds: number) => void,
+  signal: AbortSignal,
+  sliceSeconds = 300,
+  clock: WaitingClock = realClock,
+): Promise<void> => {
+  let remaining = totalSeconds;
+
+  while (remaining > 0 && !signal.aborted) {
+    const slice = Math.min(sliceSeconds, remaining);
+
+    onSlice(remaining);
+    await clock.sleep(slice, signal);
     remaining -= slice;
   }
 };

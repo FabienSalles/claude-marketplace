@@ -22,17 +22,16 @@ import { changedGitDirPaths, changedRefs, snapshotGitDir, snapshotRefs } from '.
 import { endOf, narrate, tokensLine } from './narrate.ts';
 import { claudeBinaryMtime, claudeBinaryPath, postmortem } from './postmortem.ts';
 import { blockedNote, type Publisher } from './publish.ts';
-import { burstBackoffSeconds, classifyTerminal, shutdownBackoffSeconds, sleepInSlices } from './quota.ts';
+import { burstBackoffSeconds, classifyTerminal, shutdownBackoffSeconds, waitInSlices } from './quota.ts';
+import { interrupt } from './lock.ts';
 import type { Reporter } from './report.ts';
 
 export { HALTED, PAUSED } from '../core/verdict.ts';
 
-// A SIGINT that lands while a spawnSync call blocks the process is queued by the OS, not
-// delivered: Node only runs the registered handler on a turn of the event loop, and a bare
-// spawnSync never gives it one. Awaited right after each call this loop cannot make responsive
-// on its own, so a queued signal's own exit (lock.ts's handler, releasing the lock before it)
-// gets first refusal at deciding this process's fate, ahead of whatever this loop was about to
-// do next.
+// A SIGINT that lands while a synchronous call blocks the process is queued by the OS, not
+// delivered: Node only runs the registered handler on a turn of the event loop. Awaited right
+// after the gate's synchronous call, so a queued signal's own exit gets first refusal at
+// deciding this process's fate, ahead of whatever this loop was about to do next.
 const yieldToLoop = (): Promise<void> => new Promise((resolve) => setImmediate(resolve));
 
 export const runIteration = async (
@@ -88,6 +87,7 @@ export const runIteration = async (
   const history: string[] = [];
 
   for (;;) {
+    interrupt.exitIfRequested();
     reporter.say(`RUN handing iteration ${iteration} to the implementer`);
 
     const binaryBefore = claudeBinaryMtime(claudeBinaryPath());
@@ -96,32 +96,36 @@ export const runIteration = async (
     const errPath = join(dir, `implementer-attempt-${attempt}.err`);
     const fdOut = openSync(outPath, 'w');
     const fdErr = openSync(errPath, 'w');
-    const spawned = command.run(
-      '/bin/sh',
-      [
-        '-c',
-        `${ceiling()}\nexec "$@"`,
-        'sh',
-        'claude',
-        '-p',
-        '--agent',
-        'goal:goal-run-implementer',
-        '--permission-mode',
-        'auto',
-        '--output-format',
-        'stream-json',
-        '--verbose',
-        brief(iteration, process.cwd(), branch, section, rulesContext(source)),
-      ],
-      { encoding: 'utf8', env: { ...process.env, DISABLE_AUTOUPDATER: '1' }, stdio: ['ignore', fdOut, fdErr] },
-    );
+    const spawned = await interrupt.guard(async () => {
+      const ended = await command.spawn(
+        '/bin/sh',
+        [
+          '-c',
+          `${ceiling()}\nexec "$@"`,
+          'sh',
+          'claude',
+          '-p',
+          '--agent',
+          'goal:goal-run-implementer',
+          '--permission-mode',
+          'auto',
+          '--output-format',
+          'stream-json',
+          '--verbose',
+          brief(iteration, process.cwd(), branch, section, rulesContext(source)),
+        ],
+        { encoding: 'utf8', env: { ...process.env, DISABLE_AUTOUPDATER: '1' }, stdio: ['ignore', fdOut, fdErr], signal: interrupt.signal() },
+      );
+
+      await yieldToLoop();
+
+      return ended;
+    });
 
     closeSync(fdOut);
     closeSync(fdErr);
 
     const implemented = { ...spawned, stdout: fs.readFile(outPath), stderr: fs.readFile(errPath) };
-
-    await yieldToLoop();
 
     const extraction = narrate(implemented.stdout, reporter);
     reporter.say(`RUN stage=implementer duration_ms=${clock.now() - implementerStart} ${endOf(implemented)}`);
@@ -137,6 +141,9 @@ export const runIteration = async (
     if (!tamper.ok) {
       reporter.stop(`${tamper.error}${blockedNote(publisher)}`, PAUSED);
     }
+
+    await yieldToLoop();
+    interrupt.exitIfRequested();
 
     const outcome = classifyTerminal({ status: implemented.status, signal: implemented.signal ?? null, stdout: implemented.stdout, stderr: implemented.stderr });
 
@@ -172,14 +179,14 @@ export const runIteration = async (
     if (quotaClass === 'signal') {
       const seconds = shutdownBackoffSeconds();
       reporter.say(`RUN the implementer exited 143 (shutdown), backing off ${seconds}s before relaunching iteration ${iteration} (attempt ${attempt} of ${quotaMax})`);
-      clock.sleepSeconds(seconds);
+      await interrupt.guard(() => clock.sleep(seconds, interrupt.signal()));
     } else if (quotaClass === 'burst') {
       const seconds = burstBackoffSeconds(attempt - 1);
       reporter.say(`RUN the implementer hit a burst rate limit, backing off ${seconds}s before relaunching iteration ${iteration} (attempt ${attempt} of ${quotaMax})`);
-      clock.sleepSeconds(seconds);
+      await interrupt.guard(() => clock.sleep(seconds, interrupt.signal()));
     } else {
       reporter.say(`RUN the implementer looks quota-exhausted, sleeping ${quotaSleep}s before relaunching iteration ${iteration} (attempt ${attempt} of ${quotaMax})`);
-      sleepInSlices(Number(quotaSleep), (remaining) => reporter.say(`RUN quota sleep continues, ${remaining}s remaining`));
+      await interrupt.guard(() => waitInSlices(Number(quotaSleep), (remaining) => reporter.say(`RUN quota sleep continues, ${remaining}s remaining`), interrupt.signal()));
     }
   }
 

@@ -107,6 +107,15 @@ if [ -n "$FAKE_CLAUDE_QUOTA_UNTIL" ]; then
     exit 1
   fi
 fi
+# Announces that the session is running, then waits for a signal instead of a fixed sleep: a test
+# synchronises on the marker file and ends the session by signalling the runner.
+if [ -n "$FAKE_CLAUDE_MARKER" ]; then
+  : > "$FAKE_CLAUDE_MARKER"
+  trap 'kill "$spid" 2>/dev/null; exit 143' TERM INT
+  tail -f /dev/null &
+  spid=$!
+  wait "$spid"
+fi
 # Appended, not overwritten: a second call against the same target has to leave a real diff
 # behind it, or a resumed iteration reads as "the implementer wrote nothing".
 [ -n "$FAKE_CLAUDE_WRITES" ] && printf 'written %s\\n' "$$-$RANDOM" >> "$FAKE_CLAUDE_WRITES"
@@ -412,11 +421,17 @@ const doubleCommand = (): { calls: { cmd: string; args: string[] }[]; restore: (
   const calls: { cmd: string; args: string[] }[] = [];
   const realRun = command.run;
   const realRunBinary = command.runBinary;
+  const realSpawn = command.spawn;
 
   command.run = (cmd, args, options) => {
     calls.push({ cmd, args });
 
     return realRun(cmd, args, options);
+  };
+  command.spawn = (cmd, args, options) => {
+    calls.push({ cmd, args });
+
+    return realSpawn(cmd, args, options);
   };
   command.runBinary = (cmd, args, options) => {
     calls.push({ cmd, args });
@@ -429,6 +444,7 @@ const doubleCommand = (): { calls: { cmd: string; args: string[] }[]; restore: (
     restore: () => {
       command.run = realRun;
       command.runBinary = realRunBinary;
+      command.spawn = realSpawn;
     },
   };
 };

@@ -10,8 +10,33 @@ export type Lock = {
   release: () => void;
 };
 
+let controller = new AbortController();
+let requested: number | undefined;
+let guarded = 0;
+
+export const interrupt = {
+  signal: (): AbortSignal => controller.signal,
+  guard: async <T>(work: () => Promise<T>): Promise<T> => {
+    guarded += 1;
+
+    try {
+      return await work();
+    } finally {
+      guarded -= 1;
+    }
+  },
+  exitIfRequested: (): void => {
+    if (requested !== undefined) {
+      process.exit(requested);
+    }
+  },
+};
+
 export const createLock = (gateArg: GateAdapter | string, plan: string): Lock => {
   const gate = gateAdapterOf(gateArg);
+  controller = new AbortController();
+  requested = undefined;
+  guarded = 0;
   let held = false;
 
   const release = (): void => {
@@ -30,14 +55,24 @@ export const createLock = (gateArg: GateAdapter | string, plan: string): Lock =>
   };
 
   process.once('exit', release);
-  process.once('SIGINT', () => {
-    release();
-    process.exit(130);
-  });
-  process.once('SIGTERM', () => {
-    release();
-    process.exit(143);
-  });
+  const stop = (code: number) => (): void => {
+    const again = requested !== undefined;
+
+    requested = code;
+    controller.abort();
+
+    if (again || guarded === 0) {
+      release();
+      process.exit(code);
+    }
+  };
+
+  for (const [name, code] of [['SIGINT', 130], ['SIGTERM', 143]] as const) {
+    const inherited = process.listeners(name);
+
+    process.on(name, stop(code));
+    inherited.forEach((listener) => process.removeListener(name, listener));
+  }
 
   return { acquire, release };
 };
