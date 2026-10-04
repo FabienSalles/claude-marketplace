@@ -1,7 +1,8 @@
 import { readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { join } from 'node:path';
 
-import { parse } from 'yaml';
+import type * as Yaml from 'yaml';
 
 import { GROUPS } from './checks.ts';
 
@@ -65,7 +66,7 @@ const refusal = (step: Step): string | undefined => {
 const isEntry = (step: Step): boolean => typeof step.run === 'string' && ENTRY.test(step.run.trim());
 
 export const workflowFindings = (text: string): readonly string[] => {
-  const parsed: unknown = parse(text);
+  const parsed: unknown = (createRequire(import.meta.url)('yaml') as typeof Yaml).parse(text);
   const jobs = isRecord(parsed) && isRecord(parsed['jobs']) ? parsed['jobs'] : {};
 
   return Object.entries(jobs).flatMap(([id, definition]) => {

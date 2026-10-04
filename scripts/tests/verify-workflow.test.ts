@@ -1,7 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { spawnSync } from 'node:child_process';
+import { cpSync, mkdtempSync, readFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
 
 import { CHECKS } from '../verify/checks.ts';
 import { forCi } from '../verify/ci.ts';
@@ -94,4 +96,14 @@ test('the docs and the workflow carry no copied ceiling, check list or second in
   }
 
   assert.doesNotMatch(readFileSync(resolve(ROOT, 'CONTRIBUTING.md'), 'utf8'), /macos-latest/);
+});
+
+test('the checks load before npm ci has installed anything', () => {
+  const copy = join(mkdtempSync(join(tmpdir(), 'verify-')), 'verify');
+  cpSync(join(ROOT, 'scripts', 'verify'), copy, { recursive: true });
+
+  const loaded = spawnSync('node', ['--input-type=module', '-e', `await import(${JSON.stringify(join(copy, 'checks.ts'))});`], { encoding: 'utf8' });
+
+  assert.equal(loaded.stderr, '');
+  assert.equal(loaded.status, 0);
 });
