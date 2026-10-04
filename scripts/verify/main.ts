@@ -1,6 +1,7 @@
 import { resolve } from 'node:path';
 
 import { behindLine, freshBase, withDiffBase } from './base.ts';
+import { forCi } from './ci.ts';
 import { CHECKS } from './checks.ts';
 import { execute } from './execute.ts';
 import { gapsFor, probeRequirement, uncommittedWork } from './honesty.ts';
@@ -16,7 +17,7 @@ const behind = 'behind' in base ? behindLine(base.behind) : undefined;
 
 process.exitCode = runVerify({
   prepare: install,
-  checks: withDiffBase(CHECKS, 'base' in base ? base.base : base),
+  checks: withDiffBase(forCi(CHECKS, process.env), 'base' in base ? base.base : base),
   groups: process.argv.slice(2),
   execute: (check) => execute(check, ROOT),
   write: (text) => process.stdout.write(text),

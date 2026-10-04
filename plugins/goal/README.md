@@ -121,7 +121,7 @@ Exit `0` landed · `1` the gate refused a slice · `2` refused before anything w
 
 | Item | Needed for | Note |
 |---|---|---|
-| Node 24 | the runner and the gate | Types are stripped at run time, never checked; `tsc --noEmit` and `eslint` (`strict-boolean-expressions`) are CI concerns |
+| Node 24 | the runner and the gate | Types are stripped at run time, never checked; `npm run verify` runs `tsc --noEmit` and `eslint` (`strict-boolean-expressions`), as CI does, from the checks in `scripts/verify/checks.ts` |
 | Git-ignored `.claude/plans/` and `.claude/goal-runs/` | every run | Preflight refuses a plan directory git can see. The run records must be out of git's sight too: the gate would read them as an undeclared scope leak. The rest of `.claude/` may stay tracked |
 | `betterleaks` or `gitleaks` | any push | The push is refused, not skipped, when neither is installed |
 | `gh` authenticated | `Policy: commit+pr`, or a GitHub source | `gh auth login` |
@@ -195,7 +195,7 @@ More, including the axes that are entirely empty: [`docs/comparison.md`](docs/co
 | [`/goal:supervise`](skills/supervise/SKILL.md) | `skills/` | Launches the runner, classifies a halt, repairs or discards once. **Never exercised by a real run** |
 | [`/goal:next`](skills/next/SKILL.md) | `skills/` | Manual-loop checkpoint: replay the DoD, reconcile plan against code, emit the next handoff |
 | `goal-run.ts` + `run/*.ts` | `scripts/` + `src/run/` | The runner: 1,692 lines, the entry point plus 14 modules (preflight, sweep, lock, iteration, publish, close, report) |
-| `goal-gate.ts` + `gate/*.ts` | `scripts/` + `src/gate/` | The judge, and the only committer: 1,086 lines, the entry point plus 11 modules. Exit 0 runnable · 1 `HALT` with a reason · 2 misuse |
+| `goal-gate.ts` + `gate/*.ts` | `scripts/` + `src/gate/` | The judge, and the only committer: 1,089 lines, the entry point plus 11 modules. Exit 0 runnable · 1 `HALT` with a reason · 2 misuse |
 | `ports.ts` + `adapters/*.ts` | `src/` | The `CommandRunner`, `Clock` and `FileSystem` ports, and the real adapters that back them: every process spawn, wait and disk access in production code goes through one, so a rule is observable against a double instead of a repository fixture |
 | `core/*.ts` | `src/core/` | The pure business rules (scope, bounds, commands, ticked, cross-iteration, never) the gate evaluates, plus verdict and preflight: no process, no clock, no disk |
 | `transcripts.ts` · `digest.ts` | `src/` | Resolve a run's transcripts and compress them to a tool-call digest. `transcripts.ts` runs on every failed implementer attempt |
@@ -205,7 +205,7 @@ More, including the axes that are entirely empty: [`docs/comparison.md`](docs/co
 | [`grill-adversarial`](skills/grill-adversarial/SKILL.md) | `skills/` | Opt-in, loaded during `/goal:spec`'s grill |
 | [`product:vertical-slice`](../product/skills/vertical-slice/SKILL.md) · [`product:delivery`](../product/skills/delivery/SKILL.md) | *(plugin `product`)* | Loaded by `/goal:plan` to split the work and give each slice a shipping strategy |
 | `tests/run.sh` | `tests/` | 491 tests across 59 files. Wraps `node --test` and additionally refuses a zero-pass run, an undeclared skip, and a missing summary (a bare `node --test` exits 0 on a glob matching nothing) |
-| `tests/support/frozen.ts` · `tests/support/budget.ts` | `tests/support/` | `node tests/support/frozen.ts` checks that every test name in `tests/frozen-names.txt` (the names the 28 frozen files declared on `aef0e8d`) is declared exactly once across `tests/*.test.ts` and never skipped or todo'd, and names each one lost, renamed, skipped or duplicated. `node tests/support/budget.ts [--runs N] [--wall S] [--file S] [--test S] [--only <file>]` runs `run.sh` N times (default 3), refuses any run that is not green, and reports the median wall, the slowest file and the slowest test, failing on every one over its ceiling in seconds. CI runs it as `--runs 1 --wall 95`, the ceiling being the job's measured 63 s plus 50 % (see `docs/open-questions.md` §8). A file's time is the sum of its tests' times, so process start-up is not in it |
+| `tests/support/frozen.ts` · `tests/support/budget.ts` | `tests/support/` | `node tests/support/frozen.ts` checks that every test name in `tests/frozen-names.txt` (the names the 28 frozen files declared on `aef0e8d`) is declared exactly once across `tests/*.test.ts` and never skipped or todo'd, and names each one lost, renamed, skipped or duplicated. `node tests/support/budget.ts [--runs N] [--wall S] [--file S] [--test S] [--only <file>]` runs `run.sh` N times (default 3), refuses any run that is not green, and reports the median wall, the slowest file and the slowest test, failing on every one over its ceiling in seconds. CI runs it through `npm run verify`, whose ceiling lives in `scripts/verify/checks.ts` (see `docs/open-questions.md` §8). A file's time is the sum of its tests' times, so process start-up is not in it |
 | `done-criteria.template` · `goal-handoff.template` · `post-merge.template` | `templates/` | The DoD baseline, the handoff `/goal:next` fills, and the merge-day checklist. Printed, never executed |
 
 The **work-id** generalises the old issue number: `issue-<N>` for a GitHub issue, the lowercased

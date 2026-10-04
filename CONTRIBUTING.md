@@ -68,18 +68,11 @@ A diagnostic script orchestrates the native `claude plugin` commands:
 
 It (1) re-syncs upstream marketplaces, (2) validates the root `marketplace.json`, (3) validates each plugin manifest, (4) checks every `${CLAUDE_PLUGIN_ROOT}/...` reference in `hooks.json` and command files resolves to a real file (catching renames not propagated to JSON) and (5) lists installed plugins. It exits `1` on any failure, so it's usable in a pre-commit hook or local CI.
 
-`./scripts/validate-skills.sh` checks every `SKILL.md`'s frontmatter (present, `name:` present and matching the directory) and README skill counts: the same checks CI runs, runnable before you push.
+`npm run verify` runs every check CI runs on a pull request, from the repository root on Node 24 (`npm run verify -- <group>` runs one group). The check list and the suite's time ceiling live in `scripts/verify/checks.ts`.
 
 ## What CI enforces
 
-`.github/workflows/validate.yml` runs on every PR and nightly (`06:00 UTC`), across `ubuntu-latest` and `macos-latest`:
-
-- `marketplace.json` is valid JSON and every plugin has a `plugin.json`.
-- Every `SKILL.md` has valid frontmatter (`./scripts/validate-skills.sh`).
-- Every `marketplace.json` reference resolves.
-- `claude plugin validate` passes for the manifest and each plugin.
-- `npx skills` can discover the skills.
-- `health-check.sh` passes on both OSes.
+`.github/workflows/validate.yml` runs on every PR and nightly (`06:00 UTC`). Each pull-request job does only setup (checkout, Node 24, the Claude Code install where a check needs it) and then runs `npm run verify -- <group>`. A raw check step added to a job fails the `workflow runs only setup steps and the entry` check. The `health-check` job also runs on a macOS runner.
 
 ## Environment
 

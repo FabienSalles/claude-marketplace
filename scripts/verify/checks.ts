@@ -1,4 +1,5 @@
 import type { Check } from './ports.ts';
+import { workflowGuard } from './workflow.ts';
 import { catalogParity, catalogSources, catalogValid, pluginManifests } from './manifests.ts';
 
 export const CEILING_SECONDS = 63;
@@ -28,6 +29,7 @@ const DECLARED: readonly Check[] = [
   { name: 'every plugin has a valid plugin.json', group: 'structure', requirements: [], inline: pluginManifests },
   { name: 'marketplace.json agrees with each plugin.json', group: 'structure', requirements: [], inline: catalogParity },
   { name: 'every local marketplace source exists', group: 'structure', requirements: [], inline: catalogSources },
+  { name: 'workflow runs only setup steps and the entry', group: 'structure', requirements: [], inline: workflowGuard },
   { name: 'skill stock coherence', group: 'structure', requirements: [], command: ['node', 'plugins/skills/scripts/certify.ts', '--stock'] },
   {
     name: 'changed skills certified against the diff',
