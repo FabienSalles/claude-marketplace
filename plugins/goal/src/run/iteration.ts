@@ -22,7 +22,7 @@ import { brief } from './brief.ts';
 import { changedGitDirPaths, refChanges, snapshotGitDir, snapshotRefs } from './gitwatch.ts';
 import { endOf, narrate, tokensLine } from './narrate.ts';
 import { claudeBinaryMtime, claudeBinaryPath, postmortem } from './postmortem.ts';
-import { blockedNote, type Publisher } from './publish.ts';
+import { remoteNote, type Publisher } from './publish.ts';
 import { burstBackoffSeconds, classifyTerminal, shutdownBackoffSeconds, waitInSlices } from './quota.ts';
 import { interrupt } from './lock.ts';
 import type { Reporter } from './report.ts';
@@ -52,7 +52,7 @@ export const runIteration = async (
   const section = iterationSection(source, iteration).join('\n');
 
   if (section.trim() === '') {
-    reporter.stop(`iteration ${iteration} has no section in the plan, so there is nothing to implement:${blockedNote(publisher)}`, REFUSED);
+    reporter.stop(`iteration ${iteration} has no section in the plan, so there is nothing to implement:${remoteNote(publisher)}`, REFUSED);
   }
 
   const branch = git('rev-parse', '--abbrev-ref', 'HEAD').stdout.trim();
@@ -150,7 +150,7 @@ export const runIteration = async (
     const tamper = readTamper();
 
     if (!tamper.ok) {
-      reporter.stop(`${tamper.error}${blockedNote(publisher)}`, PAUSED);
+      reporter.stop(`${tamper.error}${remoteNote(publisher)}`, PAUSED);
     }
 
     await yieldToLoop();
@@ -171,7 +171,7 @@ export const runIteration = async (
 
     if (quotaClass === 'unrecognised') {
       reporter.stop(
-        `the implementer exited ${implemented.status ?? 1} and ended unrecognised:${outcome.quote === '' ? 'no final result and no stderr' : outcome.quote}. The tree holds whatever it wrote and no gate has judged it: review it before relaunching.${blockedNote(publisher)}`,
+        `the implementer exited ${implemented.status ?? 1} and ended unrecognised:${outcome.quote === '' ? 'no final result and no stderr' : outcome.quote}. The tree holds whatever it wrote and no gate has judged it: review it before relaunching.${remoteNote(publisher)}`,
         PAUSED,
       );
     }
@@ -180,7 +180,7 @@ export const runIteration = async (
 
     if (attempt >= quotaMax) {
       reporter.stop(
-        `iteration ${iteration} is not converging: paused after ${attempt} attempt(s), the ceiling GOAL_RUN_QUOTA_MAX_RETRIES=${quotaMax}: ${history.join(', ')}. Pausing rather than relaunching it again: relaunch resumes here.${blockedNote(publisher)}`,
+        `iteration ${iteration} is not converging: paused after ${attempt} attempt(s), the ceiling GOAL_RUN_QUOTA_MAX_RETRIES=${quotaMax}: ${history.join(', ')}. Pausing rather than relaunching it again: relaunch resumes here.${remoteNote(publisher)}`,
         PAUSED,
       );
     }
@@ -205,7 +205,7 @@ export const runIteration = async (
 
   if (touched.trim() === '') {
     reporter.stop(
-      `the implementer wrote nothing in this tree, so no verdict was asked for. The usual cause is a path that left the tree: look for the work in another checkout before assuming it does not exist.${blockedNote(publisher)}`,
+      `the implementer wrote nothing in this tree, so no verdict was asked for. The usual cause is a path that left the tree: look for the work in another checkout before assuming it does not exist.${remoteNote(publisher)}`,
       PAUSED,
     );
   }
@@ -228,10 +228,10 @@ export const runIteration = async (
   }
 
   if (gateExit !== 1) {
-    reporter.say(`STOP the gate could not be run (exit ${gateExit}), so no verdict exists. The tree holds whatever the implementer wrote and nothing was committed.${blockedNote(publisher)}`);
+    reporter.say(`STOP the gate could not be run (exit ${gateExit}), so no verdict exists. The tree holds whatever the implementer wrote and nothing was committed.${remoteNote(publisher)}`);
     process.exit(PAUSED);
   }
 
-  reporter.say(`STOP iteration ${iteration} was refused by the gate. Nothing was committed, and the gate's reasoning is in ${join(dir, '.run.log')}. The tree is left exactly as the implementer left it.${blockedNote(publisher)}`);
+  reporter.say(`STOP iteration ${iteration} was refused by the gate. Nothing was committed, and the gate's reasoning is in ${join(dir, '.run.log')}. The tree is left exactly as the implementer left it.${remoteNote(publisher)}`);
   process.exit(HALTED);
 };

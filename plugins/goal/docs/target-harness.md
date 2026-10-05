@@ -168,9 +168,8 @@ no document.
 As a *run* barrier it holds at one end only, and the end depends on how many iterations there
 are. `gate/ship.ts`'s `dodCheck` replays the global Definition of Done once, and its halt text no
 longer overstates what that buys: *"The last iteration's
-push is held behind this barrier, so its commit stays local; every iteration before it already
-published as it landed and is on the remote"* (`gate/ship.ts`). That matches the loop, which
-publishes **every iteration but the last** as it lands (`goal-run.ts`) and holds the last
+push is held behind this barrier, so its commit stays local."* (`gate/ship.ts`). That matches the loop, which
+publishes **every iteration but the last** as it lands, pausing the run at the first publication that fails (`goal-run.ts`) and holds the last
 one's push inside `close()`, to fire only after the DoD comes back green (`run/close.ts`).
 What remains is structural rather than textual: on a six-iteration run whose DoD refuses, five
 slices and a draft pull request are already public, and that body already claims every commit was

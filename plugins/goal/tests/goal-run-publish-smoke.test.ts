@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { chmodSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { FAKE_REPO, HASH, PLAN, git, repo as baseRepo, run, runInProcess } from './support/goal-run-harness.ts';
+import { FAKE_REPO, HASH, PAUSED, PLAN, git, repo as baseRepo, run, runInProcess } from './support/goal-run-harness.ts';
 import { tmpDir } from './support/tmp.ts';
 import { createPublisher } from '../src/run/publish.ts';
 import { close, LANDED } from '../src/run/close.ts';
@@ -30,22 +30,18 @@ test('createPublisher exposes its own publish state directly on the object it re
 
   assert.equal(publisher.state.publishes, false);
   assert.equal(publisher.state.prOpen, false);
-  assert.equal(publisher.state.blocked, false);
-
-  assert.equal(publisher.state.blocked, false, 'before any landing nothing is blocked');
+  assert.deepEqual(publisher.state.landed, []);
+  assert.deepEqual(publisher.state.onRemote, []);
 });
 
-// R1 — a run under a non-publishing policy ends with commits on a branch: it says why, in the
-// same RUN line and blockedReason its three siblings use.
-test('a non-publishing policy reports why nothing is pushed, like every other blocked publication', () => {
+// R9 — a run under a non-publishing policy says why nothing is pushed, and never refuses.
+test('a non-publishing policy reports why nothing is pushed and does not refuse', () => {
   const said: string[] = [];
   const reporter: Reporter = { ...silentReporter, say: (line) => said.push(line) };
   const publisher = createPublisher(PLAN, PLAN, 'commit', 'origin', reporter, 'true');
 
-  publisher.publish('1');
-
-  assert.equal(publisher.state.blocked, true);
-  assert.match(publisher.state.blockedReason ?? '', /commit\+pr/);
+  assert.equal(publisher.publish('1'), undefined);
+  assert.deepEqual(publisher.state.onRemote, []);
   assert.ok(said.some((line) => line.startsWith('RUN ') && /nothing leaves this machine/.test(line)), said.join('\n'));
 });
 
@@ -80,7 +76,7 @@ const publishAgainstPrView = (
   fixture: ReturnType<typeof repo>,
   prView: string,
   iteration: string,
-): { calls: string; publisher: ReturnType<typeof createPublisher> } => {
+): { calls: string; refusal: string | undefined; publisher: ReturnType<typeof createPublisher> } => {
   const ghLog = join(fixture.dir, 'stub-gh-calls.txt');
 
   const originalCwd = process.cwd();
@@ -93,9 +89,9 @@ const publishAgainstPrView = (
   try {
     const publisher = createPublisher(fixture.plan, fixture.plan, 'commit+pr', 'origin', silentReporter, 'true');
 
-    publisher.publish(iteration);
+    const refusal = publisher.publish(iteration);
 
-    return { calls: readFileSync(ghLog, 'utf8'), publisher };
+    return { calls: readFileSync(ghLog, 'utf8'), refusal, publisher };
   } finally {
     process.chdir(originalCwd);
     process.env.PATH = originalPath;
@@ -114,7 +110,7 @@ test('a secret scanner refusal blocks the push, and no pull request is attempted
     FAKE_GATE_SCAN_EXIT: '1',
   });
 
-  assert.equal(code, 0, output);
+  assert.equal(code, PAUSED, output);
   assert.match(output, /scanner refused/i, output);
   assert.ok(!existsSync(fixture.ghLog), `a pull request was attempted though the scan refused:\n${output}`);
   assert.equal(git(fixture.dir, 'ls-remote', '--heads', 'origin').stdout, '', 'the branch was pushed though the scan refused it');
@@ -148,7 +144,7 @@ test('a fixup commit ahead of the first push blocks it, and nothing is pushed', 
     FAKE_GATE_COMMIT_MSG: 'fixup! stray edit',
   });
 
-  assert.equal(code, 0, output);
+  assert.equal(code, PAUSED, output);
   assert.match(output, /fixup|squash/i, output);
   assert.equal(git(fixture.dir, 'ls-remote', '--heads', 'origin').stdout, '', 'the branch was pushed carrying a fixup commit');
 });
@@ -219,41 +215,21 @@ test('resuming a single iteration when the pull request already exists edits it,
   assert.ok(!calls.includes('pr create'), `a second pull request was created though one already existed:\n${calls}`);
 });
 
-// R7 — a pull request `gh` still resolves by branch name after it was merged or closed is not
-// this run's open one: its state is read alongside its number, and only OPEN keeps it that way.
-test('a pull request already merged is not treated as open, and a new one is opened instead of edited', () => {
-  const fixture = repo({ planText: PLAN_PR, remote: true });
-  const { calls, publisher } = publishAgainstPrView(fixture, '{"number":28,"state":"MERGED"}', '1');
+// R6 — a pull request `gh` still resolves by branch name after it was merged, closed, or under a
+// state this code does not know is not this run's open one: publication pauses naming it, never
+// edits it, never opens a second one, and pushes nothing.
+for (const state of ['MERGED', 'CLOSED', 'MERGE_QUEUE']) {
+  test(`a ${state} pull request pauses publication and gets no sibling`, () => {
+    const fixture = repo({ planText: PLAN_PR, remote: true });
+    const { calls, refusal } = publishAgainstPrView(fixture, `{"number":28,"state":"${state}"}`, '1');
 
-  assert.match(calls, /pr view/, `the merged pull request was never looked up:\n${calls}`);
-  assert.match(calls, /pr create/, `a merged pull request was edited instead of opening a new one:\n${calls}`);
-  assert.ok(!calls.includes('pr edit'), `a merged pull request was edited as though it were still open:\n${calls}`);
-  assert.equal(publisher.state.prOpen, true, 'the newly opened pull request should be reflected in the publisher\'s own state');
-});
-
-// R7 hole — a pull request `gh` still resolves by branch name after it was closed without
-// merging is not this run's open one either: a new one is opened instead of editing the closed
-// one.
-test('a pull request already closed is not treated as open, and a new one is opened instead of edited', () => {
-  const fixture = repo({ planText: PLAN_PR, remote: true });
-  const { calls } = publishAgainstPrView(fixture, '{"number":9,"state":"CLOSED"}', '1');
-
-  assert.match(calls, /pr view/, `the closed pull request was never looked up:\n${calls}`);
-  assert.match(calls, /pr create/, `a closed pull request was edited instead of opening a new one:\n${calls}`);
-  assert.ok(!calls.includes('pr edit'), `a closed pull request was edited as though it were still open:\n${calls}`);
-});
-
-// R7 — a pull request `gh` reports under a state this code does not recognize (a future value
-// neither MERGED, CLOSED nor OPEN) is not treated as this run's open one: only OPEN keeps it
-// that way, everything else opens a new one instead of editing.
-test('a pull request under an unrecognized future state is not treated as open', () => {
-  const fixture = repo({ planText: PLAN_PR, remote: true });
-  const { calls } = publishAgainstPrView(fixture, '{"number":28,"state":"MERGE_QUEUE"}', '1');
-
-  assert.match(calls, /pr view/, `the pull request was never looked up:\n${calls}`);
-  assert.match(calls, /pr create/, `an unrecognized state was treated as open instead of opening a new one:\n${calls}`);
-  assert.ok(!calls.includes('pr edit'), `an unrecognized state was edited as though it were still open:\n${calls}`);
-});
+    assert.match(calls, /pr view/, `the pull request was never looked up:\n${calls}`);
+    assert.match(refusal ?? '', new RegExp(`#28.*${state}`));
+    assert.ok(!calls.includes('pr create'), `a second pull request was opened:\n${calls}`);
+    assert.ok(!calls.includes('pr edit'), `a pull request that is not open was edited:\n${calls}`);
+    assert.equal(git(fixture.dir, 'ls-remote', '--heads', 'origin').stdout, '', 'the branch was pushed though the pull request is not open');
+  });
+}
 
 // PR body carries the report at close — close() folds the auditor's own report into the pull
 // request body through publish.ts's existing body-rewrite path, never as a comment.

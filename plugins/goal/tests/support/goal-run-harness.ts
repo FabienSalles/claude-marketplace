@@ -5,13 +5,14 @@ import { join, resolve } from 'node:path';
 import { command } from '../../src/adapters/command.ts';
 import { fs } from '../../src/adapters/fs.ts';
 import { spawnGateAdapter } from '../../src/adapters/gate.ts';
+import { pauseLine } from '../../src/core/publication.ts';
 import { LANDED, REFUSED } from '../../src/core/verdict.ts';
 import { iterationNumbers } from '../../src/gate/plan.ts';
 import { createLock } from '../../src/run/lock.ts';
 import { runIteration } from '../../src/run/iteration.ts';
 import { close } from '../../src/run/close.ts';
 import { preflight, workIdOf } from '../../src/run/preflight.ts';
-import { blockedNote, createPublisher } from '../../src/run/publish.ts';
+import { createPublisher, remoteNote } from '../../src/run/publish.ts';
 import { runDir, type Reporter } from '../../src/run/report.ts';
 import { AWAIT_DEADLINE_MS } from './await-state.ts';
 import { tmpDir } from './tmp.ts';
@@ -213,7 +214,11 @@ case "$1" in
     # never look at HEAD, so leaving the tree uncommitted stays their behaviour untouched.
     if [ -n "$FAKE_GATE_COMMITS" ]; then
       git add -A >/dev/null 2>&1
-      git commit -qm "\${FAKE_GATE_COMMIT_MSG:-iteration $3}" >/dev/null 2>&1
+      subject="$FAKE_GATE_COMMIT_MSG"
+      if [ -z "$subject" ] && [ -n "$FAKE_GATE_COMMIT_FROM_PLAN" ]; then
+        subject=$(sed -n "/^### Iteration $3 /,/^### Iteration [0-9]* /p" "$2" | sed -n 's/^commit_msg=//p' | head -1)
+      fi
+      git commit -qm "\${subject:-iteration $3}" >/dev/null 2>&1
     fi
     exit \${FAKE_GATE_COMMIT_EXIT:-0}
     ;;
@@ -229,7 +234,7 @@ ${prelude}
 { printf -- '--- call ---\\n'; printf '%s\\n' "$@"; } >> ${ghLog}
 case "$1 $2" in
   "pr view")
-    [ -n "$FAKE_GH_PR_EXISTS" ] && { printf '{"number":%s}\\n' "\${FAKE_GH_PR_NUMBER:-1}"; exit 0; }
+    [ -n "$FAKE_GH_PR_EXISTS" ] && { printf '{"number":%s,"state":"%s","isDraft":%s}\\n' "\${FAKE_GH_PR_NUMBER:-1}" "\${FAKE_GH_PR_STATE:-OPEN}" "\${FAKE_GH_PR_DRAFT:-false}"; exit 0; }
     exit 1
     ;;
   "pr create") exit \${FAKE_GH_CREATE_EXIT:-0} ;;
@@ -530,20 +535,28 @@ export const runInProcess = async (
     reporter.say(`RUN writing this run's records to ${dir}`);
 
     const source = fs.readFile(plan!);
+
+    if (iterationArg !== undefined && iterationNumbers(source, true).includes(iterationArg)) {
+      reporter.stop(`iteration ${iterationArg} is already ticked in ${plan}, so nothing was attempted`, REFUSED);
+    }
+
     const preflightStart = Date.now();
     const { policy, remote } = preflight(plan!, source, reporter, gateLabel);
     reporter.say(`RUN stage=preflight duration_ms=${Date.now() - preflightStart} exit=0`);
 
     const iterations = iterationArg !== undefined ? [iterationArg] : iterationNumbers(source, false);
 
-    if (iterations.length === 0) {
+    const publisher = createPublisher(plan!, source, policy, remote, reporter, gate);
+    const closing = iterations.length === 0;
+
+    if (closing && publisher.isComplete()) {
       reporter.stop(`no unchecked iteration remains in ${plan}`, LANDED);
     }
 
     const hashes = new Map<string, string>();
     const tickedSets = new Map<string, string>();
 
-    for (const n of iterations) {
+    for (const n of closing ? iterationNumbers(source, true).slice(-1) : iterations) {
       const checked = gate.check(plan!, n);
       const checkedOutput = `${checked.stdout}${checked.stderr}`;
 
@@ -576,7 +589,13 @@ export const runInProcess = async (
       reporter.stop(`another run holds this plan. Wait for it, or free it with: ${gateLabel} unlock ${plan}`, REFUSED);
     }
 
-    const publisher = createPublisher(plan!, source, policy, remote, reporter, gate);
+    if (!closing && publisher.state.publishes && iterationNumbers(source, true).length > 0) {
+      const refusal = publisher.publish();
+
+      if (refusal !== undefined) {
+        reporter.stop(pauseLine(refusal, publisher.state.landed, publisher.state.onRemote), PAUSED);
+      }
+    }
     const landed: string[] = [];
     const noted = new Set<string>();
 
@@ -586,15 +605,23 @@ export const runInProcess = async (
 
       if (n !== iterations[iterations.length - 1]) {
         const pushStart = Date.now();
-        publisher.publish(n);
-        reporter.say(`RUN stage=push duration_ms=${Date.now() - pushStart} exit=${publisher.state.blocked ? 1 : 0}`);
+        const refusal = publisher.publish(n);
+        reporter.say(`RUN stage=push duration_ms=${Date.now() - pushStart} exit=${refusal === undefined ? 0 : 1}`);
+
+        if (refusal !== undefined) {
+          reporter.stop(pauseLine(refusal, publisher.state.landed, publisher.state.onRemote), PAUSED);
+        }
       }
     }
 
-    const exitCode = close(plan!, gate, hashes.get(iterations[iterations.length - 1]!)!, remote, publisher, landed, dir, reporter);
+    const exitCode = close(plan!, gate, [...hashes.values()].pop()!, remote, publisher, landed, dir, reporter);
 
     if (exitCode === LANDED) {
-      reporter.say(`STOP ${iterations.length} iteration(s) landed, gate-verified.${blockedNote(publisher)}`);
+      reporter.say(
+        closing
+          ? `STOP every iteration was already ticked, the close ran.${remoteNote(publisher)}`
+          : `STOP ${iterations.length} iteration(s) landed, gate-verified.${remoteNote(publisher)}`,
+      );
     }
 
     return { code: exitCode, output };
@@ -625,7 +652,7 @@ export const runInProcess = async (
 
 export const lockOf = (fixture: Fixture) => `${fixture.plan}.run.lock`;
 
-export { workIdOf };
+export { REFUSED, workIdOf };
 
 // The one run directory a fixture's single launch wrote under `.claude/goal-runs/<work-id>/`.
 export const runDirOf = (fixture: Fixture): string => {

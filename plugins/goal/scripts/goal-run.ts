@@ -20,8 +20,10 @@ import { createReporter, runDir, type Reporter } from '../src/run/report.ts';
 import { preflight, REFUSED } from '../src/run/preflight.ts';
 import { createLock } from '../src/run/lock.ts';
 import { runIteration } from '../src/run/iteration.ts';
-import { blockedNote, createPublisher } from '../src/run/publish.ts';
+import { createPublisher, remoteNote } from '../src/run/publish.ts';
 import { close, LANDED } from '../src/run/close.ts';
+import { pauseLine } from '../src/core/publication.ts';
+import { PAUSED } from '../src/core/verdict.ts';
 import { quote } from '../src/run/shell.ts';
 import { defaultSettingsPath } from '../src/run/advisory.ts';
 import { defaultProjectsRoot } from '../src/run/postmortem.ts';
@@ -53,6 +55,11 @@ const main = async (): Promise<void> => {
   }
 
   const source = fs.readFile(plan);
+
+  if (iteration !== undefined && iterationNumbers(source, true).includes(iteration)) {
+    reporter.stop(`iteration ${iteration} is already ticked in ${plan}, so nothing was attempted`, REFUSED);
+  }
+
   const dir = runDir(workIdOf(plan, source));
   reporter.setLog(dir);
   reporter.say(`RUN writing this run's records to ${dir}`);
@@ -95,14 +102,17 @@ const main = async (): Promise<void> => {
     );
   }
 
-  if (iterations.length === 0) {
+  const publisher = createPublisher(plan, source, policy, remote, reporter, gate);
+  const closing = iterations.length === 0;
+
+  if (closing && publisher.isComplete()) {
     reporter.stop(`no unchecked iteration remains in ${plan}`, LANDED);
   }
 
   const hashes = new Map<string, string>();
   const tickedSets = new Map<string, string>();
 
-  for (const n of iterations) {
+  for (const n of closing ? iterationNumbers(source, true).slice(-1) : iterations) {
     const checked = gate.check(plan, n);
     const output = `${checked.stdout}${checked.stderr}`;
 
@@ -137,7 +147,13 @@ const main = async (): Promise<void> => {
     reporter.stop(`another run holds this plan. Wait for it, or free it with: ${gateLabel} unlock ${quote(plan)}`, REFUSED);
   }
 
-  const publisher = createPublisher(plan, source, policy, remote, reporter, gate);
+  if (!closing && publisher.state.publishes && iterationNumbers(source, true).length > 0) {
+    const refusal = publisher.publish();
+
+    if (refusal !== undefined) {
+      reporter.stop(pauseLine(refusal, publisher.state.landed, publisher.state.onRemote), PAUSED);
+    }
+  }
 
   const landed: string[] = [];
   const noted = new Set<string>();
@@ -150,15 +166,23 @@ const main = async (): Promise<void> => {
     // close(), behind the whole-branch Definition of Done.
     if (n !== iterations[iterations.length - 1]) {
       const pushStart = Date.now();
-      publisher.publish(n);
-      reporter.say(`RUN stage=push duration_ms=${Date.now() - pushStart} exit=${publisher.state.blocked ? 1 : 0}`);
+      const refusal = publisher.publish(n);
+      reporter.say(`RUN stage=push duration_ms=${Date.now() - pushStart} exit=${refusal === undefined ? 0 : 1}`);
+
+      if (refusal !== undefined) {
+        reporter.stop(pauseLine(refusal, publisher.state.landed, publisher.state.onRemote), PAUSED);
+      }
     }
   }
 
-  const exitCode = close(plan, gate, hashes.get(iterations[iterations.length - 1]!)!, remote, publisher, landed, dir, reporter);
+  const exitCode = close(plan, gate, [...hashes.values()].pop()!, remote, publisher, landed, dir, reporter);
 
   if (exitCode === LANDED) {
-    reporter.say(`STOP ${iterations.length} iteration(s) landed, gate-verified.${blockedNote(publisher)}`);
+    reporter.say(
+      closing
+        ? `STOP every iteration was already ticked, the close ran.${remoteNote(publisher)}`
+        : `STOP ${iterations.length} iteration(s) landed, gate-verified.${remoteNote(publisher)}`,
+    );
   }
 
   process.exit(exitCode);

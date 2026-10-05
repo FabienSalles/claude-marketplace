@@ -51,7 +51,7 @@ Watch the background shell until it exits, without polling in a tight loop. Read
 | `0` | every attempted iteration landed, gate-verified |
 | `1` | halted — the gate refused one iteration |
 | `2` | refused — the run never started (a faulty or unknown `GOAL_RUN_*`, `GOAL_CMD_*` or `GOAL_PROC_*` setting, listed all at once, including the retired `GOAL_RUN_SHUTDOWN_MAX_RETRIES`) |
-| `3` | paused — a clean boundary (the attempt ceiling, listing each attempt with its class; an implementer that committed on its own; an implementer that wrote nothing) |
+| `3` | paused — a clean boundary (the attempt ceiling, listing each attempt with its class; an implementer that committed on its own; an implementer that wrote nothing; a publication refused under `commit+pr`: push, pull request, scanner, fixup commit, or a closed or merged pull request, with the iterations that are local only) |
 
 ## The failure report — evidence before diagnosis
 
