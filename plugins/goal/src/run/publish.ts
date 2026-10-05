@@ -8,9 +8,10 @@ import { basename } from 'node:path';
 import { gateAdapterOf, type GateAdapter } from '../adapters/gate.ts';
 import { command } from '../adapters/command.ts';
 import { git } from '../adapters/git.ts';
-import { goalOf } from '../core/plan.ts';
-import { prDecision, remoteStatus } from '../core/publication.ts';
-import { header } from '../gate/plan.ts';
+import { fs } from '../adapters/fs.ts';
+import { gateFence, goalOf } from '../core/plan.ts';
+import { deliveredList, onRemoteOf, prDecision, remoteStatus, type CommitRef, type PlanEntry } from '../core/publication.ts';
+import { header, iterationNumbers, iterationSection } from '../gate/plan.ts';
 import type { Reporter } from './report.ts';
 
 // What run/close.ts reads instead of asking `gh` for the pull request's own state: whether this
@@ -31,7 +32,7 @@ export const repoOf = (remote: string): string =>
     .replace(/^.*[:/]([^/]+\/[^/]+)$/, '$1');
 
 export type Publisher = {
-  publish: (iteration: string) => string | undefined;
+  publish: (iteration?: string) => string | undefined;
   foldReport?: (text: string, plan: string, dir: string) => void;
   state: PublishState;
 };
@@ -55,38 +56,59 @@ export const createPublisher = (
   const specTitle = header(source, '# Spec:');
   const planTitle = specTitle !== undefined && specTitle !== '' ? specTitle : `Run of ${basename(plan)}`;
 
-  let shipped = false;
-  const shas = new Map<string, string>();
+  const inRun = new Map<string, string>();
   const state: PublishState = { publishes, prOpen: false, landed: [], onRemote: [] };
-  const landed = state.landed;
 
   // Iteration 1 of the supervised-PR plan `issue-<N>-spec.md`: a single-issue, single-PR run
   // names its issue in the plan's own filename, so the PR body can close it without guessing
   // an issue number out of the plan's prose.
   const closesIssue = /^issue-(\d+)-spec\.md$/.exec(basename(plan));
 
+  const planSource = (): string => (fs.exists(plan) && fs.isFile(plan) ? fs.readFile(plan) : source);
+
+  const commitSubject = (text: string, n: string): string =>
+    (gateFence(iterationSection(text, n)) ?? []).find((line) => line.startsWith('commit_msg='))?.slice('commit_msg='.length).trim() ?? '';
+
+  const entries = (): PlanEntry[] => {
+    const text = planSource();
+    const numbers = [...new Set([...iterationNumbers(text, true), ...inRun.keys()])].sort((a, b) => Number(a) - Number(b));
+
+    return numbers.map((number) => ({ number, goal: goalOf(text, number) ?? '', subject: commitSubject(text, number), sha: inRun.get(number) }));
+  };
+
+  const commitLog = (): CommitRef[] =>
+    git('log', '--format=%H %s')
+      .stdout.split('\n')
+      .filter((line) => line !== '')
+      .map((line) => ({ sha: line.slice(0, line.indexOf(' ')), subject: line.slice(line.indexOf(' ') + 1) }));
+
+  const refresh = (branch: string, log: readonly CommitRef[]): void => {
+    const listed = entries();
+    const remoteShas = publishes ? git('rev-list', `${remote}/${branch}`).stdout.split('\n').filter((sha) => sha !== '') : [];
+    state.landed.splice(0, state.landed.length, ...listed.map((entry) => entry.number));
+    state.onRemote.splice(0, state.onRemote.length, ...onRemoteOf(listed, log, remoteShas));
+  };
+
   const prBody = (): string => {
-    const bullets = landed
-      .map((n, i) => {
-        const goal = goalOf(source, n);
-
-        return goal === undefined ? undefined : `${i + 1}. ${goal} ${shas.get(n) ?? ''}`;
-      })
-      .filter((bullet): bullet is string => bullet !== undefined)
-      .join('\n');
-
     const closes = closesIssue !== null ? `\n\nCloses #${closesIssue[1]}` : '';
 
-    return `## Delivered\n\n${bullets}${closes}\n`;
+    return `## Delivered\n\n${deliveredList(
+      entries().filter((entry) => entry.goal !== ''),
+      commitLog(),
+    )}${closes}\n`;
   };
 
   // The pull request is opened as a draft at the **first** landed commit, and its body rewritten
   // after every one after it, so a run that halts partway still leaves something a human can
   // read instead of a local branch nobody can see. A refusal is returned as its reason, never
   // swallowed: the caller pauses the run at that boundary.
-  const publish = (iteration: string): string | undefined => {
-    landed.push(iteration);
-    shas.set(iteration, git('rev-parse', '--short', 'HEAD').stdout.trim());
+  const publish = (iteration?: string): string | undefined => {
+    if (iteration !== undefined) {
+      inRun.set(iteration, git('rev-parse', 'HEAD').stdout.trim());
+    }
+
+    const branch = git('branch', '--show-current').stdout.trim();
+    refresh(branch, commitLog());
 
     if (!publishes) {
       reporter.say(`RUN Policy is ${policy !== '' ? policy : 'unreadable'}, not commit+pr, so nothing leaves this machine and no pull request is opened. The commits are on the branch, where the developer asked them to stay.`);
@@ -94,14 +116,10 @@ export const createPublisher = (
       return undefined;
     }
 
-    if (!shipped) {
-      const fixups = git('log', '--format=%s', `-${landed.length}`)
-        .stdout.split('\n')
-        .filter((subject) => /^(fixup|squash)!/.test(subject)).length;
+    const unpushed = git('log', '--format=%s', 'HEAD', '--not', `--remotes=${remote}`).stdout.split('\n');
 
-      if (fixups > 0) {
-        return 'The run carries a fixup or squash commit, so the history is not the sequence a reviewer should read. Nothing was pushed: fold them yourself, then push.';
-      }
+    if (unpushed.some((subject) => /^(fixup|squash)!/.test(subject))) {
+      return 'The run carries a fixup or squash commit, so the history is not the sequence a reviewer should read. Nothing was pushed: fold them yourself, then push.';
     }
 
     const scan = gate.scan();
@@ -111,7 +129,6 @@ export const createPublisher = (
     }
 
     const repo = repoOf(remote);
-    const branch = git('branch', '--show-current').stdout.trim();
 
     // Asked before the push, so a closed or merged pull request pushes nothing.
     if (!state.prOpen) {
@@ -131,8 +148,7 @@ export const createPublisher = (
       return `The push failed:\n${push.stdout}${push.stderr}`;
     }
 
-    shipped = true;
-    state.onRemote.push(...landed.filter((n) => !state.onRemote.includes(n)));
+    state.onRemote.splice(0, state.onRemote.length, ...state.landed);
     reporter.say(`RUN pushed to ${remote}`);
 
     const body = prBody();

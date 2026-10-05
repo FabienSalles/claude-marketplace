@@ -55,6 +55,11 @@ const main = async (): Promise<void> => {
   }
 
   const source = fs.readFile(plan);
+
+  if (iteration !== undefined && iterationNumbers(source, true).includes(iteration)) {
+    reporter.stop(`iteration ${iteration} is already ticked in ${plan}, so nothing was attempted`, REFUSED);
+  }
+
   const dir = runDir(workIdOf(plan, source));
   reporter.setLog(dir);
   reporter.say(`RUN writing this run's records to ${dir}`);
@@ -140,6 +145,14 @@ const main = async (): Promise<void> => {
   }
 
   const publisher = createPublisher(plan, source, policy, remote, reporter, gate);
+
+  if (publisher.state.publishes && iterationNumbers(source, true).length > 0) {
+    const refusal = publisher.publish();
+
+    if (refusal !== undefined) {
+      reporter.stop(pauseLine(refusal, publisher.state.landed, publisher.state.onRemote), PAUSED);
+    }
+  }
 
   const landed: string[] = [];
   const noted = new Set<string>();

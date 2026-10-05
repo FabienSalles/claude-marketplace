@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { prDecision, pauseLine, remoteStatus } from '../src/core/publication.ts';
+import { deliveredList, onRemoteOf, prDecision, pauseLine, remoteStatus } from '../src/core/publication.ts';
 
 test('remoteStatus names, for each landed iteration, whether it is on the remote', () => {
   assert.equal(remoteStatus(['1', '2', '3'], ['1', '2']), 'on the remote: 1, 2; local only: 3');
@@ -40,4 +40,32 @@ test('a closed or merged pull request pauses, naming its number and state', () =
     assert.equal(decision.kind, 'pause');
     assert.match(decision.kind === 'pause' ? decision.reason : '', new RegExp(`#9.*${state}`));
   }
+});
+
+const entries = [
+  { number: '1', goal: 'first goal', subject: 'feat: one' },
+  { number: '2', goal: 'second goal', subject: 'feat: two' },
+  { number: '3', goal: 'third goal', subject: 'feat: three' },
+];
+
+const log = [
+  { sha: '3333333333', subject: 'feat: three' },
+  { sha: '2222222222', subject: 'feat: two' },
+  { sha: '1111111111', subject: 'feat: one' },
+  { sha: '0000000000', subject: 'init' },
+];
+
+test('the delivered list numbers every ticked iteration in plan order with the short sha of its commit', () => {
+  assert.equal(deliveredList(entries, log), '1. first goal 1111111\n2. second goal 2222222\n3. third goal 3333333');
+});
+
+test('the delivered list keeps an iteration whose commit subject is not in the log, without a sha', () => {
+  assert.equal(deliveredList(entries.slice(0, 2), log.slice(1)), '1. first goal 1111111\n2. second goal 2222222');
+  assert.equal(deliveredList(entries, log.slice(2)), '1. first goal 1111111\n2. second goal\n3. third goal');
+});
+
+test('an iteration is on the remote when its commit is among the remote branch commits', () => {
+  assert.deepEqual(onRemoteOf(entries, log, ['1111111111', '0000000000']), ['1']);
+  assert.deepEqual(onRemoteOf(entries, log, []), []);
+  assert.deepEqual(onRemoteOf(entries, log, ['3333333333', '2222222222', '1111111111']), ['1', '2', '3']);
 });

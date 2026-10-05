@@ -214,7 +214,11 @@ case "$1" in
     # never look at HEAD, so leaving the tree uncommitted stays their behaviour untouched.
     if [ -n "$FAKE_GATE_COMMITS" ]; then
       git add -A >/dev/null 2>&1
-      git commit -qm "\${FAKE_GATE_COMMIT_MSG:-iteration $3}" >/dev/null 2>&1
+      subject="$FAKE_GATE_COMMIT_MSG"
+      if [ -z "$subject" ] && [ -n "$FAKE_GATE_COMMIT_FROM_PLAN" ]; then
+        subject=$(sed -n "/^### Iteration $3 /,/^### Iteration [0-9]* /p" "$2" | sed -n 's/^commit_msg=//p' | head -1)
+      fi
+      git commit -qm "\${subject:-iteration $3}" >/dev/null 2>&1
     fi
     exit \${FAKE_GATE_COMMIT_EXIT:-0}
     ;;
@@ -531,6 +535,11 @@ export const runInProcess = async (
     reporter.say(`RUN writing this run's records to ${dir}`);
 
     const source = fs.readFile(plan!);
+
+    if (iterationArg !== undefined && iterationNumbers(source, true).includes(iterationArg)) {
+      reporter.stop(`iteration ${iterationArg} is already ticked in ${plan}, so nothing was attempted`, REFUSED);
+    }
+
     const preflightStart = Date.now();
     const { policy, remote } = preflight(plan!, source, reporter, gateLabel);
     reporter.say(`RUN stage=preflight duration_ms=${Date.now() - preflightStart} exit=0`);
@@ -578,6 +587,14 @@ export const runInProcess = async (
     }
 
     const publisher = createPublisher(plan!, source, policy, remote, reporter, gate);
+
+    if (publisher.state.publishes && iterationNumbers(source, true).length > 0) {
+      const refusal = publisher.publish();
+
+      if (refusal !== undefined) {
+        reporter.stop(pauseLine(refusal, publisher.state.landed, publisher.state.onRemote), PAUSED);
+      }
+    }
     const landed: string[] = [];
     const noted = new Set<string>();
 
@@ -630,7 +647,7 @@ export const runInProcess = async (
 
 export const lockOf = (fixture: Fixture) => `${fixture.plan}.run.lock`;
 
-export { workIdOf };
+export { REFUSED, workIdOf };
 
 // The one run directory a fixture's single launch wrote under `.claude/goal-runs/<work-id>/`.
 export const runDirOf = (fixture: Fixture): string => {
