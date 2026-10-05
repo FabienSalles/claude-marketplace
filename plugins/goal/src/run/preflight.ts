@@ -20,6 +20,7 @@ import {
   caughtUpWithBase,
   cleanTree,
   featureBranch,
+  foldedHistory,
   forkUndetermined,
   freeLock,
   goalRunsIgnored,
@@ -39,7 +40,7 @@ import { REFUSED } from '../core/verdict.ts';
 import { frontmatter, header, iterationNumbers, topRegion } from '../gate/plan.ts';
 import { command } from '../adapters/command.ts';
 import { autoUpdaterWarning } from './advisory.ts';
-import { repoOf } from './publish.ts';
+import { repoOf, unpushedSubjects } from './publish.ts';
 import type { Reporter } from './report.ts';
 import { quote } from './shell.ts';
 import { sweep } from './sweep.ts';
@@ -317,6 +318,16 @@ export const preflight = (plan: string, source: string, reporter: Reporter, gate
 
       reporter.say(`RUN preflight: branch is caught up with ${parentRef}`);
     }
+  }
+
+  if (policy === 'commit+pr') {
+    const foldedResult = foldedHistory(unpushedSubjects(remote));
+
+    if (!foldedResult.ok) {
+      reporter.stop(foldedResult.error, REFUSED);
+    }
+
+    reporter.say('RUN preflight: no fixup or squash commit is waiting to be pushed');
   }
 
   const warning = autoUpdaterWarning();

@@ -464,3 +464,27 @@ test('every preflight check narrates on stdout once it passes', () => {
   assert.match(output, /RUN base sweep: \d+ distinct commands? run, \d+ declared/, output);
   assert.match(output, /RUN preflight: branch is caught up with/, output);
 });
+
+// R8 — under commit+pr, a fixup or squash commit already unpushed at launch refuses before any
+// iteration; under commit neither scan runs.
+test('under commit+pr an unpushed fixup commit refuses the run before any iteration', () => {
+  const fixture = repo({ planText: PLAN.replace('Policy: commit\n', 'Policy: commit+pr\n'), remote: true });
+  git(fixture.dir, 'commit', '--allow-empty', '-qm', 'squash! earlier work');
+  git(fixture.dir, 'commit', '--allow-empty', '-qm', 'plain follow-up');
+
+  const { code, output } = run(fixture, [fixture.plan, '1']);
+
+  assert.equal(code, REFUSED, output);
+  assert.match(output, /STOP[^]*squash! earlier work/, output);
+  assert.match(output, /fold/i, output);
+  assert.ok(!existsSync(fixture.claudeLog), 'an implementer was spawned on a refusal');
+});
+
+test('under commit an unpushed fixup commit does not refuse the run', () => {
+  const fixture = repo({ remote: true });
+  git(fixture.dir, 'commit', '--allow-empty', '-qm', 'fixup! earlier work');
+
+  const { code, output } = run(fixture, [fixture.plan, '1'], { FAKE_CLAUDE_WRITES: join(fixture.dir, 'a.txt') });
+
+  assert.equal(code, 0, output);
+});

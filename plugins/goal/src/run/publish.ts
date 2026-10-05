@@ -31,6 +31,11 @@ export const repoOf = (remote: string): string =>
     .replace(/\.git$/, '')
     .replace(/^.*[:/]([^/]+\/[^/]+)$/, '$1');
 
+export const unpushedSubjects = (remote: string): string[] =>
+  git('log', '--format=%s', 'HEAD', '--not', `--remotes=${remote}`)
+    .stdout.split('\n')
+    .filter((subject) => subject !== '');
+
 export type Publisher = {
   isComplete: () => boolean;
   publish: (iteration?: string) => string | undefined;
@@ -141,9 +146,7 @@ export const createPublisher = (
       return undefined;
     }
 
-    const unpushed = git('log', '--format=%s', 'HEAD', '--not', `--remotes=${remote}`).stdout.split('\n');
-
-    if (unpushed.some((subject) => /^(fixup|squash)!/.test(subject))) {
+    if (unpushedSubjects(remote).some((subject) => /^(fixup|squash)!/.test(subject))) {
       return 'The run carries a fixup or squash commit, so the history is not the sequence a reviewer should read. Nothing was pushed: fold them yourself, then push.';
     }
 

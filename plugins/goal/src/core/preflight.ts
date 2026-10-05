@@ -117,3 +117,13 @@ export const parentBranchFound = (ref: string | undefined, remote: string, branc
     : err(
         `${remote}, the parent of this fork, has no branch ${branch}. Correct \`PR base:\` in the plan, or run \`git remote set-head ${remote} -a\` if the parent's default branch is what is meant.`,
       );
+
+export const foldedHistory = (subjects: readonly string[]): Result<void, string> => {
+  const pending = subjects.filter((subject) => /^(fixup|squash)!/.test(subject));
+
+  return pending.length === 0
+    ? ok(undefined)
+    : err(
+        `the commits a push would send carry a fixup or squash:\n${pending.join('\n')}\n\nNothing may be pushed until they are folded: run \`git rebase -i --autosquash\` yourself, then relaunch.`,
+      );
+};
