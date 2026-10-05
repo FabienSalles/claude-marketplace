@@ -75,3 +75,10 @@ export const freeLock = (held: boolean, lockPath: string, unlockHint: string): R
 
 export const caughtUpWithBase = (isAncestor: boolean, base: string, missing: string): Result<void, string> =>
   isAncestor ? ok(undefined) : err(`the branch is behind ${base}:\n${missing}\n\nFetch and rebase before relaunching.`);
+
+export const baseResolved = (base: string | undefined, tried: readonly string[]): Result<string, string> =>
+  base !== undefined
+    ? ok(base)
+    : err(
+        `no base resolves; tried ${tried.join(', ')}. Declare \`PR base:\` in the plan, or run \`git remote set-head <remote> -a\` so the remote's HEAD resolves.`,
+      );

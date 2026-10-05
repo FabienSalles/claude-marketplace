@@ -89,6 +89,8 @@ export type FixtureOptions = {
   // A bare `origin` two path segments deep (`acme/demo.git`), so `repoOf`'s parse of a real
   // remote URL has something genuine to strip down to `acme/demo` rather than a stand-in.
   remote?: boolean;
+  // Removes the `origin` every checkout carries: no base resolves anywhere.
+  noRemote?: boolean;
 };
 
 const FAKE_BINARIES: Readonly<Record<string, string>> = {
@@ -278,6 +280,20 @@ export const sharedFake = (script: string): string => {
   return verifiedFake(path, script);
 };
 
+let sharedOriginDir: string | undefined;
+
+const sharedOrigin = (seed: string): string => {
+  if (sharedOriginDir === undefined) {
+    sharedOriginDir = join(tmpDir('goal-run-shared-origin-'), 'origin.git');
+    spawnSync('git', ['init', '-q', '--bare', '-b', 'main', sharedOriginDir]);
+    git(seed, 'push', '-q', sharedOriginDir, 'HEAD:main');
+    writeFileSync(join(sharedOriginDir, 'hooks', 'pre-receive'), '#!/bin/sh\nexit 1\n');
+    chmodSync(join(sharedOriginDir, 'hooks', 'pre-receive'), 0o755);
+  }
+
+  return sharedOriginDir;
+};
+
 let checkoutTemplate: string | undefined;
 
 const initialCheckout = (): string => {
@@ -302,6 +318,9 @@ const initialCheckout = (): string => {
 
     git(dir, 'add', '-A');
     git(dir, 'commit', '-qm', 'init');
+    git(dir, 'remote', 'add', 'origin', sharedOrigin(dir));
+    git(dir, 'fetch', '-q', 'origin');
+    git(dir, 'remote', 'set-head', 'origin', '-a');
     checkoutTemplate = dir;
   }
 
@@ -340,7 +359,16 @@ export const repo = (options: FixtureOptions = {}): Fixture => {
     const originDir = join(root, 'acme', 'demo.git');
     mkdirSync(join(root, 'acme'), { recursive: true });
     spawnSync('git', ['init', '-q', '--bare', '-b', 'main', originDir]);
+    git(dir, 'remote', 'remove', 'origin');
     git(dir, 'remote', 'add', 'origin', originDir);
+    git(dir, 'push', '-q', 'origin', 'HEAD:refs/seed/main');
+    git(dir, 'config', '--add', 'remote.origin.fetch', '+refs/seed/main:refs/remotes/origin/main');
+    git(dir, 'fetch', '-q', 'origin');
+    git(dir, 'symbolic-ref', 'refs/remotes/origin/HEAD', 'refs/remotes/origin/main');
+  }
+
+  if (options.noRemote === true) {
+    git(dir, 'remote', 'remove', 'origin');
   }
 
   // Advances <remoteName>/<branchName> past what this checkout knows, from a second clone — the
@@ -348,6 +376,11 @@ export const repo = (options: FixtureOptions = {}): Fixture => {
   const advanceBase = (remoteName: string, branchName: string) => {
     const remoteDir = tmpDir('goal-run-origin-');
     git(remoteDir, 'init', '-q', '--bare', '-b', branchName);
+
+    if (remoteName === 'origin') {
+      git(dir, 'remote', 'remove', 'origin');
+    }
+
     git(dir, 'remote', 'add', remoteName, remoteDir);
     git(dir, 'push', '-q', remoteName, `HEAD:${branchName}`);
     git(dir, 'fetch', '-q', remoteName);
@@ -361,6 +394,10 @@ export const repo = (options: FixtureOptions = {}): Fixture => {
     git(clone, 'add', '-A');
     git(clone, 'commit', '-qm', 'ahead commit');
     git(clone, 'push', '-q', 'origin', branchName);
+
+    if (remoteName !== 'origin') {
+      git(dir, 'fetch', '-q', remoteName);
+    }
   };
 
   if (options.staleOrigin === true) {

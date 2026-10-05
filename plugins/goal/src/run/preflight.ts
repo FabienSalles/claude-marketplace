@@ -16,6 +16,7 @@ import { basename, dirname } from 'node:path';
 import { fs } from '../adapters/fs.ts';
 import { git } from '../adapters/git.ts';
 import {
+  baseResolved,
   caughtUpWithBase,
   cleanTree,
   featureBranch,
@@ -183,10 +184,13 @@ export const preflight = (plan: string, source: string, reporter: Reporter, gate
   // header — a bare branch name on the declared remote, the same one publish.ts passes to
   // `gh pr create --base` — when it resolves there, else `<remote>/HEAD` (the fork this run
   // pushes to, when it is not origin), else `origin/HEAD` — today's behaviour, unaffected when
-  // the plan declares neither, or declares a base this checkout has not fetched.
+  // the plan declares neither, or declares a base this checkout has not fetched. When none of them
+  // resolves the run refuses, listing what it tried, rather than comparing the branch to itself.
   git('fetch', '--prune', '--quiet');
   const prBase = header(source, 'PR base:');
-  const candidates = [...(prBase !== undefined && prBase !== '' ? [`${remote}/${prBase}`] : []), `${remote}/HEAD`, 'origin/HEAD'];
+  const candidates = [...(prBase !== undefined && prBase !== '' ? [`${remote}/${prBase}`] : []), `${remote}/HEAD`, 'origin/HEAD'].filter(
+    (candidate, at, all) => all.indexOf(candidate) === at,
+  );
 
   // Tried batched first: one process for every candidate, in priority order, is enough whenever
   // they all resolve — the common case. A single one of them failing makes git abort the whole
@@ -206,7 +210,13 @@ export const preflight = (plan: string, source: string, reporter: Reporter, gate
     }
   }
 
-  base ??= branch;
+  const baseResult = baseResolved(base, candidates);
+
+  if (!baseResult.ok) {
+    reporter.stop(baseResult.error, REFUSED);
+  }
+
+  base = baseResult.value;
 
   const isAncestor = git('merge-base', '--is-ancestor', base, 'HEAD').status === 0;
   const missing = git('log', '--oneline', `HEAD..${base}`).stdout.replace(/\n$/, '');

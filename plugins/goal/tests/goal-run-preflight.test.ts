@@ -242,16 +242,39 @@ test('it refuses when the branch is behind the base it forked from', () => {
   assert.ok(!existsSync(fixture.claudeLog), 'an implementer was spawned on a refusal');
 });
 
-// R4 hole — with no remote configured at all (no `<remote>/HEAD`, no `origin/HEAD`), the
-// branch-behind check falls all the way back to comparing the branch against itself, so a
-// checkout that never pushed anywhere still runs rather than refusing over a base it cannot see.
+// R5 — when no candidate base resolves, the run refuses and lists the refs it tried, instead of
+// certifying the branch caught up with itself.
 test('it falls back to comparing the branch against itself when no remote exists at all', () => {
+  const fixture = repo({ noRemote: true, prBase: 'release' });
+
+  const { code, output } = run(fixture, [fixture.plan, '1']);
+
+  assert.notEqual(code, 0);
+  assert.match(output, /STOP no base resolves; tried origin\/release, origin\/HEAD/, output);
+  assert.match(output, /PR base:/, output);
+  assert.match(output, /git remote set-head <remote> -a/, output);
+  assert.doesNotMatch(output, /caught up with feature\/demo/, output);
+  assert.ok(!existsSync(fixture.claudeLog), 'an implementer was spawned on a refusal');
+});
+
+test('it refuses a plan without PR base: when no base resolves, under commit+pr too', () => {
+  const fixture = repo({ noRemote: true, planText: PLAN.replace('Policy: commit', 'Policy: commit+pr') });
+
+  const { code, output } = run(fixture, [fixture.plan, '1']);
+
+  assert.notEqual(code, 0);
+  assert.match(output, /STOP no base resolves; tried origin\/HEAD/, output);
+});
+
+// I2 — across every fixture that resolves a base, the branch is never compared to itself.
+test('a run with a resolvable base never reports being caught up with its own branch', () => {
   const fixture = repo();
 
   const { code, output } = run(fixture, [fixture.plan, '1'], { FAKE_CLAUDE_WRITES: join(fixture.dir, 'a.txt') });
 
   assert.equal(code, 0, output);
-  assert.match(output, /RUN preflight: branch is caught up with feature\/demo/, output);
+  assert.match(output, /RUN preflight: branch is caught up with origin\/main/, output);
+  assert.doesNotMatch(output, /caught up with feature\/demo/, output);
 });
 
 // R4 — the branch-behind check is verified against the base the plan declares, not always
