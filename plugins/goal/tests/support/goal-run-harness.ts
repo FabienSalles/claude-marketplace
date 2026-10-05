@@ -91,6 +91,11 @@ export type FixtureOptions = {
   remote?: boolean;
   // Removes the `origin` every checkout carries: no base resolves anywhere.
   noRemote?: boolean;
+  // `origin` declared as https://github.com/acme/demo, redirected to a local bare repository with
+  // `url.<path>.insteadOf`. `parent` also builds https://github.com/up/demo as the remote
+  // `upstream`: 'level' holds what the fork holds, 'ahead' holds one more commit, 'unfetchable'
+  // is a remote whose repository is gone, 'no-remote' is a parent no local remote points at.
+  github?: { parent?: 'level' | 'ahead' | 'unfetchable' | 'no-remote' };
 };
 
 const FAKE_BINARIES: Readonly<Record<string, string>> = {
@@ -230,6 +235,15 @@ exit 2
 d=$(dirname "$0")/..
 { printf -- '--- call ---\\n'; printf '%s\\n' "$@"; } >> "$d/gh-args.txt"
 case "$1 $2" in
+  "repo view")
+    [ "\${FAKE_GH_REPO_VIEW_EXIT:-0}" != 0 ] && exit "$FAKE_GH_REPO_VIEW_EXIT"
+    if [ -n "$FAKE_GH_FORK_PARENT" ]; then
+      printf '{"isFork":true,"parent":{"name":"%s","owner":{"login":"%s"}}}\\n' "\${FAKE_GH_FORK_PARENT#*/}" "\${FAKE_GH_FORK_PARENT%/*}"
+    else
+      printf '{"isFork":false,"parent":null}\\n'
+    fi
+    exit 0
+    ;;
   "pr view")
     [ -n "$FAKE_GH_PR_EXISTS" ] && { printf '{"number":%s,"state":"%s","isDraft":%s}\\n' "\${FAKE_GH_PR_NUMBER:-1}" "\${FAKE_GH_PR_STATE:-OPEN}" "\${FAKE_GH_PR_DRAFT:-false}"; exit 0; }
     [ -n "$FAKE_GH_VIEW_FAILS" ] && { printf 'error connecting to api.github.com\\n' >&2; exit 1; }
@@ -370,6 +384,52 @@ export const repo = (options: FixtureOptions = {}): Fixture => {
 
   if (options.noRemote === true) {
     git(dir, 'remote', 'remove', 'origin');
+  }
+
+  if (options.github !== undefined) {
+    const root = tmpDir('goal-run-github-');
+    const bareAt = (slug: string): string => {
+      const path = join(root, slug);
+      mkdirSync(join(path, '..'), { recursive: true });
+      spawnSync('git', ['init', '-q', '--bare', '-b', 'main', path]);
+      git(dir, 'push', '-q', path, 'HEAD:main');
+
+      return path;
+    };
+
+    git(dir, 'config', `url.${root}/.insteadOf`, 'https://github.com/');
+    git(dir, 'remote', 'remove', 'origin');
+    bareAt('acme/demo');
+    git(dir, 'remote', 'add', 'origin', 'https://github.com/acme/demo');
+    git(dir, 'fetch', '-q', 'origin');
+    git(dir, 'remote', 'set-head', 'origin', '-a');
+
+    const parent = options.github.parent;
+
+    if (parent !== undefined) {
+      const parentDir = bareAt('up/demo');
+
+      if (parent === 'ahead') {
+        const clone = tmpDir('goal-run-clone-');
+        git(dir, 'clone', '-q', parentDir, clone);
+        git(clone, 'config', 'user.email', 'ahead@example.com');
+        git(clone, 'config', 'user.name', 'Ahead');
+        writeFileSync(join(clone, 'ahead.txt'), 'ahead\n');
+        git(clone, 'add', '-A');
+        git(clone, 'commit', '-qm', 'parent commit');
+        git(clone, 'push', '-q', 'origin', 'main');
+      }
+
+      if (parent !== 'no-remote') {
+        git(dir, 'remote', 'add', 'upstream', 'https://github.com/up/demo');
+        git(dir, 'fetch', '-q', 'upstream');
+        git(dir, 'remote', 'set-head', 'upstream', '-a');
+      }
+
+      if (parent === 'unfetchable') {
+        rmSync(parentDir, { recursive: true, force: true });
+      }
+    }
   }
 
   // Advances <remoteName>/<branchName> past what this checkout knows, from a second clone — the

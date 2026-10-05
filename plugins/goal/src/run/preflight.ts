@@ -20,10 +20,15 @@ import {
   caughtUpWithBase,
   cleanTree,
   featureBranch,
+  forkUndetermined,
   freeLock,
   goalRunsIgnored,
   metadataDeclared,
   noCleanupIteration,
+  onGithub,
+  parentBranchFound,
+  parentFetched,
+  parentRemoteFound,
   planDirIgnored,
   remoteDeclared,
   remoteFetched,
@@ -32,7 +37,9 @@ import {
 import { fileNameWorkId, workIdNotice, workIdOf } from '../core/plan.ts';
 import { REFUSED } from '../core/verdict.ts';
 import { frontmatter, header, iterationNumbers, topRegion } from '../gate/plan.ts';
+import { command } from '../adapters/command.ts';
 import { autoUpdaterWarning } from './advisory.ts';
+import { repoOf } from './publish.ts';
 import type { Reporter } from './report.ts';
 import { quote } from './shell.ts';
 import { sweep } from './sweep.ts';
@@ -240,6 +247,77 @@ export const preflight = (plan: string, source: string, reporter: Reporter, gate
   }
 
   reporter.say(`RUN preflight: branch is caught up with ${base}`);
+
+  const remoteUrl = git('config', '--get', `remote.${remote}.url`).stdout.trim();
+
+  if (onGithub(remoteUrl)) {
+    const slug = repoOf(remote);
+    const view = command.run('gh', ['repo', 'view', slug, '--json', 'isFork,parent']);
+    let parent: string | undefined;
+    let unreadable = view.status !== 0;
+
+    if (!unreadable) {
+      try {
+        const info = JSON.parse(view.stdout) as { isFork: boolean; parent: { name: string; owner: { login: string } } | null };
+        parent = info.isFork && info.parent !== null ? `${info.parent.owner.login}/${info.parent.name}` : undefined;
+      } catch {
+        unreadable = true;
+      }
+    }
+
+    if (unreadable) {
+      const undetermined = forkUndetermined(policy, remote, view.stderr.trim() !== '' ? view.stderr.trim() : `gh repo view ${slug} exited ${view.status}`);
+
+      if (!undetermined.ok) {
+        reporter.stop(undetermined.error, REFUSED);
+      }
+
+      reporter.say(`RUN preflight: warning — ${undetermined.value}`);
+    } else if (parent !== undefined) {
+      const parentSlug = parent.toLowerCase();
+      const found = configured.find((name) => name !== '' && repoOf(name).toLowerCase() === parentSlug);
+      const remoteResult = parentRemoteFound(found, parent);
+
+      if (!remoteResult.ok) {
+        reporter.stop(remoteResult.error, REFUSED);
+      }
+
+      const parentRemote = remoteResult.value;
+      const parentFetch = git('fetch', '--prune', '--quiet', parentRemote);
+      const fetchedResult = parentFetched(parentFetch.status === 0, parentRemote, parentFetch.stderr.trim());
+
+      if (!fetchedResult.ok) {
+        reporter.stop(fetchedResult.error, REFUSED);
+      }
+
+      reporter.say(`RUN preflight: fetched ${parentRemote}`);
+
+      const parentBranch = prBase !== undefined && prBase !== '' ? prBase : 'HEAD';
+      const resolved = git('rev-parse', '--abbrev-ref', `${parentRemote}/${parentBranch}`);
+      const branchFound = parentBranchFound(
+        resolved.status === 0 ? resolved.stdout.trim() : undefined,
+        parentRemote,
+        parentBranch === 'HEAD' ? 'HEAD (its default branch)' : parentBranch,
+      );
+
+      if (!branchFound.ok) {
+        reporter.stop(branchFound.error, REFUSED);
+      }
+
+      const parentRef = branchFound.value;
+      const parentBehind = caughtUpWithBase(
+        git('merge-base', '--is-ancestor', parentRef, 'HEAD').status === 0,
+        parentRef,
+        git('log', '--oneline', `HEAD..${parentRef}`).stdout.replace(/\n$/, ''),
+      );
+
+      if (!parentBehind.ok) {
+        reporter.stop(parentBehind.error, REFUSED);
+      }
+
+      reporter.say(`RUN preflight: branch is caught up with ${parentRef}`);
+    }
+  }
 
   const warning = autoUpdaterWarning();
 
