@@ -1,10 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { appendFileSync, readFileSync } from 'node:fs';
+import { appendFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 
 import type { AgentReport, AgentSessions, FailureClass } from '../src/ports.ts';
-import { PAUSED, repo, runInProcess } from './support/goal-run-harness.ts';
+import { HASH, PAUSED, PLAN, repo, runInProcess } from './support/goal-run-harness.ts';
+import { close, LANDED } from '../src/run/close.ts';
+import type { Reporter } from '../src/run/report.ts';
 
 const reportOf = (failureClass: FailureClass | string, extra: Partial<AgentReport> = {}): AgentReport => ({
   end: { status: failureClass === 'success' ? 0 : 1, signal: null },
@@ -20,6 +22,10 @@ const scripted = (classes: (FailureClass | string)[], extra: Partial<AgentReport
   const launched: { role: string; brief: string }[] = [];
   const adapter: AgentSessions = {
     launch: async (role, brief) => {
+      if (role !== 'implementer') {
+        return reportOf('success');
+      }
+
       launched.push({ role, brief });
       appendFileSync(join(process.cwd(), 'a.txt'), 'written\n');
 
@@ -43,7 +49,7 @@ test('the implementer is launched through the port by its role and a brief', asy
   assert.equal(launched.length, 1);
   assert.equal(launched[0]?.role, 'implementer');
   assert.match(launched[0]?.brief ?? '', /write a\.txt/);
-  assert.equal(readFileSync(join(fixture.dir, 'claude-args.txt'), 'utf8').includes('goal-run-implementer'), false);
+  assert.equal(existsSync(join(fixture.dir, 'claude-args.txt')), false);
 });
 
 // R4 — the runner relaunches on the class the adapter reports.
@@ -121,4 +127,40 @@ test('a null line in a Claude session\'s output no longer turns a success into a
 
   assert.equal(code, 0, output);
   assert.match(output, /iteration 1 landed, gate-verified/);
+});
+
+// R2, R3, R6 — close() launches the lens, the reviewer and the auditor by role, each returning its own report.
+test('the lens, the reviewer and the auditor are launched through the port, and one failing leaves the other\'s record alone', async () => {
+  const fixture = repo({ planText: PLAN.replace('Policy: commit\n', 'Policy: commit+pr\n'), remote: true, shareBin: true });
+  const launched: { role: string; stopped: boolean }[] = [];
+  const said: string[] = [];
+  const recorded: string[] = [];
+  const reporter: Reporter = { say: (line) => said.push(line), stop: () => { throw new Error('unexpected stop'); }, record: (text) => recorded.push(text), setLog: () => {} };
+  const adapter: AgentSessions = {
+    launch: async (role, _brief, options, stop) => {
+      launched.push({ role, stopped: stop.aborted });
+      const failing = role === 'lens';
+
+      return reportOf(failing ? 'unrecognised' : 'success', { outcome: { text: `${role} answer`, isError: failing, class: failing ? 'unrecognised' : 'success', quote: '' }, outPath: options.outPath, errPath: options.errPath });
+    },
+  };
+  const originalCwd = process.cwd();
+  const originalPath = process.env.PATH;
+
+  process.chdir(fixture.dir);
+  process.env.PATH = `${fixture.bin}:${originalPath ?? ''}`;
+
+  try {
+    const code = await close(fixture.plan, join(fixture.bin, 'fake-gate'), HASH, 'origin', { isComplete: () => true, publish: () => undefined, state: { publishes: true, prOpen: true, landed: ['1'], onRemote: ['1'] } }, ['1'], 'run-dir', reporter, adapter);
+
+    assert.equal(code, LANDED);
+    assert.deepEqual(launched.map((l) => l.role).sort(), ['auditor', 'lens', 'reviewer']);
+    assert.ok(launched.every((l) => !l.stopped));
+    assert.deepEqual(recorded.slice(0, 2).sort(), ['lens answer', 'reviewer answer']);
+    assert.ok(said.some((line) => line.includes('RUN the reviewer finished')), said.join('\n'));
+    assert.equal(existsSync(join(fixture.dir, 'claude-args.txt')), false);
+  } finally {
+    process.chdir(originalCwd);
+    process.env.PATH = originalPath;
+  }
 });

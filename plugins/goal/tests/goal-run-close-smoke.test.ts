@@ -5,6 +5,7 @@ import { join } from 'node:path';
 
 import { HASH, PAUSED, PLAN, git, jsonlOf, repo as baseRepo, run, runDirOf, runInProcess } from './support/goal-run-harness.ts';
 import { tmpDir } from './support/tmp.ts';
+import { claudeAgentSessions } from '../src/adapters/claude/session.ts';
 import { close, LANDED } from '../src/run/close.ts';
 import { createPublisher } from '../src/run/publish.ts';
 import type { Reporter } from '../src/run/report.ts';
@@ -106,7 +107,7 @@ test('the auditor is invoked with the run\'s own JSONL path, not an elapsed stri
 
 // R1, R5 — a refused last push pauses the run at that boundary: no pull request is marked ready
 // and the terminal line states what is local only.
-test('close pauses without marking the pull request ready when the last push is refused', () => {
+test('close pauses without marking the pull request ready when the last push is refused', async () => {
   const fixture = repo({ planText: PLAN_PR, remote: true });
   const originalCwd = process.cwd();
   const originalPath = process.env.PATH;
@@ -127,7 +128,7 @@ test('close pauses without marking the pull request ready when the last push is 
       setLog: () => {},
     };
 
-    const code = close(
+    const code = await close(
       fixture.plan,
       join(fixture.bin, 'fake-gate'),
       HASH,
@@ -136,6 +137,7 @@ test('close pauses without marking the pull request ready when the last push is 
       ['1'],
       'run-dir',
       reporter,
+      claudeAgentSessions(),
     );
 
     assert.equal(code, PAUSED);
@@ -162,7 +164,7 @@ test('the auditor still runs when the Definition of Done refuses the run', async
 // R6 / R11 — the lens is briefed from every iteration the plan itself carries ticked, not from
 // this run's own `landed`: a plan delivered across several runs is judged whole, in one pass,
 // rather than in the fragment the last run happened to land.
-test('the lens is briefed from the plan\'s own ticked iterations, not from the run\'s landed list', () => {
+test('the lens is briefed from the plan\'s own ticked iterations, not from the run\'s landed list', async () => {
   const fixture = repo({
     planText: PLAN.replace('### Iteration 1 — the first one\n- [ ]', '### Iteration 1 — the first one\n- [x]').replace(
       '### Iteration 2 — the second one\n- [ ]',
@@ -185,7 +187,7 @@ test('the lens is briefed from the plan\'s own ticked iterations, not from the r
       setLog: () => {},
     };
 
-    const code = close(
+    const code = await close(
       fixture.plan,
       join(fixture.bin, 'fake-gate'),
       HASH,
@@ -194,6 +196,7 @@ test('the lens is briefed from the plan\'s own ticked iterations, not from the r
       ['2'],
       'run-dir',
       reporter,
+      claudeAgentSessions(),
     );
 
     assert.equal(code, LANDED);
@@ -207,7 +210,7 @@ test('the lens is briefed from the plan\'s own ticked iterations, not from the r
 
 // R7 — marking the pull request ready is the one moment a review can no longer block anything,
 // so that is when the reviewer runs, once, and posts against `gh`.
-test('the reviewer runs once the pull request is marked ready', () => {
+test('the reviewer runs once the pull request is marked ready', async () => {
   const fixture = repo({ planText: PLAN_PR, remote: true });
   const originalCwd = process.cwd();
   const originalPath = process.env.PATH;
@@ -225,7 +228,7 @@ test('the reviewer runs once the pull request is marked ready', () => {
       setLog: () => {},
     };
 
-    const code = close(
+    const code = await close(
       fixture.plan,
       join(fixture.bin, 'fake-gate'),
       HASH,
@@ -234,6 +237,7 @@ test('the reviewer runs once the pull request is marked ready', () => {
       ['1'],
       'run-dir',
       reporter,
+      claudeAgentSessions(),
     );
 
     assert.equal(code, LANDED);
@@ -247,7 +251,7 @@ test('the reviewer runs once the pull request is marked ready', () => {
 
 // R7 — a plan carrying no `Review: comment` header briefs the reviewer to return its review as
 // text, never to post it: the log is where the review lands by default.
-test('the reviewer is briefed to keep its review in the log when the plan carries no Review header', () => {
+test('the reviewer is briefed to keep its review in the log when the plan carries no Review header', async () => {
   const fixture = repo({ planText: PLAN_PR, remote: true });
   const originalCwd = process.cwd();
   const originalPath = process.env.PATH;
@@ -265,7 +269,7 @@ test('the reviewer is briefed to keep its review in the log when the plan carrie
       setLog: () => {},
     };
 
-    const code = close(
+    const code = await close(
       fixture.plan,
       join(fixture.bin, 'fake-gate'),
       HASH,
@@ -274,6 +278,7 @@ test('the reviewer is briefed to keep its review in the log when the plan carrie
       ['1'],
       'run-dir',
       reporter,
+      claudeAgentSessions(),
     );
 
     assert.equal(code, LANDED);
@@ -288,7 +293,7 @@ test('the reviewer is briefed to keep its review in the log when the plan carrie
 
 // R7 — a plan carrying `Review: comment` opts into posting, and the brief tells the reviewer to
 // open the posted review with a banner naming it as the goal-run-reviewer AI agent's own output.
-test('a plan carrying a Review: comment header briefs the reviewer to post with an AI banner', () => {
+test('a plan carrying a Review: comment header briefs the reviewer to post with an AI banner', async () => {
   const fixture = repo({ planText: PLAN_PR_REVIEW, remote: true });
   const originalCwd = process.cwd();
   const originalPath = process.env.PATH;
@@ -306,7 +311,7 @@ test('a plan carrying a Review: comment header briefs the reviewer to post with 
       setLog: () => {},
     };
 
-    const code = close(
+    const code = await close(
       fixture.plan,
       join(fixture.bin, 'fake-gate'),
       HASH,
@@ -315,6 +320,7 @@ test('a plan carrying a Review: comment header briefs the reviewer to post with 
       ['1'],
       'run-dir',
       reporter,
+      claudeAgentSessions(),
     );
 
     assert.equal(code, LANDED);
@@ -330,7 +336,7 @@ test('a plan carrying a Review: comment header briefs the reviewer to post with 
 
 // R18 — every stage close() runs writes its own timed event, so a run report reads a real cost
 // per stage instead of one elapsed figure covering the whole close.
-test('close reports a stage=<name> duration_ms=<n> exit=<n> event for every stage it runs', () => {
+test('close reports a stage=<name> duration_ms=<n> exit=<n> event for every stage it runs', async () => {
   const fixture = repo({ planText: PLAN_PR, remote: true });
   const originalCwd = process.cwd();
   const originalPath = process.env.PATH;
@@ -351,7 +357,7 @@ test('close reports a stage=<name> duration_ms=<n> exit=<n> event for every stag
       setLog: () => {},
     };
 
-    const code = close(
+    const code = await close(
       fixture.plan,
       join(fixture.bin, 'fake-gate'),
       HASH,
@@ -360,6 +366,7 @@ test('close reports a stage=<name> duration_ms=<n> exit=<n> event for every stag
       ['1'],
       'run-dir',
       reporter,
+      claudeAgentSessions(),
     );
 
     assert.equal(code, LANDED);
@@ -377,7 +384,7 @@ test('close reports a stage=<name> duration_ms=<n> exit=<n> event for every stag
 
 // R5 — a `gh pr ready` that fails is a publication failure: the run pauses, and the reviewer has
 // nothing ready to comment on, so it never runs.
-test('the reviewer never runs when marking the pull request ready fails', () => {
+test('the reviewer never runs when marking the pull request ready fails', async () => {
   const fixture = repo({ planText: PLAN_PR, remote: true });
   const originalCwd = process.cwd();
   const originalPath = process.env.PATH;
@@ -396,7 +403,7 @@ test('the reviewer never runs when marking the pull request ready fails', () => 
       setLog: () => {},
     };
 
-    const code = close(
+    const code = await close(
       fixture.plan,
       join(fixture.bin, 'fake-gate'),
       HASH,
@@ -405,6 +412,7 @@ test('the reviewer never runs when marking the pull request ready fails', () => 
       ['1'],
       'run-dir',
       reporter,
+      claudeAgentSessions(),
     );
 
     assert.equal(code, PAUSED);
@@ -419,7 +427,7 @@ test('the reviewer never runs when marking the pull request ready fails', () => 
 // stderr noise loses nothing — an envelope on stdout still yields its stage's token line and
 // extracted text intact, the noise recorded separately as diagnostics rather than dropped or
 // mixed into the parsed result.
-test('an envelope beside stderr noise still yields the token line and text, noise nowhere in the result', () => {
+test('an envelope beside stderr noise still yields the token line and text, noise nowhere in the result', async () => {
   const fixture = repo({ planText: PLAN_PR, remote: true });
   const originalCwd = process.cwd();
   const originalPath = process.env.PATH;
@@ -444,7 +452,7 @@ test('an envelope beside stderr noise still yields the token line and text, nois
       setLog: () => {},
     };
 
-    const code = close(
+    const code = await close(
       fixture.plan,
       join(fixture.bin, 'fake-gate'),
       HASH,
@@ -453,6 +461,7 @@ test('an envelope beside stderr noise still yields the token line and text, nois
       ['1'],
       'run-dir',
       reporter,
+      claudeAgentSessions(),
     );
 
     assert.equal(code, LANDED);
@@ -479,7 +488,7 @@ test('an envelope beside stderr noise still yields the token line and text, nois
 
 // R7 — the lens and reviewer each wait for the other's arrival marker, so both verdicts read `met`
 // only when they were running at the same time; no instant is compared.
-test('the lens and reviewer run concurrently rather than one after the other', () => {
+test('the lens and reviewer run concurrently rather than one after the other', async () => {
   const fixture = repo({ planText: PLAN_PR, remote: true });
   const originalCwd = process.cwd();
   const originalPath = process.env.PATH;
@@ -500,7 +509,7 @@ test('the lens and reviewer run concurrently rather than one after the other', (
       setLog: () => {},
     };
 
-    const code = close(
+    const code = await close(
       fixture.plan,
       join(fixture.bin, 'fake-gate'),
       HASH,
@@ -509,6 +518,7 @@ test('the lens and reviewer run concurrently rather than one after the other', (
       ['1'],
       'run-dir',
       reporter,
+      claudeAgentSessions(),
     );
 
     assert.equal(code, LANDED);
@@ -582,7 +592,7 @@ test('the auditor is briefed with the ### Outcome / ### Cost skeleton', async ()
 // One report format everywhere — close() folds report.md into the pull request body without
 // transformation, and the body ends with the plan path and the run-directory path, one per line,
 // so both are copy-pastable straight off the pull request.
-test('close folds the report untransformed and ends the pull request body with the plan and run-directory paths', () => {
+test('close folds the report untransformed and ends the pull request body with the plan and run-directory paths', async () => {
   const fixture = repo({ planText: PLAN_PR, remote: true });
   const dir = tmpDir('goal-run-report-footer-');
   const reportText = '# Report\n\n### Outcome\n\nNothing recurs.\n\n### Cost\n\nCosts: 1 iteration.\n';
@@ -606,7 +616,7 @@ test('close folds the report untransformed and ends the pull request body with t
     const publisher = createPublisher(fixture.plan, fixture.plan, 'commit+pr', 'origin', reporter, join(fixture.bin, 'fake-gate'));
     publisher.state.prOpen = true;
 
-    const code = close(fixture.plan, join(fixture.bin, 'fake-gate'), HASH, 'origin', publisher, ['1'], dir, reporter);
+    const code = await close(fixture.plan, join(fixture.bin, 'fake-gate'), HASH, 'origin', publisher, ['1'], dir, reporter, claudeAgentSessions());
 
     assert.equal(code, LANDED);
     const calls = readFileSync(fixture.ghLog, 'utf8').split('--- call ---\n').filter((call) => call.trim() !== '');

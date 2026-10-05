@@ -178,7 +178,7 @@ const main = async (): Promise<void> => {
     }
   }
 
-  const exitCode = close(plan, gate, [...hashes.values()].pop()!, remote, publisher, landed, dir, reporter);
+  const exitCode = await close(plan, gate, [...hashes.values()].pop()!, remote, publisher, landed, dir, reporter, agents);
 
   if (exitCode === LANDED) {
     reporter.say(

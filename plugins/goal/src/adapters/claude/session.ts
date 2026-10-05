@@ -9,7 +9,7 @@ import { command } from '../command.ts';
 import { fs } from '../fs.ts';
 import { ceiling } from '../../gate/bounded.ts';
 import type { AgentOptions, AgentReport, AgentRole, AgentSessions } from '../../ports.ts';
-import { classifyTerminal } from './classify.ts';
+import { classifyTerminal, finalResult } from './classify.ts';
 import { autoUpdaterWarning } from './warning.ts';
 import { claudeBinaryMtime, claudeBinaryPath, postmortem } from './postmortem.ts';
 import { narrate } from './stream.ts';
@@ -46,7 +46,7 @@ export const reportOf = (
 
   return {
     end,
-    outcome: { text: outcome.text, isError: outcome.isError, class: outcome.failed ? outcome.class : 'success', quote: outcome.quote },
+    outcome: { text: finalResult(stdout) === undefined ? stdout : outcome.text, isError: outcome.isError, class: outcome.failed ? outcome.class : 'success', quote: outcome.quote },
     ...(usage === undefined ? {} : { consumption: { usage, model, peakTokens, compactions } }),
     ...(sessionId === undefined ? {} : { sessionId }),
     durationMs,
@@ -69,11 +69,16 @@ export const claudeAgentSessions = (): AgentSessions => {
         const fdErr = openSync(options.errPath, 'w');
 
         try {
-          const ended = await command.spawn(
-            '/bin/sh',
-            ['-c', `${ceiling()}\nexec "$@"`, 'sh', 'claude', '-p', '--agent', AGENTS[role], '--permission-mode', 'auto', '--output-format', 'stream-json', '--verbose', brief],
-            { encoding: 'utf8', env: { ...process.env, DISABLE_AUTOUPDATER: '1' }, stdio: ['ignore', fdOut, fdErr], signal: stop },
-          );
+          const claudeArgs = ['-p', '--agent', AGENTS[role], '--permission-mode', 'auto', '--output-format', 'stream-json', '--verbose', brief];
+          const ended =
+            role === 'implementer'
+              ? await command.spawn('/bin/sh', ['-c', `${ceiling()}\nexec "$@"`, 'sh', 'claude', ...claudeArgs], {
+                  encoding: 'utf8',
+                  env: { ...process.env, DISABLE_AUTOUPDATER: '1' },
+                  stdio: ['ignore', fdOut, fdErr],
+                  signal: stop,
+                })
+              : await command.spawn('claude', claudeArgs, { encoding: 'utf8', stdio: ['ignore', fdOut, fdErr], signal: stop });
 
           end = { status: ended.status, signal: ended.signal ?? null, ...(ended.error === undefined ? {} : { error: ended.error }) };
         } finally {
