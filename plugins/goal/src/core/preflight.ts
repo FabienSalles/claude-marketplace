@@ -82,3 +82,10 @@ export const baseResolved = (base: string | undefined, tried: readonly string[])
     : err(
         `no base resolves; tried ${tried.join(', ')}. Declare \`PR base:\` in the plan, or run \`git remote set-head <remote> -a\` so the remote's HEAD resolves.`,
       );
+
+export const remoteFetched = (fetched: boolean, remote: string, detail: string): Result<void, string> =>
+  fetched
+    ? ok(undefined)
+    : err(
+        `could not fetch ${remote}, so the branch cannot be compared against it:\n${detail}\n\nRestore the connection to ${remote}, or fix its URL with \`git remote set-url ${remote} <url>\`, then relaunch.`,
+      );

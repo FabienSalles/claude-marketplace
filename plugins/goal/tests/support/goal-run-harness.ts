@@ -362,6 +362,7 @@ export const repo = (options: FixtureOptions = {}): Fixture => {
     git(dir, 'remote', 'remove', 'origin');
     git(dir, 'remote', 'add', 'origin', originDir);
     git(dir, 'push', '-q', 'origin', 'HEAD:refs/seed/main');
+    git(dir, 'config', '--add', 'remote.origin.fetch', '^refs/heads/main');
     git(dir, 'config', '--add', 'remote.origin.fetch', '+refs/seed/main:refs/remotes/origin/main');
     git(dir, 'fetch', '-q', 'origin');
     git(dir, 'symbolic-ref', 'refs/remotes/origin/HEAD', 'refs/remotes/origin/main');

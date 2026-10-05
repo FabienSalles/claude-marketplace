@@ -26,6 +26,7 @@ import {
   noCleanupIteration,
   planDirIgnored,
   remoteDeclared,
+  remoteFetched,
   runnablePolicy,
 } from '../core/preflight.ts';
 import { fileNameWorkId, workIdNotice, workIdOf } from '../core/plan.ts';
@@ -186,7 +187,19 @@ export const preflight = (plan: string, source: string, reporter: Reporter, gate
   // pushes to, when it is not origin), else `origin/HEAD` — today's behaviour, unaffected when
   // the plan declares neither, or declares a base this checkout has not fetched. When none of them
   // resolves the run refuses, listing what it tried, rather than comparing the branch to itself.
-  git('fetch', '--prune', '--quiet');
+  const configured = git('remote').stdout.split('\n');
+
+  for (const name of [...new Set([remote, 'origin'])].filter((name) => configured.includes(name))) {
+    const fetched = git('fetch', '--prune', '--quiet', name);
+    const fetchResult = remoteFetched(fetched.status === 0, name, fetched.stderr.trim());
+
+    if (!fetchResult.ok) {
+      reporter.stop(fetchResult.error, REFUSED);
+    }
+
+    reporter.say(`RUN preflight: fetched ${name}`);
+  }
+
   const prBase = header(source, 'PR base:');
   const candidates = [...(prBase !== undefined && prBase !== '' ? [`${remote}/${prBase}`] : []), `${remote}/HEAD`, 'origin/HEAD'].filter(
     (candidate, at, all) => all.indexOf(candidate) === at,

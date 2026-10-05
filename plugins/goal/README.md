@@ -226,6 +226,7 @@ Every row is a refusal the code can still reach today.
 | Exit 2, "the plan's directory is visible to git" | `.claude/plans/` is not git-ignored | Ignore that directory, untracking any spec already committed |
 | Exit 2, "Policy is manual" | the runner has nowhere to put the work | That plan is for the manual loop: run it with `/goal` and `/goal:next`, or change the `Policy:` line |
 | Exit 2, "the plan declares no Remote line" | never defaulted to `origin` | Write the remote on the plan. Guessing here pushes a fork's work to its parent |
+| Exit 2, "could not fetch &lt;remote&gt;" | the declared remote (or `origin`) is unreachable: offline, bad URL, no access | Restore the connection or fix the URL, then relaunch. Every remote the branch is compared against is fetched by name in the run, so a stale ref is never read |
 | Exit 2, "the branch is behind &lt;base&gt;" | the base moved after the branch was cut | Rebase, then relaunch. A green sweep against a stale base certifies nothing anyone will merge into |
 | Exit 2, "no base resolves" | no `PR base:` resolves on the declared remote and neither `<remote>/HEAD` nor `origin/HEAD` exists, so there is nothing to compare the branch against | Declare `PR base:` in the plan, or run `git remote set-head <remote> -a`. The refusal lists the refs it tried |
 | Exit 2, "another run holds this plan" | a `<plan>.run.lock` survived a dead run | `node <plugin>/scripts/goal-gate.ts unlock <plan>` once you know the holder is gone |
