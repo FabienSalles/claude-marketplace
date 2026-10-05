@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { repo, run, sessionOf } from './support/goal-run-harness.ts';
-import { narrate } from '../src/run/narrate.ts';
+import { narrate } from '../src/adapters/claude/stream.ts';
 
 // R4 — the plan lives in a gitignored directory outside the run's tree, and handing its path to
 // the implementer is what made a real run write its whole iteration into another checkout. The

@@ -4,7 +4,8 @@ import { spawnSync } from 'node:child_process';
 import { chmodSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
-import { narrate, resultEnvelope, tokensLine } from '../src/run/narrate.ts';
+import { narrate } from '../src/adapters/claude/stream.ts';
+import { resultEnvelope, tokensLine } from '../src/run/narrate.ts';
 import { createReporter } from '../src/run/report.ts';
 import { tmpDir } from './support/tmp.ts';
 import { jsonlOf, PLAN, repo, run, runInProcess } from './support/goal-run-harness.ts';

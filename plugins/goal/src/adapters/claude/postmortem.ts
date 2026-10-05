@@ -1,18 +1,17 @@
 // The evidence a killed attempt used to take a half-day to dig up by hand, gathered here on
 // every non-zero implementer exit: the attempt's own output, the dying session's transcript
-// tail, and whether the `claude` binary itself changed underneath it. run/iteration.ts only
-// calls postmortem() and narrates nothing itself, to respect its own 200-line ceiling. Every
-// finding below is a prose event line through Reporter.say — the JSONL schema stays untouched.
+// tail, and whether the `claude` binary itself changed underneath it. The runner only
+// asks the adapter for it and narrates nothing itself. Every finding below is a prose event line through Reporter.say — the JSONL schema stays untouched.
 
 import { join } from 'node:path';
 
-import { command } from '../adapters/command.ts';
-import { fs } from '../adapters/fs.ts';
-import { lastSessionId, projectDir } from '../core/events.ts';
-import { settingValue } from '../core/settings.ts';
-import type { Reporter } from './report.ts';
+import { command } from '../../adapters/command.ts';
+import { fs } from '../../adapters/fs.ts';
+import { lastSessionId, projectDir } from '../../core/events.ts';
+import { settingValue } from '../../core/settings.ts';
+import type { Reporter } from '../../run/report.ts';
 
-// Overridable the same way advisory.ts's defaultSettingsPath() is: a test points it at a tmp
+// Overridable the same way warning.ts's defaultSettingsPath() is: a test points it at a tmp
 // directory rather than the real ~/.claude/projects.
 export const defaultProjectsRoot = (): string => settingValue('GOAL_RUN_PROJECTS_ROOT', process.env) ?? join(fs.homeDir(), '.claude', 'projects');
 
@@ -74,7 +73,7 @@ const transcriptTail = (sessionId: string | undefined, cwd: string, lines = 20):
 const confirmedShutdown = (tail: string[]): boolean => tail.some((line) => line.includes('"interruptedByShutdown":true'));
 
 export const postmortem = (
-  reporter: Reporter,
+  reporter: Pick<Reporter, 'say'>,
   dir: string,
   attempt: number,
   cwd: string,

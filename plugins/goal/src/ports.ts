@@ -2,6 +2,8 @@
 // a command that runs, a tree that gets removed, a clock that ticks — and never on
 // node:child_process, node:fs, or Date directly.
 
+import type { Extraction, Usage } from './core/events.ts';
+
 export type CommandOptions = {
   shell?: boolean;
   env?: NodeJS.ProcessEnv;
@@ -64,4 +66,32 @@ export type Clock = {
 
 export type WaitingClock = Clock & {
   sleep: (seconds: number, signal?: AbortSignal) => Promise<void>;
+};
+
+export type AgentRole = 'implementer' | 'lens' | 'reviewer' | 'auditor';
+
+export type FailureClass = 'success' | 'exhausted' | 'burst' | 'signal' | 'unrecognised';
+
+export type AgentReport = {
+  end: { status: number | null; signal: NodeJS.Signals | null; error?: NodeJS.ErrnoException };
+  outcome: { text: string; isError: boolean; class: FailureClass; quote: string };
+  consumption?: Extraction & { usage: Usage };
+  sessionId?: string;
+  durationMs: number;
+  outPath: string;
+  errPath: string;
+  ignoredLines: number;
+};
+
+export type AgentOptions = {
+  outPath: string;
+  errPath: string;
+  onTool: (line: string) => void;
+  onSession: (id: string) => void;
+};
+
+export type AgentSessions = {
+  launch: (role: AgentRole, brief: string, options: AgentOptions, stop: AbortSignal) => Promise<AgentReport>;
+  startupWarning?: () => string | undefined;
+  postmortem?: (report: AgentReport, say: (line: string) => void, context: { attempt: number; cwd: string; dir: string }) => void;
 };

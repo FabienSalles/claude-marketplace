@@ -3,7 +3,6 @@
 // belong to an earlier run — and the advisory lens and the auditor are invoked either way,
 // neither able to undo work the gate already verified and shipped.
 
-import { closeSync, openSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
 
 import { command } from '../adapters/command.ts';
@@ -13,56 +12,20 @@ import { gateAdapterOf, type GateAdapter } from '../adapters/gate.ts';
 import { git } from '../adapters/git.ts';
 import { header, iterationNumbers, readPlan } from '../gate/plan.ts';
 import { HALTED, LANDED, PAUSED } from '../core/verdict.ts';
-import { endOf, resultEnvelope, signalOfExit, tokensLine } from './narrate.ts';
 import { pauseLine, readyPauseLine } from '../core/publication.ts';
+import type { AgentReport, AgentRole, AgentSessions } from '../ports.ts';
+import { endOf, exitOf, tokensLine } from './narrate.ts';
 import { remoteNote, repoOf, type Publisher } from './publish.ts';
 import type { Reporter } from './report.ts';
-import { quote } from './shell.ts';
 
 export { HALTED, LANDED } from '../core/verdict.ts';
 
-type AgentJob = { name: string; args: string[] };
+const readOrEmpty = (path: string): string => (fs.exists(path) ? fs.readFile(path) : '');
 
-// Runs several `claude` invocations as background shell jobs of one spawnSync, so the block
-// costs the slowest job rather than their sum, while close() itself stays synchronous. Each
-// job's stdout and stderr land whole, once its process has exited, in their own temp files —
-// separate, so the envelope `resultEnvelope` parses off stdout is never a warning on stderr away
-// from failing to parse at all.
-const runConcurrently = (jobs: AgentJob[]): { name: string; output: string; stderr: string; status: number; signal: NodeJS.Signals | null }[] => {
-  const dir = fs.mkdtemp(join(fs.tmpDir(), 'goal-close-'));
+const launchAdvisory = (agents: AgentSessions, role: AgentRole, brief: string, dir: string): Promise<AgentReport> =>
+  agents.launch(role, brief, { outPath: join(dir, `${role}.out`), errPath: join(dir, `${role}.err`), onTool: () => {}, onSession: () => {} }, new AbortController().signal);
 
-  try {
-    const starts = jobs
-      .map(
-        (job, i) =>
-          `claude ${job.args.map(quote).join(' ')} > ${quote(join(dir, `${i}.out`))} 2> ${quote(join(dir, `${i}.err`))} &\npid${i}=$!`,
-      )
-      .join('\n');
-    const waits = jobs.map((_, i) => `wait $pid${i}; printf 'STATUS${i}=%s\\n' "$?"`).join('\n');
-    const result = command.run(`${starts}\n${waits}`, [], { shell: true });
-    const stdout = result.stdout ?? '';
-
-    return jobs.map((job, i) => {
-      const status = new RegExp(`STATUS${i}=(\\d+)`).exec(stdout)?.[1];
-      const outFile = join(dir, `${i}.out`);
-      const errFile = join(dir, `${i}.err`);
-
-      const code = status !== undefined ? Number(status) : 1;
-
-      return {
-        name: job.name,
-        output: fs.exists(outFile) ? fs.readFile(outFile) : '',
-        stderr: fs.exists(errFile) ? fs.readFile(errFile) : '',
-        status: code,
-        signal: signalOfExit(code),
-      };
-    });
-  } finally {
-    fs.removeTree(dir);
-  }
-};
-
-export const close = (
+export const close = async (
   plan: string,
   gateArg: GateAdapter | string,
   hash: string,
@@ -71,7 +34,8 @@ export const close = (
   landed: string[],
   dir: string,
   reporter: Reporter,
-): number => {
+  agents: AgentSessions,
+): Promise<number> => {
   const gate = gateAdapterOf(gateArg);
   const jsonl = join(dir, '.run.jsonl');
   const dodStart = clock.now();
@@ -154,44 +118,44 @@ this run: it is advisory only.`;
     // Run once neither can still block anything and each is briefed: the reviewer against a mark
     // pull requests only lands whole, after both have exited, so an advisory duration is paid
     // once instead of twice.
-    const jobs: AgentJob[] = [
-      { name: 'lens', args: ['-p', '--agent', 'goal:goal-run-lens', '--permission-mode', 'auto', '--output-format', 'stream-json', '--verbose', lensBrief] },
-    ];
+    const jobs: { name: 'lens' | 'reviewer'; brief: string }[] = [{ name: 'lens', brief: lensBrief }];
 
     if (reviewBrief !== undefined) {
-      jobs.push({
-        name: 'reviewer',
-        args: ['-p', '--agent', 'goal:goal-run-reviewer', '--permission-mode', 'auto', '--output-format', 'stream-json', '--verbose', reviewBrief],
-      });
+      jobs.push({ name: 'reviewer', brief: reviewBrief });
     }
 
+    fs.mkdir(dir, { recursive: true });
     const advisoryStart = clock.now();
-    const results = runConcurrently(jobs);
+    const reports = await Promise.all(jobs.map((job) => launchAdvisory(agents, job.name, job.brief, dir)));
     const advisoryDuration = clock.now() - advisoryStart;
 
-    for (const result of results) {
-      const { text, ...extraction } = resultEnvelope(result.output);
-      reporter.record(text);
-      reporter.say(`RUN stage=${result.name} duration_ms=${advisoryDuration} ${endOf(result)}`);
+    jobs.forEach((job, i) => {
+      const report = reports[i]!;
+      reporter.record(report.outcome.text);
+      reporter.say(`RUN stage=${job.name} duration_ms=${advisoryDuration} ${endOf(report.end)}`);
 
-      const tokens = tokensLine(result.name, extraction);
+      const tokens = tokensLine(job.name, report.consumption);
 
       if (tokens !== undefined && tokens !== '') {
         reporter.say(tokens);
       }
 
-      if (result.stderr.trim() !== '') {
-        reporter.say(`RUN diagnostics stage=${result.name}: ${result.stderr.trim()}`);
+      const stderr = readOrEmpty(report.errPath);
+
+      if (stderr.trim() !== '') {
+        reporter.say(`RUN diagnostics stage=${job.name}: ${stderr.trim()}`);
       }
 
-      if (result.name === 'reviewer') {
-        if (result.status === 0) {
+      if (job.name === 'reviewer') {
+        const status = exitOf(report.end);
+
+        if (status === 0) {
           reporter.say('RUN the reviewer finished, its answer is in the run log');
         } else {
-          reporter.say(`RUN the reviewer exited ${result.status}, so the pull request may carry no review`);
+          reporter.say(`RUN the reviewer exited ${status}, so the pull request may carry no review`);
         }
       }
-    }
+    });
 
     reporter.say('RUN lens findings recorded, advisory only');
   }
@@ -210,28 +174,17 @@ not stage anything, and do not judge whether the work was correct — the gate a
 
   const auditStart = clock.now();
   fs.mkdir(dir, { recursive: true });
-  const auditOutPath = join(dir, 'auditor.out');
-  const auditErrPath = join(dir, 'auditor.err');
-  const auditFdOut = openSync(auditOutPath, 'w');
-  const auditFdErr = openSync(auditErrPath, 'w');
-  const audit = command.run(
-    'claude',
-    ['-p', '--agent', 'goal:goal-run-auditor', '--permission-mode', 'auto', '--output-format', 'stream-json', '--verbose', auditBrief],
-    { stdio: ['ignore', auditFdOut, auditFdErr] },
-  );
-  closeSync(auditFdOut);
-  closeSync(auditFdErr);
-  const auditStdout = fs.readFile(auditOutPath);
-  const auditStderr = fs.readFile(auditErrPath);
-  const { text: auditText, ...auditExtraction } = resultEnvelope(auditStdout);
-  reporter.record(auditText);
-  reporter.say(`RUN stage=auditor duration_ms=${clock.now() - auditStart} ${endOf(audit)}`);
+  const audit = await launchAdvisory(agents, 'auditor', auditBrief, dir);
+  reporter.record(audit.outcome.text);
+  reporter.say(`RUN stage=auditor duration_ms=${clock.now() - auditStart} ${endOf(audit.end)}`);
 
-  const auditTokens = tokensLine('auditor', auditExtraction);
+  const auditTokens = tokensLine('auditor', audit.consumption);
 
   if (auditTokens !== undefined && auditTokens !== '') {
     reporter.say(auditTokens);
   }
+
+  const auditStderr = readOrEmpty(audit.errPath);
 
   if (auditStderr.trim() !== '') {
     reporter.say(`RUN diagnostics stage=auditor: ${auditStderr.trim()}`);

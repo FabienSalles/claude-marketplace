@@ -1,0 +1,9 @@
+{"type":"assistant","session_id":"s-null","message":{"model":"claude-sonnet-5","usage":{"input_tokens":5,"output_tokens":1},"content":[{"type":"tool_use","name":"Edit","input":{"file_path":"a.txt"}}]}}
+null
+42
+"text"
+[1]
+{"type":"assistant","message":null}
+{"type":"assistant","message":{"content":7}}
+not json
+{"type":"result","session_id":"s-null","result":"done","usage":{"input_tokens":10,"output_tokens":20,"cache_creation_input_tokens":30,"cache_read_input_tokens":40}}

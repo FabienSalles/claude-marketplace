@@ -15,7 +15,7 @@ import {
 } from '../src/core/preflight.ts';
 import { detectTamper, type TreeState } from '../src/core/tamper.ts';
 import { HALTED, LANDED, PAUSED, REFUSED } from '../src/core/verdict.ts';
-import { classifyQuotaFailure } from '../src/run/quota.ts';
+import { classifyQuotaFailure } from '../src/adapters/claude/classify.ts';
 
 // P9/J8 — the runner's decisions are pure functions proven in-process: no spawn, no filesystem,
 // no exit code. The ten preflight checks, the quota classification and the tamper detection
