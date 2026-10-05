@@ -20,6 +20,8 @@ const CLAUDE_TOKENS: [string, RegExp, string][] = [
   ['--output-format', /--output-format/, '--output-format'],
   ['stream-json', /stream-json/, 'stream-json'],
   ['~/.claude', /~\/\.claude/, '~/.claude/projects'],
+  ['DISABLE_AUTOUPDATER', /DISABLE_AUTOUPDATER/, "DISABLE_AUTOUPDATER: '1'"],
+  ['a goal-run agent id', /goal:goal-run-/, "'goal:goal-run-lens'"],
 ];
 
 const leaks = (file: string): string[] =>
