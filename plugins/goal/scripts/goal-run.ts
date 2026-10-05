@@ -112,7 +112,10 @@ const main = async (): Promise<void> => {
   const hashes = new Map<string, string>();
   const tickedSets = new Map<string, string>();
 
-  for (const n of closing ? iterationNumbers(source, true).slice(-1) : iterations) {
+  const checking = closing ? iterationNumbers(source, true).slice(-1) : iterations;
+  const lastIteration = checking[checking.length - 1]!;
+
+  for (const n of checking) {
     const checked = gate.check(plan, n);
     const output = `${checked.stdout}${checked.stderr}`;
 
@@ -175,7 +178,7 @@ const main = async (): Promise<void> => {
     }
   }
 
-  const exitCode = close(plan, gate, [...hashes.values()].pop()!, remote, publisher, landed, dir, reporter);
+  const exitCode = close(plan, gate, hashes.get(lastIteration)!, remote, publisher, landed, dir, reporter);
 
   if (exitCode === LANDED) {
     reporter.say(

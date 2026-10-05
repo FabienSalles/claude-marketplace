@@ -235,6 +235,8 @@ ${prelude}
 case "$1 $2" in
   "pr view")
     [ -n "$FAKE_GH_PR_EXISTS" ] && { printf '{"number":%s,"state":"%s","isDraft":%s}\\n' "\${FAKE_GH_PR_NUMBER:-1}" "\${FAKE_GH_PR_STATE:-OPEN}" "\${FAKE_GH_PR_DRAFT:-false}"; exit 0; }
+    [ -n "$FAKE_GH_VIEW_FAILS" ] && { printf 'error connecting to api.github.com\\n' >&2; exit 1; }
+    printf 'no pull requests found for branch "%s"\\n' "$3" >&2
     exit 1
     ;;
   "pr create") exit \${FAKE_GH_CREATE_EXIT:-0} ;;
@@ -556,7 +558,10 @@ export const runInProcess = async (
     const hashes = new Map<string, string>();
     const tickedSets = new Map<string, string>();
 
-    for (const n of closing ? iterationNumbers(source, true).slice(-1) : iterations) {
+    const checking = closing ? iterationNumbers(source, true).slice(-1) : iterations;
+    const lastIteration = checking[checking.length - 1]!;
+
+    for (const n of checking) {
       const checked = gate.check(plan!, n);
       const checkedOutput = `${checked.stdout}${checked.stderr}`;
 
@@ -614,7 +619,7 @@ export const runInProcess = async (
       }
     }
 
-    const exitCode = close(plan!, gate, [...hashes.values()].pop()!, remote, publisher, landed, dir, reporter);
+    const exitCode = close(plan!, gate, hashes.get(lastIteration)!, remote, publisher, landed, dir, reporter);
 
     if (exitCode === LANDED) {
       reporter.say(

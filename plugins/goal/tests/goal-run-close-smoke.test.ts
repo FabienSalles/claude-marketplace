@@ -551,6 +551,7 @@ test('a Definition of Done refusal leaves the last iteration\'s commit local, ne
   assert.notEqual(code, 0, output);
   const ahead = git(fixture.dir, 'rev-list', '--count', 'origin/feature/demo..HEAD').stdout.trim();
   assert.equal(ahead, '1', `expected the last iteration's commit to stay unpushed when the Definition of Done refused:\n${output}`);
+  assert.match(output, /STOP the global Definition of Done refused this run: on the remote: 1; local only: 2/);
 });
 
 // R6 — the pull request the earlier iterations opened is still there, showing what did land,

@@ -34,6 +34,7 @@ export const repoOf = (remote: string): string =>
 export type Publisher = {
   isComplete: () => boolean;
   publish: (iteration?: string) => string | undefined;
+  refresh?: (iteration?: string) => void;
   foldReport?: (text: string, plan: string, dir: string) => void;
   state: PublishState;
 };
@@ -120,13 +121,19 @@ export const createPublisher = (
   // after every one after it, so a run that halts partway still leaves something a human can
   // read instead of a local branch nobody can see. A refusal is returned as its reason, never
   // swallowed: the caller pauses the run at that boundary.
-  const publish = (iteration?: string): string | undefined => {
+  const record = (iteration?: string): string => {
     if (iteration !== undefined) {
       inRun.set(iteration, git('rev-parse', 'HEAD').stdout.trim());
     }
 
     const branch = git('branch', '--show-current').stdout.trim();
     refresh(branch, commitLog());
+
+    return branch;
+  };
+
+  const publish = (iteration?: string): string | undefined => {
+    const branch = record(iteration);
 
     if (!publishes) {
       reporter.say(`RUN Policy is ${policy !== '' ? policy : 'unreadable'}, not commit+pr, so nothing leaves this machine and no pull request is opened. The commits are on the branch, where the developer asked them to stay.`);
@@ -148,10 +155,9 @@ export const createPublisher = (
 
     const repo = repoOf(remote);
 
-    // Asked before the push, so a closed or merged pull request pushes nothing.
     if (!state.prOpen) {
       const view = command.run('gh', ['pr', 'view', branch, '--repo', repo, '--json', 'number,state']);
-      const decision = prDecision(view.status, view.stdout);
+      const decision = prDecision(view.status, view.stdout, view.stderr);
 
       if (decision.kind === 'pause') {
         return decision.reason;
@@ -166,7 +172,7 @@ export const createPublisher = (
       return `The push failed:\n${push.stdout}${push.stderr}`;
     }
 
-    state.onRemote.splice(0, state.onRemote.length, ...state.landed);
+    refresh(branch, commitLog());
     reporter.say(`RUN pushed to ${remote}`);
 
     const body = prBody();
@@ -213,5 +219,5 @@ export const createPublisher = (
     }
   };
 
-  return { isComplete, publish, foldReport, state };
+  return { isComplete, publish, refresh: (iteration) => void record(iteration), foldReport, state };
 };
