@@ -71,13 +71,16 @@ export const runIteration = async (
     const { changes, carriesWork } = refChanges(refsBefore, branch);
     const { pausing, noted: notes } = classifyRefChanges(changes, carriesWork);
 
-    for (const note of unnoted(notes, noted)) {
+    const gitDir = changedGitDirPaths(gitDirBefore);
+
+    for (const note of unnoted([...notes, ...gitDir.notes], noted)) {
       reporter.say(note.line);
     }
 
     const after = {
       head: git('rev-parse', 'HEAD').stdout.trim(),
-      gitDirChanges: changedGitDirPaths(gitDirBefore),
+      gitDirChanges: gitDir.attributable,
+      sharedGitDirChanges: gitDir.shared,
       remoteRefChanges: pausing.filter((ref) => ref.startsWith('refs/remotes/')),
       otherRefChanges: pausing.filter((ref) => !ref.startsWith('refs/remotes/')),
     };

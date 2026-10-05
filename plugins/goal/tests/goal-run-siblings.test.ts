@@ -89,3 +89,34 @@ git reset -q --soft HEAD~1`,
   assert.doesNotMatch(output, /pushed:[^\n]*sibling-branch/, output);
   assert.equal(noteLines(output, 'refs/remotes/origin/sibling-branch').length, 1, output);
 });
+
+test('a sibling installing a hook pauses with wording that does not accuse the implementer', () => {
+  const fixture = repo();
+  const sibling = siblingOf(fixture);
+
+  claudeRunning(fixture, `printf '#!/bin/sh\\n' > $(git -C ${sibling} rev-parse --path-format=absolute --git-common-dir)/hooks/pre-push\necho x >> a.txt`);
+
+  const { code, output } = run(fixture, [fixture.plan, '1']);
+
+  assert.equal(code, PAUSED, output);
+  assert.match(output, /the git directory changed under the run, possibly from another worktree/, output);
+  assert.match(output, /hooks[/\\]pre-push/, output);
+  assert.doesNotMatch(output, /the implementer changed/, output);
+});
+
+test('a sibling setting upstream tracking writes only harmless config entries, which are noted once', () => {
+  const fixture = repo({ remote: true });
+  const sibling = siblingOf(fixture);
+
+  claudeRunning(
+    fixture,
+    `git -C ${sibling} commit --allow-empty -qm sibling
+git -C ${sibling} push -q -u origin HEAD:sib
+echo x >> a.txt`,
+  );
+
+  const { code, output } = run(fixture, [fixture.plan, '1'], { FAKE_GATE_COMMITS: '1' });
+
+  assert.equal(code, 0, output);
+  assert.equal(output.split('\n').filter((line) => /RUN config entry branch\.sib\.remote was added: noted/.test(line)).length, 1, output);
+});

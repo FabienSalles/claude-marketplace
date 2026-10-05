@@ -10,7 +10,7 @@ import { join, resolve } from 'node:path';
 
 import { fs } from '../adapters/fs.ts';
 import { git } from '../adapters/git.ts';
-import type { RefChange } from '../core/tamper.ts';
+import { classifyConfigChanges, type RefChange, type RefNote } from '../core/tamper.ts';
 
 const read = (path: string): string | null => {
   try {
@@ -46,7 +46,27 @@ const hookFiles = (hooksDir: string): string[] => {
 
 export type GitDirSnapshot = {
   hooksDir: string;
+  config: string;
+  worktreeConfig: string;
+  configEntries: string[] | null;
   entries: Map<string, string | null>;
+};
+
+const configEntries = (path: string): string[] | null => {
+  if (!fs.exists(path)) {
+    return [];
+  }
+
+  const listed = git('config', '--file', path, '--list', '-z');
+
+  if (listed.status !== 0) {
+    return null;
+  }
+
+  return listed.stdout
+    .split('\0')
+    .filter((entry) => entry !== '')
+    .map((entry) => entry.replace('\n', '='));
 };
 
 export const snapshotGitDir = (): GitDirSnapshot => {
@@ -55,7 +75,9 @@ export const snapshotGitDir = (): GitDirSnapshot => {
   const absolute = absoluteLine.trim();
   const hooksDir = join(common, 'hooks');
 
-  const fixed = [join(common, 'config'), join(common, 'info', 'exclude'), join(absolute, 'config.worktree')];
+  const config = join(common, 'config');
+  const worktreeConfig = join(absolute, 'config.worktree');
+  const fixed = [config, join(common, 'info', 'exclude'), worktreeConfig];
 
   const entries = new Map<string, string | null>();
 
@@ -63,22 +85,45 @@ export const snapshotGitDir = (): GitDirSnapshot => {
     entries.set(path, read(path));
   }
 
-  return { hooksDir, entries };
+  return { hooksDir, config, worktreeConfig, configEntries: configEntries(config), entries };
 };
 
 // Absence is recorded as absence (`null`), so a hook created after the snapshot shows up as a
 // change even though its path never appeared in the map the snapshot walked.
-export const changedGitDirPaths = (before: GitDirSnapshot): string[] => {
+export const changedGitDirPaths = (before: GitDirSnapshot): { attributable: string[]; shared: string[]; notes: RefNote[] } => {
   const paths = new Set([...before.entries.keys(), ...hookFiles(before.hooksDir)]);
-  const changed: string[] = [];
+  const attributable: string[] = [];
+  const shared: string[] = [];
+  const notes: RefNote[] = [];
 
   for (const path of paths) {
-    if (read(path) !== (before.entries.get(path) ?? null)) {
-      changed.push(path);
+    if (read(path) === (before.entries.get(path) ?? null)) {
+      continue;
+    }
+
+    if (path === before.worktreeConfig) {
+      attributable.push(path);
+    } else if (path === before.config) {
+      const after = configEntries(path);
+
+      if (after === null || before.configEntries === null) {
+        shared.push(path);
+
+        continue;
+      }
+
+      const classified = classifyConfigChanges(before.configEntries, after);
+      notes.push(...classified.noted);
+
+      if (classified.pausing.length > 0) {
+        shared.push(`${path} (${classified.pausing.join(', ')})`);
+      }
+    } else {
+      shared.push(path);
     }
   }
 
-  return changed.sort();
+  return { attributable: attributable.sort(), shared: shared.sort(), notes };
 };
 
 export type RefSnapshot = { refs: Map<string, string>; reflogLines: number };
