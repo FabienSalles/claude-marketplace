@@ -136,8 +136,6 @@ goal-run-preflight.test.ts	every preflight check narrates on stdout once it pass
 goal-run-push.test.ts	the implementer pushing halts the run, naming the moved ref
 goal-run-push.test.ts	a push on the first attempt survives a quota failure and retry
 goal-run-push.test.ts	a blocked publication is named in the run's terminal line
-goal-run-push.test.ts	a halt after an earlier publication block names it too
-goal-run-push.test.ts	a pause after an earlier publication block names it too
 goal-run-push.test.ts	an ordinary run that never pushes is not stopped by this check
 goal-run-real-gate.test.ts	a real gate resolved with no GOAL_GATE override refuses to commit once an earlier landed iteration was unticked while the run was going
 goal-run-real-gate.test.ts	a real gate resolved with no GOAL_GATE override refuses to certify a run whose Definition of Done fails

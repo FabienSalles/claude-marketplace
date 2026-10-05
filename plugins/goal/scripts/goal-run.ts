@@ -20,8 +20,10 @@ import { createReporter, runDir, type Reporter } from '../src/run/report.ts';
 import { preflight, REFUSED } from '../src/run/preflight.ts';
 import { createLock } from '../src/run/lock.ts';
 import { runIteration } from '../src/run/iteration.ts';
-import { blockedNote, createPublisher } from '../src/run/publish.ts';
+import { createPublisher, remoteNote } from '../src/run/publish.ts';
 import { close, LANDED } from '../src/run/close.ts';
+import { pauseLine } from '../src/core/publication.ts';
+import { PAUSED } from '../src/core/verdict.ts';
 import { quote } from '../src/run/shell.ts';
 import { defaultSettingsPath } from '../src/run/advisory.ts';
 import { defaultProjectsRoot } from '../src/run/postmortem.ts';
@@ -150,15 +152,19 @@ const main = async (): Promise<void> => {
     // close(), behind the whole-branch Definition of Done.
     if (n !== iterations[iterations.length - 1]) {
       const pushStart = Date.now();
-      publisher.publish(n);
-      reporter.say(`RUN stage=push duration_ms=${Date.now() - pushStart} exit=${publisher.state.blocked ? 1 : 0}`);
+      const refusal = publisher.publish(n);
+      reporter.say(`RUN stage=push duration_ms=${Date.now() - pushStart} exit=${refusal === undefined ? 0 : 1}`);
+
+      if (refusal !== undefined) {
+        reporter.stop(pauseLine(refusal, publisher.state.landed, publisher.state.onRemote), PAUSED);
+      }
     }
   }
 
   const exitCode = close(plan, gate, hashes.get(iterations[iterations.length - 1]!)!, remote, publisher, landed, dir, reporter);
 
   if (exitCode === LANDED) {
-    reporter.say(`STOP ${iterations.length} iteration(s) landed, gate-verified.${blockedNote(publisher)}`);
+    reporter.say(`STOP ${iterations.length} iteration(s) landed, gate-verified.${remoteNote(publisher)}`);
   }
 
   process.exit(exitCode);

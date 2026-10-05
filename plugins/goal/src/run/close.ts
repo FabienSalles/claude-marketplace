@@ -14,7 +14,8 @@ import { git } from '../adapters/git.ts';
 import { header, iterationNumbers, readPlan } from '../gate/plan.ts';
 import { HALTED, LANDED, PAUSED } from '../core/verdict.ts';
 import { endOf, resultEnvelope, signalOfExit, tokensLine } from './narrate.ts';
-import { blockedNote, repoOf, type Publisher } from './publish.ts';
+import { pauseLine } from '../core/publication.ts';
+import { remoteNote, repoOf, type Publisher } from './publish.ts';
 import type { Reporter } from './report.ts';
 import { quote } from './shell.ts';
 
@@ -92,8 +93,14 @@ export const close = (
 
     if (last !== undefined) {
       const pushStart = clock.now();
-      publisher.publish(last);
-      reporter.say(`RUN stage=push duration_ms=${clock.now() - pushStart} exit=${publisher.state.blocked ? 1 : 0}`);
+      const refusal = publisher.publish(last);
+      reporter.say(`RUN stage=push duration_ms=${clock.now() - pushStart} exit=${refusal === undefined ? 0 : 1}`);
+
+      if (refusal !== undefined) {
+        reporter.say(`STOP ${pauseLine(refusal, publisher.state.landed, publisher.state.onRemote)}`);
+
+        return PAUSED;
+      }
     }
 
     reporter.say('RUN the global Definition of Done passed');
@@ -102,7 +109,7 @@ export const close = (
     let branch = '';
     let reviewBrief: string | undefined;
 
-    if (publish.publishes && publish.prOpen && !publish.blocked) {
+    if (publish.publishes && publish.prOpen) {
       branch = git('branch', '--show-current').stdout.trim();
       const readyStart = clock.now();
       const ready = command.run('gh', ['pr', 'ready', '--repo', repo, branch]);
@@ -127,6 +134,9 @@ ${postsReview
   : 'This plan carries no `Review: comment` header. Do not post it to GitHub: return your review as text, so it reaches the developer through the run log only.'}`;
       } else {
         reporter.say(`RUN marking the pull request ready failed: ${readyOut}`);
+        reporter.say(`STOP ${pauseLine(`marking the pull request ready failed: ${readyOut}`, publisher.state.landed, publisher.state.onRemote)}`);
+
+        return PAUSED;
       }
     }
 
@@ -240,13 +250,13 @@ not stage anything, and do not judge whether the work was correct — the gate a
 
   if (dodExit !== 0) {
     if (dodExit !== 1) {
-      reporter.say(`STOP the global Definition of Done could not be run (exit ${dodExit}), so no verdict exists:${blockedNote(publisher)}`);
+      reporter.say(`STOP the global Definition of Done could not be run (exit ${dodExit}), so no verdict exists:${remoteNote(publisher)}`);
       reporter.say(dodOut);
 
       return PAUSED;
     }
 
-    reporter.say(`STOP the global Definition of Done refused this run:${blockedNote(publisher)}`);
+    reporter.say(`STOP the global Definition of Done refused this run:${remoteNote(publisher)}`);
     reporter.say(dodOut);
 
     return HALTED;

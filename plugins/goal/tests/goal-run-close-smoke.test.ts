@@ -104,11 +104,9 @@ test('the auditor is invoked with the run\'s own JSONL path, not an elapsed stri
   assert.ok(!args.includes(fixture.plan), `the plan's absolute path leaked into an agent's argv:\n${args}`);
 });
 
-// R1 — close() reads whether publication blocked straight off the state object the publisher
-// handed it, never by re-deriving it from the wording of a message: a run where a pull request
-// was already found open still skips marking it ready once that state says blocked, regardless
-// of what publish() said along the way.
-test('close skips marking the pull request ready when the publisher\'s own state says blocked', () => {
+// R1, R5 — a refused last push pauses the run at that boundary: no pull request is marked ready
+// and the terminal line states what is local only.
+test('close pauses without marking the pull request ready when the last push is refused', () => {
   const fixture = repo({ planText: PLAN_PR, remote: true });
   const originalCwd = process.cwd();
   const originalPath = process.env.PATH;
@@ -134,14 +132,15 @@ test('close skips marking the pull request ready when the publisher\'s own state
       join(fixture.bin, 'fake-gate'),
       HASH,
       'origin',
-      { publish: () => {}, state: { publishes: true, prOpen: true, blocked: true } },
+      { publish: () => 'The push failed: unreachable', state: { publishes: true, prOpen: true, landed: ['1'], onRemote: [] } },
       ['1'],
       'run-dir',
       reporter,
     );
 
-    assert.equal(code, LANDED);
-    assert.ok(!existsSync(fixture.ghLog), `close asked gh to mark the pull request ready though publication had blocked:\n${messages.join('\n')}`);
+    assert.equal(code, PAUSED);
+    assert.ok(!existsSync(fixture.ghLog), `close asked gh to mark the pull request ready though the push was refused:\n${messages.join('\n')}`);
+    assert.match(messages.pop() ?? '', /^STOP .*push failed.*local only: 1$/);
   } finally {
     process.chdir(originalCwd);
     process.env.PATH = originalPath;
@@ -191,7 +190,7 @@ test('the lens is briefed from the plan\'s own ticked iterations, not from the r
       join(fixture.bin, 'fake-gate'),
       HASH,
       'origin',
-      { publish: () => {}, state: { publishes: false, prOpen: false, blocked: false } },
+      { publish: () => undefined, state: { publishes: false, prOpen: false, landed: [], onRemote: [] } },
       ['2'],
       'run-dir',
       reporter,
@@ -231,7 +230,7 @@ test('the reviewer runs once the pull request is marked ready', () => {
       join(fixture.bin, 'fake-gate'),
       HASH,
       'origin',
-      { publish: () => {}, state: { publishes: true, prOpen: true, blocked: false } },
+      { publish: () => undefined, state: { publishes: true, prOpen: true, landed: [], onRemote: [] } },
       ['1'],
       'run-dir',
       reporter,
@@ -271,7 +270,7 @@ test('the reviewer is briefed to keep its review in the log when the plan carrie
       join(fixture.bin, 'fake-gate'),
       HASH,
       'origin',
-      { publish: () => {}, state: { publishes: true, prOpen: true, blocked: false } },
+      { publish: () => undefined, state: { publishes: true, prOpen: true, landed: [], onRemote: [] } },
       ['1'],
       'run-dir',
       reporter,
@@ -312,7 +311,7 @@ test('a plan carrying a Review: comment header briefs the reviewer to post with 
       join(fixture.bin, 'fake-gate'),
       HASH,
       'origin',
-      { publish: () => {}, state: { publishes: true, prOpen: true, blocked: false } },
+      { publish: () => undefined, state: { publishes: true, prOpen: true, landed: [], onRemote: [] } },
       ['1'],
       'run-dir',
       reporter,
@@ -357,7 +356,7 @@ test('close reports a stage=<name> duration_ms=<n> exit=<n> event for every stag
       join(fixture.bin, 'fake-gate'),
       HASH,
       'origin',
-      { publish: () => {}, state: { publishes: true, prOpen: true, blocked: false } },
+      { publish: () => undefined, state: { publishes: true, prOpen: true, landed: [], onRemote: [] } },
       ['1'],
       'run-dir',
       reporter,
@@ -376,8 +375,8 @@ test('close reports a stage=<name> duration_ms=<n> exit=<n> event for every stag
   }
 });
 
-// R7 / R11 — a `gh pr ready` that fails leaves publication no further along than before, and the
-// reviewer has nothing ready to comment on: it never runs.
+// R5 — a `gh pr ready` that fails is a publication failure: the run pauses, and the reviewer has
+// nothing ready to comment on, so it never runs.
 test('the reviewer never runs when marking the pull request ready fails', () => {
   const fixture = repo({ planText: PLAN_PR, remote: true });
   const originalCwd = process.cwd();
@@ -402,58 +401,18 @@ test('the reviewer never runs when marking the pull request ready fails', () => 
       join(fixture.bin, 'fake-gate'),
       HASH,
       'origin',
-      { publish: () => {}, state: { publishes: true, prOpen: true, blocked: false } },
+      { publish: () => undefined, state: { publishes: true, prOpen: true, landed: ['1'], onRemote: ['1'] } },
       ['1'],
       'run-dir',
       reporter,
     );
 
-    assert.equal(code, LANDED);
-    const args = readFileSync(fixture.claudeLog, 'utf8');
-    assert.ok(!/^goal:goal-run-reviewer$/m.test(args), `the reviewer ran though marking the pull request ready failed:\n${args}`);
+    assert.equal(code, PAUSED);
+    assert.ok(!existsSync(fixture.claudeLog), 'an agent ran though marking the pull request ready failed');
   } finally {
     process.chdir(originalCwd);
     process.env.PATH = originalPath;
     delete process.env.FAKE_GH_READY_EXIT;
-  }
-});
-
-// R6 — close() reads whether publication blocked straight off the publisher's own state, so the
-// reviewer never runs against a pull request that publication never actually reached.
-test('the reviewer never runs when the publisher\'s own state says blocked', () => {
-  const fixture = repo({ planText: PLAN_PR, remote: true });
-  const originalCwd = process.cwd();
-  const originalPath = process.env.PATH;
-
-  process.chdir(fixture.dir);
-  process.env.PATH = `${fixture.bin}:${originalPath ?? ''}`;
-
-  try {
-    const reporter: Reporter = {
-      say: () => {},
-      stop: () => {
-        throw new Error('unexpected stop');
-      },
-      record: () => {},
-      setLog: () => {},
-    };
-
-    const code = close(
-      fixture.plan,
-      join(fixture.bin, 'fake-gate'),
-      HASH,
-      'origin',
-      { publish: () => {}, state: { publishes: true, prOpen: true, blocked: true } },
-      ['1'],
-      'run-dir',
-      reporter,
-    );
-
-    assert.equal(code, LANDED);
-    assert.ok(!existsSync(fixture.ghLog), `close asked gh to mark the pull request ready though publication had blocked:\n`);
-  } finally {
-    process.chdir(originalCwd);
-    process.env.PATH = originalPath;
   }
 });
 
@@ -490,7 +449,7 @@ test('an envelope beside stderr noise still yields the token line and text, nois
       join(fixture.bin, 'fake-gate'),
       HASH,
       'origin',
-      { publish: () => {}, state: { publishes: true, prOpen: true, blocked: false } },
+      { publish: () => undefined, state: { publishes: true, prOpen: true, landed: [], onRemote: [] } },
       ['1'],
       'run-dir',
       reporter,
@@ -546,7 +505,7 @@ test('the lens and reviewer run concurrently rather than one after the other', (
       join(fixture.bin, 'fake-gate'),
       HASH,
       'origin',
-      { publish: () => {}, state: { publishes: true, prOpen: true, blocked: false } },
+      { publish: () => undefined, state: { publishes: true, prOpen: true, landed: [], onRemote: [] } },
       ['1'],
       'run-dir',
       reporter,

@@ -5,13 +5,14 @@ import { join, resolve } from 'node:path';
 import { command } from '../../src/adapters/command.ts';
 import { fs } from '../../src/adapters/fs.ts';
 import { spawnGateAdapter } from '../../src/adapters/gate.ts';
+import { pauseLine } from '../../src/core/publication.ts';
 import { LANDED, REFUSED } from '../../src/core/verdict.ts';
 import { iterationNumbers } from '../../src/gate/plan.ts';
 import { createLock } from '../../src/run/lock.ts';
 import { runIteration } from '../../src/run/iteration.ts';
 import { close } from '../../src/run/close.ts';
 import { preflight, workIdOf } from '../../src/run/preflight.ts';
-import { blockedNote, createPublisher } from '../../src/run/publish.ts';
+import { createPublisher, remoteNote } from '../../src/run/publish.ts';
 import { runDir, type Reporter } from '../../src/run/report.ts';
 import { AWAIT_DEADLINE_MS } from './await-state.ts';
 import { tmpDir } from './tmp.ts';
@@ -229,7 +230,7 @@ ${prelude}
 { printf -- '--- call ---\\n'; printf '%s\\n' "$@"; } >> ${ghLog}
 case "$1 $2" in
   "pr view")
-    [ -n "$FAKE_GH_PR_EXISTS" ] && { printf '{"number":%s}\\n' "\${FAKE_GH_PR_NUMBER:-1}"; exit 0; }
+    [ -n "$FAKE_GH_PR_EXISTS" ] && { printf '{"number":%s,"state":"%s"}\\n' "\${FAKE_GH_PR_NUMBER:-1}" "\${FAKE_GH_PR_STATE:-OPEN}"; exit 0; }
     exit 1
     ;;
   "pr create") exit \${FAKE_GH_CREATE_EXIT:-0} ;;
@@ -586,15 +587,19 @@ export const runInProcess = async (
 
       if (n !== iterations[iterations.length - 1]) {
         const pushStart = Date.now();
-        publisher.publish(n);
-        reporter.say(`RUN stage=push duration_ms=${Date.now() - pushStart} exit=${publisher.state.blocked ? 1 : 0}`);
+        const refusal = publisher.publish(n);
+        reporter.say(`RUN stage=push duration_ms=${Date.now() - pushStart} exit=${refusal === undefined ? 0 : 1}`);
+
+        if (refusal !== undefined) {
+          reporter.stop(pauseLine(refusal, publisher.state.landed, publisher.state.onRemote), PAUSED);
+        }
       }
     }
 
     const exitCode = close(plan!, gate, hashes.get(iterations[iterations.length - 1]!)!, remote, publisher, landed, dir, reporter);
 
     if (exitCode === LANDED) {
-      reporter.say(`STOP ${iterations.length} iteration(s) landed, gate-verified.${blockedNote(publisher)}`);
+      reporter.say(`STOP ${iterations.length} iteration(s) landed, gate-verified.${remoteNote(publisher)}`);
     }
 
     return { code: exitCode, output };
