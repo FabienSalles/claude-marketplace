@@ -40,3 +40,40 @@ export const detectTamper = (before: TreeState, after: TreeState): Result<void, 
 
   return ok(undefined);
 };
+
+export type RefChange = { readonly ref: string; readonly after: string | undefined };
+
+export type RefNote = { readonly key: string; readonly line: string };
+
+export const classifyRefChanges = (
+  changes: readonly RefChange[],
+  carriesWork: (change: RefChange) => boolean,
+): { pausing: string[]; noted: RefNote[] } => {
+  const pausing: string[] = [];
+  const noted: RefNote[] = [];
+
+  for (const change of changes) {
+    if (change.after === undefined) {
+      noted.push({ key: `${change.ref}@deleted`, line: `RUN ${change.ref} was deleted: noted, not a pause` });
+    } else if (carriesWork(change)) {
+      pausing.push(change.ref);
+    } else {
+      noted.push({
+        key: `${change.ref}@${change.after}`,
+        line: `RUN ${change.ref} moved to ${change.after.slice(0, 7)}, which is not this run's work: noted, not a pause`,
+      });
+    }
+  }
+
+  return { pausing, noted };
+};
+
+export const unnoted = (notes: readonly RefNote[], seen: Set<string>): RefNote[] => {
+  const fresh = notes.filter((note) => !seen.has(note.key));
+
+  for (const note of fresh) {
+    seen.add(note.key);
+  }
+
+  return fresh;
+};

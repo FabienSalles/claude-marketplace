@@ -16,10 +16,10 @@ import { ceiling } from '../gate/bounded.ts';
 import { iterationSection } from '../gate/plan.ts';
 import { rulesContext } from '../core/plan.ts';
 import { settingValue } from '../core/settings.ts';
-import { detectTamper } from '../core/tamper.ts';
+import { classifyRefChanges, detectTamper, unnoted } from '../core/tamper.ts';
 import { HALTED, PAUSED, REFUSED } from '../core/verdict.ts';
 import { brief } from './brief.ts';
-import { changedGitDirPaths, changedRefs, snapshotGitDir, snapshotRefs } from './gitwatch.ts';
+import { changedGitDirPaths, refChanges, snapshotGitDir, snapshotRefs } from './gitwatch.ts';
 import { endOf, narrate, tokensLine } from './narrate.ts';
 import { claudeBinaryMtime, claudeBinaryPath, postmortem } from './postmortem.ts';
 import { blockedNote, type Publisher } from './publish.ts';
@@ -45,6 +45,7 @@ export const runIteration = async (
   dir: string,
   reporter: Reporter,
   publisher: Publisher,
+  noted: Set<string>,
 ): Promise<void> => {
   reporter.say(`RUN iteration ${iteration} of ${basename(plan)}, in ${process.cwd()}`);
 
@@ -67,12 +68,18 @@ export const runIteration = async (
   const refsBefore = snapshotRefs();
 
   const readTamper = () => {
-    const refChanges = changedRefs(refsBefore);
+    const { changes, carriesWork } = refChanges(refsBefore, branch);
+    const { pausing, noted: notes } = classifyRefChanges(changes, carriesWork);
+
+    for (const note of unnoted(notes, noted)) {
+      reporter.say(note.line);
+    }
+
     const after = {
       head: git('rev-parse', 'HEAD').stdout.trim(),
       gitDirChanges: changedGitDirPaths(gitDirBefore),
-      remoteRefChanges: refChanges.filter((ref) => ref.startsWith('refs/remotes/')),
-      otherRefChanges: refChanges.filter((ref) => !ref.startsWith('refs/remotes/')),
+      remoteRefChanges: pausing.filter((ref) => ref.startsWith('refs/remotes/')),
+      otherRefChanges: pausing.filter((ref) => !ref.startsWith('refs/remotes/')),
     };
 
     return detectTamper({ head: headBefore, gitDirChanges: [], remoteRefChanges: [], otherRefChanges: [] }, after);
