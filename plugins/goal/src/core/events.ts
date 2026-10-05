@@ -43,11 +43,15 @@ export const parseEvents = (raw: string): ParsedLine[] =>
     }
 
     try {
-      return [{ line: index + 1, event: JSON.parse(text) as StreamEvent }];
+      const event: unknown = JSON.parse(text);
+
+      return typeof event === 'object' && event !== null && !Array.isArray(event) ? [{ line: index + 1, event: event as StreamEvent }] : [];
     } catch {
       return [];
     }
   });
+
+export const nonBlankLines = (raw: string): number => raw.split('\n').filter((text) => text.trim() !== '').length;
 
 // What every Claude-session stage line carries beside its cost: the served model, the highest
 // single-turn context load reached, and how many times the session compacted.
@@ -58,14 +62,16 @@ export type Extraction = {
   compactions: number;
 };
 
-export const extract = (raw: string, onEvent?: (event: StreamEvent) => void): Extraction & { text?: string | undefined } => {
+export const extract = (raw: string, onEvent?: (event: StreamEvent) => void): Extraction & { text?: string | undefined; ignoredLines: number } => {
   let usage: Usage | undefined;
   let model: string | undefined;
   let peakTokens: number | undefined;
   let compactions = 0;
   let text: string | undefined;
+  const parsed = parseEvents(raw);
+  let ignoredLines = nonBlankLines(raw) - parsed.length;
 
-  for (const { event } of parseEvents(raw)) {
+  const read = (event: StreamEvent): void => {
     onEvent?.(event);
 
     model ??= event.message?.model ?? (event.type === 'result' && event.modelUsage !== undefined ? Object.keys(event.modelUsage)[0] : undefined);
@@ -90,9 +96,17 @@ export const extract = (raw: string, onEvent?: (event: StreamEvent) => void): Ex
         text = event.result;
       }
     }
+  };
+
+  for (const { event } of parsed) {
+    try {
+      read(event);
+    } catch {
+      ignoredLines += 1;
+    }
   }
 
-  return { usage, model, peakTokens, compactions, text };
+  return { usage, model, peakTokens, compactions, text, ignoredLines };
 };
 
 // The last session id any stream-json event of a transcript carried.

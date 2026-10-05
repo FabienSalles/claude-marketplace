@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { chmodSync, mkdirSync, readFileSync, utimesSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { claudeBinaryMtime, claudeBinaryPath, postmortem } from '../src/run/postmortem.ts';
+import { claudeBinaryMtime, claudeBinaryPath, postmortem } from '../src/adapters/claude/postmortem.ts';
 import type { Reporter } from '../src/run/report.ts';
 import { tmpDir } from './support/tmp.ts';
 

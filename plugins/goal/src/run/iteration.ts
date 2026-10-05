@@ -4,26 +4,22 @@
 // wrong tree with a correct cwd throughout. HEAD before and after tells a committed implementer
 // apart from one that wrote nothing, and only a moved tree is handed to the gate for a verdict.
 
-import { closeSync, openSync } from 'node:fs';
 import { basename, join } from 'node:path';
 
-import { command } from '../adapters/command.ts';
 import { clock } from '../adapters/clock.ts';
-import { fs } from '../adapters/fs.ts';
 import type { GateAdapter } from '../adapters/gate.ts';
 import { git } from '../adapters/git.ts';
-import { ceiling } from '../gate/bounded.ts';
 import { iterationSection } from '../gate/plan.ts';
 import { rulesContext } from '../core/plan.ts';
 import { settingValue } from '../core/settings.ts';
+import type { AgentSessions } from '../ports.ts';
 import { classifyRefChanges, detectTamper, unnoted } from '../core/tamper.ts';
 import { HALTED, PAUSED, REFUSED } from '../core/verdict.ts';
 import { brief } from './brief.ts';
 import { changedGitDirPaths, refChanges, snapshotGitDir, snapshotRefs } from './gitwatch.ts';
-import { endOf, narrate, tokensLine } from './narrate.ts';
-import { claudeBinaryMtime, claudeBinaryPath, postmortem } from './postmortem.ts';
+import { endOf, tokensLine } from './narrate.ts';
 import { remoteNote, type Publisher } from './publish.ts';
-import { burstBackoffSeconds, classifyTerminal, shutdownBackoffSeconds, waitInSlices } from './quota.ts';
+import { burstBackoffSeconds, shutdownBackoffSeconds, waitInSlices } from './quota.ts';
 import { interrupt } from './lock.ts';
 import type { Reporter } from './report.ts';
 
@@ -42,6 +38,7 @@ export const runIteration = async (
   hash: string,
   ticked: string,
   gate: GateAdapter,
+  agents: AgentSessions,
   dir: string,
   reporter: Reporter,
   publisher: Publisher,
@@ -88,8 +85,8 @@ export const runIteration = async (
     return detectTamper({ head: headBefore, gitDirChanges: [], remoteRefChanges: [], otherRefChanges: [] }, after);
   };
 
-  // A quota window is not a failure, so it is not diagnosed like one: it is detected from the
-  // shape of a failed call, slept through, and retried against the same iteration — bounded, so
+  // A quota window is not a failure, so it is not diagnosed like one: the adapter reports its
+  // class from the shape of a failed call, and the runner slept through, and retried against the same iteration — bounded, so
   // a window that never reopens still ends in a pause rather than a run spinning until the
   // machine is switched off.
   const quotaSleep = String(settingValue('GOAL_RUN_QUOTA_SLEEP', process.env));
@@ -101,47 +98,24 @@ export const runIteration = async (
     interrupt.exitIfRequested();
     reporter.say(`RUN handing iteration ${iteration} to the implementer`);
 
-    const binaryBefore = claudeBinaryMtime(claudeBinaryPath());
-    const implementerStart = clock.now();
     const outPath = join(dir, `implementer-attempt-${attempt}.out`);
     const errPath = join(dir, `implementer-attempt-${attempt}.err`);
-    const fdOut = openSync(outPath, 'w');
-    const fdErr = openSync(errPath, 'w');
-    const spawned = await interrupt.guard(async () => {
-      const ended = await command.spawn(
-        '/bin/sh',
-        [
-          '-c',
-          `${ceiling()}\nexec "$@"`,
-          'sh',
-          'claude',
-          '-p',
-          '--agent',
-          'goal:goal-run-implementer',
-          '--permission-mode',
-          'auto',
-          '--output-format',
-          'stream-json',
-          '--verbose',
-          brief(iteration, process.cwd(), branch, section, rulesContext(source)),
-        ],
-        { encoding: 'utf8', env: { ...process.env, DISABLE_AUTOUPDATER: '1' }, stdio: ['ignore', fdOut, fdErr], signal: interrupt.signal() },
+    const report = await interrupt.guard(async () => {
+      const launched = await agents.launch(
+        'implementer',
+        brief(iteration, process.cwd(), branch, section, rulesContext(source)),
+        { outPath, errPath, onTool: (line) => reporter.say(line), onSession: (id) => reporter.session?.(id) },
+        interrupt.signal(),
       );
 
       await yieldToLoop();
 
-      return ended;
+      return launched;
     });
 
-    closeSync(fdOut);
-    closeSync(fdErr);
+    reporter.say(`RUN stage=implementer duration_ms=${report.durationMs} ${endOf(report.end)}`);
 
-    const implemented = { ...spawned, stdout: fs.readFile(outPath), stderr: fs.readFile(errPath) };
-
-    const extraction = narrate(implemented.stdout, reporter);
-    reporter.say(`RUN stage=implementer duration_ms=${clock.now() - implementerStart} ${endOf(implemented)}`);
-
-    const tokens = tokensLine('implementer', extraction);
+    const tokens = tokensLine('implementer', report.consumption);
 
     if (tokens !== undefined && tokens !== '') {
       reporter.say(tokens);
@@ -156,22 +130,21 @@ export const runIteration = async (
     await yieldToLoop();
     interrupt.exitIfRequested();
 
-    const outcome = classifyTerminal({ status: implemented.status, signal: implemented.signal ?? null, stdout: implemented.stdout, stderr: implemented.stderr });
+    const quotaClass = report.outcome.class;
 
-    if (!outcome.failed) {
+    if (quotaClass === 'success') {
       break;
     }
 
-    const signal = implemented.signal ?? null;
-    const cause = signal === null ? `exit code ${implemented.status ?? 1}` : `signal ${signal}`;
-    reporter.say(`RUN the implementer failed on iteration ${iteration}: ${cause}, after ${Math.round((clock.now() - implementerStart) / 1000)}s`);
+    const signal = report.end.signal;
+    const cause = signal === null ? `exit code ${report.end.status ?? 1}` : `signal ${signal}`;
+    reporter.say(`RUN the implementer failed on iteration ${iteration}: ${cause}, after ${Math.round(report.durationMs / 1000)}s`);
 
-    postmortem(reporter, dir, attempt, process.cwd(), implemented.status ?? 1, implemented.stdout, implemented.stderr, binaryBefore);
-    const quotaClass = outcome.class;
+    agents.postmortem?.(report, (line) => reporter.say(line), { attempt, cwd: process.cwd(), dir });
 
-    if (quotaClass === 'unrecognised') {
+    if (quotaClass !== 'exhausted' && quotaClass !== 'burst' && quotaClass !== 'signal') {
       reporter.stop(
-        `the implementer exited ${implemented.status ?? 1} and ended unrecognised:${outcome.quote === '' ? 'no final result and no stderr' : outcome.quote}. The tree holds whatever it wrote and no gate has judged it: review it before relaunching.${remoteNote(publisher)}`,
+        `the implementer exited ${report.end.status ?? 1} and ended unrecognised:${report.outcome.quote === '' ? 'no final result and no stderr' : report.outcome.quote}. The tree holds whatever it wrote and no gate has judged it: review it before relaunching.${remoteNote(publisher)}`,
         PAUSED,
       );
     }

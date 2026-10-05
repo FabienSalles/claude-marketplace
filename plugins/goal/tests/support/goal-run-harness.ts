@@ -4,6 +4,7 @@ import { join, resolve } from 'node:path';
 
 import { command } from '../../src/adapters/command.ts';
 import { fs } from '../../src/adapters/fs.ts';
+import { claudeAgentSessions } from '../../src/adapters/claude/session.ts';
 import { spawnGateAdapter } from '../../src/adapters/gate.ts';
 import { pauseLine } from '../../src/core/publication.ts';
 import { LANDED, REFUSED } from '../../src/core/verdict.ts';
@@ -14,6 +15,7 @@ import { close } from '../../src/run/close.ts';
 import { preflight, workIdOf } from '../../src/run/preflight.ts';
 import { createPublisher, remoteNote } from '../../src/run/publish.ts';
 import { runDir, type Reporter } from '../../src/run/report.ts';
+import type { AgentSessions } from '../../src/ports.ts';
 import { AWAIT_DEADLINE_MS } from './await-state.ts';
 import { tmpDir } from './tmp.ts';
 
@@ -170,6 +172,7 @@ case "$*" in
     [ -n "$FAKE_CLAUDE_TOOL_NAME" ] &&
       printf '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"%s","input":{"file_path":"%s"}}]}}\\n' "$FAKE_CLAUDE_TOOL_NAME" "$FAKE_CLAUDE_TOOL_ARG"
     printf '{"type":"assistant","message":{"model":"%s","usage":{"input_tokens":%s,"output_tokens":100,"cache_creation_input_tokens":0,"cache_read_input_tokens":0}}}\\n' "$model" "\${FAKE_CLAUDE_CONTEXT_TOKENS:-50000}"
+    [ -n "$FAKE_CLAUDE_RAW_LINE" ] && printf '%s\\n' "$FAKE_CLAUDE_RAW_LINE"
     [ -n "$FAKE_CLAUDE_MIDSTREAM" ] &&
       printf '{"type":"user","message":{"content":[{"type":"tool_result","content":"%s"}]}}\\n' "$FAKE_CLAUDE_MIDSTREAM"
     [ -n "$FAKE_CLAUDE_COMPACT" ] && printf '{"type":"system","subtype":"compact_boundary"}\\n'
@@ -465,6 +468,7 @@ export const runInProcess = async (
   fixture: Fixture,
   args: string[],
   env: Record<string, string | undefined> = {},
+  agents: AgentSessions = claudeAgentSessions(),
 ): Promise<{ code: number; output: string }> => {
   const [plan, iterationArg] = args;
   const originalCwd = process.cwd();
@@ -600,7 +604,7 @@ export const runInProcess = async (
     const noted = new Set<string>();
 
     for (const n of iterations) {
-      await runIteration(plan!, source, n, hashes.get(n)!, tickedSets.get(n) ?? '', gate, dir, reporter, publisher, noted);
+      await runIteration(plan!, source, n, hashes.get(n)!, tickedSets.get(n) ?? '', gate, agents, dir, reporter, publisher, noted);
       landed.push(n);
 
       if (n !== iterations[iterations.length - 1]) {

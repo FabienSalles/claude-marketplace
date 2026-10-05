@@ -4,7 +4,8 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { PAUSED, repo, run, runInProcess } from './support/goal-run-harness.ts';
-import { burstBackoffSeconds, classifyQuotaFailure, classifyTerminal, shutdownBackoffSeconds, sleepInSlices } from '../src/run/quota.ts';
+import { classifyQuotaFailure, classifyTerminal } from '../src/adapters/claude/classify.ts';
+import { burstBackoffSeconds, shutdownBackoffSeconds, sleepInSlices } from '../src/run/quota.ts';
 import type { Clock } from '../src/ports.ts';
 
 // One line per argv entry (see the fake `claude` binary), and the agent name is a whole

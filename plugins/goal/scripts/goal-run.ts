@@ -25,8 +25,9 @@ import { close, LANDED } from '../src/run/close.ts';
 import { pauseLine } from '../src/core/publication.ts';
 import { PAUSED } from '../src/core/verdict.ts';
 import { quote } from '../src/run/shell.ts';
-import { defaultSettingsPath } from '../src/run/advisory.ts';
-import { defaultProjectsRoot } from '../src/run/postmortem.ts';
+import { claudeAgentSessions } from '../src/adapters/claude/session.ts';
+import { defaultSettingsPath } from '../src/adapters/claude/warning.ts';
+import { defaultProjectsRoot } from '../src/adapters/claude/postmortem.ts';
 import { workIdOf } from '../src/core/plan.ts';
 import { checkSettings, settingValue } from '../src/core/settings.ts';
 import { iterationNumbers, subHeadings } from '../src/gate/plan.ts';
@@ -78,6 +79,8 @@ const main = async (): Promise<void> => {
   const gateCommand = settingValue('GOAL_GATE', process.env);
   const gateLabel = gateCommand ?? `node ${quote(resolve(import.meta.dirname, 'goal-gate.ts'))}`;
   const gate: GateAdapter = gateCommand !== undefined ? spawnGateAdapter(gateLabel) : inProcessGateAdapter();
+
+  const agents = claudeAgentSessions();
 
   const preflightStart = Date.now();
   const { policy, remote } = preflight(plan, source, reporter, gateLabel);
@@ -159,7 +162,7 @@ const main = async (): Promise<void> => {
   const noted = new Set<string>();
 
   for (const n of iterations) {
-    await runIteration(plan, source, n, hashes.get(n)!, tickedSets.get(n) ?? '', gate, dir, reporter, publisher, noted);
+    await runIteration(plan, source, n, hashes.get(n)!, tickedSets.get(n) ?? '', gate, agents, dir, reporter, publisher, noted);
     landed.push(n);
 
     // Every iteration but the last publishes here, as it lands. The last one's push waits for
