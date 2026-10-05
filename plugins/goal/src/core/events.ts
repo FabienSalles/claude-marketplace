@@ -1,4 +1,4 @@
-// The one stream-json parser every Claude-session consumer reads through: narrate(), digest()
+// The one JSONL event parser every session consumer reads through: narrate(), digest()
 // and postmortem() all walk the same JSONL shape through parseEvents(), so a parsing rule fixed
 // once is fixed for all three rather than once per file.
 
@@ -109,7 +109,7 @@ export const extract = (raw: string, onEvent?: (event: StreamEvent) => void): Ex
   return { usage, model, peakTokens, compactions, text, ignoredLines };
 };
 
-// The last session id any stream-json event of a transcript carried.
+// The last session id any JSONL event of a transcript carried.
 export const lastSessionId = (raw: string): string | undefined => {
   let found: string | undefined;
   extract(raw, (event) => {

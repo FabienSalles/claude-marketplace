@@ -15,7 +15,7 @@ const EFFECTIVE_WINDOWS: Record<string, number> = {
 };
 
 // A stage advisory agents (lens, reviewer, auditor) answer with once asked for
-// `--output-format stream-json`: the same event stream narrate() already parses, its prose in the
+// a JSONL event stream: the same one narrate() already parses, its prose in the
 // terminal `result` event's `result` field, its cost and served model extracted the same way. A
 // caller still handed prose, because the fixture it is talking to (or a future CLI change) never
 // wrapped it, gets that prose back unmangled rather than losing it to a parse failure.

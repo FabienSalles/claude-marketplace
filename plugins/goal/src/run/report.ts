@@ -85,7 +85,7 @@ export const createReporter = (): Reporter => {
   };
 
   // Recorded beside the run's own log (`.run.log` -> `.run.session`, both in the run directory),
-  // so a transcript already written to `~/.claude/projects/<encoded-path>/<session-id>.jsonl` can
+  // so a transcript already written under the adapter's own project directory can
   // be found later without correlating timestamps.
   const session = (id: string): void => {
     if (sessionPath !== '') {
