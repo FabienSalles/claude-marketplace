@@ -3,6 +3,7 @@
 // belong to an earlier run — and the advisory lens and the auditor are invoked either way,
 // neither able to undo work the gate already verified and shipped.
 
+import { closeSync, openSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
 
 import { command } from '../adapters/command.ts';
@@ -12,7 +13,7 @@ import { gateAdapterOf, type GateAdapter } from '../adapters/gate.ts';
 import { git } from '../adapters/git.ts';
 import { header, iterationNumbers, readPlan } from '../gate/plan.ts';
 import { HALTED, LANDED, PAUSED } from '../core/verdict.ts';
-import { resultEnvelope, tokensLine } from './narrate.ts';
+import { endOf, resultEnvelope, signalOfExit, tokensLine } from './narrate.ts';
 import { blockedNote, repoOf, type Publisher } from './publish.ts';
 import type { Reporter } from './report.ts';
 import { quote } from './shell.ts';
@@ -26,7 +27,7 @@ type AgentJob = { name: string; args: string[] };
 // job's stdout and stderr land whole, once its process has exited, in their own temp files —
 // separate, so the envelope `resultEnvelope` parses off stdout is never a warning on stderr away
 // from failing to parse at all.
-const runConcurrently = (jobs: AgentJob[]): { name: string; output: string; stderr: string; status: number }[] => {
+const runConcurrently = (jobs: AgentJob[]): { name: string; output: string; stderr: string; status: number; signal: NodeJS.Signals | null }[] => {
   const dir = fs.mkdtemp(join(fs.tmpDir(), 'goal-close-'));
 
   try {
@@ -45,11 +46,14 @@ const runConcurrently = (jobs: AgentJob[]): { name: string; output: string; stde
       const outFile = join(dir, `${i}.out`);
       const errFile = join(dir, `${i}.err`);
 
+      const code = status !== undefined ? Number(status) : 1;
+
       return {
         name: job.name,
         output: fs.exists(outFile) ? fs.readFile(outFile) : '',
         stderr: fs.exists(errFile) ? fs.readFile(errFile) : '',
-        status: status !== undefined ? Number(status) : 1,
+        status: code,
+        signal: signalOfExit(code),
       };
     });
   } finally {
@@ -161,7 +165,7 @@ this run: it is advisory only.`;
     for (const result of results) {
       const { text, ...extraction } = resultEnvelope(result.output);
       reporter.record(text);
-      reporter.say(`RUN stage=${result.name} duration_ms=${advisoryDuration} exit=${result.status}`);
+      reporter.say(`RUN stage=${result.name} duration_ms=${advisoryDuration} ${endOf(result)}`);
 
       const tokens = tokensLine(result.name, extraction);
 
@@ -198,12 +202,23 @@ rather than describing this one twice. Write it in two sections, \`### Outcome\`
 not stage anything, and do not judge whether the work was correct — the gate already did that.`;
 
   const auditStart = clock.now();
-  const audit = command.run('claude', [
-    '-p', '--agent', 'goal:goal-run-auditor', '--permission-mode', 'auto', '--output-format', 'stream-json', '--verbose', auditBrief,
-  ]);
-  const { text: auditText, ...auditExtraction } = resultEnvelope(audit.stdout ?? '');
+  fs.mkdir(dir, { recursive: true });
+  const auditOutPath = join(dir, 'auditor.out');
+  const auditErrPath = join(dir, 'auditor.err');
+  const auditFdOut = openSync(auditOutPath, 'w');
+  const auditFdErr = openSync(auditErrPath, 'w');
+  const audit = command.run(
+    'claude',
+    ['-p', '--agent', 'goal:goal-run-auditor', '--permission-mode', 'auto', '--output-format', 'stream-json', '--verbose', auditBrief],
+    { stdio: ['ignore', auditFdOut, auditFdErr] },
+  );
+  closeSync(auditFdOut);
+  closeSync(auditFdErr);
+  const auditStdout = fs.readFile(auditOutPath);
+  const auditStderr = fs.readFile(auditErrPath);
+  const { text: auditText, ...auditExtraction } = resultEnvelope(auditStdout);
   reporter.record(auditText);
-  reporter.say(`RUN stage=auditor duration_ms=${clock.now() - auditStart} exit=${audit.status ?? 1}`);
+  reporter.say(`RUN stage=auditor duration_ms=${clock.now() - auditStart} ${endOf(audit)}`);
 
   const auditTokens = tokensLine('auditor', auditExtraction);
 
@@ -211,8 +226,8 @@ not stage anything, and do not judge whether the work was correct — the gate a
     reporter.say(auditTokens);
   }
 
-  if ((audit.stderr ?? '').trim() !== '') {
-    reporter.say(`RUN diagnostics stage=auditor: ${audit.stderr.trim()}`);
+  if (auditStderr.trim() !== '') {
+    reporter.say(`RUN diagnostics stage=auditor: ${auditStderr.trim()}`);
   }
 
   reporter.say('RUN audit recorded');

@@ -113,6 +113,41 @@ test('a staged deletion counts against the budget', () => {
   assert.match(output, /budget/);
 });
 
+// R10 — the budget counts an untracked new file inside the declared paths, and leaves the index alone
+test('an untracked new declared file counts against the budget and the index stays untouched', () => {
+  const { repo, plan } = fixture([
+    'test_files=',
+    'impl_files=src/a.ts src/new.ts',
+    'max_diff=1',
+    'commit_msg=feat(a): add new',
+    'gate1=true',
+  ]);
+  writeFileSync(join(repo, 'src', 'new.ts'), 'export const n = 1;\nexport const m = 2;\nexport const o = 3;\n');
+  const before = git(repo, 'status', '--porcelain').stdout;
+
+  const { code, output } = runGate(repo, 'verify', plan, '1');
+
+  assert.equal(code, 1, output);
+  assert.match(output, /budget/);
+  assert.equal(git(repo, 'status', '--porcelain').stdout, before);
+  assert.equal(git(repo, 'diff', '--cached', '--name-only').stdout, '');
+});
+
+test('an untracked new declared file inside the budget passes', () => {
+  const { repo, plan } = fixture([
+    'test_files=',
+    'impl_files=src/a.ts src/new.ts',
+    'max_diff=5',
+    'commit_msg=feat(a): add new',
+    'gate1=true',
+  ]);
+  writeFileSync(join(repo, 'src', 'new.ts'), 'export const n = 1;\n');
+
+  const { code, output } = runGate(repo, 'verify', plan, '1');
+
+  assert.equal(code, 0, output);
+});
+
 test('a budget that is not a number is refused', () => {
   const { repo, plan } = fixture(withKey('max_diff', 'about four hundred'));
   touchDeclared(repo);

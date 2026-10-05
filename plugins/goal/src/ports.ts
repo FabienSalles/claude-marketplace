@@ -9,12 +9,16 @@ export type CommandOptions = {
   killSignal?: NodeJS.Signals;
   maxBuffer?: number;
   encoding?: 'utf8';
+  stdio?: ('ignore' | number)[];
+  signal?: AbortSignal;
 };
 
 export type CommandResult = {
   status: number | null;
   stdout: string;
   stderr: string;
+  signal?: NodeJS.Signals | null;
+  error?: NodeJS.ErrnoException;
 };
 
 export type BinaryResult = {
@@ -25,6 +29,7 @@ export type BinaryResult = {
 
 export type CommandRunner = {
   run: (command: string, args: string[], options?: CommandOptions) => CommandResult;
+  spawn: (command: string, args: string[], options?: CommandOptions) => Promise<CommandResult>;
   runBinary: (command: string, args: string[], options?: CommandOptions) => BinaryResult;
 };
 
@@ -55,4 +60,8 @@ export type FileSystem = {
 export type Clock = {
   now: () => number;
   sleepSeconds: (seconds: number) => void;
+};
+
+export type WaitingClock = Clock & {
+  sleep: (seconds: number, signal?: AbortSignal) => Promise<void>;
 };

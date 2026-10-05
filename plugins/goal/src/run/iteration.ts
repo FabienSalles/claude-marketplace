@@ -4,10 +4,12 @@
 // wrong tree with a correct cwd throughout. HEAD before and after tells a committed implementer
 // apart from one that wrote nothing, and only a moved tree is handed to the gate for a verdict.
 
+import { closeSync, openSync } from 'node:fs';
 import { basename, join } from 'node:path';
 
 import { command } from '../adapters/command.ts';
 import { clock } from '../adapters/clock.ts';
+import { fs } from '../adapters/fs.ts';
 import type { GateAdapter } from '../adapters/gate.ts';
 import { git } from '../adapters/git.ts';
 import { ceiling } from '../gate/bounded.ts';
@@ -17,20 +19,19 @@ import { detectTamper } from '../core/tamper.ts';
 import { HALTED, PAUSED, REFUSED } from '../core/verdict.ts';
 import { brief } from './brief.ts';
 import { changedGitDirPaths, changedRefs, snapshotGitDir, snapshotRefs } from './gitwatch.ts';
-import { narrate, tokensLine } from './narrate.ts';
+import { endOf, narrate, tokensLine } from './narrate.ts';
 import { claudeBinaryMtime, claudeBinaryPath, postmortem } from './postmortem.ts';
 import { blockedNote, type Publisher } from './publish.ts';
-import { burstBackoffSeconds, classifyFailure, shutdownBackoffSeconds, shutdownMaxRetries, sleepInSlices } from './quota.ts';
+import { burstBackoffSeconds, classifyTerminal, shutdownBackoffSeconds, waitInSlices } from './quota.ts';
+import { interrupt } from './lock.ts';
 import type { Reporter } from './report.ts';
 
 export { HALTED, PAUSED } from '../core/verdict.ts';
 
-// A SIGINT that lands while a spawnSync call blocks the process is queued by the OS, not
-// delivered: Node only runs the registered handler on a turn of the event loop, and a bare
-// spawnSync never gives it one. Awaited right after each call this loop cannot make responsive
-// on its own, so a queued signal's own exit (lock.ts's handler, releasing the lock before it)
-// gets first refusal at deciding this process's fate, ahead of whatever this loop was about to
-// do next.
+// A SIGINT that lands while a synchronous call blocks the process is queued by the OS, not
+// delivered: Node only runs the registered handler on a turn of the event loop. Awaited right
+// after the gate's synchronous call, so a queued signal's own exit gets first refusal at
+// deciding this process's fate, ahead of whatever this loop was about to do next.
 const yieldToLoop = (): Promise<void> => new Promise((resolve) => setImmediate(resolve));
 
 export const runIteration = async (
@@ -64,6 +65,18 @@ export const runIteration = async (
   // outside this call, so lifting the snapshot into a wider loop would catch its own push.
   const refsBefore = snapshotRefs();
 
+  const readTamper = () => {
+    const refChanges = changedRefs(refsBefore);
+    const after = {
+      head: git('rev-parse', 'HEAD').stdout.trim(),
+      gitDirChanges: changedGitDirPaths(gitDirBefore),
+      remoteRefChanges: refChanges.filter((ref) => ref.startsWith('refs/remotes/')),
+      otherRefChanges: refChanges.filter((ref) => !ref.startsWith('refs/remotes/')),
+    };
+
+    return detectTamper({ head: headBefore, gitDirChanges: [], remoteRefChanges: [], otherRefChanges: [] }, after);
+  };
+
   // A quota window is not a failure, so it is not diagnosed like one: it is detected from the
   // shape of a failed call, slept through, and retried against the same iteration — bounded, so
   // a window that never reopens still ends in a pause rather than a run spinning until the
@@ -71,36 +84,51 @@ export const runIteration = async (
   const quotaSleep = process.env.GOAL_RUN_QUOTA_SLEEP ?? '1800';
   const quotaMax = Number(process.env.GOAL_RUN_QUOTA_MAX_RETRIES ?? '3');
   let attempt = 1;
+  const history: string[] = [];
 
   for (;;) {
+    interrupt.exitIfRequested();
     reporter.say(`RUN handing iteration ${iteration} to the implementer`);
 
     const binaryBefore = claudeBinaryMtime(claudeBinaryPath());
     const implementerStart = clock.now();
-    const implemented = command.run(
-      '/bin/sh',
-      [
-        '-c',
-        `${ceiling()}\nexec "$@"`,
-        'sh',
-        'claude',
-        '-p',
-        '--agent',
-        'goal:goal-run-implementer',
-        '--permission-mode',
-        'auto',
-        '--output-format',
-        'stream-json',
-        '--verbose',
-        brief(iteration, process.cwd(), branch, section, rulesContext(source)),
-      ],
-      { encoding: 'utf8', env: { ...process.env, DISABLE_AUTOUPDATER: '1' } },
-    );
+    const outPath = join(dir, `implementer-attempt-${attempt}.out`);
+    const errPath = join(dir, `implementer-attempt-${attempt}.err`);
+    const fdOut = openSync(outPath, 'w');
+    const fdErr = openSync(errPath, 'w');
+    const spawned = await interrupt.guard(async () => {
+      const ended = await command.spawn(
+        '/bin/sh',
+        [
+          '-c',
+          `${ceiling()}\nexec "$@"`,
+          'sh',
+          'claude',
+          '-p',
+          '--agent',
+          'goal:goal-run-implementer',
+          '--permission-mode',
+          'auto',
+          '--output-format',
+          'stream-json',
+          '--verbose',
+          brief(iteration, process.cwd(), branch, section, rulesContext(source)),
+        ],
+        { encoding: 'utf8', env: { ...process.env, DISABLE_AUTOUPDATER: '1' }, stdio: ['ignore', fdOut, fdErr], signal: interrupt.signal() },
+      );
 
-    await yieldToLoop();
+      await yieldToLoop();
+
+      return ended;
+    });
+
+    closeSync(fdOut);
+    closeSync(fdErr);
+
+    const implemented = { ...spawned, stdout: fs.readFile(outPath), stderr: fs.readFile(errPath) };
 
     const extraction = narrate(implemented.stdout, reporter);
-    reporter.say(`RUN stage=implementer duration_ms=${clock.now() - implementerStart} exit=${implemented.status ?? 1}`);
+    reporter.say(`RUN stage=implementer duration_ms=${clock.now() - implementerStart} ${endOf(implemented)}`);
 
     const tokens = tokensLine('implementer', extraction);
 
@@ -108,70 +136,58 @@ export const runIteration = async (
       reporter.say(tokens);
     }
 
-    if ((implemented.status ?? 1) === 0) {
+    const tamper = readTamper();
+
+    if (!tamper.ok) {
+      reporter.stop(`${tamper.error}${blockedNote(publisher)}`, PAUSED);
+    }
+
+    await yieldToLoop();
+    interrupt.exitIfRequested();
+
+    const outcome = classifyTerminal({ status: implemented.status, signal: implemented.signal ?? null, stdout: implemented.stdout, stderr: implemented.stderr });
+
+    if (!outcome.failed) {
       break;
     }
 
-    const signal = (implemented as { signal?: string | null }).signal ?? null;
+    const signal = implemented.signal ?? null;
     const cause = signal === null ? `exit code ${implemented.status ?? 1}` : `signal ${signal}`;
     reporter.say(`RUN the implementer failed on iteration ${iteration}: ${cause}, after ${Math.round((clock.now() - implementerStart) / 1000)}s`);
 
-    const output = `${implemented.stdout}${implemented.stderr}`;
     postmortem(reporter, dir, attempt, process.cwd(), implemented.status ?? 1, implemented.stdout, implemented.stderr, binaryBefore);
-    const quotaClass = classifyFailure(implemented.status ?? 1, output);
+    const quotaClass = outcome.class;
 
-    if (quotaClass === null) {
+    if (quotaClass === 'unrecognised') {
       reporter.stop(
-        `the implementer exited ${implemented.status}. The tree holds whatever it wrote and no gate has judged it: review it before relaunching.${blockedNote(publisher)}`,
+        `the implementer exited ${implemented.status ?? 1} and ended unrecognised:${outcome.quote === '' ? 'no final result and no stderr' : outcome.quote}. The tree holds whatever it wrote and no gate has judged it: review it before relaunching.${blockedNote(publisher)}`,
         PAUSED,
       );
     }
 
-    const maxRetries = quotaClass === 'shutdown' ? shutdownMaxRetries() : quotaMax;
-    if (attempt >= maxRetries && quotaClass === 'shutdown') {
-      reporter.stop(
-        `iteration ${iteration} is not converging: the implementer was killed on each of ${attempt} attempt(s). Pausing rather than relaunching it again: relaunch resumes here.${blockedNote(publisher)}`,
-        PAUSED,
-      );
-    }
+    history.push(`attempt ${attempt}: ${quotaClass}`);
 
-    if (attempt >= maxRetries) {
+    if (attempt >= quotaMax) {
       reporter.stop(
-        `the quota still looks exhausted after ${attempt} attempt(s) on iteration ${iteration}. Pausing rather than spinning through a window that is not reopening: relaunch resumes here.${blockedNote(publisher)}`,
+        `iteration ${iteration} is not converging: paused after ${attempt} attempt(s), the ceiling GOAL_RUN_QUOTA_MAX_RETRIES=${quotaMax}: ${history.join(', ')}. Pausing rather than relaunching it again: relaunch resumes here.${blockedNote(publisher)}`,
         PAUSED,
       );
     }
 
     attempt += 1;
 
-    if (quotaClass === 'shutdown') {
+    if (quotaClass === 'signal') {
       const seconds = shutdownBackoffSeconds();
-      reporter.say(`RUN the implementer exited 143 (shutdown), backing off ${seconds}s before relaunching iteration ${iteration} (attempt ${attempt} of ${maxRetries})`);
-      clock.sleepSeconds(seconds);
+      reporter.say(`RUN the implementer exited 143 (shutdown), backing off ${seconds}s before relaunching iteration ${iteration} (attempt ${attempt} of ${quotaMax})`);
+      await interrupt.guard(() => clock.sleep(seconds, interrupt.signal()));
     } else if (quotaClass === 'burst') {
       const seconds = burstBackoffSeconds(attempt - 1);
-      reporter.say(`RUN the implementer hit a burst rate limit, backing off ${seconds}s before relaunching iteration ${iteration} (attempt ${attempt} of ${maxRetries})`);
-      clock.sleepSeconds(seconds);
+      reporter.say(`RUN the implementer hit a burst rate limit, backing off ${seconds}s before relaunching iteration ${iteration} (attempt ${attempt} of ${quotaMax})`);
+      await interrupt.guard(() => clock.sleep(seconds, interrupt.signal()));
     } else {
-      reporter.say(`RUN the implementer looks quota-exhausted, sleeping ${quotaSleep}s before relaunching iteration ${iteration} (attempt ${attempt} of ${maxRetries})`);
-      sleepInSlices(Number(quotaSleep), (remaining) => reporter.say(`RUN quota sleep continues, ${remaining}s remaining`));
+      reporter.say(`RUN the implementer looks quota-exhausted, sleeping ${quotaSleep}s before relaunching iteration ${iteration} (attempt ${attempt} of ${quotaMax})`);
+      await interrupt.guard(() => waitInSlices(Number(quotaSleep), (remaining) => reporter.say(`RUN quota sleep continues, ${remaining}s remaining`), interrupt.signal()));
     }
-  }
-
-  // Read exactly once, after the loop settles: every fact detectTamper decides over comes from
-  // this one pass, rather than a fresh git call per case it might report.
-  const refChanges = changedRefs(refsBefore);
-  const after = {
-    head: git('rev-parse', 'HEAD').stdout.trim(),
-    gitDirChanges: changedGitDirPaths(gitDirBefore),
-    remoteRefChanges: refChanges.filter((ref) => ref.startsWith('refs/remotes/')),
-    otherRefChanges: refChanges.filter((ref) => !ref.startsWith('refs/remotes/')),
-  };
-  const before = { head: headBefore, gitDirChanges: [], remoteRefChanges: [], otherRefChanges: [] };
-  const tamper = detectTamper(before, after);
-
-  if (!tamper.ok) {
-    reporter.stop(`${tamper.error}${blockedNote(publisher)}`, PAUSED);
   }
 
   const touched = git('status', '--porcelain').stdout;

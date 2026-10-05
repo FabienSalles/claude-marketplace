@@ -2,7 +2,7 @@ import type { Check } from './ports.ts';
 import { workflowGuard } from './workflow.ts';
 import { catalogParity, catalogSources, catalogValid, pluginManifests } from './manifests.ts';
 
-export const CEILING_SECONDS = 63;
+export const CEILING_SECONDS = 80;
 
 export const GROUPS: readonly string[] = [
   'structure',

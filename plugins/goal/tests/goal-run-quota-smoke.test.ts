@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { PAUSED, repo, run, runInProcess } from './support/goal-run-harness.ts';
-import { burstBackoffSeconds, classifyFailure, classifyQuotaFailure, shutdownBackoffSeconds, shutdownMaxRetries, sleepInSlices } from '../src/run/quota.ts';
+import { burstBackoffSeconds, classifyQuotaFailure, classifyTerminal, shutdownBackoffSeconds, sleepInSlices } from '../src/run/quota.ts';
 import type { Clock } from '../src/ports.ts';
 
 // One line per argv entry (see the fake `claude` binary), and the agent name is a whole
@@ -71,7 +71,7 @@ test('a quota that never reopens pauses the run after a bounded number of relaun
 });
 
 // R16 hole — the quota retry bound defaults to 3 when GOAL_RUN_QUOTA_MAX_RETRIES is unset, the
-// same boundary shutdownMaxRetries() pins for the shutdown class.
+// same boundary for every failure class.
 test('a quota that never reopens pauses after the default bound of 3 relaunches, with no override', async () => {
   const fixture = repo();
 
@@ -102,13 +102,13 @@ test('a failure with no quota shape pauses immediately, without a retry', async 
 
 // R18 — exit 143 (SIGTERM, the shape of a self-update or platform shutdown) is a distinct class
 // from a quota window: it relaunches on its own fixed, short backoff, bounded by
-// GOAL_RUN_SHUTDOWN_MAX_RETRIES, never the GOAL_RUN_QUOTA_SLEEP a quota-shaped failure waits out.
+// GOAL_RUN_QUOTA_MAX_RETRIES, never the GOAL_RUN_QUOTA_SLEEP a quota-shaped failure waits out.
 test('an implementer that keeps exiting 143 relaunches on a short fixed backoff, bounded, never the quota sleep', async () => {
   const fixture = repo();
 
   const { code, output } = await runInProcess(fixture, [fixture.plan, '1'], {
     FAKE_CLAUDE_EXIT: '143',
-    GOAL_RUN_SHUTDOWN_MAX_RETRIES: '2',
+    GOAL_RUN_QUOTA_MAX_RETRIES: '2',
     GOAL_RUN_QUOTA_SLEEP: '999999',
     GOAL_RUN_SHUTDOWN_BACKOFF: '0',
   });
@@ -156,33 +156,16 @@ test('burstBackoffSeconds caps at 8 by default and honours GOAL_RUN_BURST_CAP', 
   }
 });
 
-// R18 — exit 143 is classified as `shutdown` before the quota regex ever runs against the
-// output, so a 143 alongside quota-shaped text still reads as `shutdown`, and any other exit
-// code still falls through to `classifyQuotaFailure` exactly as before.
-test('exit 143 classifies as shutdown regardless of output, bypassing quota classification', () => {
-  assert.equal(classifyFailure(143, 'Claude AI usage limit reached|1735689600'), 'shutdown');
-  assert.equal(classifyFailure(143, 'HTTP 429 Too Many Requests'), 'shutdown');
-  assert.equal(classifyFailure(143, 'nothing quota-shaped here'), 'shutdown');
-  assert.equal(classifyFailure(1, 'Claude AI usage limit reached|1735689600'), 'exhausted');
-  assert.equal(classifyFailure(1, 'nothing quota-shaped here'), null);
-});
+// R18 — exit 143 is classified as `signal` before the quota phrases are read, and any other
+// exit falls through to the final result's own phrases.
+test('exit 143 classifies as signal regardless of output, bypassing quota classification', () => {
+  const ended = (text: string) => `${JSON.stringify({ type: 'result', is_error: true, result: text })}\n`;
 
-// R18 — the shutdown retry bound defaults to 3 and honours GOAL_RUN_SHUTDOWN_MAX_RETRIES, the
-// same shape as the quota bound's own env override.
-test('the shutdown retry bound defaults to 3 and honours GOAL_RUN_SHUTDOWN_MAX_RETRIES', () => {
-  const previous = process.env.GOAL_RUN_SHUTDOWN_MAX_RETRIES;
-  delete process.env.GOAL_RUN_SHUTDOWN_MAX_RETRIES;
-
-  assert.equal(shutdownMaxRetries(), 3);
-
-  process.env.GOAL_RUN_SHUTDOWN_MAX_RETRIES = '2';
-  assert.equal(shutdownMaxRetries(), 2);
-
-  if (previous === undefined) {
-    delete process.env.GOAL_RUN_SHUTDOWN_MAX_RETRIES;
-  } else {
-    process.env.GOAL_RUN_SHUTDOWN_MAX_RETRIES = previous;
-  }
+  assert.equal(classifyTerminal({ status: 143, stdout: ended('Claude AI usage limit reached|1735689600'), stderr: '' }).class, 'signal');
+  assert.equal(classifyTerminal({ status: 143, stdout: ended('HTTP 429 Too Many Requests'), stderr: '' }).class, 'signal');
+  assert.equal(classifyTerminal({ status: 143, stdout: '', stderr: 'nothing quota-shaped here' }).class, 'signal');
+  assert.equal(classifyTerminal({ status: 1, stdout: ended('Claude AI usage limit reached|1735689600'), stderr: '' }).class, 'exhausted');
+  assert.equal(classifyTerminal({ status: 1, stdout: '', stderr: 'nothing quota-shaped here' }).class, 'unrecognised');
 });
 
 // R18 — self-update disabled: the claude spawn env carries DISABLE_AUTOUPDATER so an update

@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { appendFileSync, chmodSync, cpSync, mkdirSync, readdirSync, symlinkSync, writeFileSync } from 'node:fs';
+import { appendFileSync, chmodSync, cpSync, mkdirSync, readFileSync, readdirSync, symlinkSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
 import { command } from '../../src/adapters/command.ts';
@@ -93,6 +93,9 @@ const writeFakeBinaries = (bin: string, claudeLog: string, gateLog: string, ghLo
 ${prelude}
 printf '%s\\n' "$@" >> ${claudeLog}
 printf 'env DISABLE_AUTOUPDATER=%s\\n' "$DISABLE_AUTOUPDATER" >> ${claudeLog}
+if [ -n "$FAKE_CLAUDE_LAUNCH_LOG" ]; then
+  FAKE_CLAUDE_ULIMIT=$(ulimit -u) node -e 'require("node:fs").appendFileSync(process.env.FAKE_CLAUDE_LAUNCH_LOG, JSON.stringify({ argv: process.argv.slice(1), env: process.env, ulimit: process.env.FAKE_CLAUDE_ULIMIT }) + "\\n")' -- "$@"
+fi
 # Fails quota-shaped for the first FAKE_CLAUDE_QUOTA_UNTIL calls, tracked in a counter file
 # because each call is a fresh process. Lets a test prove a bounded number of relaunches
 # without waiting on a real 5-hour window.
@@ -100,9 +103,18 @@ if [ -n "$FAKE_CLAUDE_QUOTA_UNTIL" ]; then
   n=$(cat "$FAKE_CLAUDE_QUOTA_COUNTER" 2>/dev/null || echo 0)
   if [ "$n" -lt "$FAKE_CLAUDE_QUOTA_UNTIL" ]; then
     echo $((n + 1)) > "$FAKE_CLAUDE_QUOTA_COUNTER"
-    printf '%s\\n' "\${FAKE_CLAUDE_QUOTA_MESSAGE:-Claude AI usage limit reached|1735689600}"
+    printf '{"type":"result","is_error":true,"result":"%s"}\\n' "\${FAKE_CLAUDE_QUOTA_MESSAGE:-Claude AI usage limit reached|1735689600}"
     exit 1
   fi
+fi
+# Announces that the session is running, then waits for a signal instead of a fixed sleep: a test
+# synchronises on the marker file and ends the session by signalling the runner.
+if [ -n "$FAKE_CLAUDE_MARKER" ]; then
+  : > "$FAKE_CLAUDE_MARKER"
+  trap 'kill "$spid" 2>/dev/null; exit 143' TERM INT
+  tail -f /dev/null &
+  spid=$!
+  wait "$spid"
 fi
 # Appended, not overwritten: a second call against the same target has to leave a real diff
 # behind it, or a resumed iteration reads as "the implementer wrote nothing".
@@ -157,10 +169,24 @@ case "$*" in
     [ -n "$FAKE_CLAUDE_TOOL_NAME" ] &&
       printf '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"%s","input":{"file_path":"%s"}}]}}\\n' "$FAKE_CLAUDE_TOOL_NAME" "$FAKE_CLAUDE_TOOL_ARG"
     printf '{"type":"assistant","message":{"model":"%s","usage":{"input_tokens":%s,"output_tokens":100,"cache_creation_input_tokens":0,"cache_read_input_tokens":0}}}\\n' "$model" "\${FAKE_CLAUDE_CONTEXT_TOKENS:-50000}"
+    [ -n "$FAKE_CLAUDE_MIDSTREAM" ] &&
+      printf '{"type":"user","message":{"content":[{"type":"tool_result","content":"%s"}]}}\\n' "$FAKE_CLAUDE_MIDSTREAM"
     [ -n "$FAKE_CLAUDE_COMPACT" ] && printf '{"type":"system","subtype":"compact_boundary"}\\n'
-    printf '{"type":"result","session_id":"%s","result":"fake advisory finding","usage":{"input_tokens":10,"output_tokens":20,"cache_creation_input_tokens":30,"cache_read_input_tokens":40},"modelUsage":{"%s":{}}}\\n' "$sid" "$model"
+    [ -n "$FAKE_CLAUDE_OUTPUT_BYTES" ] && { head -c "$FAKE_CLAUDE_OUTPUT_BYTES" /dev/zero | tr '\\0' 'x'; printf '\\n'; }
+    if [ -n "$FAKE_CLAUDE_FINAL_ERROR" ]; then
+      printf '{"type":"result","is_error":true,"session_id":"%s","result":"%s"}\\n' "$sid" "$FAKE_CLAUDE_FINAL_ERROR"
+    else
+      printf '{"type":"result","session_id":"%s","result":"fake advisory finding","usage":{"input_tokens":10,"output_tokens":20,"cache_creation_input_tokens":30,"cache_read_input_tokens":40},"modelUsage":{"%s":{}}}\\n' "$sid" "$model"
+    fi
     ;;
 esac
+# Dies by the named signal, on the call whose argv carries FAKE_CLAUDE_KILL_ON (the implementer
+# by default), after everything above has been written.
+if [ -n "$FAKE_CLAUDE_KILL_SIGNAL" ]; then
+  case "$*" in
+    *"\${FAKE_CLAUDE_KILL_ON:-goal-run-implementer}"*) kill -s "$FAKE_CLAUDE_KILL_SIGNAL" $$ ;;
+  esac
+fi
 # The closing sequence hands the same binary a lens call and an audit call, each identified by
 # the agent it is pinned to — an exit code of its own is what proves neither can block the run.
 case "$*" in
@@ -395,11 +421,17 @@ const doubleCommand = (): { calls: { cmd: string; args: string[] }[]; restore: (
   const calls: { cmd: string; args: string[] }[] = [];
   const realRun = command.run;
   const realRunBinary = command.runBinary;
+  const realSpawn = command.spawn;
 
   command.run = (cmd, args, options) => {
     calls.push({ cmd, args });
 
     return realRun(cmd, args, options);
+  };
+  command.spawn = (cmd, args, options) => {
+    calls.push({ cmd, args });
+
+    return realSpawn(cmd, args, options);
   };
   command.runBinary = (cmd, args, options) => {
     calls.push({ cmd, args });
@@ -412,6 +444,7 @@ const doubleCommand = (): { calls: { cmd: string; args: string[] }[]; restore: (
     restore: () => {
       command.run = realRun;
       command.runBinary = realRunBinary;
+      command.spawn = realSpawn;
     },
   };
 };
@@ -606,3 +639,26 @@ export const logOf = (fixture: Fixture) => join(runDirOf(fixture), '.run.log');
 export const jsonlOf = (fixture: Fixture) => join(runDirOf(fixture), '.run.jsonl');
 
 export const sessionOf = (fixture: Fixture) => join(runDirOf(fixture), '.run.session');
+
+export type LaunchRecord = { argv: string[]; env: Record<string, string>; ulimit: string };
+
+const SHELL_MANAGED = new Set(['_', 'SHLVL', 'PWD', 'OLDPWD', 'FAKE_CLAUDE_ULIMIT']);
+
+// One record per fake `claude` call, the env reduced to what the runner added or changed against
+// the baseline the test handed the run.
+export const launchesOf = (log: string, baseline: Record<string, string | undefined>): LaunchRecord[] =>
+  readFileSync(log, 'utf8')
+    .split('\n')
+    .filter((line) => line !== '')
+    .map((line) => {
+      const raw = JSON.parse(line) as LaunchRecord;
+      const env: Record<string, string> = {};
+
+      for (const key of Object.keys(raw.env).sort()) {
+        if (!SHELL_MANAGED.has(key) && raw.env[key] !== baseline[key]) {
+          env[key] = raw.env[key]!;
+        }
+      }
+
+      return { argv: raw.argv, env, ulimit: raw.ulimit };
+    });

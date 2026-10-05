@@ -8,6 +8,8 @@
 // once, so every caller of a Claude session (the implementer, and — via resultEnvelope() below —
 // the advisory lens, reviewer and auditor) answers the same three questions the same way.
 
+import { constants } from 'node:os';
+
 import { extract, type Extraction } from '../core/events.ts';
 import type { Reporter } from './report.ts';
 
@@ -72,4 +74,28 @@ export const tokensLine = (stage: string, extraction?: Extraction): string | und
     `cache_creation_input_tokens=${usage.cache_creation_input_tokens ?? 0} cache_read_input_tokens=${usage.cache_read_input_tokens ?? 0}` +
     `${model !== undefined && model !== '' ? ` model=${model}` : ''}${peak} compactions=${compactions}`
   );
+};
+
+export type SessionEnd = { status: number | null; signal?: NodeJS.Signals | null; error?: NodeJS.ErrnoException };
+
+export const signalOfExit = (code: number): NodeJS.Signals | null =>
+  (Object.entries(constants.signals).find(([, number]) => number === code - 128 && code > 128)?.[0] as NodeJS.Signals | undefined) ?? null;
+
+export const exitOf = ({ status, signal, error }: SessionEnd): number => {
+  if (status !== null) {
+    return status;
+  }
+
+  if (signal !== undefined && signal !== null) {
+    return 128 + constants.signals[signal];
+  }
+
+  return error?.code === 'ENOENT' ? 127 : 1;
+};
+
+export const endOf = (end: SessionEnd): string => {
+  const signal = end.signal !== undefined && end.signal !== null ? ` signal=${end.signal}` : '';
+  const error = end.error?.code !== undefined ? ` error=${end.error.code}` : '';
+
+  return `exit=${exitOf(end)}${signal}${error}`;
 };
