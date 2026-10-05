@@ -44,7 +44,7 @@ const main = async (): Promise<void> => {
     reporter.stop(`the iteration must be a number, got: ${iteration}`, REFUSED);
   }
 
-  const { faults } = checkSettings(process.env);
+  const { faults, effective } = checkSettings(process.env);
 
   if (faults.length > 0) {
     reporter.stop(`refusing to start, ${faults.length} faulty setting(s):\n${faults.map((fault) => `  - ${fault}`).join('\n')}`, REFUSED);
@@ -54,6 +54,11 @@ const main = async (): Promise<void> => {
   const dir = runDir(workIdOf(plan, source));
   reporter.setLog(dir);
   reporter.say(`RUN writing this run's records to ${dir}`);
+  reporter.say(
+    `RUN settings ${Object.entries(effective)
+      .map(([name, { value, source }]) => `${name}=${value ?? 'unset'} (${source})`)
+      .join(' ')}`,
+  );
 
   // The channel this run gets its verdicts through: in-process by default — no subprocess spawned
   // for the CLI verbs at all — and the spawn+scrape channel a run has always driven, kept intact,
