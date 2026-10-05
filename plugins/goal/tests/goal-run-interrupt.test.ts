@@ -27,7 +27,7 @@ const interrupted = async (
         ...envOf(fixture),
       },
     },
-    { state, markers: [marker(fixture)], signal, deadlineMs: 10000 },
+    { state, markers: [marker(fixture)], signal },
   );
   const launches = existsSync(claudeLog) ? readFileSync(claudeLog, 'utf8').trim().split('\n').filter((line) => line !== '').length : 0;
 
