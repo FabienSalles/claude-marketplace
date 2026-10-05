@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { checkSettings, settingValue } from '../src/core/settings.ts';
+import { checkGateSettings, checkSettings, settingValue } from '../src/core/settings.ts';
 
 const NUMERIC = ['GOAL_RUN_QUOTA_MAX_RETRIES', 'GOAL_RUN_QUOTA_SLEEP', 'GOAL_RUN_SHUTDOWN_BACKOFF', 'GOAL_RUN_BURST_CAP', 'GOAL_CMD_TIMEOUT', 'GOAL_PROC_HEADROOM'];
 
@@ -91,4 +91,10 @@ test('R8: a setting not in the environment takes its default, a set one reports 
   assert.equal(settingValue('GOAL_PROC_HEADROOM', {}), 400);
   assert.equal(settingValue('GOAL_GATE', {}), undefined);
   assert.equal(settingValue('GOAL_GATE', { GOAL_GATE: 'x y' }), 'x y');
+});
+
+test('R6: the gate checks only its own settings, leaving the runner\'s and the internal names alone', () => {
+  assert.deepEqual(checkGateSettings({ GOAL_RUN_QUOTA_SLEEP: 'abc', GOAL_RUN_BAD: '1', GOAL_RUN_JSONL: '/x', GOAL_GATE: '' }), []);
+  assert.equal(checkGateSettings({ GOAL_CMD_TIMEOUT: '0', GOAL_PROC_HEADROOM: '', GOAL_CMD_FOO: '1', GOAL_PROC_BAR: '1' }).length, 4);
+  assert.match(checkGateSettings({ GOAL_CMD_TIMOUT: '1' }).join('\n'), /GOAL_CMD_TIMOUT.*GOAL_CMD_TIMEOUT/);
 });

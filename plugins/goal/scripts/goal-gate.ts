@@ -14,6 +14,7 @@
 // Exit codes: 0 the iteration is runnable · 1 HALT, with a reason · 2 misuse.
 
 import { biteCheck } from '../src/gate/bite.ts';
+import { checkGateSettings } from '../src/core/settings.ts';
 import { misuse, rootCatch, unwrap, type Say } from '../src/gate/halt.ts';
 import { blockOf, declaredPaths, incidentalPaths, lockedHash, readPlan } from '../src/gate/plan.ts';
 import { commitAndTick, runLock, scopeCheck } from '../src/gate/scope.ts';
@@ -29,6 +30,12 @@ const USAGE =
 const SUBCOMMANDS = ['check', 'verify', 'commit', 'bite', 'dod', 'lock', 'unlock'];
 
 const main = (): void => {
+  const faults = checkGateSettings(process.env);
+
+  if (faults.length > 0) {
+    misuse(`refusing to start, ${faults.length} faulty setting(s):\n${faults.map((fault) => `  - ${fault}`).join('\n')}`);
+  }
+
   // The ticked set travels by argument only. It used to fall back to GOAL_RUN_TICKED, and a
   // declared command that spawns gates of its own — the suite does — read the outer run's lock
   // as its own: three tests red on the first run that ever locked with a non-empty set.

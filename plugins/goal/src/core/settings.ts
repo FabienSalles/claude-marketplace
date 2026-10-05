@@ -79,23 +79,34 @@ export const settingValue = <N extends SettingName>(name: N, env: Env): SettingV
   return (raw === undefined ? setting.default : Number(raw)) as SettingValue<N>;
 };
 
-export const checkSettings = (env: Env): { faults: string[]; effective: Record<SettingName, Effective> } => {
+const GATE_SETTINGS: SettingName[] = ['GOAL_CMD_TIMEOUT', 'GOAL_PROC_HEADROOM'];
+const GATE_PREFIXES = ['GOAL_CMD_', 'GOAL_PROC_'];
+
+const faultsFor = (env: Env, owned: SettingName[], prefixes: string[]): string[] => {
   const faults: string[] = [];
 
   for (const name of Object.keys(env).sort()) {
-    if (name in RETIRED) {
+    if (prefixes === GUARDED_PREFIXES && name in RETIRED) {
       faults.push(`${name} is retired: use ${RETIRED[name]}. Unset it`);
-    } else if (!(name in SETTINGS) && !INTERNAL.includes(name) && GUARDED_PREFIXES.some((prefix) => name.startsWith(prefix))) {
+    } else if (!(name in SETTINGS) && !INTERNAL.includes(name) && prefixes.some((prefix) => name.startsWith(prefix))) {
       faults.push(`${name} is not a known setting: did you mean ${closest(name)}?`);
     }
   }
 
-  for (const name of names) {
+  for (const name of owned) {
     const raw = env[name];
     const fault = raw === undefined ? undefined : faultOf(name, raw);
 
     if (fault !== undefined) faults.push(fault);
   }
+
+  return faults;
+};
+
+export const checkGateSettings = (env: Env): string[] => faultsFor(env, GATE_SETTINGS, GATE_PREFIXES);
+
+export const checkSettings = (env: Env): { faults: string[]; effective: Record<SettingName, Effective> } => {
+  const faults = faultsFor(env, names, GUARDED_PREFIXES);
 
   const effective = Object.fromEntries(
     names.map((name) => [name, { value: env[name] === undefined ? defaultOf(name) : settingValue(name, env), source: env[name] === undefined ? 'default' : 'environment' }]),

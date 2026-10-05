@@ -29,3 +29,14 @@ test('R2: an empty GOAL_GATE refuses the start', () => {
   assert.equal(code, 2, output);
   assert.match(output, /GOAL_GATE.*unset/, output);
 });
+
+test('R5: a run lists a faulty GOAL_CMD_TIMEOUT and GOAL_PROC_HEADROOM among its faults', () => {
+  const fixture = repo();
+
+  const { code, output } = run(fixture, [fixture.plan, '1'], { GOAL_CMD_TIMEOUT: '0', GOAL_PROC_HEADROOM: 'abc' });
+
+  assert.equal(code, 2, output);
+  assert.match(output, /GOAL_CMD_TIMEOUT.*"0"/, output);
+  assert.match(output, /GOAL_PROC_HEADROOM.*"abc"/, output);
+  assert.doesNotMatch(output, /RUN writing/, output);
+});
