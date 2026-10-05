@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { PAUSED, repo, runInProcess } from './support/goal-run-harness.ts';
-import { classifyTerminal } from '../src/run/quota.ts';
+import { classifyTerminal } from '../src/adapters/claude/classify.ts';
 
 const result = (text: string, isError = true) => `${JSON.stringify({ type: 'result', is_error: isError, result: text })}\n`;
 const midStream = `${JSON.stringify({ type: 'user', message: { content: [{ type: 'tool_result', content: 'the usage limit and HTTP 429 are documented here' }] } })}\n`;

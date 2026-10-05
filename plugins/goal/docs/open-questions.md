@@ -141,9 +141,9 @@ publication, the quota wait and the closing stage, against a gate split one modu
 business rules, each with its matching test file, a convention `goal-gate.ts` states in its own
 header and that the bash script was the one place in the plugin unable to follow.
 
-**What it cost, re-measured.** `scripts/goal-run.ts` + `src/run/` now stands at 1958 lines
-over 15 files, against `scripts/goal-gate.ts` + `src/gate/` at 1108 over 12; all of
-`scripts/` + `src/` is 4614 lines over 50 `.ts` files, covered by 74 test files and 585 passing tests.
+**What it cost, re-measured.** `scripts/goal-run.ts` + `src/run/` now stands at 1680 lines
+over 14 files, against `scripts/goal-gate.ts` + `src/gate/` at 1108 over 12; all of
+`scripts/` + `src/` is 4690 lines over 54 `.ts` files, covered by 78 test files and 606 passing tests.
 Most of the distance from the 594-line bash original is not the split: it is the mechanisms
 added since (`gitwatch.ts`, `postmortem.ts`, `quota.ts`), each of which is one of the modules the
 convention asked for. The second defect this question named (the orchestrator re-reading

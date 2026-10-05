@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { FAKE_REPO, HASH, PAUSED, PLAN, git, repo as baseRepo, run, runInProcess } from './support/goal-run-harness.ts';
 import { tmpDir } from './support/tmp.ts';
 import { createPublisher } from '../src/run/publish.ts';
+import { claudeAgentSessions } from '../src/adapters/claude/session.ts';
 import { close, LANDED } from '../src/run/close.ts';
 import type { Reporter } from '../src/run/report.ts';
 
@@ -233,7 +234,7 @@ for (const state of ['MERGED', 'CLOSED', 'MERGE_QUEUE']) {
 
 // PR body carries the report at close — close() folds the auditor's own report into the pull
 // request body through publish.ts's existing body-rewrite path, never as a comment.
-test('close folds the auditor\'s report into the pull request body, not as a comment', () => {
+test('close folds the auditor\'s report into the pull request body, not as a comment', async () => {
   const fixture = repo({ planText: PLAN_PR, remote: true });
   const dir = tmpDir('goal-run-report-');
   writeFileSync(join(dir, 'report.md'), '# Report\n\nCosts: 3 iterations, $1.20.\n');
@@ -247,7 +248,7 @@ test('close folds the auditor\'s report into the pull request body, not as a com
     const publisher = createPublisher(fixture.plan, fixture.plan, 'commit+pr', 'origin', silentReporter, 'true');
     publisher.state.prOpen = true;
 
-    const code = close(fixture.plan, join(fixture.bin, 'fake-gate'), HASH, 'origin', publisher, ['1'], dir, silentReporter);
+    const code = await close(fixture.plan, join(fixture.bin, 'fake-gate'), HASH, 'origin', publisher, ['1'], dir, silentReporter, claudeAgentSessions());
 
     assert.equal(code, LANDED);
     const calls = readFileSync(fixture.ghLog, 'utf8').split('--- call ---\n').filter((call) => call.trim() !== '');
@@ -265,7 +266,7 @@ test('close folds the auditor\'s report into the pull request body, not as a com
 
 // PR body carries the report at close — a second close() on the same pull request replaces the
 // report section rather than appending another one beside it.
-test('a second close() replaces the run report section instead of appending to it', () => {
+test('a second close() replaces the run report section instead of appending to it', async () => {
   const fixture = repo({ planText: PLAN_PR, remote: true });
   const dir = tmpDir('goal-run-report-rerun-');
   const reportPath = join(dir, 'report.md');
@@ -280,10 +281,10 @@ test('a second close() replaces the run report section instead of appending to i
     publisher.state.prOpen = true;
 
     writeFileSync(reportPath, 'First run: nothing recurring.\n');
-    close(fixture.plan, join(fixture.bin, 'fake-gate'), HASH, 'origin', publisher, ['1'], dir, silentReporter);
+    await close(fixture.plan, join(fixture.bin, 'fake-gate'), HASH, 'origin', publisher, ['1'], dir, silentReporter, claudeAgentSessions());
 
     writeFileSync(reportPath, 'Second run: same halt as before.\n');
-    close(fixture.plan, join(fixture.bin, 'fake-gate'), HASH, 'origin', publisher, ['2'], dir, silentReporter);
+    await close(fixture.plan, join(fixture.bin, 'fake-gate'), HASH, 'origin', publisher, ['2'], dir, silentReporter, claudeAgentSessions());
 
     const calls = readFileSync(fixture.ghLog, 'utf8').split('--- call ---\n').filter((call) => call.trim() !== '');
     const edits = calls.filter((call) => call.startsWith('pr\nedit'));
@@ -391,7 +392,7 @@ test('a plan not named issue-<N>-spec.md carries no Closes line', async () => {
 
 // PR body format — the run report lands behind a `---` separator, never immediately after the
 // Delivered list, so the machine-written summary and the auditor's own prose stay visually apart.
-test('close folds the run report behind a --- separator from the Delivered list', () => {
+test('close folds the run report behind a --- separator from the Delivered list', async () => {
   const fixture = repo({ planText: PLAN_PR, remote: true });
   const dir = tmpDir('goal-run-report-sep-');
   writeFileSync(join(dir, 'report.md'), '# Report\n\nCosts: 3 iterations.\n');
@@ -405,7 +406,7 @@ test('close folds the run report behind a --- separator from the Delivered list'
     const publisher = createPublisher(fixture.plan, fixture.plan, 'commit+pr', 'origin', silentReporter, 'true');
     publisher.state.prOpen = true;
 
-    const code = close(fixture.plan, join(fixture.bin, 'fake-gate'), HASH, 'origin', publisher, ['1'], dir, silentReporter);
+    const code = await close(fixture.plan, join(fixture.bin, 'fake-gate'), HASH, 'origin', publisher, ['1'], dir, silentReporter, claudeAgentSessions());
 
     assert.equal(code, LANDED);
     const calls = readFileSync(fixture.ghLog, 'utf8').split('--- call ---\n').filter((call) => call.trim() !== '');
