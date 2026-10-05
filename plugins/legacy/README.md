@@ -20,18 +20,22 @@ temporal coupling), a risk register, and an audit-prep mode.
 /plugin install legacy@fabien-claude-marketplace
 ```
 
-## Skills (1)
+## Skills (3)
 
 | Skill | Purpose |
 |---|---|
 | [`discovery`](skills/discovery/SKILL.md) | 7-phase workflow: frame (onboarding or audit-prep, committable artifacts or gitignored), recon + git archaeology, cartography + glossary, use cases aggregated by actor goal, entity model (migrations as truth), risk register (churn × complexity × no tests, deterministic pass before the first row), shared-brain index with routing table. A tool answers before the model does; where no tool answers, the session writes an analyzer whose rows a human samples. Audit-prep adds a security-surface dossier (input vectors, authorization matrix, secrets, dependency CVEs, reachability and triage) and bridges to `security-audit:security-audit` + `audit:security-overrides`. |
+| [`flow-map`](skills/flow-map/SKILL.md) | Maps **one** application's channels in and out, text only, no diagram: a sweep per transport — including the framework-configuration sweep that catches vendor-owned channels (mailer, outbound webhooks, SaaS callbacks) a `src/`-scoped inventory never sees — then one record per flow (technical + functional reading, contract, trigger, failure mode, status `live`/`declared`/`dead`), the unknowns it cannot close alone phrased as questions addressed to the application that can, and a context-map reading per counterparty (relation, DDD pattern, consequence) stated as the half a single repository can prove. Records are keyed so they merge later. |
+| [`flow-consolidate`](skills/flow-consolidate/SKILL.md) | Merges several `flows.md` on their flow keys: one project's `?` peer is closed by another project's assertion, contradictions are printed side by side instead of averaged, context-map patterns are upgraded now that both halves are visible (Conformist or Customer/Supplier, genuine Open Host Service or a one-customer interface), and the last section lists the unknowns nobody could close, per application, each with who can answer and the command that would settle it. |
 
 ## Artifacts produced
 
 In `docs/legacy/` (committable) or `.claude/legacy/` (gitignored, typical on client
 missions): `README.md` (routing table), `recon.md`, `architecture.md`, `glossary.md`,
 `use-cases/UC-XXX-*.md`, `entity-model.md`, `risk-register.md`, `open-questions.md`,
-plus `security-surface.md` in audit-prep mode.
+plus `security-surface.md` in audit-prep mode. `flow-map` adds `flows.md` to the same
+directory; `flow-consolidate` writes its estate-wide map outside every mapped project,
+since it belongs to none of them.
 
 ## Reference manuals
 
@@ -50,6 +54,10 @@ labels `vendor-published` or `unverified` where they apply.
 | [`audit-prep.md`](skills/discovery/references/audit-prep.md) | The audit-prep pass: input surface, authorization matrix, secrets and PII, dependency vulnerabilities, configuration posture, handover to the audit skills. |
 | [`reachability-and-triage.md`](skills/discovery/references/reachability-and-triage.md) | The free deterministic floor, the two different claims both sold as "reachable" and what each proves, which tools support PHP at all, the tool/model/human division of labour on a finding list, priority computed with CISA Vulnrichment + SSVC, VEX, and the design-fault bucket. |
 | [`knowledge-artifacts.md`](skills/discovery/references/knowledge-artifacts.md) | Which artifacts rot and which cannot: generated / drift-checkable / written per artifact, the drift tools (tbls, oasdiff, Atlas) and the generic gate when none exists, architecture and ADRs as checkable artifacts, and the two gate commands to run on the knowledge base itself. |
+| [`flow-record.md`](skills/flow-map/references/flow-record.md) | The record grammar and the flow-key normalization rules per transport — the join contract between the two flow skills; why some keys carry an owning application and others do not; statuses (`live` / `declared` / `dead` / `suspected`) and what proves each; a malformed record and what each defect costs. |
+| [`flow-inventory-commands.md`](skills/flow-map/references/flow-inventory-commands.md) | BSD/macOS-safe sweeps per transport (HTTP, messaging, databases and the second connection, storage, mail, entry points), the framework-configuration sweep that diffs declared against project-referenced environment variables, and the runtime commands that are the only thing proving a flow is `live`. |
+| [`context-map-patterns.md`](skills/flow-map/references/context-map-patterns.md) | Observable evidence → DDD pattern → consequence; the four patterns most often misnamed (ACL for a deserializer, OHS for any REST API, Shared Kernel for a shared database); what a single-sided map may and may not conclude; direction of dependency versus direction of power. |
+| [`merge-rules.md`](skills/flow-consolidate/references/merge-rules.md) | The join algorithm, key repair and what must never be "repaired", contract reconciliation as a bug-finding pass, the closure rule (a key joins, prose never does), why estate silence never proves a dead flow, and the re-run protocol that makes the second consolidation a diff. |
 
 ## Related
 

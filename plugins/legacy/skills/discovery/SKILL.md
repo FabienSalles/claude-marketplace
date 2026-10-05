@@ -111,6 +111,12 @@ Produce `architecture.md` and `glossary.md`.
   one concept, one name for two concepts). Synonym conflicts are gold for both
   audits and onboarding — record them even when unresolved.
 - Cluster entry points by feature (package/directory names usually suffice).
+- Note which entry points and outbound calls cross the application's boundary,
+  but stop at the list. Turning it into a flow inventory — with each channel's
+  contract, failure mode and counterparty, the unknowns a single repository
+  cannot close, and a context-map reading — is `flow-map`'s pass, and its records
+  are keyed so several projects' maps merge later. Run it after this one and add
+  its `flows.md` to the routing table.
 
 **Large codebase rule:** above ~30 entry points or ~200 source files, do not read
 sequentially. Launch one read-only Explore agent per cluster in parallel, each
@@ -323,6 +329,11 @@ Then the internal coherence checks:
   tool-enumerates / model-filters / human-samples, computing a priority with CISA
   Vulnrichment and SSVC instead of inventing one, VEX as the structured claim, and
   the design-fault bucket for findings that are not exploitable.
+- **`flow-map`** — the integration pass this skill stops short of: every channel
+  in and out of the application with its contract and failure mode, the unknowns
+  a single repository cannot close, and a DDD context-map reading. Text only, and
+  keyed so `flow-consolidate` can merge several projects' maps and close each
+  one's unknowns with another's assertions.
 - **[references/knowledge-artifacts.md](references/knowledge-artifacts.md)** —
   what stops the base rotting: every artifact sorted into generated,
   drift-checkable or written, the drift tools (tbls, oasdiff, Atlas) and the

@@ -244,12 +244,12 @@
     {
       "name": "legacy",
       "source": "./plugins/legacy",
-      "description": "Reverse-engineer an unfamiliar or legacy codebase into a versioned knowledge base (shared brain): recon + git archaeology, architecture map, use cases aggregated by actor goal, entity model, risk register. Two depths: onboarding (dev) and audit-prep (security-surface dossier feeding the security-audit skills). Run via the legacy:discovery skill.",
-      "version": "1.0.2",
+      "description": "Reverse-engineer an unfamiliar or legacy codebase into a versioned knowledge base (shared brain): recon + git archaeology, architecture map, use cases aggregated by actor goal, entity model, risk register. Two depths: onboarding (dev) and audit-prep (security-surface dossier feeding the security-audit skills). Plus a text-only flow cartography: flow-map inventories one application's inbound and outbound channels with a DDD context-map reading, flow-consolidate merges several projects' maps and closes each one's unknowns with another's assertions. Run via legacy:discovery, legacy:flow-map, legacy:flow-consolidate.",
+      "version": "1.1.0",
       "author": { "name": "FabienSalles" },
       "category": "productivity",
       "license": "MIT",
-      "keywords": ["legacy", "reverse-engineering", "discovery", "onboarding", "audit"]
+      "keywords": ["legacy", "reverse-engineering", "discovery", "onboarding", "audit", "context-map", "integration", "flows"]
     },
     {
       "name": "marketing-content",
