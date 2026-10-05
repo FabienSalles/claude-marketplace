@@ -6,6 +6,7 @@
 
 import { clock as realClock } from '../adapters/clock.ts';
 import { parseEvents, type StreamEvent } from '../core/events.ts';
+import { settingValue } from '../core/settings.ts';
 import type { Clock, WaitingClock } from '../ports.ts';
 
 export type QuotaClass = 'burst' | 'exhausted' | null;
@@ -26,7 +27,7 @@ export const classifyQuotaFailure = (output: string): QuotaClass =>
 // the order of seconds, not the multi-minute window an exhausted quota needs. The cap is read
 // from GOAL_RUN_BURST_CAP, defaulting to the 8 it used to hardcode.
 export const burstBackoffSeconds = (attempt: number): number =>
-  Math.min(2 ** (attempt - 1), Number(process.env.GOAL_RUN_BURST_CAP ?? '8'));
+  Math.min(2 ** (attempt - 1), settingValue('GOAL_RUN_BURST_CAP', process.env));
 
 export type FailureClass = 'exhausted' | 'burst' | 'signal' | 'unrecognised';
 
@@ -57,7 +58,7 @@ export const classifyTerminal = (end: { status: number | null; signal?: NodeJS.S
 // Fixed, not exponential like a burst: a shutdown is not a load signal to back off from, just a
 // process that needs a moment to exit before the same iteration is handed to it again. Read from
 // GOAL_RUN_SHUTDOWN_BACKOFF, defaulting to the 5s the constant used to pin.
-export const shutdownBackoffSeconds = (): number => Number(process.env.GOAL_RUN_SHUTDOWN_BACKOFF ?? '5');
+export const shutdownBackoffSeconds = (): number => settingValue('GOAL_RUN_SHUTDOWN_BACKOFF', process.env);
 
 // A loop of short slices, not one call to the Clock port for the whole totalSeconds whose return
 // value is discarded: a long wait is then a sequence of small, observable steps, each reported

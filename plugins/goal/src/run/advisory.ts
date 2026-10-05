@@ -6,8 +6,9 @@
 import { join } from 'node:path';
 
 import { fs } from '../adapters/fs.ts';
+import { settingValue } from '../core/settings.ts';
 
-export const defaultSettingsPath = (): string => process.env.GOAL_RUN_SETTINGS_PATH ?? join(fs.homeDir(), '.claude', 'settings.json');
+export const defaultSettingsPath = (): string => settingValue('GOAL_RUN_SETTINGS_PATH', process.env) ?? join(fs.homeDir(), '.claude', 'settings.json');
 
 export const autoUpdaterWarning = (path: string = defaultSettingsPath()): string | undefined => {
   let settings: Record<string, unknown>;

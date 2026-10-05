@@ -15,6 +15,7 @@ import { git } from '../adapters/git.ts';
 import { ceiling } from '../gate/bounded.ts';
 import { iterationSection } from '../gate/plan.ts';
 import { rulesContext } from '../core/plan.ts';
+import { settingValue } from '../core/settings.ts';
 import { detectTamper } from '../core/tamper.ts';
 import { HALTED, PAUSED, REFUSED } from '../core/verdict.ts';
 import { brief } from './brief.ts';
@@ -81,8 +82,8 @@ export const runIteration = async (
   // shape of a failed call, slept through, and retried against the same iteration — bounded, so
   // a window that never reopens still ends in a pause rather than a run spinning until the
   // machine is switched off.
-  const quotaSleep = process.env.GOAL_RUN_QUOTA_SLEEP ?? '1800';
-  const quotaMax = Number(process.env.GOAL_RUN_QUOTA_MAX_RETRIES ?? '3');
+  const quotaSleep = String(settingValue('GOAL_RUN_QUOTA_SLEEP', process.env));
+  const quotaMax = settingValue('GOAL_RUN_QUOTA_MAX_RETRIES', process.env);
   let attempt = 1;
   const history: string[] = [];
 

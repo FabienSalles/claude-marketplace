@@ -24,6 +24,7 @@ import { blockedNote, createPublisher } from '../src/run/publish.ts';
 import { close, LANDED } from '../src/run/close.ts';
 import { quote } from '../src/run/shell.ts';
 import { workIdOf } from '../src/core/plan.ts';
+import { checkSettings, settingValue } from '../src/core/settings.ts';
 import { iterationNumbers, subHeadings } from '../src/gate/plan.ts';
 import { inProcessGateAdapter, spawnGateAdapter, type GateAdapter } from '../src/adapters/gate.ts';
 
@@ -43,8 +44,10 @@ const main = async (): Promise<void> => {
     reporter.stop(`the iteration must be a number, got: ${iteration}`, REFUSED);
   }
 
-  if (process.env.GOAL_RUN_SHUTDOWN_MAX_RETRIES !== undefined) {
-    reporter.stop('GOAL_RUN_SHUTDOWN_MAX_RETRIES is retired: one ceiling bounds the attempts of an iteration, whatever their class. Unset it and use GOAL_RUN_QUOTA_MAX_RETRIES.', REFUSED);
+  const { faults } = checkSettings(process.env);
+
+  if (faults.length > 0) {
+    reporter.stop(`refusing to start, ${faults.length} faulty setting(s):\n${faults.map((fault) => `  - ${fault}`).join('\n')}`, REFUSED);
   }
 
   const source = fs.readFile(plan);
@@ -57,8 +60,9 @@ const main = async (): Promise<void> => {
   // the moment GOAL_GATE names a command to drive instead. `gateLabel` stays a plain string:
   // nothing but the unlock hint below reads it, and that hint names the CLI a developer can still
   // run by hand whichever channel this run itself took.
-  const gateLabel = process.env.GOAL_GATE ?? `node ${quote(resolve(import.meta.dirname, 'goal-gate.ts'))}`;
-  const gate: GateAdapter = process.env.GOAL_GATE !== undefined ? spawnGateAdapter(gateLabel) : inProcessGateAdapter();
+  const gateCommand = settingValue('GOAL_GATE', process.env);
+  const gateLabel = gateCommand ?? `node ${quote(resolve(import.meta.dirname, 'goal-gate.ts'))}`;
+  const gate: GateAdapter = gateCommand !== undefined ? spawnGateAdapter(gateLabel) : inProcessGateAdapter();
 
   const preflightStart = Date.now();
   const { policy, remote } = preflight(plan, source, reporter, gateLabel);

@@ -45,7 +45,7 @@ test('a burst 429 backs off in seconds and relaunches, ignoring a large GOAL_RUN
     FAKE_CLAUDE_QUOTA_COUNTER: join(fixture.dir, 'quota-counter'),
     FAKE_CLAUDE_QUOTA_MESSAGE: 'HTTP 429 Too Many Requests',
     FAKE_CLAUDE_WRITES: join(fixture.dir, 'a.txt'),
-    GOAL_RUN_QUOTA_SLEEP: '999999',
+    GOAL_RUN_QUOTA_SLEEP: '604800',
   });
 
   assert.equal(code, 0, output);
@@ -109,7 +109,7 @@ test('an implementer that keeps exiting 143 relaunches on a short fixed backoff,
   const { code, output } = await runInProcess(fixture, [fixture.plan, '1'], {
     FAKE_CLAUDE_EXIT: '143',
     GOAL_RUN_QUOTA_MAX_RETRIES: '2',
-    GOAL_RUN_QUOTA_SLEEP: '999999',
+    GOAL_RUN_QUOTA_SLEEP: '604800',
     GOAL_RUN_SHUTDOWN_BACKOFF: '0',
   });
 
