@@ -57,7 +57,7 @@ test('a mid-session quota phrase is not slept on when the session ends unrecogni
   const { code, output } = await runInProcess(fixture, [fixture.plan, '1'], {
     FAKE_CLAUDE_EXIT: '1',
     FAKE_CLAUDE_MIDSTREAM: 'the usage limit is documented here',
-    GOAL_RUN_QUOTA_SLEEP: '999999',
+    GOAL_RUN_QUOTA_SLEEP: '604800',
   });
 
   assert.equal(code, PAUSED, output);

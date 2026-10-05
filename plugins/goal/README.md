@@ -194,8 +194,8 @@ More, including the axes that are entirely empty: [`docs/comparison.md`](docs/co
 | [`/goal:plan`](skills/plan/SKILL.md) | `skills/` | The technical grill → command-mapped DoD, slices, policy, remote → the locked plan on a branch |
 | [`/goal:supervise`](skills/supervise/SKILL.md) | `skills/` | Launches the runner, classifies a halt, repairs or discards once. **Never exercised by a real run** |
 | [`/goal:next`](skills/next/SKILL.md) | `skills/` | Manual-loop checkpoint: replay the DoD, reconcile plan against code, emit the next handoff |
-| `goal-run.ts` + `run/*.ts` | `scripts/` + `src/run/` | The runner: 1,831 lines, the entry point plus 14 modules (preflight, sweep, lock, iteration, publish, close, report) |
-| `goal-gate.ts` + `gate/*.ts` | `scripts/` + `src/gate/` | The judge, and the only committer: 1,102 lines, the entry point plus 11 modules. Exit 0 runnable · 1 `HALT` with a reason · 2 misuse |
+| `goal-run.ts` + `run/*.ts` | `scripts/` + `src/run/` | The runner: 1,847 lines, the entry point plus 14 modules (preflight, sweep, lock, iteration, publish, close, report) |
+| `goal-gate.ts` + `gate/*.ts` | `scripts/` + `src/gate/` | The judge, and the only committer: 1,108 lines, the entry point plus 11 modules. Exit 0 runnable · 1 `HALT` with a reason · 2 misuse |
 | `ports.ts` + `adapters/*.ts` | `src/` | The `CommandRunner`, `Clock` and `FileSystem` ports, and the real adapters that back them: every process spawn, wait and disk access in production code goes through one, so a rule is observable against a double instead of a repository fixture |
 | `core/*.ts` | `src/core/` | The pure business rules (scope, bounds, commands, ticked, cross-iteration, never) the gate evaluates, plus verdict and preflight: no process, no clock, no disk |
 | `transcripts.ts` · `digest.ts` | `src/` | Resolve a run's transcripts and compress them to a tool-call digest. `transcripts.ts` runs on every failed implementer attempt |
@@ -204,7 +204,7 @@ More, including the axes that are entirely empty: [`docs/comparison.md`](docs/co
 | `goal-run-reviewer` · `goal-session-auditor` | `agents/` | Post-publication review and transcript audit. **Never fired** |
 | [`grill-adversarial`](skills/grill-adversarial/SKILL.md) | `skills/` | Opt-in, loaded during `/goal:spec`'s grill |
 | [`product:vertical-slice`](../product/skills/vertical-slice/SKILL.md) · [`product:delivery`](../product/skills/delivery/SKILL.md) | *(plugin `product`)* | Loaded by `/goal:plan` to split the work and give each slice a shipping strategy |
-| `tests/run.sh` | `tests/` | 535 tests across 67 files. Wraps `node --test` and additionally refuses a zero-pass run, an undeclared skip, and a missing summary (a bare `node --test` exits 0 on a glob matching nothing) |
+| `tests/run.sh` | `tests/` | 555 tests across 70 files. Wraps `node --test` and additionally refuses a zero-pass run, an undeclared skip, and a missing summary (a bare `node --test` exits 0 on a glob matching nothing) |
 | `tests/support/frozen.ts` · `tests/support/budget.ts` | `tests/support/` | `node tests/support/frozen.ts` checks that every test name in `tests/frozen-names.txt` (the names the 28 frozen files declared on `aef0e8d`) is declared exactly once across `tests/*.test.ts` and never skipped or todo'd, and names each one lost, renamed, skipped or duplicated. `node tests/support/budget.ts [--runs N] [--wall S] [--file S] [--test S] [--only <file>]` runs `run.sh` N times (default 3), refuses any run that is not green, and reports the median wall, the slowest file and the slowest test, failing on every one over its ceiling in seconds. CI runs it through `npm run verify`, whose ceiling lives in `scripts/verify/checks.ts` (see `docs/open-questions.md` §8). A file's time is the sum of its tests' times, so process start-up is not in it |
 | `done-criteria.template` · `goal-handoff.template` · `post-merge.template` | `templates/` | The DoD baseline, the handoff `/goal:next` fills, and the merge-day checklist. Printed, never executed |
 
@@ -231,10 +231,27 @@ Every row is a refusal the code can still reach today.
 | Exit 1, a slice was refused | the gate halted | The reason is in the run log and on the terminal. Reproduce it from the repo root: `node <plugin>/scripts/goal-gate.ts verify <plan> <n>` |
 | Exit 3, "is not converging: paused after N attempt(s)" | the attempt ceiling `GOAL_RUN_QUOTA_MAX_RETRIES` was reached; the pause lists each attempt with its class (exhausted, burst, signal) | Relaunch when the cause has cleared. Checkboxes are the whole state, so it resumes at the first unticked box |
 | Exit 3, "the implementer committed on its own" | the implementer ran `git commit` (or moved `.git/`, pushed, moved a ref) in an attempt, even one that then failed | Review the commit named by its SHA before relaunching: only the gate commits. The runner resets nothing |
+| Exit 2, "refusing to start, N faulty setting(s)" | a setting is empty, not a whole number written in digits, out of range, or its name is unknown (`GOAL_RUN_*`, `GOAL_CMD_*`, `GOAL_PROC_*`) | Fix or unset each variable listed: the message gives its name, the value received, the expected range and the default. `goal-gate.ts` refuses its own `GOAL_CMD_TIMEOUT` and `GOAL_PROC_HEADROOM` the same way |
 | Exit 2, "GOAL_RUN_SHUTDOWN_MAX_RETRIES is retired" | the setting no longer exists | Unset it and use `GOAL_RUN_QUOTA_MAX_RETRIES`: one ceiling bounds the attempts whatever their class |
 | Exit 3, "the implementer wrote nothing in this tree" | the work went somewhere else | Look for it in another checkout before assuming it does not exist: this is what a wrong working directory looks like from here |
 | The gate halts on files you considered in scope | the slice's declared paths do not match reality | The declared list is the contract. Fix it in the plan, or keep the change out of this slice |
 | The run finishes but the review is not on the pull request | a safety hook refuses to post under your GitHub identity without explicit consent | Expected, and not a failure: the review text is in the run log; posting is opt-in via a `Review: comment` header |
+
+## Settings
+
+Every setting is an environment variable. A numeric one is a whole number written in digits (`3`, `0`, `007`; not `3.5`, `1e3`, ` 3`, `+3`, `-1`). An empty value is refused: unset the variable to get the default. A path or command setting only has to be non-empty.
+
+| Setting | Unit | Minimum | Maximum | Default |
+|---|---|---|---|---|
+| `GOAL_RUN_QUOTA_MAX_RETRIES` | total attempts (0 means no relaunch, like 1) | 0 | none | 3 |
+| `GOAL_RUN_QUOTA_SLEEP` | seconds | 0 | 604800 | 1800 |
+| `GOAL_RUN_SHUTDOWN_BACKOFF` | seconds | 0 | 604800 | 5 |
+| `GOAL_RUN_BURST_CAP` | seconds | 0 | 604800 | 8 |
+| `GOAL_CMD_TIMEOUT` | seconds | 1 | 604800 | 900 |
+| `GOAL_PROC_HEADROOM` | processes | 1 | none | 400 |
+| `GOAL_RUN_SETTINGS_PATH`, `GOAL_RUN_PROJECTS_ROOT`, `GOAL_GATE` | path or command | non-empty | | unset |
+
+An unknown name under `GOAL_RUN_*`, `GOAL_CMD_*` or `GOAL_PROC_*` is refused with the closest known name. The runner refuses with exit 2 before writing a run directory, listing every fault at once; once the settings are accepted it writes one `RUN settings` line to the run log giving each setting's effective value (a path's default resolved to the path it stands for) and whether it came from the environment or the default; `GOAL_GATE` shows its origin only, never the command, which may carry a credential.
 
 ## Cost
 

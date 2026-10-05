@@ -12,10 +12,9 @@
 // the clock. That gap is scope, not a bug to gate on.
 
 import { command as runner } from '../adapters/command.ts';
+import { settingValue } from '../core/settings.ts';
 import type { CommandOptions } from '../ports.ts';
 
-const HEADROOM = Number(process.env.GOAL_PROC_HEADROOM ?? '400');
-const TIMEOUT_SECONDS = Number(process.env.GOAL_CMD_TIMEOUT ?? '900');
 
 // `ulimit -u` is a bash extension. `spawnSync({ shell: true })` runs `/bin/sh`, which is bash in
 // POSIX mode on macOS and dash on Debian and Ubuntu — where the option does not exist and the
@@ -56,7 +55,7 @@ const inheritedLimit = (): number => {
 };
 
 export const ceilingFor = (live: number, inherited: number): string => {
-  const target = live + HEADROOM;
+  const target = live + settingValue('GOAL_PROC_HEADROOM', process.env);
 
   return target >= inherited ? '' : `ulimit -u ${target} || exit 1`;
 };
@@ -91,7 +90,7 @@ const commandEnv = (): NodeJS.ProcessEnv =>
 export const spawnOptions = (): CommandOptions & { encoding: 'utf8' } => ({
   shell: true,
   encoding: 'utf8',
-  timeout: TIMEOUT_SECONDS * 1000,
+  timeout: settingValue('GOAL_CMD_TIMEOUT', process.env) * 1000,
   killSignal: 'SIGKILL',
   env: commandEnv(),
 });
