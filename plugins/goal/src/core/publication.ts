@@ -27,6 +27,9 @@ export const remoteStatus = (landed: readonly string[], onRemote: readonly strin
 export const pauseLine = (reason: string, landed: readonly string[], onRemote: readonly string[]): string =>
   `publication refused, the run is paused here: ${reason.trim().replace(/\s+/g, ' ')} ${remoteStatus(landed, onRemote)}`;
 
+export const readyPauseLine = (output: string, landed: readonly string[], onRemote: readonly string[]): string =>
+  `the pull request was not marked ready, the run is paused here: ${output.trim().replace(/\s+/g, ' ')} ${remoteStatus(landed, onRemote)}`;
+
 export const prIsReady = (status: number | null, stdout: string): boolean => {
   try {
     const parsed = JSON.parse(stdout) as { state?: unknown; isDraft?: unknown };
@@ -37,12 +40,18 @@ export const prIsReady = (status: number | null, stdout: string): boolean => {
   }
 };
 
-export const prDecision = (status: number | null, stdout: string): PrDecision => {
+export const prDecision = (status: number | null, stdout: string, stderr: string): PrDecision => {
+  if ((status ?? 1) !== 0) {
+    return /no pull requests found/i.test(stderr)
+      ? { kind: 'create' }
+      : { kind: 'pause', reason: `the branch's pull request could not be read, so nothing was pushed: ${stdout}${stderr}` };
+  }
+
   try {
     const parsed = JSON.parse(stdout) as { number?: unknown; state?: unknown };
 
-    if ((status ?? 1) !== 0 || typeof parsed.number !== 'number') {
-      return { kind: 'create' };
+    if (typeof parsed.number !== 'number') {
+      return { kind: 'pause', reason: `gh answered without a pull request number, so nothing was pushed: ${stdout}` };
     }
 
     if (parsed.state === 'OPEN') {
@@ -54,6 +63,6 @@ export const prDecision = (status: number | null, stdout: string): PrDecision =>
       reason: `the branch's pull request #${parsed.number} is ${String(parsed.state)}, and a second one is never opened. Nothing was pushed.`,
     };
   } catch {
-    return { kind: 'create' };
+    return { kind: 'pause', reason: `gh answered something unreadable about the branch's pull request, so nothing was pushed: ${stdout}` };
   }
 };

@@ -12,7 +12,7 @@ import { gateAdapterOf, type GateAdapter } from '../adapters/gate.ts';
 import { git } from '../adapters/git.ts';
 import { header, iterationNumbers, readPlan } from '../gate/plan.ts';
 import { HALTED, LANDED, PAUSED } from '../core/verdict.ts';
-import { pauseLine } from '../core/publication.ts';
+import { pauseLine, readyPauseLine } from '../core/publication.ts';
 import type { AgentReport, AgentRole, AgentSessions } from '../ports.ts';
 import { endOf, exitOf, tokensLine } from './narrate.ts';
 import { remoteNote, repoOf, type Publisher } from './publish.ts';
@@ -95,7 +95,7 @@ ${postsReview
   : 'This plan carries no `Review: comment` header. Do not post it to GitHub: return your review as text, so it reaches the developer through the run log only.'}`;
       } else {
         reporter.say(`RUN marking the pull request ready failed: ${readyOut}`);
-        reporter.say(`STOP ${pauseLine(`marking the pull request ready failed: ${readyOut}`, publisher.state.landed, publisher.state.onRemote)}`);
+        reporter.say(`STOP ${readyPauseLine(readyOut, publisher.state.landed, publisher.state.onRemote)}`);
 
         return PAUSED;
       }
@@ -199,6 +199,8 @@ not stage anything, and do not judge whether the work was correct — the gate a
   }
 
   if (dodExit !== 0) {
+    publisher.refresh?.(landed[landed.length - 1]);
+
     if (dodExit !== 1) {
       reporter.say(`STOP the global Definition of Done could not be run (exit ${dodExit}), so no verdict exists:${remoteNote(publisher)}`);
       reporter.say(dodOut);
