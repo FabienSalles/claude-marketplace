@@ -234,7 +234,7 @@ ${prelude}
 { printf -- '--- call ---\\n'; printf '%s\\n' "$@"; } >> ${ghLog}
 case "$1 $2" in
   "pr view")
-    [ -n "$FAKE_GH_PR_EXISTS" ] && { printf '{"number":%s,"state":"%s"}\\n' "\${FAKE_GH_PR_NUMBER:-1}" "\${FAKE_GH_PR_STATE:-OPEN}"; exit 0; }
+    [ -n "$FAKE_GH_PR_EXISTS" ] && { printf '{"number":%s,"state":"%s","isDraft":%s}\\n' "\${FAKE_GH_PR_NUMBER:-1}" "\${FAKE_GH_PR_STATE:-OPEN}" "\${FAKE_GH_PR_DRAFT:-false}"; exit 0; }
     exit 1
     ;;
   "pr create") exit \${FAKE_GH_CREATE_EXIT:-0} ;;
@@ -546,14 +546,17 @@ export const runInProcess = async (
 
     const iterations = iterationArg !== undefined ? [iterationArg] : iterationNumbers(source, false);
 
-    if (iterations.length === 0) {
+    const publisher = createPublisher(plan!, source, policy, remote, reporter, gate);
+    const closing = iterations.length === 0;
+
+    if (closing && publisher.isComplete()) {
       reporter.stop(`no unchecked iteration remains in ${plan}`, LANDED);
     }
 
     const hashes = new Map<string, string>();
     const tickedSets = new Map<string, string>();
 
-    for (const n of iterations) {
+    for (const n of closing ? iterationNumbers(source, true).slice(-1) : iterations) {
       const checked = gate.check(plan!, n);
       const checkedOutput = `${checked.stdout}${checked.stderr}`;
 
@@ -586,9 +589,7 @@ export const runInProcess = async (
       reporter.stop(`another run holds this plan. Wait for it, or free it with: ${gateLabel} unlock ${plan}`, REFUSED);
     }
 
-    const publisher = createPublisher(plan!, source, policy, remote, reporter, gate);
-
-    if (publisher.state.publishes && iterationNumbers(source, true).length > 0) {
+    if (!closing && publisher.state.publishes && iterationNumbers(source, true).length > 0) {
       const refusal = publisher.publish();
 
       if (refusal !== undefined) {
@@ -613,10 +614,14 @@ export const runInProcess = async (
       }
     }
 
-    const exitCode = close(plan!, gate, hashes.get(iterations[iterations.length - 1]!)!, remote, publisher, landed, dir, reporter);
+    const exitCode = close(plan!, gate, [...hashes.values()].pop()!, remote, publisher, landed, dir, reporter);
 
     if (exitCode === LANDED) {
-      reporter.say(`STOP ${iterations.length} iteration(s) landed, gate-verified.${remoteNote(publisher)}`);
+      reporter.say(
+        closing
+          ? `STOP every iteration was already ticked, the close ran.${remoteNote(publisher)}`
+          : `STOP ${iterations.length} iteration(s) landed, gate-verified.${remoteNote(publisher)}`,
+      );
     }
 
     return { code: exitCode, output };

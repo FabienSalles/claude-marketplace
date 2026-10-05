@@ -27,6 +27,16 @@ export const remoteStatus = (landed: readonly string[], onRemote: readonly strin
 export const pauseLine = (reason: string, landed: readonly string[], onRemote: readonly string[]): string =>
   `publication refused, the run is paused here: ${reason.trim().replace(/\s+/g, ' ')} ${remoteStatus(landed, onRemote)}`;
 
+export const prIsReady = (status: number | null, stdout: string): boolean => {
+  try {
+    const parsed = JSON.parse(stdout) as { state?: unknown; isDraft?: unknown };
+
+    return (status ?? 1) === 0 && parsed.state === 'OPEN' && parsed.isDraft === false;
+  } catch {
+    return false;
+  }
+};
+
 export const prDecision = (status: number | null, stdout: string): PrDecision => {
   try {
     const parsed = JSON.parse(stdout) as { number?: unknown; state?: unknown };

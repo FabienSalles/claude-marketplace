@@ -10,7 +10,7 @@ import { command } from '../adapters/command.ts';
 import { git } from '../adapters/git.ts';
 import { fs } from '../adapters/fs.ts';
 import { gateFence, goalOf } from '../core/plan.ts';
-import { deliveredList, onRemoteOf, prDecision, remoteStatus, type CommitRef, type PlanEntry } from '../core/publication.ts';
+import { deliveredList, onRemoteOf, prDecision, prIsReady, remoteStatus, type CommitRef, type PlanEntry } from '../core/publication.ts';
 import { header, iterationNumbers, iterationSection } from '../gate/plan.ts';
 import type { Reporter } from './report.ts';
 
@@ -32,6 +32,7 @@ export const repoOf = (remote: string): string =>
     .replace(/^.*[:/]([^/]+\/[^/]+)$/, '$1');
 
 export type Publisher = {
+  isComplete: () => boolean;
   publish: (iteration?: string) => string | undefined;
   foldReport?: (text: string, plan: string, dir: string) => void;
   state: PublishState;
@@ -87,6 +88,23 @@ export const createPublisher = (
     const remoteShas = publishes ? git('rev-list', `${remote}/${branch}`).stdout.split('\n').filter((sha) => sha !== '') : [];
     state.landed.splice(0, state.landed.length, ...listed.map((entry) => entry.number));
     state.onRemote.splice(0, state.onRemote.length, ...onRemoteOf(listed, log, remoteShas));
+  };
+
+  const isComplete = (): boolean => {
+    if (!publishes) {
+      return true;
+    }
+
+    const branch = git('branch', '--show-current').stdout.trim();
+    refresh(branch, commitLog());
+
+    if (state.landed.some((n) => !state.onRemote.includes(n))) {
+      return false;
+    }
+
+    const view = command.run('gh', ['pr', 'view', branch, '--repo', repoOf(remote), '--json', 'number,state,isDraft']);
+
+    return prIsReady(view.status, view.stdout);
   };
 
   const prBody = (): string => {
@@ -195,5 +213,5 @@ export const createPublisher = (
     }
   };
 
-  return { publish, foldReport, state };
+  return { isComplete, publish, foldReport, state };
 };

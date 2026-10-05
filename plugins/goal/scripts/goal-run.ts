@@ -102,14 +102,17 @@ const main = async (): Promise<void> => {
     );
   }
 
-  if (iterations.length === 0) {
+  const publisher = createPublisher(plan, source, policy, remote, reporter, gate);
+  const closing = iterations.length === 0;
+
+  if (closing && publisher.isComplete()) {
     reporter.stop(`no unchecked iteration remains in ${plan}`, LANDED);
   }
 
   const hashes = new Map<string, string>();
   const tickedSets = new Map<string, string>();
 
-  for (const n of iterations) {
+  for (const n of closing ? iterationNumbers(source, true).slice(-1) : iterations) {
     const checked = gate.check(plan, n);
     const output = `${checked.stdout}${checked.stderr}`;
 
@@ -144,9 +147,7 @@ const main = async (): Promise<void> => {
     reporter.stop(`another run holds this plan. Wait for it, or free it with: ${gateLabel} unlock ${quote(plan)}`, REFUSED);
   }
 
-  const publisher = createPublisher(plan, source, policy, remote, reporter, gate);
-
-  if (publisher.state.publishes && iterationNumbers(source, true).length > 0) {
+  if (!closing && publisher.state.publishes && iterationNumbers(source, true).length > 0) {
     const refusal = publisher.publish();
 
     if (refusal !== undefined) {
@@ -174,10 +175,14 @@ const main = async (): Promise<void> => {
     }
   }
 
-  const exitCode = close(plan, gate, hashes.get(iterations[iterations.length - 1]!)!, remote, publisher, landed, dir, reporter);
+  const exitCode = close(plan, gate, [...hashes.values()].pop()!, remote, publisher, landed, dir, reporter);
 
   if (exitCode === LANDED) {
-    reporter.say(`STOP ${iterations.length} iteration(s) landed, gate-verified.${remoteNote(publisher)}`);
+    reporter.say(
+      closing
+        ? `STOP every iteration was already ticked, the close ran.${remoteNote(publisher)}`
+        : `STOP ${iterations.length} iteration(s) landed, gate-verified.${remoteNote(publisher)}`,
+    );
   }
 
   process.exit(exitCode);

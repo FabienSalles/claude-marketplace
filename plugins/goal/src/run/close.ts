@@ -88,19 +88,16 @@ export const close = (
 
   if (dodExit === 0) {
     // The last iteration's own push, held back until now: nothing this run committed reaches the
-    // remote until the whole-branch Definition of Done says so.
-    const last = landed[landed.length - 1];
+    // remote until the whole-branch Definition of Done says so. A close with nothing landed in
+    // this invocation publishes what an earlier one left behind.
+    const pushStart = clock.now();
+    const refusal = publisher.publish(landed[landed.length - 1]);
+    reporter.say(`RUN stage=push duration_ms=${clock.now() - pushStart} exit=${refusal === undefined ? 0 : 1}`);
 
-    if (last !== undefined) {
-      const pushStart = clock.now();
-      const refusal = publisher.publish(last);
-      reporter.say(`RUN stage=push duration_ms=${clock.now() - pushStart} exit=${refusal === undefined ? 0 : 1}`);
+    if (refusal !== undefined) {
+      reporter.say(`STOP ${pauseLine(refusal, publisher.state.landed, publisher.state.onRemote)}`);
 
-      if (refusal !== undefined) {
-        reporter.say(`STOP ${pauseLine(refusal, publisher.state.landed, publisher.state.onRemote)}`);
-
-        return PAUSED;
-      }
+      return PAUSED;
     }
 
     reporter.say('RUN the global Definition of Done passed');

@@ -115,7 +115,7 @@ const launch = (fixture: ReturnType<typeof repo>, args: string[]) =>
     FAKE_CLAUDE_WRITES: join(fixture.dir, 'a.txt'),
   });
 
-test('a relaunch with the remote reachable publishes before the next implementer, and each iteration is implemented and committed once', async () => {
+test('a relaunch publishes before the next implementer, pauses again while the remote stays unreachable, and each iteration is implemented and committed once', async () => {
   const fixture = repo({ planText: THREE, remote: true });
   const origin = git(fixture.dir, 'remote', 'get-url', 'origin').stdout.trim();
   unreachable(fixture);
@@ -125,6 +125,13 @@ test('a relaunch with the remote reachable publishes before the next implementer
   assert.equal(implementers(fixture), 1, first.output);
 
   tick(fixture, 1);
+
+  const still = await launch(fixture, [fixture.plan]);
+  assert.equal(still.code, PAUSED, still.output);
+  assert.match(still.output.trim().split('\n').pop() ?? '', /push failed.*local only: 1/i, still.output);
+  assert.equal(implementers(fixture), 1, still.output);
+  assert.equal(git(fixture.dir, 'status', '--porcelain').stdout, '', still.output);
+
   git(fixture.dir, 'remote', 'set-url', 'origin', origin);
 
   const second = await launch(fixture, [fixture.plan]);
@@ -144,20 +151,51 @@ test('a relaunch with the remote reachable publishes before the next implementer
   assert.match(git(fixture.dir, 'ls-remote', '--heads', 'origin').stdout, /feature\/demo/);
 });
 
-test('a relaunch with the remote still unreachable pauses again and launches no implementer', async () => {
-  const fixture = repo({ planText: THREE, remote: true });
+const ticked = (remote: boolean) => {
+  const fixture = repo({ planText: THREE, remote });
+
+  for (const n of [1, 2, 3]) {
+    git(fixture.dir, 'commit', '--allow-empty', '-qm', `feat: number ${n}`);
+    tick(fixture, n);
+  }
+
+  return fixture;
+};
+
+test('a relaunch on a fully ticked, unpublished plan replays the DoD, publishes, marks ready, then reviews', async () => {
+  const fixture = ticked(true);
+  const origin = git(fixture.dir, 'remote', 'get-url', 'origin').stdout.trim();
   unreachable(fixture);
 
   const first = await launch(fixture, [fixture.plan]);
   assert.equal(first.code, PAUSED, first.output);
+  assert.match(first.output, /stage=dod/, first.output);
+  assert.match(first.output.trim().split('\n').pop() ?? '', /push failed.*local only: 1, 2, 3/i, first.output);
 
-  tick(fixture, 1);
+  git(fixture.dir, 'remote', 'set-url', 'origin', origin);
 
   const second = await launch(fixture, [fixture.plan]);
-  assert.equal(second.code, PAUSED, second.output);
-  assert.match(second.output.trim().split('\n').pop() ?? '', /push failed.*local only: 1/i, second.output);
-  assert.equal(implementers(fixture), 1, second.output);
-  assert.equal(git(fixture.dir, 'status', '--porcelain').stdout, '', second.output);
+  assert.equal(second.code, 0, second.output);
+  assert.ok(second.output.indexOf('stage=dod') < second.output.indexOf('pushed to'), second.output);
+  assert.match(second.output, /marked ready/, second.output);
+  assert.match(second.output, /stage=lens/, second.output);
+  assert.match(second.output, /stage=reviewer/, second.output);
+  assert.match(second.output, /stage=auditor/, second.output);
+  assert.match(git(fixture.dir, 'ls-remote', '--heads', 'origin').stdout, /feature\/demo/);
+  assert.match(readFileSync(fixture.ghLog, 'utf8'), /pr\nready/);
+  assert.equal(implementers(fixture), 0, second.output);
+});
+
+test('a relaunch on a fully ticked, published plan with a ready pull request does nothing', async () => {
+  const fixture = ticked(true);
+  git(fixture.dir, 'push', '-q', '-u', 'origin', 'HEAD');
+
+  const { code, output } = await runInProcess(fixture, [fixture.plan], { FAKE_GH_PR_EXISTS: '1' });
+
+  assert.equal(code, 0, output);
+  assert.match(output, /no unchecked iteration remains/, output);
+  assert.doesNotMatch(output, /stage=(dod|lens|auditor)/, output);
+  assert.ok(!/pr\n(create|edit|ready)/.test(readFileSync(fixture.ghLog, 'utf8')), output);
 });
 
 test('a named iteration that is already ticked is refused before anything happens', async () => {
