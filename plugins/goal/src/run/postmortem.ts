@@ -14,7 +14,7 @@ import type { Reporter } from './report.ts';
 
 // Overridable the same way advisory.ts's defaultSettingsPath() is: a test points it at a tmp
 // directory rather than the real ~/.claude/projects.
-const defaultProjectsRoot = (): string => settingValue('GOAL_RUN_PROJECTS_ROOT', process.env) ?? join(fs.homeDir(), '.claude', 'projects');
+export const defaultProjectsRoot = (): string => settingValue('GOAL_RUN_PROJECTS_ROOT', process.env) ?? join(fs.homeDir(), '.claude', 'projects');
 
 export const claudeBinaryPath = (): string | undefined => {
   const which = command.run('which', ['claude']);

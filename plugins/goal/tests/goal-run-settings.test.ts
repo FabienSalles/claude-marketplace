@@ -54,9 +54,10 @@ test('R7: an accepted run writes one RUN settings line giving each setting, its 
   assert.match(lines[0] ?? '', /GOAL_RUN_QUOTA_MAX_RETRIES=3 \(default\)/, output);
   assert.match(lines[0] ?? '', /GOAL_RUN_SHUTDOWN_BACKOFF=5 \(default\)/, output);
   assert.match(lines[0] ?? '', /GOAL_PROC_HEADROOM=400 \(default\)/, output);
-  assert.match(lines[0] ?? '', /GOAL_RUN_SETTINGS_PATH=unset \(default\)/, output);
-  assert.match(lines[0] ?? '', /GOAL_RUN_PROJECTS_ROOT=unset \(default\)/, output);
-  assert.match(lines[0] ?? '', /GOAL_GATE=\S+ \(environment\)/, output);
+  assert.match(lines[0] ?? '', /GOAL_RUN_SETTINGS_PATH=\S+[/\\]\.claude[/\\]settings\.json \(default\)/, output);
+  assert.match(lines[0] ?? '', /GOAL_RUN_PROJECTS_ROOT=\S+[/\\]\.claude[/\\]projects \(default\)/, output);
+  assert.match(lines[0] ?? '', /GOAL_GATE=\(environment\)/, output);
+  assert.ok(!(lines[0] ?? '').includes('fake-gate'), `the gate command leaked into the run log: ${lines[0] ?? ''}`);
 });
 
 test('R7: the RUN settings line follows the line naming the run records', () => {

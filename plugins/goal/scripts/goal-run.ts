@@ -23,6 +23,8 @@ import { runIteration } from '../src/run/iteration.ts';
 import { blockedNote, createPublisher } from '../src/run/publish.ts';
 import { close, LANDED } from '../src/run/close.ts';
 import { quote } from '../src/run/shell.ts';
+import { defaultSettingsPath } from '../src/run/advisory.ts';
+import { defaultProjectsRoot } from '../src/run/postmortem.ts';
 import { workIdOf } from '../src/core/plan.ts';
 import { checkSettings, settingValue } from '../src/core/settings.ts';
 import { iterationNumbers, subHeadings } from '../src/gate/plan.ts';
@@ -54,9 +56,10 @@ const main = async (): Promise<void> => {
   const dir = runDir(workIdOf(plan, source));
   reporter.setLog(dir);
   reporter.say(`RUN writing this run's records to ${dir}`);
+  const resolved: Record<string, string> = { GOAL_RUN_SETTINGS_PATH: defaultSettingsPath(), GOAL_RUN_PROJECTS_ROOT: defaultProjectsRoot() };
   reporter.say(
     `RUN settings ${Object.entries(effective)
-      .map(([name, { value, source }]) => `${name}=${value ?? 'unset'} (${source})`)
+      .map(([name, { value, source }]) => (name === 'GOAL_GATE' ? `${name}=(${source})` : `${name}=${resolved[name] ?? value ?? 'unset'} (${source})`))
       .join(' ')}`,
   );
 

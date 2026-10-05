@@ -61,7 +61,8 @@ to a 1800-second sleep. That one ceiling bounds the attempts of an iteration wha
 class (exhausted, burst, signal), and the pause lists each attempt with its class.
 `GOAL_RUN_SHUTDOWN_MAX_RETRIES` is retired: setting it refuses the run (exit 2), as does any
 faulty setting (see the README's settings table). Once accepted, the run logs one `RUN settings`
-line giving each setting's effective value and whether it came from the environment or the default. After every
+line giving each setting's effective value (a path's default resolved, `GOAL_GATE` by origin only) and whether it came
+from the environment or the default. After every
 attempt, before any wait or relaunch, the tamper read runs and wins over the failure class: an
 implementer commit stops the run at once with its SHA.
 

@@ -194,7 +194,7 @@ More, including the axes that are entirely empty: [`docs/comparison.md`](docs/co
 | [`/goal:plan`](skills/plan/SKILL.md) | `skills/` | The technical grill → command-mapped DoD, slices, policy, remote → the locked plan on a branch |
 | [`/goal:supervise`](skills/supervise/SKILL.md) | `skills/` | Launches the runner, classifies a halt, repairs or discards once. **Never exercised by a real run** |
 | [`/goal:next`](skills/next/SKILL.md) | `skills/` | Manual-loop checkpoint: replay the DoD, reconcile plan against code, emit the next handoff |
-| `goal-run.ts` + `run/*.ts` | `scripts/` + `src/run/` | The runner: 1,844 lines, the entry point plus 14 modules (preflight, sweep, lock, iteration, publish, close, report) |
+| `goal-run.ts` + `run/*.ts` | `scripts/` + `src/run/` | The runner: 1,847 lines, the entry point plus 14 modules (preflight, sweep, lock, iteration, publish, close, report) |
 | `goal-gate.ts` + `gate/*.ts` | `scripts/` + `src/gate/` | The judge, and the only committer: 1,108 lines, the entry point plus 11 modules. Exit 0 runnable · 1 `HALT` with a reason · 2 misuse |
 | `ports.ts` + `adapters/*.ts` | `src/` | The `CommandRunner`, `Clock` and `FileSystem` ports, and the real adapters that back them: every process spawn, wait and disk access in production code goes through one, so a rule is observable against a double instead of a repository fixture |
 | `core/*.ts` | `src/core/` | The pure business rules (scope, bounds, commands, ticked, cross-iteration, never) the gate evaluates, plus verdict and preflight: no process, no clock, no disk |
@@ -251,7 +251,7 @@ Every setting is an environment variable. A numeric one is a whole number writte
 | `GOAL_PROC_HEADROOM` | processes | 1 | none | 400 |
 | `GOAL_RUN_SETTINGS_PATH`, `GOAL_RUN_PROJECTS_ROOT`, `GOAL_GATE` | path or command | non-empty | | unset |
 
-An unknown name under `GOAL_RUN_*`, `GOAL_CMD_*` or `GOAL_PROC_*` is refused with the closest known name. The runner refuses with exit 2 before writing a run directory, listing every fault at once; once the settings are accepted it writes one `RUN settings` line to the run log giving each setting's effective value and whether it came from the environment or the default.
+An unknown name under `GOAL_RUN_*`, `GOAL_CMD_*` or `GOAL_PROC_*` is refused with the closest known name. The runner refuses with exit 2 before writing a run directory, listing every fault at once; once the settings are accepted it writes one `RUN settings` line to the run log giving each setting's effective value (a path's default resolved to the path it stands for) and whether it came from the environment or the default; `GOAL_GATE` shows its origin only, never the command, which may carry a credential.
 
 ## Cost
 
