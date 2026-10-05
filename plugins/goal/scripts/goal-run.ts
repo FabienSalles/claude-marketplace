@@ -140,9 +140,10 @@ const main = async (): Promise<void> => {
   const publisher = createPublisher(plan, source, policy, remote, reporter, gate);
 
   const landed: string[] = [];
+  const noted = new Set<string>();
 
   for (const n of iterations) {
-    await runIteration(plan, source, n, hashes.get(n)!, tickedSets.get(n) ?? '', gate, dir, reporter, publisher);
+    await runIteration(plan, source, n, hashes.get(n)!, tickedSets.get(n) ?? '', gate, dir, reporter, publisher, noted);
     landed.push(n);
 
     // Every iteration but the last publishes here, as it lands. The last one's push waits for

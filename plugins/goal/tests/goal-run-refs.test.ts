@@ -32,7 +32,7 @@ test('git stash push halts the run, naming refs/stash rather than reading an emp
 // way: named, not folded into "wrote nothing".
 test('a tag created by the implementer halts the run, naming it', () => {
   const fixture = repo();
-  claudeRunning(fixture, 'git tag mytag');
+  claudeRunning(fixture, 'git commit --allow-empty -qm work\ngit tag mytag\ngit reset -q --soft HEAD~1');
 
   const { code, output } = run(fixture, [fixture.plan, '1']);
 

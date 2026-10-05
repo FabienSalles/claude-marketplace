@@ -121,9 +121,9 @@ fi
 [ -n "$FAKE_CLAUDE_WRITES" ] && printf 'written %s\\n' "$$-$RANDOM" >> "$FAKE_CLAUDE_WRITES"
 [ -n "$FAKE_CLAUDE_COMMITS" ] && git add -A >/dev/null 2>&1 && git commit -qm "implementer commit"
 # Opt-in, symmetric to FAKE_CLAUDE_COMMITS: bash's tests never set it, so the shared fake claude
-# stays untouched for them. Pushes HEAD to origin's current branch, which is what moves the local
-# remote-tracking ref this guard watches.
-[ -n "$FAKE_CLAUDE_PUSHES" ] && git push -q origin "HEAD:$(git rev-parse --abbrev-ref HEAD)" 2>/dev/null
+# stays untouched for them. Commits, pushes that commit to origin's current branch, which is what
+# moves the local remote-tracking ref this guard watches, then moves HEAD back so R1 stays quiet.
+[ -n "$FAKE_CLAUDE_PUSHES" ] && { git commit --allow-empty -qm "implementer work" && git push -q origin "HEAD:$(git rev-parse --abbrev-ref HEAD)" 2>/dev/null; git reset -q --soft HEAD~1; }
 if [ -n "$FAKE_CLAUDE_RELEASE" ]; then
   : > "$FAKE_CLAUDE_STARTED"
   sh "${AWAIT_MARKER}" "$FAKE_CLAUDE_RELEASE" ${AWAIT_DEADLINE_MS} || exit 1
@@ -578,9 +578,10 @@ export const runInProcess = async (
 
     const publisher = createPublisher(plan!, source, policy, remote, reporter, gate);
     const landed: string[] = [];
+    const noted = new Set<string>();
 
     for (const n of iterations) {
-      await runIteration(plan!, source, n, hashes.get(n)!, tickedSets.get(n) ?? '', gate, dir, reporter, publisher);
+      await runIteration(plan!, source, n, hashes.get(n)!, tickedSets.get(n) ?? '', gate, dir, reporter, publisher, noted);
       landed.push(n);
 
       if (n !== iterations[iterations.length - 1]) {
