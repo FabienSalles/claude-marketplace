@@ -49,7 +49,7 @@ claude plugin marketplace list
 
 Expected: `fabien-claude-marketplace — Source: Directory (/Users/…/claude-marketplace)`.
 
-## 3. Install the 28 local plugins
+## 3. Install the local plugins
 
 ```bash
 cd ~/project/github/claude-marketplace
