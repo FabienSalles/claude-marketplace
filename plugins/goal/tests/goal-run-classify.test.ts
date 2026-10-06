@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
+import { AWAIT_DEADLINE_MS } from './support/await-state.ts';
 import { PAUSED, repo, runInProcess } from './support/goal-run-harness.ts';
 import { classifyTerminal } from '../src/adapters/claude/classify.ts';
 
@@ -58,7 +59,7 @@ test('a mid-session quota phrase is not slept on when the session ends unrecogni
     FAKE_CLAUDE_EXIT: '1',
     FAKE_CLAUDE_MIDSTREAM: 'the usage limit is documented here',
     GOAL_RUN_QUOTA_SLEEP: '604800',
-  });
+  }, undefined, AbortSignal.timeout(AWAIT_DEADLINE_MS));
 
   assert.equal(code, PAUSED, output);
   assert.doesNotMatch(output, /quota sleep continues/i, output);

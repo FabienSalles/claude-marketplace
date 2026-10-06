@@ -127,3 +127,17 @@ test('R5 a child ignoring the signal rejects instead of hanging', async () => {
 
   assert.ok(!alive(held!.pid), 'the child outlived the failure');
 });
+
+test('R6 a wait that ends clears its deadline timer, so nothing keeps the file alive after its tests', async () => {
+  const dir = tmpDir('goal-await-state-');
+  const timers = (): number => process.getActiveResourcesInfo().filter((resource) => resource === 'Timeout').length;
+  const before = timers();
+
+  await signalWhenHeld('sh', child(dir, `${TRAP}\ntouch "$1/marker"\n${HOLD}`), {}, {
+    state: 'the marker written',
+    markers: [join(dir, 'marker')],
+    signal: 'SIGTERM',
+  });
+
+  assert.ok(timers() <= before, `a timer outlived the wait: ${process.getActiveResourcesInfo().join(', ')}`);
+});

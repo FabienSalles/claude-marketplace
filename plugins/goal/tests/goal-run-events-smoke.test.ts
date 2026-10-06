@@ -1,14 +1,14 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { chmodSync, readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, symlinkSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
 import { narrate } from '../src/adapters/claude/stream.ts';
 import { resultEnvelope, tokensLine } from '../src/run/narrate.ts';
 import { createReporter } from '../src/run/report.ts';
 import { tmpDir } from './support/tmp.ts';
-import { jsonlOf, PLAN, repo, run, runInProcess } from './support/goal-run-harness.ts';
+import { jsonlOf, PLAN, repo, run, runInProcess, sharedFake } from './support/goal-run-harness.ts';
 
 const dir = (): string => tmpDir('goal-run-events-');
 
@@ -375,18 +375,17 @@ test('the "gate published no plan_hash" STOP (goal-run.ts) stays a say event wit
   const fixture = repo();
   const gate = join(fixture.bin, 'no-hash-gate');
 
-  writeFileSync(
-    gate,
-    `#!/bin/sh
+  symlinkSync(
+    sharedFake(`#!/bin/sh
 case "$1" in
   check)  printf 'OK\\n'; exit 0 ;;
   lock)   mkdir "$2.run.lock" 2>/dev/null; exit 0 ;;
   unlock) rm -rf "$2.run.lock"; exit 0 ;;
 esac
 exit 2
-`,
+`),
+    gate,
   );
-  chmodSync(gate, 0o755);
 
   const { code } = await runInProcess(fixture, [fixture.plan, '1'], { GOAL_GATE: gate });
 

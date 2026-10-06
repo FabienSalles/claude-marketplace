@@ -46,6 +46,7 @@ test('an implementer killed by a signal reads as such on its stage line and in t
   const { output } = run(fixture, [fixture.plan, '1'], {
     FAKE_CLAUDE_KILL_SIGNAL: 'KILL',
     FAKE_CLAUDE_STDERR_NOISE: 'dying words',
+    GOAL_RUN_SHUTDOWN_BACKOFF: '0',
   });
 
   assert.match(output, /RUN stage=implementer duration_ms=\d+ exit=137 signal=SIGKILL$/m);

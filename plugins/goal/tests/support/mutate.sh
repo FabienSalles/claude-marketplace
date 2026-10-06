@@ -79,6 +79,23 @@ mutations.push({
   target: resolve('plugins/goal/tests/bounded.test.ts'),
 });
 
+mutations.push(
+  {
+    name: 'the HALT envelope reworded (src/gate/halt.ts)',
+    file: resolve('plugins/goal/src/gate/halt.ts'),
+    find: '`HALT\\n\\nREASON:',
+    replacement: '`HALTED\\n\\nREASON:',
+    target: resolve('plugins/goal/tests/gate-captures.test.ts'),
+  },
+  {
+    name: "the scanner's scope widened from git history to the working directory (src/gate/ship.ts)",
+    file: resolve('plugins/goal/src/gate/ship.ts'),
+    find: '`${scanner} git . --redact`',
+    replacement: '`${scanner} dir . --redact`',
+    target: resolve('plugins/goal/tests/gate-captures.test.ts'),
+  },
+);
+
 let failed = false;
 let live;
 
@@ -114,13 +131,17 @@ for (const { name, file, find, replacement, target } of mutations) {
 
   const result = spawnSync(process.execPath, ['--test', runTarget], {
     encoding: 'utf8',
-    env: { ...process.env, FORCE_COLOR: '0', NO_COLOR: '1' },
+    env: { ...process.env, FORCE_COLOR: '0', NO_COLOR: '1', NODE_TEST_CONTEXT: undefined },
   });
 
   restore();
 
-  if (result.status === 0) {
-    console.error(`mutate.sh: mutation "${name}" did NOT turn ${runTargetName} red`);
+  const output = `${result.stdout}${result.stderr}`;
+  const failures = Number(/^ℹ fail (\d+)$/m.exec(output)?.[1] ?? '0');
+  const crashed = output.split('\n').some((line) => line.startsWith(`✖ ${runTarget} (`));
+
+  if (failures === 0 || crashed) {
+    console.error(`mutate.sh: mutation "${name}" did NOT turn ${runTargetName} red: no test of it ran and failed`);
     failed = true;
   } else {
     console.log(`mutate.sh: mutation "${name}" turned ${runTargetName} red, as required`);

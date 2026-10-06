@@ -131,7 +131,7 @@ test('a null line in a Claude session\'s output no longer turns a success into a
 
 // R2, R3, R6 — close() launches the lens, the reviewer and the auditor by role, each returning its own report.
 test('the lens, the reviewer and the auditor are launched through the port, and one failing leaves the other\'s record alone', async () => {
-  const fixture = repo({ planText: PLAN.replace('Policy: commit\n', 'Policy: commit+pr\n'), remote: true, shareBin: true });
+  const fixture = repo({ planText: PLAN.replace('Policy: commit\n', 'Policy: commit+pr\n'), remote: true });
   const launched: { role: string; stopped: boolean }[] = [];
   const said: string[] = [];
   const recorded: string[] = [];

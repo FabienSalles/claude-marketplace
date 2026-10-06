@@ -1,16 +1,16 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { chmodSync, writeFileSync } from 'node:fs';
+import { rmSync, symlinkSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { PAUSED, repo, run } from './support/goal-run-harness.ts';
+import { PAUSED, repo, run, sharedFake } from './support/goal-run-harness.ts';
 
 // Rewrites the fixture's fake claude to run a shell snippet that moves a ref the shared fixture
 // never touches: `for-each-ref` unqualified is the only way to see the move, `git status` never
 // will, since the snippet leaves the working tree itself clean.
 const claudeRunning = (fixture: ReturnType<typeof repo>, script: string) => {
-  writeFileSync(join(fixture.bin, 'claude'), `#!/bin/sh\n${script}\nexit 0\n`);
-  chmodSync(join(fixture.bin, 'claude'), 0o755);
+  rmSync(join(fixture.bin, 'claude'));
+  symlinkSync(sharedFake(`#!/bin/sh\n${script}\nexit 0\n`), join(fixture.bin, 'claude'));
 };
 
 // R8 — the snapshot used to stop at `refs/remotes`, so a stash left `git status` clean and the

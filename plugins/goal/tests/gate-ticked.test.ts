@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { chmodSync, readFileSync, writeFileSync } from 'node:fs';
+import { chmodSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
 import { tmpDir } from './support/tmp.ts';
@@ -202,6 +202,7 @@ const fakeClaude = (plan: string): string =>
 // commit an iteration once an earlier, already-landed one was unticked while it ran.
 test('a run refuses to commit once an earlier landed iteration was unticked while it ran', () => {
   const fixture = repo({ planText: RUN_PLAN_TWO });
+  rmSync(join(fixture.bin, 'claude'));
   writeFileSync(join(fixture.bin, 'claude'), fakeClaude(fixture.plan));
   chmodSync(join(fixture.bin, 'claude'), 0o755);
 

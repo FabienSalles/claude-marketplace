@@ -33,6 +33,11 @@ if [ -n "${GOAL_TESTS_DEPTH:-}" ]; then
   fi
 fi
 export GOAL_TESTS_DEPTH=1
+export GIT_CONFIG_GLOBAL=/dev/null
+export GIT_CONFIG_NOSYSTEM=1
+export GIT_CONFIG_COUNT=1
+export GIT_CONFIG_KEY_0=maintenance.auto
+export GIT_CONFIG_VALUE_0=false
 
 cd "$TESTS/../../.."
 
@@ -53,7 +58,7 @@ for impl in $RUNNERS; do
   # which the anchored sed below stops matching. NODE_TEST_CONTEXT is unset for this child alone:
   # the guard above already stops the real glob recursing, so node's own nested-run protection is
   # redundant here — and, left set, is what made an honoured fixture print no summary at all.
-  out=$(env -u NODE_TEST_CONTEXT FORCE_COLOR=0 NO_COLOR=1 node --test "$GLOB" 2>&1)
+  out=$(env -u NODE_TEST_CONTEXT FORCE_COLOR=0 NO_COLOR=1 node --test --test-timeout=120000 "$GLOB" 2>&1)
   rc=$?
 
   printf '%s\n' "$out"

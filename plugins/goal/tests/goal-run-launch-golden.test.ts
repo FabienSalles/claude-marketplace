@@ -27,7 +27,7 @@ const ceilingOf = (record: LaunchRecord, inherited: string): string => {
 };
 
 const launchLines = async (): Promise<string[]> => {
-  const fixture = repo({ planText: PLAN_PR, remote: true, shareBin: true });
+  const fixture = repo({ planText: PLAN_PR, remote: true });
   const launchLog = join(fixture.dir, 'launch.jsonl');
   const env: Record<string, string | undefined> = {
     DISABLE_AUTOUPDATER: undefined,

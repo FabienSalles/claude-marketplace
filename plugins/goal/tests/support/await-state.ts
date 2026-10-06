@@ -1,5 +1,6 @@
 import { spawn, type SpawnOptions } from 'node:child_process';
 import { existsSync, writeFileSync } from 'node:fs';
+import { setTimeout as delay } from 'node:timers/promises';
 
 export const AWAIT_DEADLINE_MS = 30_000;
 
@@ -84,7 +85,10 @@ export const signalWhenHeld = async (
     writeFileSync(marker, '');
   }
 
-  await Promise.race([exited, pause(deadlineMs)]);
+  const settled = new AbortController();
+
+  await Promise.race([exited, delay(deadlineMs, undefined, { signal: settled.signal }).catch(() => undefined)]);
+  settled.abort();
 
   if (exit === null) {
     return fail(`did not exit after ${hold.signal} within ${deadlineMs} ms`);
