@@ -24,18 +24,61 @@ VITEST_TDD=plugins/vitest/skills/vitest-tdd-workflow/SKILL.md
 failures=0
 cases=0
 
+grep_every_line() {
+  local pattern="$1" line target file files missing rc
+  shift
+  if [[ $# -eq 0 ]]; then
+    echo "    no target given" >&2
+    return 2
+  fi
+  for target in "$@"; do
+    if [[ ! -e "$target" ]]; then
+      echo "    missing target: $target" >&2
+      return 2
+    fi
+  done
+  files=$(grep -rl -- "${pattern%%$'\n'*}" "$@")
+  rc=$?
+  if [[ $rc -ne 0 ]]; then
+    return "$rc"
+  fi
+  while IFS= read -r file; do
+    missing=0
+    while IFS= read -r line; do
+      grep -q -- "$line" "$file"
+      rc=$?
+      if [[ $rc -ge 2 ]]; then
+        return "$rc"
+      fi
+      if [[ $rc -eq 1 ]]; then
+        missing=1
+        break
+      fi
+    done <<<"$pattern"
+    if [[ $missing -eq 0 ]]; then
+      return 0
+    fi
+  done <<<"$files"
+  return 1
+}
+
 # assert_absent NAME PATTERN TARGET… — PATTERN must appear in no TARGET
 assert_absent() {
-  local name="$1" pattern="$2"
+  local name="$1" pattern="$2" rc
   shift 2
   cases=$((cases + 1))
 
-  if grep -rq -- "$pattern" "$@"; then
+  grep_every_line "$pattern" "$@"
+  rc=$?
+  if [[ $rc -eq 1 ]]; then
+    echo "✓ $name"
+  elif [[ $rc -eq 0 ]]; then
     echo "✗ $name"
     grep -rn -- "$pattern" "$@" | sed 's/^/    /'
     failures=$((failures + 1))
   else
-    echo "✓ $name"
+    echo "✗ $name (grep exit $rc)"
+    failures=$((failures + 1))
   fi
 }
 
@@ -53,25 +96,45 @@ assert_pins() {
     return
   fi
 
-  if ! grep -rq -- "$pattern" "${targets[@]}"; then
+  local rc
+  grep_every_line "$pattern" "${targets[@]}"
+  rc=$?
+  if [[ $rc -ge 2 ]]; then
+    echo "✗ $name (grep exit $rc)"
+    failures=$((failures + 1))
+    return
+  fi
+  if [[ $rc -eq 1 ]]; then
     echo "✗ $name"
     echo "    '$pattern' found in none of: ${targets[*]}"
     failures=$((failures + 1))
     return
   fi
 
-  local stray
-  stray=$(grep -rl -- "$pattern" plugins/ 2>/dev/null | while IFS= read -r f; do
-    local inside=0
+  local candidates stray="" f t inside
+  candidates=$(grep -rl -- "${pattern%%$'\n'*}" plugins/)
+  rc=$?
+  if [[ $rc -ge 2 ]]; then
+    echo "✗ $name (grep exit $rc while looking for strays)"
+    failures=$((failures + 1))
+    return
+  fi
+  while IFS= read -r f; do
+    [[ -n "$f" ]] || continue
+    inside=0
     for t in "${targets[@]}"; do
-      case "$f" in "$t"*) inside=1 ;; esac
+      if [[ "$f" == "$t"* ]]; then
+        inside=1
+      fi
     done
-    [[ $inside -eq 0 ]] && echo "$f"
-  done)
+    if [[ $inside -eq 0 ]] && grep_every_line "$pattern" "$f"; then
+      stray="$stray$f"$'\n'
+    fi
+  done <<<"$candidates"
 
   if [[ -n "$stray" ]]; then
     echo "✗ $name (pattern also found outside the target set)"
-    echo "$stray" | sed 's/^/    /'
+    printf '%s' "$stray" | sed 's/^/    /'
     failures=$((failures + 1))
   else
     echo "✓ $name"
@@ -92,15 +155,32 @@ assert_measured() {
     return
   fi
 
-  local pin_line measure_line
-  pin_line=$(grep -n -- "$pattern" "$target" | head -1 | cut -d: -f1)
-  if [[ -z "$pin_line" ]]; then
+  local pin_line measure_line line found rc
+  grep_every_line "$pattern" "$target"
+  rc=$?
+  if [[ $rc -ge 2 ]]; then
+    echo "✗ $name (grep exit $rc)"
+    failures=$((failures + 1))
+    return
+  fi
+  pin_line=$(grep -n -- "${pattern%%$'\n'*}" "$target" | head -1 | cut -d: -f1)
+  if [[ $rc -eq 1 || -z "$pin_line" ]]; then
     echo "✗ $name (pinned sentence absent from $target)"
     failures=$((failures + 1))
     return
   fi
 
-  measure_line=$(tail -n +"$pin_line" "$target" | grep -n -- "$measure" | head -1 | cut -d: -f1)
+  measure_line=""
+  while IFS= read -r line; do
+    found=$(tail -n +"$pin_line" "$target" | grep -n -- "$line" | head -1 | cut -d: -f1)
+    if [[ -z "$found" ]]; then
+      measure_line=""
+      break
+    fi
+    if [[ -z "$measure_line" ]]; then
+      measure_line=$found
+    fi
+  done <<<"$measure"
   if [[ -z "$measure_line" ]]; then
     echo "✗ $name (no measure found after the pinned sentence in $target)"
     failures=$((failures + 1))
@@ -113,9 +193,16 @@ assert_measured() {
     return
   fi
 
-  if grep -rq -- "$counter" plugins; then
+  grep_every_line "$counter" plugins
+  rc=$?
+  if [[ $rc -eq 0 ]]; then
     echo "✗ $name (a contradicting form still coexists in the pack)"
     grep -rn -- "$counter" plugins | sed 's/^/    /'
+    failures=$((failures + 1))
+    return
+  fi
+  if [[ $rc -ge 2 ]]; then
+    echo "✗ $name (grep exit $rc on the contradicting form)"
     failures=$((failures + 1))
     return
   fi
@@ -125,15 +212,20 @@ assert_measured() {
 
 # assert_present NAME PATTERN TARGET… — PATTERN must appear in some TARGET
 assert_present() {
-  local name="$1" pattern="$2"
+  local name="$1" pattern="$2" rc
   shift 2
   cases=$((cases + 1))
 
-  if grep -rq -- "$pattern" "$@"; then
+  grep_every_line "$pattern" "$@"
+  rc=$?
+  if [[ $rc -eq 0 ]]; then
     echo "✓ $name"
-  else
+  elif [[ $rc -eq 1 ]]; then
     echo "✗ $name"
     echo "    '$pattern' found in none of: $*"
+    failures=$((failures + 1))
+  else
+    echo "✗ $name (grep exit $rc)"
     failures=$((failures + 1))
   fi
 }
@@ -342,7 +434,7 @@ assert_present "R2 supervise's no-plan STOP names /goal:plan, the command that c
   'Run `/goal:plan` first' "$SUPERVISE_SKILL"
 
 assert_absent "R1 vertical-slice no longer schedules cleanup as the last slice of this plan" \
-  'Keep the cleanup slice separate and last' "$VERTICAL_SLICE"
+  'Keep the \**cleanup slice separate and last' "$VERTICAL_SLICE"
 
 assert_present "R2 vertical-slice defers cleanup scheduling to product:delivery, its owner" \
   'never a slice of this plan' "$VERTICAL_SLICE"
@@ -363,12 +455,13 @@ assert_absent "R3 no DDD example branches on the retired boolean .ok field" \
   '\.ok' "$DDD_TS_FP" "$TS_DDD_EVENTS"
 
 cases=$((cases + 1))
-if grep -rqE '[^a-zA-Z](ok|err)\(' "$DDD_TS_FP" "$TS_DDD_EVENTS"; then
+grep -rqE '[^a-zA-Z](ok|err)\(' "$DDD_TS_FP" "$TS_DDD_EVENTS" 2>/dev/null
+if [[ $? -eq 1 ]]; then
+  echo "✓ R5 no DDD example calls the hand-rolled ok/err constructors"
+else
   echo "✗ R5 no DDD example calls the hand-rolled ok/err constructors"
   grep -rnE '[^a-zA-Z](ok|err)\(' "$DDD_TS_FP" "$TS_DDD_EVENTS" | sed 's/^/    /'
   failures=$((failures + 1))
-else
-  echo "✓ R5 no DDD example calls the hand-rolled ok/err constructors"
 fi
 
 # The pattern must be one prose cannot satisfy. Its first form was `success(`, which went green on
@@ -391,24 +484,26 @@ DDD_EXAMPLES=plugins/typescript/skills/ddd-ts-fp/references/ddd-functional-examp
 FP_EXAMPLES=plugins/typescript/skills/ts-functional/references/fp-pattern-examples.md
 
 cases=$((cases + 1))
-if grep -rqE '[^a-zA-Z](ok|err)\(' "$TS_FUNCTIONAL_DIR"; then
+grep -rqE '[^a-zA-Z](ok|err)\(' "$TS_FUNCTIONAL_DIR" 2>/dev/null
+if [[ $? -eq 1 ]]; then
+  echo "✓ R1 ts-functional's own examples keep no retired ok/err constructor call"
+else
   echo "✗ R1 ts-functional's own examples keep no retired ok/err constructor call"
   grep -rnE '[^a-zA-Z](ok|err)\(' "$TS_FUNCTIONAL_DIR" | sed 's/^/    /'
   failures=$((failures + 1))
-else
-  echo "✓ R1 ts-functional's own examples keep no retired ok/err constructor call"
 fi
 
 assert_absent "R7 no example across the three skills carries the retired error: field" \
   'error:' "$TS_FUNCTIONAL_DIR" "$DDD_TS_FP" "$TS_DDD_EVENTS"
 
 cases=$((cases + 1))
-if grep -rqE "\{ *tag: .(success|failure)., " "$FP_EXAMPLES" "$DDD_EXAMPLES"; then
+grep -rqE "\{ *tag: .(success|failure)., " "$FP_EXAMPLES" "$DDD_EXAMPLES" 2>/dev/null
+if [[ $? -eq 1 ]]; then
+  echo "✓ R3 no example rebuilds the tagged shape by hand instead of calling the constructor"
+else
   echo "✗ R3 no example rebuilds the tagged shape by hand instead of calling the constructor"
   grep -rnE "\{ *tag: .(success|failure)., " "$FP_EXAMPLES" "$DDD_EXAMPLES" | sed 's/^/    /'
   failures=$((failures + 1))
-else
-  echo "✓ R3 no example rebuilds the tagged shape by hand instead of calling the constructor"
 fi
 
 cases=$((cases + 1))
@@ -420,12 +515,13 @@ else
 fi
 
 cases=$((cases + 1))
-if grep -rqE "(^|[^c])Result\.(chain|tee)" "$TS_FUNCTIONAL_DIR"; then
+grep -rqE "(^|[^c])Result\.(chain|tee)" "$TS_FUNCTIONAL_DIR" 2>/dev/null
+if [[ $? -eq 1 ]]; then
+  echo "✓ R5 no example calls the Result.chain/Result.tee namespace the module does not export"
+else
   echo "✗ R5 no example calls the Result.chain/Result.tee namespace the module does not export"
   grep -rnE "(^|[^c])Result\.(chain|tee)" "$TS_FUNCTIONAL_DIR" | sed 's/^/    /'
   failures=$((failures + 1))
-else
-  echo "✓ R5 no example calls the Result.chain/Result.tee namespace the module does not export"
 fi
 
 assert_present "R1 ts-functional's SKILL.md names the success<T> constructor" \
@@ -477,12 +573,13 @@ else
 fi
 
 cases=$((cases + 1))
-if grep -qE '@Injectable|@Inject\(|@Module|Symbol\(|useClass' "$PORTS_ADAPTERS"; then
+grep -qE '@Injectable|@Inject\(|@Module|Symbol\(|useClass' "$PORTS_ADAPTERS" 2>/dev/null
+if [[ $? -eq 1 ]]; then
+  echo "✓ R5 the skill's mechanism names no container"
+else
   echo "✗ R5 the skill's mechanism names no container"
   grep -nE '@Injectable|@Inject\(|@Module|Symbol\(|useClass' "$PORTS_ADAPTERS" | sed 's/^/    /'
   failures=$((failures + 1))
-else
-  echo "✓ R5 the skill's mechanism names no container"
 fi
 
 assert_absent "R5 the skill silences no compiler error with a non-null assertion" \
@@ -863,10 +960,16 @@ assert_pins "C173 the Pact CI job stays non-blocking behind a published, version
   "$CRAFT_TESTING"
 
 cases=$((cases + 1))
-unscoped=$(awk 'BEGIN{RS="";ORS="\n"} /^## 15\./{f=1;next} /^## Quick Reference/{f=0} f{gsub(/\n/," ");print}' "$CRAFT_TESTING" \
-  | grep -E 'jest|Jest|Cucumber|Pact|Gherkin|Vitest|vi\.|expect|toMatchSnapshot|useFakeTimers|node:assert|Before/After|beforeEach' \
-  | grep -v '^In a Jest + Cucumber codebase' | grep -v '^One assertion vocabulary per runner')
-if [[ -n "$unscoped" ]]; then
+section15=$(awk 'BEGIN{RS="";ORS="\n"} /^## 15\./{f=1;next} /^## Quick Reference/{f=0} f{gsub(/\n/," ");print}' "$CRAFT_TESTING")
+runners=$(printf '%s\n' "$section15" \
+  | grep -E 'jest|Jest|Cucumber|Pact|Gherkin|Vitest|vi\.|expect|toMatchSnapshot|useFakeTimers|node:assert|Before/After|beforeEach')
+runners_rc=$?
+unscoped=$(printf '%s\n' "$runners" | grep -v -e '^In a Jest + Cucumber codebase' -e '^One assertion vocabulary per runner')
+unscoped_rc=$?
+if [[ -z "$section15" || $runners_rc -ge 2 || $unscoped_rc -ge 2 ]]; then
+  echo "✗ R6 every §15 paragraph naming a runner is conditioned on a Jest + Cucumber codebase (no §15 paragraph read from $CRAFT_TESTING, or grep failed)"
+  failures=$((failures + 1))
+elif [[ -n "$unscoped" ]]; then
   echo "✗ R6 a §15 paragraph names a runner outside the Jest + Cucumber condition"
   echo "$unscoped" | sed 's/^/    /'
   failures=$((failures + 1))
@@ -1004,7 +1107,7 @@ echo "== Iteration 1 (#75) — section 3 states the split once, the fused smart 
 CRAFT_DDD_FP_SKILL=plugins/craft/skills/ddd-fp-principles/SKILL.md
 
 assert_absent "J1 no fused encapsulates-all-invariants claim survives" \
-  'Encapsulates **all invariants**' "$CRAFT_DDD_FP_SKILL"
+  'Encapsulates \**all invariants' "$CRAFT_DDD_FP_SKILL"
 
 assert_absent "J1 no quick-ref row still names a smart constructor" \
   '| Smart constructor |' "$CRAFT_DDD_FP_SKILL"
@@ -1119,7 +1222,7 @@ assert_measured "C113 the event is created in the handler, never in the aggregat
 assert_measured "C114 dispatch's make\*Mapper factory is bounded by cost, not by event count" \
   "Dispatch is a domain port typed as a bare function type, whose adapter is a Record<type, listener> table built by a make\*Mapper factory." \
   "one .make\*Mapper. factory per bounded context, never one per event type" \
-  "a make*Mapper factory is written per event type" \
+  "a make\**Mapper factory is written per event type" \
   "$TS_DDD_EVENTS/SKILL.md"
 
 assert_measured "C117 emit picks exactly one of the two mechanisms, never both" \
@@ -1472,7 +1575,9 @@ echo ""
 echo "== Iteration 1 (#73) — every checked example obeys the rule printed beside it"
 
 cases=$((cases + 1))
-if grep -qE "tag: '[a-z-]+'" "$TS_CONVENTIONS" && grep -qE "is[A-Z][a-zA-Z]*\(receipt\)" "$TS_CONVENTIONS" && ! grep -q 'receipt\.fetched' "$TS_CONVENTIONS"; then
+grep -q 'receipt\.fetched' "$TS_CONVENTIONS"
+fetched_rc=$?
+if grep -qE "tag: '[a-z-]+'" "$TS_CONVENTIONS" && grep -qE "is[A-Z][a-zA-Z]*\(receipt\)" "$TS_CONVENTIONS" && [[ $fetched_rc -eq 1 ]]; then
   echo "✓ R1+R2 ts-conventions' discriminated union example reads its tag through an isX predicate"
 else
   echo "✗ R1+R2 ts-conventions' discriminated union example reads its tag through an isX predicate"
@@ -1480,7 +1585,9 @@ else
 fi
 
 cases=$((cases + 1))
-if grep -A1 -E '^\s*rawInput,\s*$' "$FP_EXAMPLES" | grep -q 'validateEmail,' && ! grep -q 'success(rawInput)' "$FP_EXAMPLES"; then
+grep -q 'success(rawInput)' "$FP_EXAMPLES"
+wrapped_rc=$?
+if grep -A1 -E '^\s*rawInput,\s*$' "$FP_EXAMPLES" | grep -q 'validateEmail,' && [[ $wrapped_rc -eq 1 ]]; then
   echo "✓ R3 the railway pipe takes its raw value, not a pre-wrapped success(rawInput)"
 else
   echo "✗ R3 the railway pipe takes its raw value, not a pre-wrapped success(rawInput)"
@@ -1716,8 +1823,7 @@ assert_present "R9 safety-net keeps its Infection recipe" \
   'vendor/bin/infection run src/Billing' plugins/legacy/skills/discovery/references/safety-net.md
 
 echo ""
-if [[ $failures -gt 0 ]]; then
-  echo "✗ $failures/$cases assertion(s) failed"
+echo "Total: $((cases - failures)) pass, $failures fail"
+if [[ $failures -gt 0 || $cases -eq 0 ]]; then
   exit 1
 fi
-echo "✓ $cases/$cases assertion(s) passed"
