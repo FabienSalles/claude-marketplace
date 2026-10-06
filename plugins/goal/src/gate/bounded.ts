@@ -1,4 +1,4 @@
-// The process ceiling every declared command and every implementer runs under. `ulimit -u` lowers
+// The process ceiling every declared command and every agent session (implementer, lens, reviewer, auditor) runs under. `ulimit -u` lowers
 // the soft and the hard limit together, so nothing spawned underneath can raise it back — which is
 // the property that bounds a runaway fork, and the same one that makes a second attempt fail with
 // EPERM. The gate is a descendant of its own bounded commands (a swept `run.sh` spawns the gate,

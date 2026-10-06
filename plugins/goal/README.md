@@ -266,8 +266,7 @@ rate limit gets seconds of backoff instead.
 **Observed, 2026-08-05:** installing an update to Claude Code shuts down every running instance on
 the machine, including a `claude -p` implementer mid-slice. A run left unattended for hours is
 exactly the shape an update lands under. The runner absorbs this: exit 143 is classified as a
-shutdown rather than quota exhaustion and retried after a fixed 5s backoff, within the one attempt ceiling `GOAL_RUN_QUOTA_MAX_RETRIES` (default 3), after which the run pauses listing each attempt with its class (`GOAL_RUN_SHUTDOWN_MAX_RETRIES` is retired and refused); every non-zero implementer exit logs its exit code or signal and elapsed time; the implementer has no time ceiling of its own, by choice; every
-implementer is spawned with `DISABLE_AUTOUPDATER=1`; and preflight *warns*, never refuses, when
+shutdown rather than quota exhaustion and retried after a fixed 5s backoff, within the one attempt ceiling `GOAL_RUN_QUOTA_MAX_RETRIES` (default 3), after which the run pauses listing each attempt with its class (`GOAL_RUN_SHUTDOWN_MAX_RETRIES` is retired and refused); every non-zero implementer exit logs its exit code or signal and elapsed time; the implementer has no time ceiling of its own, by choice; every agent session is spawned with `DISABLE_AUTOUPDATER=1` under the process ceiling (`GOAL_PROC_HEADROOM`); and preflight *warns*, never refuses, when
 your own `~/.claude/settings.json` sets neither `env.DISABLE_AUTOUPDATER` nor
 `"autoUpdatesChannel": "stable"`. Setting one of those stops the updater shutting down *other*
 instances while a run is in flight. That file is yours; the plugin will not write to it.
