@@ -235,39 +235,32 @@ calls, not just on demand:
 | `mac` | 1 — warns on GNU-only flags and bash 4+ syntax |
 
 To silence just the end-of-turn sound without dropping the pack, edit
-`plugins/common/hooks/hooks.json` (then re-propagate, §8), or `claude plugin disable common`.
+`plugins/common/hooks/hooks.json` (then `/reload-plugins`, §8), or `claude plugin disable common`.
 
 ---
 
-## 8. Maintaining the clone: propagating an edit
+## 8. Maintaining the clone: picking up an edit
 
-> The README's dev-mode section claims edits are "picked up live on the next session". On
-> `claude` 2.1.252 that is **not** what happens: `claude plugin install` **copies** the plugin
-> into `~/.claude/plugins/cache/<marketplace>/<plugin>/<version>/`. That copy is keyed by
-> version, so an edit alone changes nothing — `claude plugin update <p>` answers
-> *"already at the latest version"*.
+The marketplace is added from a local path (§2) and every local entry has a relative-path
+source, so Claude Code loads those plugins **in place** from `plugins/<p>/`. The
+[plugin loading reference](https://code.claude.com/docs/en/plugins/loading#in-place-and-copied-plugins)
+states it: "Your edits to the source directory take effect at the next session start or
+`/reload-plugins`, and you don't need to increase the version." Observed on `claude` 2.1.285.
 
-Two ways to propagate, both verified:
+- **An edit to an enabled plugin**: start a new session, or run `/reload-plugins` in a running one.
+- **A plugin new to `marketplace.json`**: enable it once with
+  `claude plugin install "<p>@fabien-claude-marketplace" --yes`, then reload.
+- **The branch checked out in this clone is what every session loads.** Switching the clone to a
+  feature branch changes the plugins of every session on the machine. A running session keeps the
+  hook set it loaded, while each hook script is read from disk when it runs, so reload after a switch.
 
-**a. Version bump** — the real release flow (what the `release` plugin enforces on every PR).
-Bump the version in `plugins/<p>/.claude-plugin/plugin.json` **and** in `.claude-plugin/marketplace.json`, then:
+The version still matters for anyone who added the marketplace from GitHub: their copy sits in
+`~/.claude/plugins/cache/` keyed by version, and `claude plugin update` moves only when the version
+changes. That is what the `version-bump` skill enforces on every pull request, and it holds here
+too for the one entry with a `github` source (`security-audit`).
 
-```bash
-claude plugin marketplace update fabien-claude-marketplace
-claude plugin update <p>
-```
-
-**b. Reinstall** — for iterating without touching versions:
-
-```bash
-claude plugin marketplace update fabien-claude-marketplace
-claude plugin uninstall <p> && claude plugin install "<p>@fabien-claude-marketplace" --yes
-```
-
-Either way, **restart Claude Code** to load the new copy.
-
-Note that old versions accumulate under
-`~/.claude/plugins/cache/fabien-claude-marketplace/<plugin>/`; remove stale ones by hand.
+Copies that older `claude` versions left under `~/.claude/plugins/cache/fabien-claude-marketplace/`
+are not read for the local entries; remove them by hand.
 
 ---
 
