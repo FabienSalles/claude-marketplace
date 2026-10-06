@@ -36,13 +36,14 @@ Hooks alone are enough to block. `/setup` additionally writes `Read(...)` deny r
 
 ## Tests
 
-```bash
-bash tests/test_prompt-injection-detector.sh
-bash tests/test_claudemd-scanner.sh
-bash tests/test_secret-file-guard.sh
-```
+From the marketplace root (the suites source the harness of the sibling `shell-test` plugin, so they run from a checkout, not from an installed copy, and they need `jq`):
 
-Both scripts also pass `bash -n` syntax check.
+```bash
+bash plugins/security-runtime/tests/test_prompt-injection-detector.sh
+bash plugins/security-runtime/tests/test_claudemd-scanner.sh
+bash plugins/security-runtime/tests/test_secret-file-guard.sh
+npm run verify -- shell-suites   # every hook and shell suite of the marketplace
+```
 
 ## Dependencies
 

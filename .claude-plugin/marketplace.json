@@ -109,6 +109,16 @@
       "keywords": ["node-test", "node", "testing", "conventions"]
     },
     {
+      "name": "shell-test",
+      "source": "./plugins/shell-test",
+      "description": "Bash test suites and Claude Code hook tests: one sourced harness, hermetic cases, exit-code and channel assertions, suites that cannot pass on nothing",
+      "version": "1.0.0",
+      "author": { "name": "FabienSalles" },
+      "category": "testing",
+      "license": "MIT",
+      "keywords": ["shell", "bash", "testing", "hooks", "conventions"]
+    },
+    {
       "name": "tooling",
       "source": "./plugins/tooling",
       "description": "Docker, Drizzle ORM, pnpm workspaces, Zod schemas",

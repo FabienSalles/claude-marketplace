@@ -38,7 +38,7 @@ PATTERNS=(
 )
 
 for pattern in "${PATTERNS[@]}"; do
-  if printf '%s' "$TARGET" | grep -qE "$pattern"; then
+  if printf '%s' "$TARGET" | grep -qEi "$pattern"; then
     printf 'BLOCKED by security-runtime/secret-file-guard: %s targets a credential file (%s).\nDo not work around this. If a value is needed, ask the user for it.\n' "$TOOL_NAME" "$pattern" >&2
     exit 2
   fi
