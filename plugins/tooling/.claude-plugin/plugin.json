@@ -1,12 +1,12 @@
 {
   "name": "tooling",
-  "version": "2.0.1",
-  "description": "Docker, Drizzle ORM, pnpm workspaces, Zod schemas",
+  "version": "2.1.0",
+  "description": "Docker, Drizzle ORM, GitHub Actions, pnpm workspaces, Zod schemas",
   "author": {
     "name": "FabienSalles"
   },
   "repository": "https://github.com/FabienSalles/claude-marketplace",
   "license": "MIT",
-  "keywords": ["docker", "drizzle", "pnpm", "zod"],
+  "keywords": ["docker", "drizzle", "github-actions", "ci", "pnpm", "zod"],
   "skills": "./skills/"
 }

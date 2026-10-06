@@ -18,6 +18,15 @@
         "describes routing cases (query, skills, expected_behavior) as the convention",
         "points at an existing worked example in the repo rather than inventing a new schema"
       ]
+    },
+    {
+      "query": "My PreToolUse hook prints its warning to stderr and exits 0, why does Claude never see it?",
+      "skills": ["skills:plugin-conventions"],
+      "expected_behavior": [
+        "loads skills:plugin-conventions for the hook output contract",
+        "explains that stderr at exit 0 reaches only the debug log",
+        "fixes it with exit 2 and the reason on stderr, or with hookSpecificOutput.permissionDecision on stdout"
+      ]
     }
   ]
 }

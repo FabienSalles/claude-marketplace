@@ -3,14 +3,12 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { HASH, PAUSED, PLAN, git, jsonlOf, repo as baseRepo, run, runDirOf, runInProcess } from './support/goal-run-harness.ts';
+import { HASH, PAUSED, PLAN, git, jsonlOf, repo, run, runDirOf, runInProcess } from './support/goal-run-harness.ts';
 import { tmpDir } from './support/tmp.ts';
 import { claudeAgentSessions } from '../src/adapters/claude/session.ts';
 import { close, LANDED } from '../src/run/close.ts';
 import { createPublisher } from '../src/run/publish.ts';
 import type { Reporter } from '../src/run/report.ts';
-
-const repo = (options: Parameters<typeof baseRepo>[0] = {}) => baseRepo({ ...options, shareBin: true });
 
 const PLAN_PR = PLAN.replace('Policy: commit\n', 'Policy: commit+pr\n');
 const PLAN_PR_REVIEW = PLAN_PR.replace('Policy: commit+pr\n', 'Policy: commit+pr\nReview: comment\n');

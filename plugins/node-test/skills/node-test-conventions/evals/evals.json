@@ -26,6 +26,15 @@
         "loads vitest:vitest-test-conventions, not node-test:node-test-conventions",
         "keeps the file on Vitest, no runner migration"
       ]
+    },
+    {
+      "query": "Should our pure node:test files run under --test-isolation=none to start faster?",
+      "skills": ["node-test:node-test-conventions"],
+      "expected_behavior": [
+        "loads node-test:node-test-conventions",
+        "keeps --test-isolation=none for pure in-process files only",
+        "wraps per-file hooks in describe() and leaves out files that change cwd, env or process.exit"
+      ]
     }
   ]
 }

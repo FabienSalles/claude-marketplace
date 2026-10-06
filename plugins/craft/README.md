@@ -12,6 +12,7 @@ Each `*-principles` skill in this plugin defines the **rules** in language-agnos
 | `oop-principles` | `php-oop`, `ts-oop` |
 | `code-style-principles` | `php-code-conventions`, `ts-code-conventions` |
 | `testing-principles` | `phpunit:php-test-conventions`, `vitest:vitest-test-conventions` |
+| `test-suite-design` | `node-test:node-test-conventions`, `shell-test:shell-test-conventions` (runner idioms), `tooling:github-actions-conventions` (CI wiring) |
 | `tdd-workflow-principles` | `phpunit:php-tdd-workflow`, `vitest:vitest-tdd-workflow` |
 | `ddd-principles` (OOP) | `php-ddd-conventions`, `nest-ddd-conventions` |
 | `ddd-fp-principles` (functional) | `ddd-ts-fp` |
@@ -35,6 +36,7 @@ Each `*-principles` skill in this plugin defines the **rules** in language-agnos
 | `oop-principles` | ✓ shipped |
 | `code-style-principles` | ✓ shipped |
 | `testing-principles` | ✓ shipped |
+| `test-suite-design` | ✓ shipped |
 | `tdd-workflow-principles` | ✓ shipped |
 | `ddd-principles` (OOP) | ✓ shipped |
 | `ddd-fp-principles` (functional) | ✓ shipped |

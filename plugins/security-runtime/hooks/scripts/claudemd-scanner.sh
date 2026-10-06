@@ -1,7 +1,6 @@
 #!/bin/bash
 # CLAUDE.md injection scanner (SessionStart)
 # Scans CLAUDE.md files for prompt injection patterns before they're loaded.
-# Non-blocking: warns on stderr, exits 0 unconditionally (SessionStart must not abort).
 
 set -eu
 
@@ -52,7 +51,7 @@ scan_file() {
   [ -r "$file" ] || return 0
 
   # Zero-width characters (U+200B, U+200C, U+200D, U+FEFF) — common in invisible injection
-  if LC_ALL=C grep -qP '[\xe2\x80\x8b\xe2\x80\x8c\xe2\x80\x8d\xef\xbb\xbf]' "$file" 2>/dev/null; then
+  if LC_ALL=C grep -qF -e $'\xe2\x80\x8b' -e $'\xe2\x80\x8c' -e $'\xe2\x80\x8d' -e $'\xef\xbb\xbf' "$file" 2>/dev/null; then
     REPORT="${REPORT}  - ${file}: zero-width characters detected\n"
     FINDINGS=$((FINDINGS + 1))
   fi
@@ -71,11 +70,9 @@ for f in "${CANDIDATES[@]}"; do
 done
 
 if [ "$FINDINGS" -gt 0 ]; then
-  {
-    printf '\n[security-runtime/claudemd-scanner] %d finding(s):\n' "$FINDINGS"
-    printf '%b' "$REPORT"
-    printf 'Review the file(s) above before trusting their contents.\n\n'
-  } >&2
+  MESSAGE="$(printf '[security-runtime/claudemd-scanner] %d finding(s):\n%bReview the file(s) above before trusting their contents.' "$FINDINGS" "$REPORT")"
+  jq -n --arg message "$MESSAGE" \
+    '{systemMessage: $message, hookSpecificOutput: {hookEventName: "SessionStart", additionalContext: $message}}'
 fi
 
 exit 0

@@ -141,9 +141,9 @@ publication, the quota wait and the closing stage, against a gate split one modu
 business rules, each with its matching test file, a convention `goal-gate.ts` states in its own
 header and that the bash script was the one place in the plugin unable to follow.
 
-**What it cost, re-measured.** `scripts/goal-run.ts` + `src/run/` now stands at 1691 lines
-over 14 files, against `scripts/goal-gate.ts` + `src/gate/` at 1108 over 12; all of
-`scripts/` + `src/` is 4710 lines over 54 `.ts` files, covered by 78 test files and 608 passing tests.
+**What it cost, re-measured.** `scripts/goal-run.ts` + `src/run/` is now several times the size
+of the bash original and larger than `scripts/goal-gate.ts` + `src/gate/` (`wc -l` gives today's
+figures); the suite under `tests/` covers all of `scripts/` + `src/`.
 Most of the distance from the 594-line bash original is not the split: it is the mechanisms
 added since (`gitwatch.ts`, `postmortem.ts`, `quota.ts`), each of which is one of the modules the
 convention asked for. The second defect this question named (the orchestrator re-reading
@@ -461,7 +461,7 @@ before knowing repeats exactly what §8 did.
 
 ## 8. What ceiling should the suite answer to on CI: settled
 
-**Settled.** The `Test the goal gate` job fails when `tests/support/budget.ts --runs 1` reports a wall over 63 s. That is the suite's own duration in that job on this branch, 41.98 s (`ℹ duration_ms 41981` in https://github.com/FabienSalles/claude-marketplace/actions/runs/37134176224), times 1.5, rounded up to the second — not the job's 63 s total, which also carries setup, lint and type-check. A test added later that pushes the suite past it fails CI, and `budget.ts` names the slowest file and test. Raised to 80 s on 2026-10-05: a goal run replays this check before it starts, and on the developer's Mac `main` had already reached 64.8 s and the issue-145 branch 71.0 s.
+**Settled.** The `Goal gate suite` job (named `Test the goal gate` until 2026-10-06) fails when `tests/support/budget.ts --runs 1` reports a wall over 63 s. That is the suite's own duration in that job on this branch, 41.98 s (`ℹ duration_ms 41981` in https://github.com/FabienSalles/claude-marketplace/actions/runs/37134176224), times 1.5, rounded up to the second — not the job's 63 s total, which also carries setup, lint and type-check. A test added later that pushes the suite past it fails CI, and `budget.ts` names the slowest file and test. Raised to 80 s on 2026-10-05: a goal run replays this check before it starts, and on the developer's Mac `main` had already reached 64.8 s and the issue-145 branch 71.0 s. Since 2026-10-06 the ceiling applies only when `GITHUB_ACTIONS=true` (`scripts/verify/ci.ts`): a local run, a goal run's replay included, reports the suite's wall time without failing on it, because a wall clock on a loaded machine is not a correctness gate.
 
 ## 9. A final-state check in the Definition of Done refused the run: settled
 

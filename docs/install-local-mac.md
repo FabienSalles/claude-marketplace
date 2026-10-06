@@ -13,8 +13,8 @@ Verified on `claude` 2.1.252, macOS (darwin 25.6), Node 26.7.0.
 | Tool | Needed by | Check |
 |---|---|---|
 | `claude` CLI | everything | `claude --version` |
-| `node` ≥ 24 | `goal` runner + gate, `scripts/` | `node -v` |
-| `jq` | `/statusline:setup`, `/security-runtime:setup`, `health-check.sh` | `jq --version` |
+| `node` 24.x (the repository's `.nvmrc`) | `goal` runner + gate, `scripts/`, `npm run verify` | `node -v` |
+| `jq` | `/statusline:setup`, `/security-runtime:setup`, the `security-runtime` hooks, `npm run verify` (shell suites) | `jq --version` |
 | `python3` | 2 of the `common` PreToolUse hooks (`remind-skills.py`, `warn-clock-bypass.py`) | `python3 -V` |
 | `git` | marketplace resolution + the `git` plugin hook | `git --version` |
 | `gh` **authenticated** | `goal` in `commit+pr` mode, GitHub-sourced plugins | `gh auth status` |
@@ -197,43 +197,16 @@ jq '.permissions.deny | length' ~/.claude/settings.json   # expected: ≥ 11
 
 ### 6b. The repo itself — everything CI runs, locally
 
-`health-check.sh` only covers manifests and `${CLAUDE_PLUGIN_ROOT}` references. The rest of
-`.github/workflows/validate.yml` has no local entry point, so here it is in full:
+From the repository root, on the Node version `.nvmrc` pins (`nvm use`):
 
 ```bash
-./scripts/health-check.sh --quick        # manifests + 24 ${CLAUDE_PLUGIN_ROOT} refs
-./scripts/validate-skills.sh             # SKILL.md frontmatter + README skill counts
-./scripts/validate-anchors.sh plugins/goal   # 269 doc anchors
-./scripts/check-doc-counts.sh plugins/goal   # counts in the docs vs the tree
-
-# the 6 shell suites CI runs, plus test-validate-anchors.sh (in the repo, absent from CI)
-for s in plugins/security-runtime/tests/test_claudemd-scanner.sh \
-         plugins/security-runtime/tests/test_prompt-injection-detector.sh \
-         plugins/security-runtime/tests/test_secret-file-guard.sh \
-         plugins/superpowers/tests/test-find-polluter.sh \
-         scripts/tests/test-validate-skills.sh \
-         scripts/tests/test-skill-coherence.sh \
-         scripts/tests/test-validate-anchors.sh; do
-  bash "$s" >/dev/null && echo "✓ $s" || echo "✗ $s"
-done
-
-bash plugins/goal/tests/run.sh           # 444 tests, ~80 s
-
-# the gate's types — node strips them at run time without checking, so this is
-# the only place they are verified. Not covered by any of the above.
-npm install --no-save --no-package-lock typescript@5.9 @types/node@24
-npx tsc --noEmit && rm -rf node_modules
-
-npx skills add . --list | grep -oE 'Found [0-9]+ skills'   # 103, CI warns below 40
+npm run verify                  # every pull-request check, in parallel
+npm run verify -- --sequential  # the same checks one at a time, when other sessions load the Mac
 ```
 
-Also in `scripts/` but wired into **neither** CI nor `health-check.sh`:
-
-```bash
-./scripts/no-module-headers.sh plugins/goal   # 48 modules, no undeclared header
-```
-
-Full run on this machine, 2026-09-01: everything green.
+`npm run verify -- <group>` runs a single group; [`CONTRIBUTING.md`](../CONTRIBUTING.md#validate-locally)
+lists them. Each run starts with `npm ci`, so it needs the npm registry. The report ends with the
+verdict, then `not reproduced on this Mac:` lines naming what only CI reproduces.
 
 Render the statusline against a synthetic payload:
 

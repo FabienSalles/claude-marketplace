@@ -68,8 +68,9 @@ your final report.
   invocation, so a box you flip or a sentence you reword halts the run.
 - **Never touch another iteration's work**, and never start the next one because it looks small.
 
-You may run anything read-only, and you should: run the iteration's own commands as often as you
-need. Running them is how you find out you are done.
+You may run anything read-only, and you should: run `gate1` and the slice's own `test_files` as
+often as you need. Running them is how you find out you are done. A whole-suite command declared
+in the block runs at most once, last: the gate replays every line of the block anyway.
 
 ## Your report is advisory
 

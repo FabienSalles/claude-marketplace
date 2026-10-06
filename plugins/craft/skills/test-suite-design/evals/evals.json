@@ -1,0 +1,85 @@
+{
+  "$comment": "One object per case; `skills` names what should load, `expected_behavior` lists what a passing run must do.",
+  "routing": [
+    {
+      "query": "Our test suite takes four minutes in CI: every test builds a fresh git repository and spawns the CLI, and the whole suite runs in two different jobs. How should we reorganise it?",
+      "skills": ["craft:test-suite-design"],
+      "expected_behavior": [
+        "loads craft:test-suite-design, not craft:testing-principles alone",
+        "gives each check a size and moves rule checks in-process, keeping one spawned smoke per observable outcome",
+        "builds the repository template once and copies it per test",
+        "runs each test file in exactly one check, so the suite stops running twice",
+        "leaves runner idioms to the runner skill and workflow syntax to tooling:github-actions-conventions"
+      ]
+    },
+    {
+      "query": "Every pull request goes red because the README says '585 tests across 74 files' and a check reruns the whole suite to recount them",
+      "skills": ["craft:test-suite-design"],
+      "expected_behavior": [
+        "loads craft:test-suite-design and applies the change-detector rule of craft:testing-principles §2 that its §5 points to",
+        "takes the exact count out of the README: a command prints it, or the figure is dated where it is written",
+        "deletes the recount along with the number, rather than swapping it for a static count that still makes every pull request edit the README"
+      ]
+    },
+    {
+      "query": "Four tests each run the same five-second npm install in a sandbox, and each one checks a different fact about the result",
+      "skills": ["craft:test-suite-design"],
+      "expected_behavior": [
+        "loads craft:test-suite-design",
+        "runs the install once and asserts every fact on that one result",
+        "keeps a fresh fixture only for a test that needs a different input"
+      ]
+    },
+    {
+      "query": "My node --test file reports every test as passed, then the process only exits about 30 seconds later",
+      "skills": ["node-test:node-test-conventions", "craft:test-suite-design"],
+      "expected_behavior": [
+        "loads node-test:node-test-conventions for the runner mechanics and craft:test-suite-design for the leak rule",
+        "looks for a timer or a child process the tests started and never ended",
+        "fixes the leak instead of adding an option that forces the run to exit"
+      ]
+    },
+    {
+      "query": "Our nightly canary job in GitHub Actions has been red for three weeks and nobody noticed",
+      "skills": ["tooling:github-actions-conventions", "craft:test-suite-design"],
+      "expected_behavior": [
+        "loads craft:test-suite-design for what makes a canary worth having and tooling:github-actions-conventions for the scheduled job",
+        "makes a failed run open or update an issue a person reads",
+        "routes the canary through the same entry point, and so the same setup, as the gate"
+      ]
+    },
+    {
+      "query": "Add timeout-minutes and a concurrency group to our GitHub Actions workflow",
+      "skills": ["tooling:github-actions-conventions"],
+      "expected_behavior": [
+        "loads tooling:github-actions-conventions, not craft:test-suite-design",
+        "sizes each timeout-minutes from the job's measured durations",
+        "cancels superseded pull-request runs only, never a push to main or a scheduled run"
+      ]
+    },
+    {
+      "query": "Is this test any good? It computes the expected total the same way the code does, and it is named after the discount rule",
+      "skills": ["craft:testing-principles"],
+      "expected_behavior": [
+        "loads craft:testing-principles, not craft:test-suite-design",
+        "flags the tautological assertion and asks for an expected value from an independent source"
+      ]
+    },
+    {
+      "query": "Write a bash test suite for this PreToolUse hook script so each pattern it blocks has its own case",
+      "skills": ["shell-test:shell-test-conventions"],
+      "expected_behavior": [
+        "loads shell-test:shell-test-conventions, not craft:test-suite-design",
+        "runs the hook through its hooks.json entry and asserts stdout and stderr apart"
+      ]
+    },
+    {
+      "query": "This hook script uses mapfile and declare -A, and it breaks on the Mac's /bin/bash",
+      "skills": ["mac:mac-platform"],
+      "expected_behavior": [
+        "loads mac:mac-platform, not craft:test-suite-design",
+        "rewrites both constructs in a form bash 3.2 accepts"
+      ]
+    }
+  ]
+}

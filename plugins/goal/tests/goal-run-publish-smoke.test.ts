@@ -1,16 +1,14 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { chmodSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { FAKE_REPO, HASH, PAUSED, PLAN, git, repo as baseRepo, run, runInProcess } from './support/goal-run-harness.ts';
+import { FAKE_REPO, HASH, PAUSED, PLAN, git, repo, run, runInProcess, sharedFake } from './support/goal-run-harness.ts';
 import { tmpDir } from './support/tmp.ts';
 import { createPublisher } from '../src/run/publish.ts';
 import { claudeAgentSessions } from '../src/adapters/claude/session.ts';
 import { close, LANDED } from '../src/run/close.ts';
 import type { Reporter } from '../src/run/report.ts';
-
-const repo = (options: Parameters<typeof baseRepo>[0] = {}) => baseRepo({ ...options, shareBin: true });
 
 const PLAN_PR = PLAN.replace('Policy: commit\n', 'Policy: commit+pr\n');
 
@@ -54,17 +52,16 @@ let stubGhDir: string | undefined;
 const stubGh = (): string => {
   if (stubGhDir === undefined) {
     stubGhDir = tmpDir('goal-run-stub-gh-');
-    writeFileSync(
-      join(stubGhDir, 'gh'),
-      `#!/bin/sh
+    symlinkSync(
+      sharedFake(`#!/bin/sh
 printf -- '--- call ---\\n%s\\n' "$*" >> "$STUB_GH_LOG"
 case "$1 $2" in
   "pr view")   printf '%s\\n' "$STUB_PR_VIEW"; exit 0 ;;
   *)           exit 0 ;;
 esac
-`,
+`),
+      join(stubGhDir, 'gh'),
     );
-    chmodSync(join(stubGhDir, 'gh'), 0o755);
   }
 
   return stubGhDir;

@@ -1,0 +1,60 @@
+{
+  "$comment": "One object per case; `skills` names what should load, `expected_behavior` lists what a passing run must do.",
+  "routing": [
+    {
+      "query": "In my repository, the plugin plugins/acme-guards wires hooks/block-prod-db.sh in its hooks.json as a PreToolUse hook on Bash that refuses commands touching the production database. Add a bash test suite for it.",
+      "skills": ["shell-test:shell-test-conventions", "skills:plugin-conventions"],
+      "expected_behavior": [
+        "loads shell-test:shell-test-conventions for the suite and skills:plugin-conventions for the PreToolUse refusal contract, not node-test:node-test-conventions",
+        "copies references/harness.sh into the repository's tests and sources the copy, rather than writing its own counters or sourcing the plugin's install path",
+        "runs the hook through its hooks.json entry with run_hook, the payload built by bash_call, never piped in",
+        "asserts each refusal on the channel the contract names for PreToolUse, and the other channel empty",
+        "writes one row per pattern plus near misses, and asserts stdout and stderr apart",
+        "uses set -u, not set -e, and ends with finish_suite"
+      ]
+    },
+    {
+      "query": "My hook test runs `printf '%s' \"$payload\" | bash hooks/scanner.sh 2>&1 | grep -q WARNING` and passes, yet the warning never reaches Claude's context. Fix the test.",
+      "skills": ["shell-test:shell-test-conventions", "skills:plugin-conventions"],
+      "expected_behavior": [
+        "loads shell-test:shell-test-conventions for the test and skills:plugin-conventions for which channel the event reads",
+        "captures stdout and stderr apart instead of merging them with 2>&1",
+        "feeds the payload from a file instead of a pipe",
+        "asserts the channel Claude Code reads for that event, and the other channel empty"
+      ]
+    },
+    {
+      "query": "Add a node:test test in scripts/tests/ that spawns our CLI with a fake git first on PATH and checks its exit code",
+      "skills": ["node-test:node-test-conventions"],
+      "expected_behavior": [
+        "loads node-test:node-test-conventions, not shell-test:shell-test-conventions",
+        "writes the test with node:test and node:assert, not as a bash suite"
+      ]
+    },
+    {
+      "query": "sed -i 's/foo/bar/' config.ini fails on my Mac with 'invalid command code' in setup.sh, fix it",
+      "skills": ["mac:mac-platform"],
+      "expected_behavior": [
+        "loads mac:mac-platform, not shell-test:shell-test-conventions",
+        "rewrites the sed -i call in a form BSD sed accepts",
+        "writes no test suite"
+      ]
+    },
+    {
+      "query": "Our bash hook suites now take 40 seconds. Should they run on every save, on every pull request or only nightly, and what time bound should each get?",
+      "skills": ["craft:test-suite-design"],
+      "expected_behavior": [
+        "loads craft:test-suite-design for the suites' size, where they run and their time bound",
+        "does not rewrite the suites with shell-test:shell-test-conventions, since the question is placement, not how a row is written"
+      ]
+    },
+    {
+      "query": "In hooks.json, what does exit code 2 do for a PostToolUse hook, and where should the hook print its message so Claude sees it?",
+      "skills": ["skills:plugin-conventions"],
+      "expected_behavior": [
+        "loads skills:plugin-conventions, which owns the hook contract",
+        "does not answer from shell-test:shell-test-conventions, which only points to that contract"
+      ]
+    }
+  ]
+}

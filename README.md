@@ -15,8 +15,7 @@ Then use it: `/goal:spec <your ticket>` turns the ticket into a functional contr
 
 Most of this marketplace is conventions: prose that shapes how Claude writes code. **One pack is
 not.** [`goal`](plugins/goal/README.md) turns a ticket into a pull request without you in the
-loop: a runner and a gate, 2,761 lines of TypeScript under 444 tests, built around rules most
-autonomous loops do not have.
+loop: a runner and a gate, built around rules most autonomous loops do not have.
 
 > A slice of work is accepted by a **program** that runs the command the plan declared and reads
 > its exit code, never by a model's opinion of its own output. That program is the only thing
@@ -111,10 +110,11 @@ These overlap: [**docs/workflows-decision-guide.md**](docs/workflows-decision-gu
 | [**nest**](plugins/nest/README.md) | NestJS architectural conventions + DDD. |
 | [**vitest**](plugins/vitest/README.md) | Vitest TDD workflow + test conventions. |
 | [**node-test**](plugins/node-test/README.md) | node:test conventions: `node:assert`, mocks and timers, `node --test`. |
+| [**shell-test**](plugins/shell-test/README.md) | Bash test suites and Claude Code hook tests: one sourced harness, hermetic cases, an assertion per output channel. |
 | [**astro**](plugins/astro/README.md) | Astro 5.x: routing, content collections, i18n, SEO, Tailwind, React islands, view transitions. |
 | [**frontend**](plugins/frontend/README.md) | Clean/hexagonal architecture, Container/Presentation, safe edits to existing UI. |
 | [**jquery**](plugins/jquery/README.md) | jQuery module structure, `js-*` selector hooks, per-block scoping, symmetric toggles. |
-| [**tooling**](plugins/tooling/README.md) | Docker, Drizzle ORM, pnpm workspaces, Zod. |
+| [**tooling**](plugins/tooling/README.md) | Docker, Drizzle ORM, GitHub Actions, pnpm workspaces, Zod. |
 
 ### Security
 
@@ -227,7 +227,7 @@ Full details (colored screenshot, segment-by-segment breakdown, refresh-interval
 
 ## Contributing
 
-Adding or editing a plugin, manifest conventions, local validation (`scripts/health-check.sh`), and what CI enforces are all in [`CONTRIBUTING.md`](CONTRIBUTING.md).
+Adding or editing a plugin, manifest conventions, local validation (`npm run verify`, with `scripts/health-check.sh` as a diagnostic), and what CI enforces are all in [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ## License
 

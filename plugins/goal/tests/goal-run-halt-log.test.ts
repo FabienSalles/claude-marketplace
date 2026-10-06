@@ -1,9 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { chmodSync, readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, symlinkSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { HASH, logOf, repo, run } from './support/goal-run-harness.ts';
+import { HASH, logOf, repo, run, sharedFake } from './support/goal-run-harness.ts';
 
 // goal-run.ts's own exit code for a gate refusal (see its header comment), distinct from PAUSED.
 const HALTED = 1;
@@ -14,9 +14,8 @@ const HALTED = 1;
 const customGate = (fixture: ReturnType<typeof repo>, exitCode: number): string => {
   const path = join(fixture.bin, 'custom-gate');
 
-  writeFileSync(
-    path,
-    `#!/bin/sh
+  symlinkSync(
+    sharedFake(`#!/bin/sh
 case "$1" in
   check)  printf 'OK\\nplan_hash=${HASH}\\n'; exit 0 ;;
   lock)   mkdir "$2.run.lock" 2>/dev/null; exit 0 ;;
@@ -29,9 +28,9 @@ case "$1" in
   dod) exit 0 ;;
 esac
 exit 2
-`,
+`),
+    path,
   );
-  chmodSync(path, 0o755);
 
   return path;
 };

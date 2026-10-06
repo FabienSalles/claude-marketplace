@@ -3,7 +3,7 @@
     "SessionStart": [
       {
         "hooks": [
-          { "type": "command", "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/claudemd-scanner.sh" }
+          { "type": "command", "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/claudemd-scanner.sh\"" }
         ]
       }
     ],
@@ -11,13 +11,13 @@
       {
         "matcher": "Bash",
         "hooks": [
-          { "type": "command", "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/prompt-injection-detector.sh" }
+          { "type": "command", "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/prompt-injection-detector.sh\"" }
         ]
       },
       {
         "matcher": "Read|Grep|Bash",
         "hooks": [
-          { "type": "command", "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/secret-file-guard.sh" }
+          { "type": "command", "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/secret-file-guard.sh\"" }
         ]
       }
     ]

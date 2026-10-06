@@ -11,7 +11,7 @@ INPUT=$(cat)
 COMMAND=$(echo "$INPUT" | python3 -c "import sys, json; data=json.load(sys.stdin); print(data.get('tool_input', {}).get('command', ''))" 2>/dev/null)
 
 # Only inspect git commit commands (covers `git commit`, `git commit --amend`, etc.)
-if ! echo "$COMMAND" | grep -qE 'git[[:space:]]+commit\b'; then
+if ! echo "$COMMAND" | grep -qE 'git([[:space:]]+(-[Cc]|--git-dir|--work-tree|--namespace|--config-env)[[:space:]]+[^[:space:]]+|[[:space:]]+-[^[:space:]]+)*[[:space:]]+commit\b'; then
     exit 0
 fi
 

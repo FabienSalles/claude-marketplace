@@ -30,18 +30,20 @@ COMMAND=$(echo "$INPUT" | python3 -c "import sys, json; print(json.load(sys.stdi
 
 [ -z "$COMMAND" ] && exit 0
 
-GUARDED='git([[:space:]]+-[^[:space:]]+)*[[:space:]]+switch[[:space:]]+-c|git([[:space:]]+-[^[:space:]]+)*[[:space:]]+checkout[[:space:]]+-b'
+GIT_OPTIONS='([[:space:]]+(-[Cc]|--git-dir|--work-tree|--namespace|--config-env)[[:space:]]+[^[:space:]]+|[[:space:]]+-[^[:space:]]+)*'
+GUARDED="git${GIT_OPTIONS}[[:space:]]+switch[[:space:]]+-c|git${GIT_OPTIONS}[[:space:]]+checkout[[:space:]]+-b"
 echo "$COMMAND" | grep -qE "$GUARDED" || exit 0
 
 echo "$COMMAND" | python3 -c '
 import re, sys
 
 cmd = sys.stdin.read()
-branch = re.search(r"git(\s+-\S+)*\s+(switch\s+-c|checkout\s+-b)", cmd)
+options = r"(\s+(-[Cc]|--git-dir|--work-tree|--namespace|--config-env)\s+\S+|\s+-\S+)*"
+branch = re.search(r"git" + options + r"\s+(switch\s+-c|checkout\s+-b)", cmd)
 if not branch:
     sys.exit(1)
 before = cmd[:branch.start()]
-fetches = list(re.finditer(r"git(\s+-\S+)*\s+fetch\b", before))
+fetches = list(re.finditer(r"git" + options + r"\s+fetch\b", before))
 if not fetches or not re.search(r"&&\s*$", before):
     sys.exit(1)
 sys.exit(1 if re.search(r"[;|]", before[fetches[-1].end():]) else 0)
@@ -52,11 +54,7 @@ git rev-parse --is-inside-work-tree >/dev/null 2>&1 || exit 0
 
 FETCH_HEAD_PATH=$(git rev-parse --git-path FETCH_HEAD 2>/dev/null)
 if [ -f "$FETCH_HEAD_PATH" ]; then
-    if [ "$(uname -s)" = "Darwin" ]; then
-        FH_MTIME=$(stat -f %m "$FETCH_HEAD_PATH" 2>/dev/null)
-    else
-        FH_MTIME=$(stat -c %Y "$FETCH_HEAD_PATH" 2>/dev/null)
-    fi
+    FH_MTIME=$(stat -c %Y "$FETCH_HEAD_PATH" 2>/dev/null || stat -f %m "$FETCH_HEAD_PATH" 2>/dev/null)
     if [ -n "$FH_MTIME" ]; then
         AGE=$(( $(date +%s) - FH_MTIME ))
         [ "$AGE" -le "$STALE_SECONDS" ] && exit 0

@@ -8,8 +8,19 @@ INPUT=$(cat)
 # Extract the command from the JSON input
 COMMAND=$(echo "$INPUT" | python3 -c "import sys, json; data=json.load(sys.stdin); print(data.get('tool_input', {}).get('command', ''))" 2>/dev/null)
 
-# Check if command starts with 'mv ' (not 'git mv')
-if echo "$COMMAND" | grep -qE '^mv\s+' && ! echo "$COMMAND" | grep -qE '^git\s+mv'; then
+if echo "$COMMAND" | grep -qE '^mv\s+' && ! echo "$COMMAND" | grep -qE '^git\s+mv' && echo "$COMMAND" | python3 -c '
+import shlex, subprocess, sys
+lexer = shlex.shlex(sys.stdin.read(), posix=True, punctuation_chars=True)
+lexer.whitespace_split = True
+words = []
+for word in lexer:
+    if all(c in ";&|<>()" for c in word):
+        break
+    words.append(word)
+sources = [word for word in words[1:] if not word.startswith("-")][:-1]
+tracked = subprocess.run(["git", "ls-files", "--"] + sources, capture_output=True, text=True).stdout
+sys.exit(0 if sources and tracked else 1)
+' 2>/dev/null; then
     cat << 'EOF'
 {
   "decision": "block",

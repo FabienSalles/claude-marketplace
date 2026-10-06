@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { chmodSync, writeFileSync } from 'node:fs';
+import { chmodSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { git, PAUSED, repo, run } from './support/goal-run-harness.ts';
@@ -14,6 +14,7 @@ const siblingOf = (fixture: ReturnType<typeof repo>): string => {
 };
 
 const claudeRunning = (fixture: ReturnType<typeof repo>, script: string) => {
+  rmSync(join(fixture.bin, 'claude'));
   writeFileSync(join(fixture.bin, 'claude'), `#!/bin/sh\n${script}\nexit 0\n`);
   chmodSync(join(fixture.bin, 'claude'), 0o755);
 };

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { chmodSync, readFileSync, writeFileSync } from 'node:fs';
+import { chmodSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { git, logOf, repo, run } from './support/goal-run-harness.ts';
@@ -66,6 +66,7 @@ const fakeClaudeThatUntics = (plan: string): string =>
 // gate a run resolves by default rather than one the fixture stands in for.
 test('a real gate resolved with no GOAL_GATE override refuses to commit once an earlier landed iteration was unticked while the run was going', () => {
   const fixture = repo({ planText: TAMPER_PLAN });
+  rmSync(join(fixture.bin, 'claude'));
   writeFileSync(join(fixture.bin, 'claude'), fakeClaudeThatUntics(fixture.plan));
   chmodSync(join(fixture.bin, 'claude'), 0o755);
 

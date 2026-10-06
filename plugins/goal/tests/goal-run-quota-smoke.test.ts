@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
+import { AWAIT_DEADLINE_MS } from './support/await-state.ts';
 import { PAUSED, repo, run, runInProcess } from './support/goal-run-harness.ts';
 import { classifyQuotaFailure, classifyTerminal } from '../src/adapters/claude/classify.ts';
 import { burstBackoffSeconds, shutdownBackoffSeconds, sleepInSlices } from '../src/run/quota.ts';
@@ -47,7 +48,7 @@ test('a burst 429 backs off in seconds and relaunches, ignoring a large GOAL_RUN
     FAKE_CLAUDE_QUOTA_MESSAGE: 'HTTP 429 Too Many Requests',
     FAKE_CLAUDE_WRITES: join(fixture.dir, 'a.txt'),
     GOAL_RUN_QUOTA_SLEEP: '604800',
-  });
+  }, undefined, AbortSignal.timeout(AWAIT_DEADLINE_MS));
 
   assert.equal(code, 0, output);
   assert.match(output, /burst|429/i, output);
@@ -112,7 +113,7 @@ test('an implementer that keeps exiting 143 relaunches on a short fixed backoff,
     GOAL_RUN_QUOTA_MAX_RETRIES: '2',
     GOAL_RUN_QUOTA_SLEEP: '604800',
     GOAL_RUN_SHUTDOWN_BACKOFF: '0',
-  });
+  }, undefined, AbortSignal.timeout(AWAIT_DEADLINE_MS));
 
   assert.equal(code, PAUSED, output);
   assert.match(output, /143/, output);

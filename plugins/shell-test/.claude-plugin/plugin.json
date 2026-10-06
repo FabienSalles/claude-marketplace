@@ -1,0 +1,12 @@
+{
+  "name": "shell-test",
+  "version": "1.0.0",
+  "description": "Bash test suites and Claude Code hook tests: one sourced harness, hermetic cases, exit-code and channel assertions, suites that cannot pass on nothing",
+  "author": {
+    "name": "FabienSalles"
+  },
+  "repository": "https://github.com/FabienSalles/claude-marketplace",
+  "license": "MIT",
+  "keywords": ["shell", "bash", "testing", "hooks", "conventions"],
+  "skills": "./skills/"
+}

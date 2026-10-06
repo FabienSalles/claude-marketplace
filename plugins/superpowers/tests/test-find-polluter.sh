@@ -1,65 +1,48 @@
 #!/bin/bash
-# Tests for skills/systematic-debugging/find-polluter.sh
-# Usage: bash tests/test-find-polluter.sh
 
 set -u
 
-SCRIPT="$(cd "$(dirname "$0")/.." && pwd)/skills/systematic-debugging/find-polluter.sh"
+PLUGIN=$(cd "$(dirname "$0")/.." && pwd)
+. "$PLUGIN/../shell-test/skills/shell-test-conventions/references/harness.sh"
 
-PASS=0
-FAIL=0
-LAST_OUT=""
+SCRIPT="$PLUGIN/skills/systematic-debugging/find-polluter.sh"
 
-TMPROOT="$(mktemp -d)"
-trap 'rm -rf "$TMPROOT"' EXIT
-
-# Fake `npm` on PATH: `npm test <file>` pollutes .git only for the file
-# whose name contains "dirty".
-mkdir -p "$TMPROOT/bin"
-cat > "$TMPROOT/bin/npm" <<'EOF'
+mkdir -p "$HARNESS_ROOT/bin"
+cat >"$HARNESS_ROOT/bin/npm" <<'EOF'
 #!/bin/bash
 if [[ "$*" == *dirty* ]]; then
   touch "$PWD/.git"
 fi
 exit 0
 EOF
-chmod +x "$TMPROOT/bin/npm"
+chmod +x "$HARNESS_ROOT/bin/npm"
 
-# run_case <desc> <expected_exit> <pattern>
-run_case() {
-  local desc="$1" expected="$2" pattern="$3"
-  local repo out actual
-  repo="$TMPROOT/repo-$RANDOM"
-  mkdir -p "$repo/src/a" "$repo/src/b"
-  printf 'console.log("clean")\n' > "$repo/src/a/clean.test.ts"
-  printf 'console.log("dirty")\n' > "$repo/src/b/dirty.test.ts"
-
-  out=$(cd "$repo" && PATH="$TMPROOT/bin:$PATH" bash "$SCRIPT" '.git' "$pattern" 2>&1)
-  actual=$?
-  if [ "$actual" != "$expected" ]; then
-    printf '  FAIL  %s (expected exit %s, got %s)\n        output: %s\n' "$desc" "$expected" "$actual" "$out"
-    FAIL=$((FAIL + 1))
-    return
-  fi
-  printf '  PASS  %s\n' "$desc"
-  PASS=$((PASS + 1))
-  LAST_OUT="$out"
+a_clean_and_a_dirty_test() {
+  mkdir -p "$CASE_DIR/src/a" "$CASE_DIR/src/b"
+  printf 'console.log("clean")\n' >"$CASE_DIR/src/a/clean.test.ts"
+  printf 'console.log("dirty")\n' >"$CASE_DIR/src/b/dirty.test.ts"
 }
 
-echo "== Finds the polluter =="
-# Documented invocation, plugins/superpowers/skills/systematic-debugging/root-cause-tracing.md:104
-run_case "polluter test is named, exit non-zero" 1 'src/**/*.test.ts'
-if ! printf '%s' "$LAST_OUT" | grep -q 'dirty.test.ts'; then
-  printf '  FAIL  polluter test named in output\n        output: %s\n' "$LAST_OUT"
-  FAIL=$((FAIL + 1))
-else
-  printf '  PASS  polluter test named in output\n'
-  PASS=$((PASS + 1))
-fi
+section 'Finds the polluter'
 
-echo
-echo "== Fails loudly on a glob matching no test =="
-run_case "no matching test file, exit non-zero" 1 'src/**/*.nomatch.ts'
+begin_case 'the invocation documented in root-cause-tracing.md names the polluting test and exits non-zero'
+a_clean_and_a_dirty_test
+run_in "$CASE_DIR" env PATH="$HARNESS_ROOT/bin:$PATH" bash "$SCRIPT" '.git' 'src/**/*.test.ts'
+expect_status 1
+expect_stdout_has 'Test: ./src/b/dirty.test.ts'
 
-printf '\nTotal: %d pass, %d fail\n' "$PASS" "$FAIL"
-[ "$FAIL" -eq 0 ]
+begin_case 'a pattern selecting only the clean test reports no polluter and exits zero'
+a_clean_and_a_dirty_test
+run_in "$CASE_DIR" env PATH="$HARNESS_ROOT/bin:$PATH" bash "$SCRIPT" '.git' 'src/a/*.test.ts'
+expect_status 0
+expect_stdout_has 'No polluter found'
+
+section 'Fails loudly on a glob matching no test'
+
+begin_case 'a glob matching no test file exits non-zero and says so'
+a_clean_and_a_dirty_test
+run_in "$CASE_DIR" env PATH="$HARNESS_ROOT/bin:$PATH" bash "$SCRIPT" '.git' 'src/**/*.nomatch.ts'
+expect_status 1
+expect_stdout_has 'No test file matches pattern: src/**/*.nomatch.ts'
+
+finish_suite

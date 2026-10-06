@@ -10,7 +10,7 @@ INPUT=$(cat)
 STDOUT=$(echo "$INPUT" | python3 -c "
 import sys, json
 data = json.load(sys.stdin)
-print(data.get('tool_result', {}).get('stdout', ''))
+print(data.get('tool_response', {}).get('stdout', ''))
 " 2>/dev/null)
 
 # Check if drizzle-kit generate was run (look for the success marker)

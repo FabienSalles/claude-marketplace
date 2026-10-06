@@ -126,8 +126,9 @@ Sort what it names into exactly one bucket:
    `OK: no gate or dod line moved.` and exit 0. If it halts instead, the edit reached a guarded
    line — revert it (`git checkout -- <plan>`) and fall through to unknown.
 4. Have the gate re-judge the preserved tree **directly**: `node
-   ${CLAUDE_PLUGIN_ROOT}/scripts/goal-gate.ts verify <plan> <iteration>`, then on exit 0
-   `goal-gate.ts commit <plan> <iteration>`, then `goal-gate.ts dod <plan>` if it was the last
+   ${CLAUDE_PLUGIN_ROOT}/scripts/goal-gate.ts commit <plan> <iteration>` alone. `commit` runs the
+   whole `verify` first and commits only when it passes, so a separate `verify` before it would
+   replay every gate command twice. Then, on exit 0, `goal-gate.ts dod <plan>` if it was the last
    iteration. Do NOT relaunch via `goal-run.ts` here: its preflight requires a clean tree and
    refuses (exit 2) the very implementer tree this procedure just decided to keep — observed on
    ct-5865 iteration 3. The gate subcommands are the run's own judge/commit path, bite check

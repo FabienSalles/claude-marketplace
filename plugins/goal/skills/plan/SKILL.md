@@ -502,17 +502,31 @@ fatter under `commit+pr`, never past one functional outcome. And a slice with
 nothing to test declares `test_files=` empty, which skips the bite rather than faking it.
 
 **Scope every `gateN` to the slice it verifies, never to the whole project** — with one
-exception, the typecheck, ruled below. `gate1` runs
-three times per iteration (the bite, then twice more), and `/goal:supervise`'s preflight
-replays the whole gate block again before the next iteration starts — so a `gate1` written as
-the full suite pays for that suite five times across a five-slice plan instead of once. Point
-it at the file, the directory, or the test tag the slice actually touches; leave the
-whole-scope run to `dod1` in the global Definition of Done, which runs once, at the end. The
-trade-off is accepted deliberately: a slice-scoped `gate1` cannot catch a regression it
-introduces in a file outside its own scope, but every later iteration's regression wall (see
-`goal-gate.ts`'s own name for it) replays this slice's `gate1` again on top of its own, and the
-wall and the DoD already cover that same regression before the plan ships — so the redundant
-whole-suite run inside `gate1` buys nothing the run doesn't already pay for once.
+exception, the typecheck, ruled below. A gate line never runs once. Read from `goal-gate.ts`
+and the runner, this is what each line costs:
+
+| Line | Runs |
+|---|---|
+| `gate1` | 4 times in each `verify`: once with the other gates, twice more for determinism, once more in the bite with the implementation set aside (3 times when `test_files` is empty, since the bite is then skipped) |
+| `gate2..N` | once in each `verify`, and once in each launch's base sweep |
+| every ticked iteration's `gate1..N` | once in each later iteration's `verify`, as its regression wall |
+| `dodN` | once in each launch's base sweep, and once at close |
+
+An iteration pays one `verify`, the one the gate's `commit` runs before it commits; the base
+sweep and the regression wall run a command shared by several lines only once.
+`/goal:supervise`'s repair path calls `commit` alone for that reason: a `verify` before it would
+pay the whole `verify` column twice, `gate1` 8 times.
+
+`gate1` is therefore the project's test runner pointed at the slice's own `test_files`
+(`node --test <test_files>`, `vendor/bin/phpunit <test_files>`), or for a removal slice the
+chained absence assertion ruled below, never the whole suite. The whole suite and a mutation run
+go to the global Definition of Done, never to a gate line. A wall-clock stopwatch goes in
+neither: it is not a correctness invariant, and the base sweep replays every `dodN` at each
+launch, where a loaded machine fails it on a correct tree. The trade-off is accepted
+deliberately: a slice-scoped `gate1` cannot catch a regression it introduces in a file outside
+its own scope, but every later iteration's regression wall replays this slice's gate lines on top
+of its own, and the DoD covers that same regression before the plan ships, so a whole-suite run
+inside a gate line buys nothing the run doesn't already pay for.
 
 **The Definition of Done holds only invariants true on any intermediate base.** The preflight
 base sweep replays every `dodN` against the untouched tree, so a `dodN` that only becomes true
@@ -542,8 +556,8 @@ absence assertion placed in `gate2` is invisible to both: nothing proves it ever
 the fix, and a preflight run right after the plan is written halts on a base the sweep reads as
 red, for a check nobody meant to gate the base. Chain every "must no longer appear" assertion
 into `gate1` with `&&` instead — `gate1=! grep -rq <first> <dirs> && ! grep -rn <second> <dirs>
-| grep -vqi legacy` — so the one command that gets bitten, replayed three times, and exempted
-from the base sweep is the one actually carrying every removal this slice makes.
+| grep -vqi legacy` — so the one command that gets bitten, passes three times in a row, and is
+exempted from the base sweep is the one actually carrying every removal this slice makes.
 
 Write only commands that can fail. `git diff --stat` and `git status` do not belong in it:
 the gate script checks scope leak and parasitic artifacts structurally, so such a line is a

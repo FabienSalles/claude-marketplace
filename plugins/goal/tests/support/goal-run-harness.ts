@@ -1,7 +1,10 @@
 import { spawnSync } from 'node:child_process';
-import { appendFileSync, chmodSync, cpSync, mkdirSync, readFileSync, readdirSync, symlinkSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { appendFileSync, chmodSync, cpSync, existsSync, linkSync, lstatSync, mkdirSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
+import { clock } from '../../src/adapters/clock.ts';
 import { command } from '../../src/adapters/command.ts';
 import { fs } from '../../src/adapters/fs.ts';
 import { claudeAgentSessions } from '../../src/adapters/claude/session.ts';
@@ -86,16 +89,13 @@ export type FixtureOptions = {
   // A bare `origin` two path segments deep (`acme/demo.git`), so `repoOf`'s parse of a real
   // remote URL has something genuine to strip down to `acme/demo` rather than a stand-in.
   remote?: boolean;
-  shareBin?: boolean;
 };
 
-const writeFakeBinaries = (bin: string, claudeLog: string, gateLog: string, ghLog: string, prelude: string) => {
-  writeFileSync(
-    join(bin, 'claude'),
-    `#!/bin/sh
-${prelude}
-printf '%s\\n' "$@" >> ${claudeLog}
-printf 'env DISABLE_AUTOUPDATER=%s\\n' "$DISABLE_AUTOUPDATER" >> ${claudeLog}
+const FAKE_BINARIES: Readonly<Record<string, string>> = {
+  claude: `#!/bin/sh
+d=$(dirname "$0")/..
+printf '%s\\n' "$@" >> "$d/claude-args.txt"
+printf 'env DISABLE_AUTOUPDATER=%s\\n' "$DISABLE_AUTOUPDATER" >> "$d/claude-args.txt"
 if [ -n "$FAKE_CLAUDE_LAUNCH_LOG" ]; then
   FAKE_CLAUDE_ULIMIT=$(ulimit -u) node -e 'require("node:fs").appendFileSync(process.env.FAKE_CLAUDE_LAUNCH_LOG, JSON.stringify({ argv: process.argv.slice(1), env: process.env, ulimit: process.env.FAKE_CLAUDE_ULIMIT }) + "\\n")' -- "$@"
 fi
@@ -199,13 +199,9 @@ case "$*" in
 esac
 exit \${FAKE_CLAUDE_EXIT:-0}
 `,
-  );
-
-  writeFileSync(
-    join(bin, 'fake-gate'),
-    `#!/bin/sh
-${prelude}
-printf '%s\\n' "$@" >> ${gateLog}
+  'fake-gate': `#!/bin/sh
+d=$(dirname "$0")/..
+printf '%s\\n' "$@" >> "$d/gate-args.txt"
 case "$1" in
   check)  printf 'OK\\nplan_hash=${HASH}\\nticked=%s\\n' "$FAKE_GATE_TICKED"; [ -n "$FAKE_GATE_CHECK_FAIL_N" ] && [ "$3" = "$FAKE_GATE_CHECK_FAIL_N" ] && exit 1; exit \${FAKE_GATE_CHECK_EXIT:-0} ;;
   lock)   mkdir "$2.run.lock" 2>/dev/null; exit 0 ;;
@@ -228,13 +224,9 @@ case "$1" in
 esac
 exit 2
 `,
-  );
-
-  writeFileSync(
-    join(bin, 'gh'),
-    `#!/bin/sh
-${prelude}
-{ printf -- '--- call ---\\n'; printf '%s\\n' "$@"; } >> ${ghLog}
+  gh: `#!/bin/sh
+d=$(dirname "$0")/..
+{ printf -- '--- call ---\\n'; printf '%s\\n' "$@"; } >> "$d/gh-args.txt"
 case "$1 $2" in
   "pr view")
     [ -n "$FAKE_GH_PR_EXISTS" ] && { printf '{"number":%s,"state":"%s","isDraft":%s}\\n' "\${FAKE_GH_PR_NUMBER:-1}" "\${FAKE_GH_PR_STATE:-OPEN}" "\${FAKE_GH_PR_DRAFT:-false}"; exit 0; }
@@ -248,28 +240,42 @@ case "$1 $2" in
 esac
 exit 0
 `,
-  );
-
-  chmodSync(join(bin, 'claude'), 0o755);
-  chmodSync(join(bin, 'fake-gate'), 0o755);
-  chmodSync(join(bin, 'gh'), 0o755);
 };
 
-let sharedBinDir: string | undefined;
+const verifiedFake = (path: string, script: string): string => {
+  const entry = lstatSync(path);
 
-const sharedBinaries = (): string => {
-  if (sharedBinDir === undefined) {
-    sharedBinDir = tmpDir('goal-run-shared-bin-');
-    writeFakeBinaries(
-      sharedBinDir,
-      '"$d/claude-args.txt"',
-      '"$d/gate-args.txt"',
-      '"$d/gh-args.txt"',
-      'd=$(dirname "$0")/..\n',
-    );
+  if (!entry.isFile() || entry.uid !== process.getuid?.() || (entry.mode & 0o777) !== 0o555 || readFileSync(path, 'utf8') !== script) {
+    throw new Error(`${path} is not the read-only fake this harness wrote, or it changed since: delete it and rerun`);
   }
 
-  return sharedBinDir;
+  return path;
+};
+
+export const sharedFake = (script: string): string => {
+  const path = join(tmpdir(), `goal-fake-${process.getuid?.() ?? 'u'}-${createHash('sha256').update(script).digest('hex')}`);
+
+  if (existsSync(path)) {
+    return verifiedFake(path, script);
+  }
+
+  const staging = `${path}.${process.pid}`;
+
+  rmSync(staging, { force: true });
+  writeFileSync(staging, script, { flag: 'wx' });
+  chmodSync(staging, 0o555);
+
+  try {
+    linkSync(staging, path);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'EEXIST') {
+      throw error;
+    }
+  } finally {
+    rmSync(staging);
+  }
+
+  return verifiedFake(path, script);
 };
 
 let checkoutTemplate: string | undefined;
@@ -320,14 +326,8 @@ export const repo = (options: FixtureOptions = {}): Fixture => {
 
   mkdirSync(bin);
 
-  if (options.shareBin === true) {
-    const shared = sharedBinaries();
-
-    for (const name of ['claude', 'fake-gate', 'gh']) {
-      symlinkSync(join(shared, name), join(bin, name));
-    }
-  } else {
-    writeFakeBinaries(bin, claudeLog, gateLog, ghLog, '');
+  for (const [name, script] of Object.entries(FAKE_BINARIES)) {
+    symlinkSync(sharedFake(script), join(bin, name));
   }
 
   cpSync(initialCheckout(), dir, { recursive: true });
@@ -459,6 +459,21 @@ const doubleCommand = (): { calls: { cmd: string; args: string[] }[]; restore: (
   };
 };
 
+const bindClock = (bound: AbortSignal): { restore: () => void } => {
+  const realSleep = clock.sleep;
+
+  clock.sleep = async (seconds, signal) => {
+    await realSleep(seconds, signal === undefined ? bound : AbortSignal.any([signal, bound]));
+    bound.throwIfAborted();
+  };
+
+  return {
+    restore: () => {
+      clock.sleep = realSleep;
+    },
+  };
+};
+
 // The in-process pilot: drives goal-run.ts's own orchestration — preflight, the gate.check
 // loop, the lock, runIteration() per iteration, the mid-run publish, close() — against the real
 // modules, in this process, rather than spawning a second Node process to parse the whole CLI
@@ -471,6 +486,7 @@ export const runInProcess = async (
   args: string[],
   env: Record<string, string | undefined> = {},
   agents: AgentSessions = claudeAgentSessions(),
+  signal?: AbortSignal,
 ): Promise<{ code: number; output: string }> => {
   const [plan, iterationArg] = args;
   const originalCwd = process.cwd();
@@ -525,6 +541,7 @@ export const runInProcess = async (
   const gateLabel = env.GOAL_GATE ?? join(fixture.bin, 'fake-gate');
   const gate = spawnGateAdapter(gateLabel);
   const double = doubleCommand();
+  const clockBinding = signal === undefined ? undefined : bindClock(signal);
   let lock: ReturnType<typeof createLock> | undefined;
 
   try {
@@ -643,6 +660,7 @@ export const runInProcess = async (
   } finally {
     lock?.release();
     double.restore();
+    clockBinding?.restore();
     process.exit = originalExit;
     process.chdir(originalCwd);
     process.env.PATH = originalPath;

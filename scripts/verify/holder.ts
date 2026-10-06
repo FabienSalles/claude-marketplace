@@ -57,6 +57,16 @@ export const goalRunLocks = (root: string): readonly string[] => {
 
 export const lockPath = (gitDir: string): string => join(gitDir, 'verify.lock');
 
+const lockRefusal = (lock: string): string | undefined => {
+  if (!existsSync(lock)) {
+    return undefined;
+  }
+
+  const pid = Number(readFileSync(lock, 'utf8').trim());
+
+  return Number.isInteger(pid) && pid > 0 && isRunning(pid) ? `refused: another verify run holds this checkout (pid ${pid})` : undefined;
+};
+
 export const findHolders = (root: string, gitDir: string, marker: string = GOAL_RUN, all: readonly Proc[] = processes()): Holders => {
   const notes: string[] = [];
   const ownCall = hasGoalRunAncestor(all, process.pid, marker);
@@ -73,22 +83,38 @@ export const findHolders = (root: string, gitDir: string, marker: string = GOAL_
     }
   }
 
-  const lock = lockPath(gitDir);
-
-  if (existsSync(lock)) {
-    const pid = Number(readFileSync(lock, 'utf8').trim());
-
-    if (Number.isInteger(pid) && isRunning(pid)) {
-      return { refusal: `refused: another verify run holds this checkout (pid ${pid})`, notes };
-    }
-  }
-
-  return { refusal: undefined, notes };
+  return { refusal: lockRefusal(lockPath(gitDir)), notes };
 };
 
-export const takeLock = (gitDir: string): (() => void) => {
-  const lock = lockPath(gitDir);
-  writeFileSync(lock, String(process.pid));
+const created = (lock: string): boolean => {
+  try {
+    writeFileSync(lock, String(process.pid), { flag: 'wx' });
 
-  return () => rmSync(lock, { force: true });
+    return true;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'EEXIST') {
+      return false;
+    }
+
+    throw error;
+  }
+};
+
+export const takeLock = (gitDir: string): (() => void) | string => {
+  const lock = lockPath(gitDir);
+  const release = (): void => rmSync(lock, { force: true });
+
+  if (created(lock)) {
+    return release;
+  }
+
+  const refusal = lockRefusal(lock);
+
+  if (refusal !== undefined) {
+    return refusal;
+  }
+
+  rmSync(lock, { force: true });
+
+  return created(lock) ? release : (lockRefusal(lock) ?? 'refused: another verify run took this checkout at the same moment');
 };

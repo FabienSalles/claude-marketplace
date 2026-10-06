@@ -15,5 +15,6 @@
     "skipLibCheck": true,
     "allowImportingTsExtensions": true
   },
-  "include": ["plugins/goal/**/*.ts", "plugins/node-test/**/*.ts", "scripts/**/*.ts"]
+  "include": ["plugins/**/*.ts", "scripts/**/*.ts"],
+  "exclude": ["node_modules", "plugins/superpowers/skills/systematic-debugging/condition-based-waiting-example.ts"]
 }

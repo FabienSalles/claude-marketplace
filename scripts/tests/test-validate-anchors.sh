@@ -2,8 +2,7 @@
 # ─────────────────────────────────────────────
 # Tests for scripts/validate-anchors.sh
 #
-# Plants each violation in a temporary copy of the tree, on the pattern
-# scripts/tests/test-validate-skills.sh already uses. Never touches the
+# Plants each violation in a temporary copy of the tree. Never touches the
 # real tree, so nothing has to be reverted.
 #
 # Usage: bash scripts/tests/test-validate-anchors.sh
@@ -16,10 +15,12 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 failures=0
 cases=0
 
-# copy_tree DEST — a clean rsync of the working tree (minus .git) into DEST
+ROOT=$(mktemp -d "${TMPDIR:-/tmp}/test-validate-anchors.XXXXXX") || exit 1
+trap 'rm -rf "$ROOT"' EXIT
+
 copy_tree() {
   mkdir -p "$1"
-  rsync -a --exclude='.git' "$REPO_ROOT"/ "$1"/
+  rsync -a --exclude='.git' --exclude='node_modules' "$REPO_ROOT"/ "$1"/
 }
 
 # run_case NAME MUTATE_FN EXPECTED_RC [NEEDLE]
@@ -27,13 +28,12 @@ run_case() {
   local name="$1" mutate_fn="$2" expected_rc="$3" needle="${4:-}"
   cases=$((cases + 1))
 
-  local tmp
-  tmp=$(mktemp -d)
+  local tmp="$ROOT/case-$cases"
   copy_tree "$tmp"
   "$mutate_fn" "$tmp"
 
   local out
-  out="$( cd "$tmp" && ./scripts/validate-anchors.sh plugins/goal 2>&1 )"
+  out="$( cd "$tmp" && bash ./scripts/validate-anchors.sh plugins/goal 2>&1 )"
   local rc=$?
   rm -rf "$tmp"
 
@@ -85,8 +85,7 @@ run_case "renamed symbol fails, naming the symbol"    mutate_symbol_renamed     
 run_case "deleted doc leaves a dangling link"         mutate_doc_deleted_reference_kept  1  "0001-shape-of-the-autonomous-loop.md"
 
 echo ""
-if [[ $failures -gt 0 ]]; then
-  echo "✗ $failures/$cases case(s) failed"
+echo "Total: $((cases - failures)) pass, $failures fail"
+if [[ $failures -gt 0 || $cases -eq 0 ]]; then
   exit 1
 fi
-echo "✓ $cases/$cases case(s) passed"

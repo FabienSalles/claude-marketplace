@@ -7,7 +7,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/git-add-empty.sh",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/git-add-empty.sh\"",
             "timeout": 10
           }
         ]
@@ -17,7 +17,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/audit-trail.sh",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/audit-trail.sh\"",
             "timeout": 10
           }
         ]
@@ -29,7 +29,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/remind-skills.py",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/remind-skills.py\"",
             "timeout": 10
           }
         ]
@@ -39,7 +39,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/warn-clock-bypass.py",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/warn-clock-bypass.py\"",
             "timeout": 10
           }
         ]
@@ -49,7 +49,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/warn-test-file-edit.sh",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/warn-test-file-edit.sh\"",
             "timeout": 10
           }
         ]
@@ -59,7 +59,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/warn-use-git-mv.sh",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/warn-use-git-mv.sh\"",
             "timeout": 10
           }
         ]
@@ -69,7 +69,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/remind-ci-before-commit.sh",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/remind-ci-before-commit.sh\"",
             "timeout": 10
           }
         ]
@@ -79,7 +79,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/block-claude-coauthor.sh",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/block-claude-coauthor.sh\"",
             "timeout": 10
           }
         ]
@@ -90,7 +90,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/notify-sound.sh notification",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/notify-sound.sh\" notification",
             "timeout": 10
           }
         ]
@@ -101,7 +101,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/notify-sound.sh stop",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/notify-sound.sh\" stop",
             "timeout": 10
           }
         ]
