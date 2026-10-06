@@ -3,7 +3,8 @@
 // refusal, a fixup commit, a failed push, a closed pull request or a `gh` error is returned as a
 // refusal, and the caller pauses the run there.
 
-import { basename } from 'node:path';
+import { realpathSync } from 'node:fs';
+import { basename, relative, resolve } from 'node:path';
 
 import { gateAdapterOf, type GateAdapter } from '../adapters/gate.ts';
 import { command } from '../adapters/command.ts';
@@ -30,6 +31,20 @@ export const repoOf = (remote: string): string =>
     .stdout.trim()
     .replace(/\.git$/, '')
     .replace(/^.*[:/]([^/]+\/[^/]+)$/, '$1');
+
+const realOf = (path: string): string => {
+  try {
+    return realpathSync(path);
+  } catch {
+    return resolve(path);
+  }
+};
+
+export const repoRelative = (path: string): string => {
+  const top = git('rev-parse', '--show-toplevel').stdout.trim();
+
+  return top === '' ? path : relative(realOf(top), realOf(path));
+};
 
 export const unpushedSubjects = (remote: string): string[] =>
   git('log', '--format=%s', 'HEAD', '--not', `--remotes=${remote}`)
@@ -212,7 +227,7 @@ export const createPublisher = (
 
     const repo = repoOf(remote);
     const branch = git('branch', '--show-current').stdout.trim();
-    const footer = `*Plan and logs (local, gitignored):*\n- \`${plan}\`\n- \`${dir}\`\n`;
+    const footer = `*Plan and logs (local, gitignored):*\n- \`${repoRelative(plan)}\`\n- \`${repoRelative(dir)}\`\n`;
     const gh = command.run('gh', ['pr', 'edit', branch, '--repo', repo, '--body', `${prBody()}\n---\n\n## Run report\n\n${text}\n${footer}`]);
 
     if ((gh.status ?? 1) === 0) {
