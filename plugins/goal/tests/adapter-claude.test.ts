@@ -152,8 +152,8 @@ const probe = (env: Record<string, string>): boolean => {
 
 const ROLES: AgentRole[] = ['implementer', 'lens', 'reviewer', 'auditor'];
 
-// R1 R5 R6 — the four roles start with the auto-updater off, and the lens and reviewer launched
-// together each record a bounded ceiling.
+// R1 R5 R6 — the four roles, launched together, each start with the auto-updater off and record a
+// bounded ceiling.
 test('every role starts with the auto-updater off under the same ceiling', async (t) => {
   const env = { GOAL_PROC_HEADROOM: '200' };
   const launches = await recordLaunches(ROLES, env);
