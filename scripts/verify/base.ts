@@ -1,43 +1,22 @@
 import { spawnSync } from 'node:child_process';
 
-import type { Check } from './ports.ts';
+const GIT_TIMEOUT_MS = 30_000;
 
-export type Failure = { readonly failure: string };
+const git = (root: string, args: readonly string[]) => spawnSync('git', args, { cwd: root, encoding: 'utf8', timeout: GIT_TIMEOUT_MS });
 
-export type FreshBase = { readonly base: string; readonly behind: number } | Failure;
+export const behindNotes = (root: string, env: NodeJS.ProcessEnv): readonly string[] => {
+  if (env['GITHUB_ACTIONS'] === 'true') {
+    return [];
+  }
 
-const git = (root: string, args: readonly string[]) => spawnSync('git', args, { cwd: root, encoding: 'utf8' });
-
-export const freshBase = (root: string): FreshBase => {
   const fetched = git(root, ['fetch', '--no-tags', 'origin', '+refs/heads/main:refs/remotes/origin/main']);
+  const counted = fetched.status === 0 ? git(root, ['rev-list', '--count', 'HEAD..origin/main']) : fetched;
 
-  if (fetched.status !== 0) {
-    return { failure: `missing: the network (fetching origin/main failed: ${fetched.stderr.trim()})` };
+  if (counted.status !== 0) {
+    return [`not compared with origin/main: ${(counted.error?.message ?? counted.stderr).trim().replace(/\s+/g, ' ')}`];
   }
 
-  const base = git(root, ['merge-base', 'origin/main', 'HEAD']);
-  const behind = git(root, ['rev-list', '--count', 'HEAD..origin/main']);
+  const behind = Number(counted.stdout.trim());
 
-  if (base.status !== 0 || behind.status !== 0) {
-    return { failure: `no merge base with origin/main: ${base.stderr.trim()}${behind.stderr.trim()}` };
-  }
-
-  return { base: base.stdout.trim(), behind: Number(behind.stdout.trim()) };
+  return behind === 0 ? [] : [`branch is ${behind} commits behind origin/main`];
 };
-
-export const behindLine = (behind: number): string | undefined =>
-  behind === 0 ? undefined : `branch is ${behind} commits behind origin/main`;
-
-const isDiffCertification = (check: Check): boolean =>
-  'command' in check && check.command.includes('--diff');
-
-export const withDiffBase = (checks: readonly Check[], base: string | Failure): readonly Check[] =>
-  checks.map((check): Check => {
-    if (!isDiffCertification(check) || !('command' in check)) {
-      return check;
-    }
-
-    return typeof base === 'string'
-      ? { ...check, command: check.command.map((word) => (word === 'origin/main' ? base : word)) }
-      : { name: check.name, group: check.group, requirements: check.requirements, inline: () => [base.failure] };
-  });

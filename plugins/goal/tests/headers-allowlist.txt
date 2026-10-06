@@ -1,5 +1,10 @@
 plugins/goal/scripts/goal-gate.ts
 plugins/goal/scripts/goal-run.ts
+plugins/goal/src/adapters/claude/classify.ts
+plugins/goal/src/adapters/claude/postmortem.ts
+plugins/goal/src/adapters/claude/session.ts
+plugins/goal/src/adapters/claude/stream.ts
+plugins/goal/src/adapters/claude/warning.ts
 plugins/goal/src/adapters/gate.ts
 plugins/goal/src/core/events.ts
 plugins/goal/src/core/plan.ts
@@ -21,14 +26,12 @@ plugins/goal/src/gate/ticked.ts
 plugins/goal/src/gate/verbs.ts
 plugins/goal/src/plan-guard.ts
 plugins/goal/src/ports.ts
-plugins/goal/src/run/advisory.ts
 plugins/goal/src/run/brief.ts
 plugins/goal/src/run/close.ts
 plugins/goal/src/run/gitwatch.ts
 plugins/goal/src/run/iteration.ts
 plugins/goal/src/run/lock.ts
 plugins/goal/src/run/narrate.ts
-plugins/goal/src/run/postmortem.ts
 plugins/goal/src/run/preflight.ts
 plugins/goal/src/run/publish.ts
 plugins/goal/src/run/quota.ts

@@ -226,7 +226,7 @@ Full details (colored screenshot, segment-by-segment breakdown, refresh-interval
 
 ## Contributing
 
-Adding or editing a plugin, manifest conventions, local validation (`scripts/health-check.sh`), and what CI enforces are all in [`CONTRIBUTING.md`](CONTRIBUTING.md).
+Adding or editing a plugin, manifest conventions, local validation (`npm run verify`, with `scripts/health-check.sh` as a diagnostic), and what CI enforces are all in [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ## License
 

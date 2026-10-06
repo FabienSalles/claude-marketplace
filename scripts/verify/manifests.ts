@@ -21,7 +21,7 @@ const entries = (root: string): readonly Json[] => {
   return Array.isArray(plugins) ? (plugins as Json[]) : [];
 };
 
-const pluginNames = (root: string): readonly string[] => {
+export const pluginNames = (root: string): readonly string[] => {
   const base = join(root, 'plugins');
 
   return existsSync(base)

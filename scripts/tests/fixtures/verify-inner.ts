@@ -6,7 +6,7 @@ const restore = (): void => {
 };
 
 if (process.env['FIXTURE_MUTATE'] === '1') {
-  for (const signal of ['SIGINT', 'SIGTERM'] as const) {
+  for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP'] as const) {
     process.on(signal, () => {
       restore();
       process.exit(143);
@@ -14,7 +14,10 @@ if (process.env['FIXTURE_MUTATE'] === '1') {
   }
   writeFileSync('tracked', 'mutated\n');
   process.stdout.write('ready\n');
-  setTimeout(restore, 30_000);
+  setTimeout(() => {
+    restore();
+    process.exit(1);
+  }, 30_000);
 } else {
   process.exitCode = spawnSync('bash', ['-c', process.env['FIXTURE_SCRIPT'] ?? 'echo ran'], { stdio: 'inherit' }).status ?? 1;
 }

@@ -5,15 +5,19 @@ import { mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { behindLine, freshBase, withDiffBase } from '../verify/base.ts';
-import type { Check } from '../verify/ports.ts';
+import { behindNotes } from '../verify/base.ts';
 
 let sandbox = '';
 let origin = '';
 let clone = '';
+let other = '';
 
 const git = (cwd: string, ...args: string[]): string => {
-  const result = spawnSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', ...args], { cwd, encoding: 'utf8' });
+  const result = spawnSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', ...args], {
+    cwd,
+    encoding: 'utf8',
+    env: { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' },
+  });
   assert.equal(result.status, 0, result.stderr);
 
   return result.stdout.trim();
@@ -29,6 +33,7 @@ before(() => {
   sandbox = realpathSync(mkdtempSync(join(tmpdir(), 'verify-base-')));
   origin = join(sandbox, 'origin.git');
   clone = join(sandbox, 'clone');
+  other = join(sandbox, 'other');
   git(sandbox, 'init', '-q', '--bare', '-b', 'main', origin);
   git(sandbox, 'clone', '-q', origin, clone);
   git(clone, 'checkout', '-q', '-b', 'main');
@@ -36,24 +41,27 @@ before(() => {
   git(clone, 'push', '-q', 'origin', 'main');
   git(clone, 'checkout', '-q', '-b', 'feature');
   commit(clone, 'feature-work');
-
-  const other = join(sandbox, 'other');
   git(sandbox, 'clone', '-q', origin, other);
-  commit(other, 'upstream-one');
-  commit(other, 'upstream-two');
-  git(other, 'push', '-q', 'origin', 'main');
 });
 
 after(() => {
   rmSync(sandbox, { recursive: true, force: true });
 });
 
-test('the fetch moves the origin/main tracking ref and no local branch', () => {
-  const before = { main: git(clone, 'rev-parse', 'main'), feature: git(clone, 'rev-parse', 'feature'), tracking: git(clone, 'rev-parse', 'origin/main') };
-  const advanced = git(origin, 'rev-parse', 'main');
-  assert.notEqual(before.tracking, advanced);
+test('on CI nothing is fetched and no note is printed', () => {
+  commit(other, 'upstream-on-ci');
+  git(other, 'push', '-q', 'origin', 'main');
+  const tracking = git(clone, 'rev-parse', 'origin/main');
 
-  freshBase(clone);
+  assert.deepEqual(behindNotes(clone, { GITHUB_ACTIONS: 'true' }), []);
+  assert.equal(git(clone, 'rev-parse', 'origin/main'), tracking);
+});
+
+test('locally the fetch moves the origin/main tracking ref and no local branch', () => {
+  const before = { main: git(clone, 'rev-parse', 'main'), feature: git(clone, 'rev-parse', 'feature') };
+  const advanced = git(origin, 'rev-parse', 'main');
+
+  behindNotes(clone, {});
 
   assert.equal(git(clone, 'rev-parse', 'origin/main'), advanced);
   assert.equal(git(clone, 'rev-parse', 'main'), before.main);
@@ -61,32 +69,33 @@ test('the fetch moves the origin/main tracking ref and no local branch', () => {
   assert.equal(git(clone, 'branch', '--show-current'), 'feature');
 });
 
-test('the base is the merge base and the behind count is how far origin/main is ahead', () => {
-  const result = freshBase(clone);
-  assert.ok('base' in result);
-  assert.equal(result.base, git(clone, 'merge-base', 'origin/main', 'HEAD'));
-  assert.notEqual(result.base, git(clone, 'rev-parse', 'origin/main'));
-  assert.equal(result.behind, 2);
-  assert.equal(behindLine(result.behind), 'branch is 2 commits behind origin/main');
-  assert.equal(behindLine(0), undefined);
+test('the note says how many commits origin/main has that the branch lacks, and nothing when there are none', () => {
+  commit(other, 'upstream-two');
+  git(other, 'push', '-q', 'origin', 'main');
+
+  assert.deepEqual(behindNotes(clone, {}), ['branch is 2 commits behind origin/main']);
+
+  git(clone, 'merge', '-q', '--no-edit', 'origin/main');
+
+  assert.deepEqual(behindNotes(clone, {}), []);
 });
 
-test('the diff certification receives the merge base instead of origin/main', () => {
-  const diff: Check = { name: 'diff', group: 'structure', requirements: [], command: ['node', 'certify.ts', '--diff', 'origin/main'] };
-  const other: Check = { name: 'other', group: 'structure', requirements: [], command: ['node', 'other.ts', 'origin/main'] };
-  const [changed, untouched] = withDiffBase([diff, other], 'abc123');
-  assert.deepEqual(changed !== undefined && 'command' in changed ? changed.command : [], ['node', 'certify.ts', '--diff', 'abc123']);
-  assert.equal(untouched, other);
-});
-
-test('a failed fetch fails the diff certification naming the network', () => {
+test('a failed fetch is named in the note instead of failing a check', () => {
   git(clone, 'remote', 'set-url', 'origin', join(sandbox, 'missing.git'));
-  const result = freshBase(clone);
-  assert.ok('failure' in result);
-  assert.match(result.failure, /the network/);
 
-  const diff: Check = { name: 'diff', group: 'structure', requirements: [], command: ['node', 'certify.ts', '--diff', 'origin/main'] };
-  const [failing] = withDiffBase([diff], result);
-  assert.ok(failing !== undefined && 'inline' in failing);
-  assert.match(failing.inline(clone).join('\n'), /the network/);
+  const [note, ...rest] = behindNotes(clone, {});
+
+  assert.match(note ?? '', /^not compared with origin\/main: .*missing\.git/s);
+  assert.deepEqual(rest, []);
+});
+
+test('a git that cannot start is named in the note instead of failing the run', () => {
+  const saved = process.env['PATH'] ?? '';
+  process.env['PATH'] = join(sandbox, 'no-such-bin');
+
+  try {
+    assert.deepEqual(behindNotes(clone, {}), ['not compared with origin/main: spawnSync git ENOENT']);
+  } finally {
+    process.env['PATH'] = saved;
+  }
 });

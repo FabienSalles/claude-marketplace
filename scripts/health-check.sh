@@ -70,7 +70,7 @@ fi
 # 2. Validate the root marketplace manifest
 # ─────────────────────────────────────────────
 section "2. Validate marketplace manifest"
-if claude plugin validate . 2>&1 | sed 's/^/  /'; then
+if claude plugin validate --strict . 2>&1 | sed 's/^/  /'; then
   : # output already includes the ✔
 else
   errors=$((errors + 1))
@@ -83,11 +83,11 @@ section "3. Validate each plugin"
 plugin_errors=0
 for plugin_dir in plugins/*/; do
   name=$(basename "$plugin_dir")
-  if claude plugin validate "$plugin_dir" >/dev/null 2>&1; then
+  if claude plugin validate --strict "$plugin_dir" >/dev/null 2>&1; then
     echo -e "  ${GREEN}✓${NC} $name"
   else
     echo -e "  ${RED}✗${NC} $name"
-    claude plugin validate "$plugin_dir" 2>&1 | sed 's/^/      /'
+    claude plugin validate --strict "$plugin_dir" 2>&1 | sed 's/^/      /'
     plugin_errors=$((plugin_errors + 1))
   fi
 done
@@ -134,7 +134,7 @@ for src in "${ref_files[@]}"; do
       echo -e "  ${RED}✗${NC} $src → $rel_path (resolves to $full_path, NOT FOUND)"
       ref_errors=$((ref_errors + 1))
     fi
-  done < <(grep -oE '\$\{CLAUDE_PLUGIN_ROOT\}/[^"`'"'"' ]+' "$src" 2>/dev/null)
+  done < <(grep -oE '\$\{CLAUDE_PLUGIN_ROOT\}/[^"`'"'"' \\]+' "$src" 2>/dev/null)
 done
 
 if [[ $ref_total -eq 0 ]]; then

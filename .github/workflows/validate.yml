@@ -6,29 +6,133 @@ on:
   pull_request:
     branches: [main]
   schedule:
-    - cron: '0 6 * * *'
+    - cron: '23 4 * * *'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  validate-structure:
-    name: Validate structure
-    runs-on: ubuntu-latest
+  structure:
+    name: Structure
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
     steps:
       - uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v5
         with:
-          node-version: '24'
+          node-version-file: .nvmrc
 
       - name: Run the checks
-        run: npm run verify -- structure
+        run: node scripts/verify.ts structure
 
-  nightly-skills-certification:
-    name: Nightly install and upstream canary
+  unit:
+    name: Unit tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+
+      - name: Run the checks
+        run: node scripts/verify.ts unit
+
+  shell-suites:
+    name: Shell suites (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-26]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+
+      - name: Run the checks
+        run: node scripts/verify.ts shell-suites
+
+  goal-gate:
+    name: Goal gate suite
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+
+      - name: Run the checks
+        run: node scripts/verify.ts goal-gate
+
+  mutation:
+    name: Goal gate mutation
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+
+      - name: Run the checks
+        run: node scripts/verify.ts mutation
+
+  plugin-validate:
+    name: claude plugin validate --strict
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+
+      - name: Install Claude Code
+        run: npm install -g @anthropic-ai/claude-code@2.1.285
+
+      - name: Run the checks
+        run: node scripts/verify.ts plugin-validate
+
+  skills-discovery:
+    name: Skills discovery
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+
+      - name: Run the checks
+        run: node scripts/verify.ts skills-discovery
+
+  canary:
+    name: Nightly canary
     if: github.event_name == 'schedule'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
     steps:
       - uses: actions/checkout@v5
 
@@ -40,102 +144,21 @@ jobs:
       - name: Setup uv
         uses: astral-sh/setup-uv@v5
 
-      - name: Install every skill in a sandbox
+      - name: Install Claude Code
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Run the checks
+        run: node scripts/verify.ts canary
+
+      - name: Report the failure on the canary issue
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          errors=0
-          for skill_dir in $(find plugins -type d -path '*/skills/*' -exec test -f '{}/SKILL.md' \; -print | sort); do
-            echo "== $skill_dir"
-            if node plugins/skills/scripts/certify.ts --install "$skill_dir"; then
-              echo "✓ $skill_dir"
-            else
-              echo "✗ $skill_dir"
-              errors=$((errors + 1))
-            fi
-          done
-          if [[ $errors -gt 0 ]]; then
-            echo "::error::$errors skill(s) failed sandboxed install"
-            exit 1
+          run_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          issue=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search 'in:title canary' --json number,title --jq '[.[] | select(.title == "Canary failed")][0].number // empty')
+          if [ -n "$issue" ]; then
+            gh issue comment "$issue" --repo "$GITHUB_REPOSITORY" --body "The canary failed again: $run_url"
+          else
+            gh issue create --repo "$GITHUB_REPOSITORY" --title "Canary failed" --body "The canary failed: $run_url"
           fi
-
-      - name: Cross-check against the upstream skills-ref validator
-        run: uvx --from git+https://github.com/agentskills/agentskills#subdirectory=skills-ref skills-ref validate plugins
-
-  test-plugin-validate:
-    name: Test claude plugin validate
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v5
-        with:
-          node-version: '24'
-
-      - name: Install Claude Code
-        run: npm install -g @anthropic-ai/claude-code
-
-      - name: Run the checks
-        run: npm run verify -- plugin-validate
-
-  test-npx-skills:
-    name: Test npx skills discovery
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v5
-        with:
-          node-version: '24'
-
-      - name: Run the checks
-        run: npm run verify -- skills-discovery
-
-  test-goal-gate:
-    name: Test the goal gate
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v5
-        with:
-          node-version: '24'
-
-      - name: Run the checks
-        run: npm run verify -- goal-gate
-
-  test-shell-suites:
-    name: Run the shell test suites
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v5
-        with:
-          node-version: '24'
-
-      - name: Run the checks
-        run: npm run verify -- shell-suites
-
-  health-check:
-    name: Run health-check.sh (${{ matrix.os }})
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v5
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v5
-        with:
-          node-version: '24'
-
-      - name: Install Claude Code
-        run: npm install -g @anthropic-ai/claude-code
-
-      - name: Run the checks
-        run: npm run verify -- health-check
