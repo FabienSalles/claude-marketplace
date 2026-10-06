@@ -21,7 +21,7 @@ export type InlineCheck = Described & {
 
 export type Check = CommandCheck | InlineCheck;
 
-export type Status = 'passed' | 'failed' | 'not-reproduced';
+export type Status = 'passed' | 'failed';
 
 export type Outcome = { readonly status: Status; readonly detail: string };
 

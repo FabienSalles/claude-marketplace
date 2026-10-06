@@ -62,7 +62,7 @@ test('a green local run ends by listing exactly the gaps it cannot reproduce', (
   const lines = result.stdout.trimEnd().split('\n');
 
   assert.deepEqual(lines.slice(-4), [
-    'green: every check passed or was not reproduced',
+    'green: every check passed',
     ...ALWAYS.map((gap) => `not reproduced on this Mac: ${gap}`),
   ]);
 });

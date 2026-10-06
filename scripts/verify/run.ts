@@ -35,12 +35,9 @@ export const interruptible = (): AbortSignal => {
   return controller.signal;
 };
 
-const LABEL = { passed: 'passed', failed: 'failed', 'not-reproduced': 'not reproduced' } as const;
-
 type Result = { readonly check: Check; readonly outcome: Outcome; readonly seconds: number };
 
-const line = ({ check, outcome, seconds }: Result): string =>
-  `${LABEL[outcome.status]}  ${check.name}${outcome.status === 'not-reproduced' ? ` (${outcome.detail})` : ''}  (${seconds.toFixed(1)} s)`;
+const line = ({ check, outcome, seconds }: Result): string => `${outcome.status}  ${check.name}  (${seconds.toFixed(1)} s)`;
 
 export type Verification = {
   readonly prepare: Check;
@@ -160,7 +157,7 @@ export const runVerify = async ({
   }
 
   if (prepared) {
-    write(failed === 0 ? 'green: every check passed or was not reproduced\n' : `red: ${failed} check(s) failed\n`);
+    write(failed === 0 ? 'green: every check passed\n' : `red: ${failed} check(s) failed\n`);
   } else {
     write(`red: ${prepare.name} failed: ${selected.length} check(s) not run\n`);
   }

@@ -154,7 +154,7 @@ test('every report line carries the duration of its check', async () => {
 test('the report lists the checks in declared order whatever order they finish in', async () => {
   const { output } = await verify([check('one'), check('two'), check('three')], { concurrency: 3, delays: { one: 30, two: 1, three: 10 } });
 
-  assert.deepEqual(report(output), ['passed  install', 'passed  one', 'passed  two', 'passed  three', 'green: every check passed or was not reproduced']);
+  assert.deepEqual(report(output), ['passed  install', 'passed  one', 'passed  two', 'passed  three', 'green: every check passed']);
 });
 
 test('failure details are printed as each check fails, before the report', async () => {
