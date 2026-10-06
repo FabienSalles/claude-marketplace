@@ -7,6 +7,12 @@ import { join } from 'node:path';
 
 import { runDiffGate } from '../src/diff.ts';
 
+process.env.GIT_CONFIG_GLOBAL = '/dev/null';
+process.env.GIT_CONFIG_NOSYSTEM = '1';
+process.env.GIT_CONFIG_COUNT = '1';
+process.env.GIT_CONFIG_KEY_0 = 'maintenance.auto';
+process.env.GIT_CONFIG_VALUE_0 = 'false';
+
 const fixture = (name: string): string => join(import.meta.dirname, 'fixtures', 'diff', name);
 
 const git = (cwd: string, ...args: string[]): string => execFileSync('git', args, { cwd, encoding: 'utf8' });
@@ -31,7 +37,6 @@ const commit = (repoRoot: string, message: string): string => {
   return git(repoRoot, 'rev-parse', 'HEAD').trim();
 };
 
-// R7 — a diff that only touches a compliant skill passes the gate.
 test('R7 — the diff gate passes when the touched artifact is compliant', () => {
   const repoRoot = initRepo();
 
@@ -50,7 +55,6 @@ test('R7 — the diff gate passes when the touched artifact is compliant', () =>
   }
 });
 
-// R7 — a diff that touches a non-compliant skill fails the gate exactly on that artifact.
 test('R7 — the diff gate fails when the touched artifact is non-compliant', () => {
   const repoRoot = initRepo();
 
@@ -71,8 +75,6 @@ test('R7 — the diff gate fails when the touched artifact is non-compliant', ()
   }
 });
 
-// R7 — test fixtures are not marketplace artifacts: a deliberately non-compliant SKILL.md
-// under a tests/ directory is outside the certified perimeter and never reaches the gate.
 test('R7 — the diff gate ignores artifacts under a tests directory', () => {
   const repoRoot = initRepo();
 
@@ -94,8 +96,6 @@ test('R7 — the diff gate ignores artifacts under a tests directory', () => {
   }
 });
 
-// R7 — deleting a touched artifact is neutral: it never fails the gate, even when the artifact
-// being removed was non-compliant.
 test('R7 — deleting a touched artifact is neutral and does not fail the gate', () => {
   const repoRoot = initRepo();
 
@@ -115,4 +115,10 @@ test('R7 — deleting a touched artifact is neutral and does not fail the gate',
   } finally {
     rmSync(repoRoot, { recursive: true, force: true });
   }
+});
+
+test('the git this suite runs reads no global or system config and runs no maintenance', () => {
+  const listed = git(tmpdir(), 'config', '--list', '--show-scope');
+
+  assert.deepEqual(listed.split('\n').filter((line) => line !== ''), ['command\tmaintenance.auto=false']);
 });

@@ -2,7 +2,7 @@ import type { Frontmatter } from '../frontmatter.ts';
 import type { Finding } from '../verdict.ts';
 
 const SPEC_FIELDS = ['name', 'description', 'license', 'allowed-tools', 'metadata', 'compatibility'];
-const CLAUDE_CODE_FIELDS = ['disable-model-invocation', 'user-invocable', 'context', 'agent', 'model'];
+export const CLAUDE_CODE_FIELDS = ['disable-model-invocation', 'user-invocable', 'context', 'agent', 'model'];
 const ALLOWED_FIELDS = [...SPEC_FIELDS, ...CLAUDE_CODE_FIELDS];
 const REQUIRED_FIELDS = ['name', 'description'];
 const SPEC_SOURCE = 'agentskills.io/specification';
@@ -38,8 +38,8 @@ export const level2Findings = (frontmatter: Frontmatter): Finding[] => {
     },
     {
       rule: 'description-no-angle-brackets',
-      status: angleBracketMatch ? 'fail' : 'pass',
-      detail: angleBracketMatch
+      status: angleBracketMatch !== null ? 'fail' : 'pass',
+      detail: angleBracketMatch !== null
         ? `description contains "${description[angleBracketMatch.index]}" at position ${angleBracketMatch.index}`
         : 'description contains no angle brackets',
       source: ANTHROPIC_SOURCE,

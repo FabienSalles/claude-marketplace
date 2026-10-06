@@ -1,7 +1,8 @@
 ---
 name: flow-map
 description: "ACTIVATE when mapping how one application talks to the outside world — its integrations, interfaces, adherences, inbound and outbound flows. ACTIVATE for 'cartographier les flux', 'flux entrants sortants', 'context map', 'quels systèmes appelle ce projet', 'qui appelle cette API', 'adhérences', 'integration map', 'interfaces inventory', 'what does this service talk to', 'DDD context map'. Produces a text-only `flows.md`: every channel in and out with its technical and functional reading, the unknowns it cannot close alone, and a context-map opinion per counterparty (relation, DDD pattern, consequence). Records are keyed so several projects' maps merge later (see flow-consolidate). DO NOT use to merge several projects already mapped (see flow-consolidate), to build the full knowledge base of a codebase (see discovery), or to draw an architecture diagram — this skill deliberately emits no graph."
-version: 1.0.0
+metadata:
+  version: "1.0.0"
 ---
 
 # Flow Map

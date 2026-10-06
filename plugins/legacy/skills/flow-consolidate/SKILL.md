@@ -1,7 +1,8 @@
 ---
 name: flow-consolidate
 description: "ACTIVATE when several projects have each been mapped with flow-map and the flows must be merged into one estate-wide picture. ACTIVATE for 'consolider les flux', 'cartographie globale', 'vue d'ensemble des flux', 'lever les inconnus', 'qui appelle qui', 'estate-wide integration map', 'merge flow maps', 'cross-project context map', 'system landscape'. Joins the per-project `flows.md` on their flow keys, closes each project's unknowns with another project's assertions, reports the contradictions, upgrades the context-map patterns now that both sides of each relationship are visible, and ends with the unknowns nobody could close, per application, each addressed to whoever can answer. Text only, no diagram. DO NOT use to map a single project (see flow-map) or before at least two `flows.md` exist."
-version: 1.0.0
+metadata:
+  version: "1.0.0"
 ---
 
 # Flow Consolidate

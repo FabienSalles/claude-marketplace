@@ -67,7 +67,7 @@ turns a one-line bump into a formatting diff.
 ### 4. Verify before pushing
 
 ```bash
-bash scripts/validate-skills.sh
+node plugins/skills/scripts/certify.ts --all
 python3 - <<'EOF'
 import json, pathlib
 m = json.loads(pathlib.Path(".claude-plugin/marketplace.json").read_text())

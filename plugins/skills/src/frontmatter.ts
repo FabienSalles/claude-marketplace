@@ -24,7 +24,7 @@ export const readFrontmatter = (skillDir: string): FrontmatterResult => {
 
   const match = FRONTMATTER_PATTERN.exec(content);
 
-  if (!match) {
+  if (match === null) {
     return { ok: false, skillMdPath, reason: `${skillMdPath} has no YAML frontmatter block` };
   }
 

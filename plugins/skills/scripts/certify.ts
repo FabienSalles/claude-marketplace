@@ -10,18 +10,20 @@
 // every skill it contains and aggregates their verdicts into a single exit code.
 
 import { existsSync, readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { dirname, join, relative } from 'node:path';
 
 import { certifyAgent } from '../src/agents.ts';
 import { runDiffGate } from '../src/diff.ts';
+import { evalsFindings, listEvals } from '../src/evals.ts';
 import { readFrontmatter } from '../src/frontmatter.ts';
-import { installSandboxed } from '../src/install.ts';
+import { installSandboxed, PINNED_SKILLS_CLI, type InstallResult, type SkillInstall } from '../src/install.ts';
 import { certifyPluginStructure } from '../src/plugin-structure.ts';
-import { listSkills } from '../src/repo-coherence.ts';
+import { listAgents, listSkills, type SkillRef } from '../src/repo-coherence.ts';
 import { level2Findings } from '../src/rules/level2.ts';
 import { level3Findings } from '../src/rules/level3.ts';
 import { level4Findings } from '../src/rules/level4-advisory.ts';
 import { computeStock, renderStock } from '../src/stock.ts';
+import { validateUpstream } from '../src/upstream.ts';
 import { aggregateLevel, aggregateVerdict, type Finding, type LevelVerdict, type Verdict } from '../src/verdict.ts';
 
 export const certify = (skillDir: string): Verdict => {
@@ -86,6 +88,95 @@ export const renderVerdict = (verdict: Verdict): string => {
   return lines.join('\n');
 };
 
+type TreeCertification = {
+  readonly skills: readonly Verdict[];
+  readonly agents: readonly Verdict[];
+  readonly evals: readonly Verdict[];
+};
+
+const certifyTree = (repoRoot: string, skills: readonly SkillRef[]): TreeCertification => ({
+  skills: skills.map((skill) => certify(skill.dir)),
+  agents: listAgents(repoRoot).map((agentPath) => certifyAgent(agentPath, join(repoRoot, 'plugins'))),
+  evals: listEvals(repoRoot, skills).map((evalsPath) =>
+    aggregateVerdict(evalsPath, [aggregateLevel(2, true, evalsFindings(evalsPath, skills))]),
+  ),
+});
+
+const findingLine = (tag: 'FAIL' | 'WARN', path: string, finding: Finding): string =>
+  `[${tag}] ${path} ${finding.rule}: ${finding.detail} (source: ${finding.source})`;
+
+const failingLines = (verdicts: readonly Verdict[], repoRoot: string): string[] =>
+  verdicts.flatMap((verdict) =>
+    verdict.levels.flatMap((level) =>
+      level.findings
+        .filter((finding) => finding.status === 'fail')
+        .map((finding) => findingLine(level.blocking ? 'FAIL' : 'WARN', relative(repoRoot, verdict.skillDir), finding)),
+    ),
+  );
+
+const failingFindings = (verdicts: readonly Verdict[], blocking: boolean): number =>
+  verdicts
+    .flatMap((verdict) => verdict.levels)
+    .filter((level) => level.blocking === blocking)
+    .flatMap((level) => level.findings)
+    .filter((finding) => finding.status === 'fail').length;
+
+const renderTreeCertification = (tree: TreeCertification, repoRoot: string): string => {
+  const verdicts = [...tree.skills, ...tree.agents, ...tree.evals];
+
+  return [
+    ...failingLines(verdicts, repoRoot),
+    `Certified ${tree.skills.length} skill(s), ${tree.agents.length} agent(s), ${tree.evals.length} evals file(s): ` +
+      `${failingFindings(verdicts, true)} blocking failure(s), ${failingFindings(verdicts, false)} advisory finding(s)`,
+  ].join('\n');
+};
+
+const renderUpstream = (verdicts: readonly Verdict[], repoRoot: string): string =>
+  [
+    ...failingLines(verdicts, repoRoot),
+    `Upstream skills-ref validation of ${verdicts.length} skill(s): ` +
+      `${failingFindings(verdicts, true)} failure(s), ${failingFindings(verdicts, false)} declared divergence(s)`,
+  ].join('\n');
+
+const installFailures = (install: SkillInstall, cli: string): Finding[] => {
+  const failures: Finding[] = [];
+
+  if (install.missingFiles.length > 0) {
+    failures.push({ rule: 'install-files-complete', status: 'fail', detail: `missing ${install.missingFiles.join(', ')}`, source: cli });
+  }
+
+  if (!install.lockEntryFound) {
+    failures.push({ rule: 'install-lock-entry', status: 'fail', detail: 'no entry in skills-lock.json', source: cli });
+  }
+
+  return failures;
+};
+
+const renderInstall = (result: InstallResult, cli: string, repoRoot: string): string => {
+  const lines = result.installs.flatMap((install) =>
+    installFailures(install, cli).map((finding) => findingLine('FAIL', relative(repoRoot, install.dir), finding)),
+  );
+
+  return [...lines, `Sandboxed install of ${result.installs.length} skill(s) with ${cli}: ${lines.length} failure(s)`].join('\n');
+};
+
+const renderNpxFailure = (code: string, cli: string, skillCount: number): string =>
+  [
+    findingLine('FAIL', '.', { rule: 'install-run', status: 'fail', detail: `npx failed with code ${code}`, source: cli }),
+    `Sandboxed install of ${skillCount} skill(s) with ${cli}: 1 failure(s)`,
+  ].join('\n');
+
+const treeSkills = (repoRoot: string): SkillRef[] => {
+  const skills = listSkills(repoRoot);
+
+  if (skills.length === 0) {
+    process.stderr.write(`no skill found under ${join(repoRoot, 'plugins')}\n`);
+    process.exit(1);
+  }
+
+  return skills;
+};
+
 if (import.meta.main) {
   const args = process.argv.slice(2);
   const requireEvals = args.includes('--require-evals');
@@ -96,8 +187,55 @@ if (import.meta.main) {
     process.exit(0);
   }
 
+  if (flag === '--all') {
+    const repoRoot = process.cwd();
+    const tree = certifyTree(repoRoot, treeSkills(repoRoot));
+    const failed = [...tree.skills, ...tree.agents, ...tree.evals].some((verdict) => verdict.status === 'fail');
+
+    process.stdout.write(`${renderTreeCertification(tree, repoRoot)}\n`);
+    process.exit(failed ? 1 : 0);
+  }
+
+  if (flag === '--install-all') {
+    const cliIndex = args.indexOf('--cli');
+    const cli = cliIndex === -1 ? PINNED_SKILLS_CLI : args[cliIndex + 1];
+
+    if (cli === undefined || cli === '') {
+      process.stderr.write('usage: certify.ts --install-all [--cli <npm spec>]\n');
+      process.exit(2);
+    }
+
+    const repoRoot = process.cwd();
+    const skills = treeSkills(repoRoot);
+    const result = await installSandboxed(repoRoot, skills, cli).catch((error: unknown) => {
+      if (!(error instanceof Error && 'code' in error && 'stderr' in error)) {
+        throw error;
+      }
+
+      process.stderr.write(String(error.stderr));
+      process.stdout.write(`${renderNpxFailure(String(error.code), cli, skills.length)}\n`);
+      process.exit(1);
+    });
+
+    process.stdout.write(`${renderInstall(result, cli, repoRoot)}\n`);
+    process.exit(result.ok ? 0 : 1);
+  }
+
+  if (flag === '--upstream') {
+    const repoRoot = process.cwd();
+    const result = validateUpstream(treeSkills(repoRoot));
+
+    if (!result.ok) {
+      process.stderr.write(`${result.reason}\n`);
+      process.exit(1);
+    }
+
+    process.stdout.write(`${renderUpstream(result.verdicts, repoRoot)}\n`);
+    process.exit(result.verdicts.some((verdict) => verdict.status === 'fail') ? 1 : 0);
+  }
+
   if (flag === '--diff') {
-    if (!arg) {
+    if (arg === undefined || arg === '') {
       process.stderr.write('usage: certify.ts --diff <base-ref>\n');
       process.exit(2);
     }
@@ -112,7 +250,7 @@ if (import.meta.main) {
   }
 
   if (flag === '--install') {
-    if (!arg) {
+    if (arg === undefined || arg === '') {
       process.stderr.write('usage: certify.ts --install <skill-dir>\n');
       process.exit(2);
     }
@@ -124,18 +262,24 @@ if (import.meta.main) {
       process.exit(1);
     }
 
-    const result = await installSandboxed(arg, String(frontmatterResult.frontmatter.fields.name));
+    const result = await installSandboxed(arg, [{ name: String(frontmatterResult.frontmatter.fields.name), dir: arg }]);
 
-    process.stdout.write(`Install: ${result.skillName}\n`);
-    process.stdout.write(`  files complete: ${result.missingFiles.length === 0 ? 'yes' : `no (missing: ${result.missingFiles.join(', ')})`}\n`);
-    process.stdout.write(`  skills-lock.json entry: ${result.lockEntryFound ? 'yes' : 'no'}\n`);
+    for (const install of result.installs) {
+      process.stdout.write(`Install: ${install.name}\n`);
+      process.stdout.write(`  files complete: ${install.missingFiles.length === 0 ? 'yes' : `no (missing: ${install.missingFiles.join(', ')})`}\n`);
+      process.stdout.write(`  skills-lock.json entry: ${install.lockEntryFound ? 'yes' : 'no'}\n`);
+    }
+
     process.exit(result.ok ? 0 : 1);
   }
 
   const target = flag;
 
-  if (!target) {
-    process.stderr.write('usage: certify.ts <skill-dir | plugin-dir | agent-md-path> [--require-evals] | --stock | --diff <base-ref> | --install <skill-dir>\n');
+  if (target === undefined || target === '') {
+    process.stderr.write(
+      'usage: certify.ts <skill-dir | plugin-dir | agent-md-path> [--require-evals] | --stock | --diff <base-ref> | --install <skill-dir>' +
+        ' | --all | --install-all [--cli <npm spec>] | --upstream\n',
+    );
     process.exit(2);
   }
 

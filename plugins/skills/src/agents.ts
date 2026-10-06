@@ -16,7 +16,7 @@ type AgentFrontmatterResult =
 const parseFrontmatter = (content: string): Record<string, unknown> | undefined => {
   const match = FRONTMATTER_PATTERN.exec(content);
 
-  if (!match) {
+  if (match === null) {
     return undefined;
   }
 
@@ -35,7 +35,7 @@ const readAgentFrontmatter = (agentPath: string): AgentFrontmatterResult => {
 
   const fields = parseFrontmatter(content);
 
-  if (!fields) {
+  if (fields === undefined) {
     return { ok: false, reason: `${agentPath} has no YAML frontmatter block` };
   }
 
@@ -47,7 +47,9 @@ const asStringList = (value: unknown): string[] =>
 
 const resolveSkillDir = (pluginsRoot: string, skillRef: string): string | undefined => {
   const [plugin, skillName] = skillRef.split(':');
-  return plugin && skillName ? join(pluginsRoot, plugin, 'skills', skillName) : undefined;
+  return plugin !== undefined && plugin !== '' && skillName !== undefined && skillName !== ''
+    ? join(pluginsRoot, plugin, 'skills', skillName)
+    : undefined;
 };
 
 const readSkillFields = (skillDir: string): Record<string, unknown> | undefined => {
@@ -62,7 +64,7 @@ const skillsFindings = (fields: Readonly<Record<string, unknown>>, pluginsRoot: 
   asStringList(fields['skills']).map((ref) => {
     const skillDir = resolveSkillDir(pluginsRoot, ref);
 
-    if (!skillDir || !existsSync(join(skillDir, 'SKILL.md'))) {
+    if (skillDir === undefined || !existsSync(join(skillDir, 'SKILL.md'))) {
       return {
         rule: 'skills-exist',
         status: 'fail',
@@ -117,7 +119,7 @@ export const certifyAgent = (agentPath: string, pluginsRoot: string): Verdict =>
       status: modelValid ? 'pass' : 'fail',
       detail: modelValid
         ? `model "${model}" is within [${VALID_MODELS.join(', ')}]`
-        : `model "${model || '(missing)'}" is not within [${VALID_MODELS.join(', ')}]`,
+        : `model "${model === '' ? '(missing)' : model}" is not within [${VALID_MODELS.join(', ')}]`,
       source: SOURCE,
     },
   ];

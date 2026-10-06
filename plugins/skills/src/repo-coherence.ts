@@ -45,6 +45,32 @@ export const listSkills = (repoRoot: string): SkillRef[] => {
   return skills;
 };
 
+export const listAgents = (repoRoot: string): string[] => {
+  const pluginsRoot = join(repoRoot, 'plugins');
+
+  if (!existsSync(pluginsRoot)) {
+    return [];
+  }
+
+  const agents: string[] = [];
+
+  for (const plugin of readdirSync(pluginsRoot, { withFileTypes: true })) {
+    const agentsDir = join(pluginsRoot, plugin.name, 'agents');
+
+    if (!plugin.isDirectory() || !existsSync(agentsDir)) {
+      continue;
+    }
+
+    for (const entry of readdirSync(agentsDir)) {
+      if (entry.endsWith('.md')) {
+        agents.push(join(agentsDir, entry));
+      }
+    }
+  }
+
+  return agents;
+};
+
 export const readmeCounterFindings = (repoRoot: string, skills: readonly SkillRef[]): Finding[] => {
   const countByPlugin = new Map<string, number>();
 
@@ -63,7 +89,7 @@ export const readmeCounterFindings = (repoRoot: string, skills: readonly SkillRe
 
     const match = README_COUNT_PATTERN.exec(readFileSync(readmePath, 'utf8'));
 
-    if (!match) {
+    if (match === null) {
       continue;
     }
 
@@ -93,7 +119,7 @@ export const seePointerFindings = (skills: readonly SkillRef[]): Finding[] => {
     for (const match of body.matchAll(SEE_ALSO_PATTERN)) {
       const target = match[1];
 
-      if (!target) {
+      if (target === undefined) {
         continue;
       }
 
