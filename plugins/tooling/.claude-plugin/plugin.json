@@ -1,6 +1,6 @@
 {
   "name": "tooling",
-  "version": "2.0.1",
+  "version": "2.1.0",
   "description": "Docker, Drizzle ORM, GitHub Actions, pnpm workspaces, Zod schemas",
   "author": {
     "name": "FabienSalles"
