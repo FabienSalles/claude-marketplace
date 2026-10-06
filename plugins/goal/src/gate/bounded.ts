@@ -1,4 +1,4 @@
-// The process ceiling every declared command and every agent session (implementer, lens, reviewer, auditor) runs under. `ulimit -u` lowers
+// The process ceiling every declared command and every agent session runs under. `ulimit -u` lowers
 // the soft and the hard limit together, so nothing spawned underneath can raise it back — which is
 // the property that bounds a runaway fork, and the same one that makes a second attempt fail with
 // EPERM. The gate is a descendant of its own bounded commands (a swept `run.sh` spawns the gate,
@@ -56,8 +56,9 @@ const inheritedLimit = (): number => {
 
 export const ceilingFor = (live: number, inherited: number): string => {
   const target = live + settingValue('GOAL_PROC_HEADROOM', process.env);
+  const refusal = `goal: cannot set the process ceiling (ulimit -u ${target})`;
 
-  return target >= inherited ? '' : `ulimit -u ${target} || { echo "goal: cannot set the process ceiling (ulimit -u ${target})" >&2; exit 1; }`;
+  return target >= inherited ? '' : `ulimit -u ${target} || { echo "${refusal}" >&2; exit 1; }`;
 };
 
 export const ceiling = (): string => {
