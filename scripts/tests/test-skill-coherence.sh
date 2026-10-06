@@ -1823,6 +1823,21 @@ assert_present "R9 safety-net keeps its Infection recipe" \
   'vendor/bin/infection run src/Billing' plugins/legacy/skills/discovery/references/safety-net.md
 
 echo ""
+echo "== Test stack — the rules corrected while writing the test skills stay corrected"
+
+assert_absent "M1 no skill lists read -a among the bash 3.2 prohibitions" \
+  '`read -a` for array assignment' plugins
+
+assert_absent "M2 mac-platform does not branch a GNU-only flag on uname" \
+  'detect and branch:' plugins/mac/skills/mac-platform/SKILL.md
+
+assert_absent "P1 plugin-conventions shows no unquoted CLAUDE_PLUGIN_ROOT in a hook command" \
+  '"command": "${CLAUDE_PLUGIN_ROOT}' plugins/skills/skills/plugin-conventions
+
+assert_absent "P2 plugin-conventions no longer says PreCompact cannot block" \
+  '| `PreCompact` | manual, auto | No |' plugins/skills/skills/plugin-conventions/SKILL.md
+
+echo ""
 echo "Total: $((cases - failures)) pass, $failures fail"
 if [[ $failures -gt 0 || $cases -eq 0 ]]; then
   exit 1

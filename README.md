@@ -110,10 +110,11 @@ These overlap: [**docs/workflows-decision-guide.md**](docs/workflows-decision-gu
 | [**nest**](plugins/nest/README.md) | NestJS architectural conventions + DDD. |
 | [**vitest**](plugins/vitest/README.md) | Vitest TDD workflow + test conventions. |
 | [**node-test**](plugins/node-test/README.md) | node:test conventions: `node:assert`, mocks and timers, `node --test`. |
+| [**shell-test**](plugins/shell-test/README.md) | Bash test suites and Claude Code hook tests: one sourced harness, hermetic cases, an assertion per output channel. |
 | [**astro**](plugins/astro/README.md) | Astro 5.x: routing, content collections, i18n, SEO, Tailwind, React islands, view transitions. |
 | [**frontend**](plugins/frontend/README.md) | Clean/hexagonal architecture, Container/Presentation, safe edits to existing UI. |
 | [**jquery**](plugins/jquery/README.md) | jQuery module structure, `js-*` selector hooks, per-block scoping, symmetric toggles. |
-| [**tooling**](plugins/tooling/README.md) | Docker, Drizzle ORM, pnpm workspaces, Zod. |
+| [**tooling**](plugins/tooling/README.md) | Docker, Drizzle ORM, GitHub Actions, pnpm workspaces, Zod. |
 
 ### Security
 

@@ -1,6 +1,6 @@
 ---
 name: docker-integration
-description: "ACTIVATE when integrating a new Docker image, writing docker-compose.yml services, or adding external tools to a Docker stack. ACTIVATE for 'docker-compose', 'Docker image', 'container setup', 'service integration'. Covers: mandatory RTFM checklist before writing any docker-compose line (volumes, ports, env vars, healthchecks, internal architecture), image inspection commands, common anti-patterns that cause silent failures. DO NOT use for: Dockerfile writing, CI/CD pipeline configuration, Kubernetes."
+description: "ACTIVATE when integrating a new Docker image, writing docker-compose.yml services, or adding external tools to a Docker stack. ACTIVATE for 'docker-compose', 'Docker image', 'container setup', 'service integration'. Covers: mandatory RTFM checklist before writing any docker-compose line (volumes, ports, env vars, healthchecks, internal architecture), image inspection commands, common anti-patterns that cause silent failures. DO NOT use for: Dockerfile writing, CI/CD pipeline configuration (see tooling:github-actions-conventions), Kubernetes."
 ---
 
 # Docker Integration - RTFM First

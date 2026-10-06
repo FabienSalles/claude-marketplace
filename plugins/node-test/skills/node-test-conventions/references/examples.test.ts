@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
+import { spawnSync, type SpawnSyncReturns } from 'node:child_process';
 import { readFileSync } from 'node:fs';
-import { describe, it, mock, test } from 'node:test';
+import { before, describe, it, mock, test } from 'node:test';
 
 type Result = { tag: 'success'; value: number } | { tag: 'failure'; reason: string };
 
@@ -118,5 +119,55 @@ describe('characterization pin', () => {
     const golden = readFileSync(new URL('./receipt-summary.golden.txt', import.meta.url), 'utf8');
 
     assert.strictEqual(`${frozen.join('\n')}\n`, golden);
+  });
+});
+
+const withDeadline = async <T>(work: Promise<T>, ms: number): Promise<T> => {
+  let timer: NodeJS.Timeout | undefined;
+  const deadline = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      reject(new Error(`no result within ${String(ms)} ms`));
+    }, ms);
+  });
+
+  try {
+    return await Promise.race([work, deadline]);
+  } finally {
+    clearTimeout(timer);
+  }
+};
+
+const pendingTimeouts = (): number => process.getActiveResourcesInfo().filter((resource) => resource === 'Timeout').length;
+
+describe('a deadline leaves nothing behind', () => {
+  it('clears its timer once the work wins the race', async () => {
+    const pendingBefore = pendingTimeouts();
+
+    const result = await withDeadline(Promise.resolve('summarized'), 30_000);
+
+    assert.strictEqual(result, 'summarized');
+    assert.strictEqual(pendingTimeouts(), pendingBefore);
+  });
+});
+
+const summaryCli = "console.log('3 receipts summarized'); console.error('1 receipt skipped'); process.exitCode = 2";
+
+describe('one spawned run, read by several tests', () => {
+  let run: SpawnSyncReturns<string>;
+
+  before(() => {
+    run = spawnSync(process.execPath, ['--eval', summaryCli], { encoding: 'utf8', timeout: 10_000 });
+  });
+
+  it('exits with the code the program set', () => {
+    assert.strictEqual(run.status, 2);
+  });
+
+  it('prints its summary on stdout', () => {
+    assert.strictEqual(run.stdout, '3 receipts summarized\n');
+  });
+
+  it('keeps its warning on stderr', () => {
+    assert.strictEqual(run.stderr, '1 receipt skipped\n');
   });
 });

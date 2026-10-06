@@ -5,9 +5,9 @@ macOS / BSD platform discipline for Claude Code.
 ## What's included
 
 - **`mac-platform` skill**: activated automatically when working on shell scripts, setup scripts, or troubleshooting macOS-specific issues. Covers:
-  - `/bin/bash` 3.2 (Apple-forced) vs Homebrew `bash` 5.3+
-  - BSD vs GNU command portability (`grep -P`, `realpath`, `sed -i`, `readlink`, `date -d`, etc.)
-  - Common macOS pitfalls (`mktemp`, `awk`, `$TMPDIR`, APFS case-insensitivity)
+  - `/bin/bash` 3.2 (Apple-forced) vs Homebrew `bash` 5.3+, and the 3.2 traps (`case` inside `$( )`, `set -u` with an empty array, locale-dependent `printf '%f'`)
+  - BSD vs GNU command portability (`grep -P`, `realpath`, `sed -i`, `readlink`, `date -d`, etc.), BSD grep's exit 2, feature detection over a `uname` switch
+  - Common macOS pitfalls (`mktemp` templates and `$TMPDIR`, the first-exec scan of new executables, `awk`, APFS case-insensitivity)
 
 - **`bsd-gnu-lint` hook** (PreToolUse, matcher `Bash`): warns (never blocks) before Claude executes a Bash command that uses GNU-only flags or bash 4+ syntax which would silently fail on macOS. Patterns detected:
   - `grep -P` (PCRE)

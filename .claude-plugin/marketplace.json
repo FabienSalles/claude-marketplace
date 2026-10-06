@@ -121,12 +121,12 @@
     {
       "name": "tooling",
       "source": "./plugins/tooling",
-      "description": "Docker, Drizzle ORM, pnpm workspaces, Zod schemas",
+      "description": "Docker, Drizzle ORM, GitHub Actions, pnpm workspaces, Zod schemas",
       "version": "2.0.1",
       "author": { "name": "FabienSalles" },
       "category": "development",
       "license": "MIT",
-      "keywords": ["docker", "drizzle", "pnpm", "zod"]
+      "keywords": ["docker", "drizzle", "github-actions", "ci", "pnpm", "zod"]
     },
     {
       "name": "common",

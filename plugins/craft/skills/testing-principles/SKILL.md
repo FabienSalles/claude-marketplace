@@ -10,6 +10,9 @@ description: "ACTIVATE when writing or modifying tests, creating test classes/fi
 > - `symfony:symfony-test-conventions` (anything booting a Symfony kernel — `WebTestCase`, crawler, container doubles)
 > - `vitest:vitest-test-conventions`
 > - `node-test:node-test-conventions` (a file importing `node:test`, or a package whose test script runs `node --test`)
+> - `shell-test:shell-test-conventions` (a bash test suite, or a test of a Claude Code hook)
+>
+> A suite's economics and wiring (test sizes, what may be shared, where each check runs) live in `craft:test-suite-design`.
 
 ## 1. Test Types
 
@@ -49,6 +52,14 @@ the plan's scope, never in a test.
 **Anti-pattern — testing a capability where production doesn't wire it:** a generic mechanism
 (an option, an extension point) is tested only through the concrete class production actually
 wires to it. Exercising it elsewhere proves a possibility, not a rule.
+
+**Anti-pattern — change detector:** a test that re-states what the code or the repository
+already holds (an exact count of tests, lines or files, a line number, a list copied from the
+code, a checksum of a tree) breaks on every edit and detects no defect. Rewrite it against an
+observable behaviour, or delete it. A count of tests, lines or files that a behaviour-preserving
+edit moves is printed by a command, or dated where it is written; it is never pinned in prose and
+re-checked by a test. During TDD the same defect shows up as the "Tests That Don't Survive
+Refactor" warning sign of `craft:tdd-workflow-principles`.
 
 ## 3. Pre-Test Checklist
 
@@ -335,6 +346,7 @@ If code was already modified before a net existed, the net is recorded against t
 | Level choice | The level where the intent reads best; the deciding class is the last resort; orchestration → assert what transits to a doubled collaborator |
 | Absence of rule | Never prove that unwired code does not run — scope lives in the plan, not in a test |
 | Unwired capability | A generic mechanism is tested only through the concrete class production wires to it |
+| Change detector | A test re-stating counts, line numbers, copied lists or checksums breaks on every edit and catches nothing — rewrite it against behaviour, or delete it |
 | Test-only classes | No production-shaped class living only for tests — the fixture is the real concrete class |
 | Characterization net | Before changing unpinned behaviour: freeze inputs, pin today's output (bugs included), prove it can fail, land it first; a temporary, marked exception to one owner per rule (§16) |
 | Vocabulary | Identifiers reuse the codebase's exact terms — no synonyms ("client" for `Subscriber`), no reserved-term collisions ("offered" vs `Offer`) |

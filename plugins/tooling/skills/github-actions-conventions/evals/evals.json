@@ -1,0 +1,75 @@
+{
+  "$comment": "One object per case; `skills` names what should load, `expected_behavior` lists what a passing run must do.",
+  "routing": [
+    {
+      "query": "Our nightly job in .github/workflows/ci.yml has been failing for three weeks and nobody noticed. Make sure the next failure reaches someone.",
+      "skills": ["tooling:github-actions-conventions", "craft:test-suite-design"],
+      "expected_behavior": [
+        "loads tooling:github-actions-conventions for the workflow and craft:test-suite-design for the rule that a canary's red must reach a person",
+        "routes the scheduled job through the same entry command and setup steps as the pull request jobs",
+        "adds a failure step that opens one issue or comments on the open one, with issues: write and contents: read",
+        "moves the cron off the start of the hour if it is there"
+      ]
+    },
+    {
+      "query": "PR runs pile up when I push several commits in a row on this Symfony project. Add a concurrency group and timeouts to the GitHub Actions workflow.",
+      "skills": ["tooling:github-actions-conventions"],
+      "expected_behavior": [
+        "builds the group from github.head_ref with github.run_id as the fallback",
+        "sets cancel-in-progress only for pull_request events, so pushes to main and scheduled runs are never cancelled",
+        "sizes timeout-minutes from the jobs' measured durations instead of a guess, and names the 360-minute default it replaces"
+      ]
+    },
+    {
+      "query": "Skip the e2e workflow when a pull request only touches docs/, with paths-ignore on the pull_request trigger. Its check is required on main.",
+      "skills": ["tooling:github-actions-conventions"],
+      "expected_behavior": [
+        "refuses a workflow-level paths-ignore on a required check: a skipped workflow leaves its check Pending and blocks the merge",
+        "selects by diff inside the entry on pull requests only, printing what it skipped"
+      ]
+    },
+    {
+      "query": "Half the jobs of the last CI run were cancelled after 15 minutes with 'The job was not acquired by Runner of type hosted even after multiple attempts'. Should we speed up the test suite?",
+      "skills": ["tooling:github-actions-conventions"],
+      "expected_behavior": [
+        "reads the annotation as a GitHub infrastructure failure, not a slow suite",
+        "re-runs the failed jobs once the incident clears and changes no test",
+        "does not raise timeout-minutes to absorb it"
+      ]
+    },
+    {
+      "query": "Roll the new pricing engine out as a canary to 5% of users before everyone gets it.",
+      "skills": ["product:delivery"],
+      "expected_behavior": [
+        "loads product:delivery, not tooling:github-actions-conventions",
+        "treats the canary as a progressive release to users, not as a scheduled CI job"
+      ]
+    },
+    {
+      "query": "The bsd-gnu-lint hook script now calls mapfile, and its suite fails on the macOS job of our workflow with 'mapfile: command not found' while the ubuntu job passes.",
+      "skills": ["mac:mac-platform"],
+      "expected_behavior": [
+        "loads mac:mac-platform for the bash 3.2 rewrite of the hook script",
+        "keeps the macOS leg: it caught a real defect, so the fix goes in the script, not in the workflow"
+      ]
+    },
+    {
+      "query": "Our test suite takes four minutes. Which checks should run on every pull request, which only nightly, and how long may each one take?",
+      "skills": ["craft:test-suite-design"],
+      "expected_behavior": [
+        "loads craft:test-suite-design, not tooling:github-actions-conventions",
+        "gives each check a size that decides what it may touch, where it runs and its time bound",
+        "leaves the workflow syntax to tooling:github-actions-conventions"
+      ]
+    },
+    {
+      "query": "In CI, node --test reports every test of await-state.test.ts as passed, then the file keeps running for 30 more seconds.",
+      "skills": ["node-test:node-test-conventions", "craft:test-suite-design"],
+      "expected_behavior": [
+        "loads node-test:node-test-conventions for what keeps a file alive and craft:test-suite-design for the rule that a test ends what it started, not tooling:github-actions-conventions",
+        "looks for a timer or a child process that outlives the last test",
+        "does not raise timeout-minutes or add --test-force-exit to hide it"
+      ]
+    }
+  ]
+}

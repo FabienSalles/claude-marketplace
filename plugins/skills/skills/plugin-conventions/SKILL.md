@@ -1,6 +1,6 @@
 ---
 name: plugin-conventions
-description: "ACTIVATE when creating a Claude Code plugin, writing plugin.json, marketplace.json, hooks.json, or an evals/evals.json file. ACTIVATE for 'Claude plugin', 'plugin.json', 'marketplace.json', 'hooks.json', 'CLAUDE_PLUGIN_ROOT', 'evals.json'. Covers: plugin directory structure, plugin.json/marketplace.json schemas, hooks.json format, CLAUDE_PLUGIN_ROOT portability, distribution best practices, the evals/evals.json format for a skill's routing and behaviour test cases, validation commands. DO NOT use for: SKILL.md writing conventions (see skill-authoring), agent .md format (see agent-authoring)."
+description: "ACTIVATE when creating a Claude Code plugin, writing plugin.json, marketplace.json, hooks.json, a hook script, or an evals/evals.json file. ACTIVATE for 'Claude plugin', 'plugin.json', 'marketplace.json', 'hooks.json', 'CLAUDE_PLUGIN_ROOT', 'permissionDecision', 'evals.json'. Covers: plugin directory structure, plugin.json/marketplace.json schemas, hooks.json format, the hook output contract (exit codes, which channel reaches Claude), CLAUDE_PLUGIN_ROOT portability, distribution best practices, the evals/evals.json format for a skill's routing and behaviour test cases, validation commands. DO NOT use for: SKILL.md writing conventions (see skill-authoring), agent .md format (see agent-authoring)."
 metadata:
   version: "1.0"
 ---
@@ -155,7 +155,7 @@ The official format uses nested `matcher` + `hooks[]` with `type`:
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/scripts/validate.sh",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/validate.sh\"",
             "timeout": 30
           }
         ]
@@ -180,21 +180,35 @@ Full reference: https://docs.claude.com/en/docs/claude-code/hooks
 
 | Event | Matcher | Can block? |
 |-------|---------|------------|
-| `SessionStart` | startup, resume, clear, compact | No |
-| `SessionEnd` | No | No |
-| `UserPromptSubmit` | No | Yes (exit 2) |
-| `PreToolUse` | Tool name regex | Yes (exit 2) |
-| `PostToolUse` | Tool name regex | No |
-| `Stop` | No | Yes (exit 2) |
-| `SubagentStop` | Agent type | Yes |
-| `Notification` | Types | No |
-| `PreCompact` | manual, auto | No |
+| `SessionStart` | `startup`, `resume`, `clear`, `compact`, `fork` | No |
+| `SessionEnd` | `clear`, `resume`, `logout`, `prompt_input_exit`, `other` | No |
+| `UserPromptSubmit` | None | Yes (exit 2) |
+| `PreToolUse` | Tool name | Yes (exit 2) |
+| `PostToolUse` | Tool name | No |
+| `Stop` | None | Yes (exit 2) |
+| `SubagentStop` | Agent type | Yes (exit 2) |
+| `Notification` | Notification type | No |
+| `PreCompact` | `manual`, `auto` | Yes (exit 2) |
+
+An empty, `*` or absent matcher fires on every occurrence. A matcher written with letters, digits, `_`, `-` and spaces alone, its names separated by `|` or `,`, compares exact names: `Edit|Write` fires on those two tools and never on `NotebookEdit`. Any other character makes it a JavaScript regular expression that may match anywhere in the value, so `Edit.*` also fires on `NotebookEdit`: anchor it as `^Edit$`. A `matcher` on an event marked None is ignored silently.
+
+### Hook output contract
+
+Output on the wrong channel fails silently: the action proceeds and the message reaches nobody. Five rules decide it:
+
+- On most events, exit 2 is the only code that blocks by itself (`WorktreeCreate` and `WorktreeRemove` fail on any non-zero exit). Without a schema-valid JSON object on stdout, any other non-zero exit is a non-blocking error and the action proceeds, so `exit 1` enforces nothing. Such an object is read on every exit code: at exit 1 a JSON `deny` still decides, and no JSON overrides the block of exit 2.
+- At exit 0, stderr goes to the debug log only: neither Claude nor the user sees it.
+- Plain stdout reaches Claude's context only on `SessionStart`, `UserPromptSubmit`, `UserPromptExpansion` and `PostModelSwitch`; on other events, speak through exit 2 or JSON.
+- A `PreToolUse` decision is `hookSpecificOutput.permissionDecision` (`allow`, `deny`, `ask` or `defer`) with `permissionDecisionReason`. The top-level `decision`/`reason` pair is deprecated for that event.
+- JSON stdout is exactly one object built with an encoder (`jq -n --arg …`, Python's `json.dumps`): an unparsable one is dropped as a hook error, and a field at the wrong level is ignored.
+
+The stdin fields per event, the effect of exit 2 per event and the JSON fields are tabled in `references/hook-output-contract.md`. How to test a hook (a sourced harness, payload files, one assertion per channel) lives in `shell-test:shell-test-conventions`.
 
 ## Portability — ${CLAUDE_PLUGIN_ROOT}
 
 Always use `${CLAUDE_PLUGIN_ROOT}` for intra-plugin path references. Never hardcode paths.
 
-**In hooks.json:** `"command": "${CLAUDE_PLUGIN_ROOT}/scripts/tool.sh"`
+**In hooks.json:** `"command": "\"${CLAUDE_PLUGIN_ROOT}/scripts/tool.sh\""`. Quote the whole path: a shell-form command runs through `sh -c`, and an unquoted root containing a space splits into several words, exits 127 and silently disables the hook. `claude plugin validate` only warns about an unquoted placeholder; `--strict` turns the warning into exit 1.
 **In MCP config:** `"args": ["${CLAUDE_PLUGIN_ROOT}/servers/server.js"]`
 **In shell scripts:** `source "${CLAUDE_PLUGIN_ROOT}/lib/common.sh"`
 
@@ -240,11 +254,11 @@ produces the right behaviour once loaded. This marketplace's convention (see
 ## Validation
 
 ```bash
-# Validate marketplace
-claude plugin validate .
+# Validate marketplace (--strict turns every warning into exit 1: the CI form)
+claude plugin validate --strict .
 
 # Validate individual plugin
-claude plugin validate plugins/my-plugin
+claude plugin validate --strict plugins/my-plugin
 
 # Validate from within Claude Code
 /plugin validate .

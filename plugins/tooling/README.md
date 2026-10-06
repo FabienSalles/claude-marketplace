@@ -1,6 +1,6 @@
 # tooling
 
-Cross-stack tooling skills: Docker, Drizzle ORM, pnpm workspaces, Zod schemas.
+Cross-stack tooling skills: Docker, Drizzle ORM, GitHub Actions, pnpm workspaces, Zod schemas.
 
 Skill and plugin authoring conventions moved to [`skills`](../skills/README.md):
 `skill-authoring`, `agent-authoring`, `plugin-conventions`.
@@ -11,12 +11,13 @@ Skill and plugin authoring conventions moved to [`skills`](../skills/README.md):
 /plugin install tooling@fabien-claude-marketplace
 ```
 
-## Skills (4)
+## Skills (5)
 
 | Skill | Purpose |
 |---|---|
 | [`docker-integration`](skills/docker-integration/SKILL.md) | Mandatory RTFM checklist before writing `docker-compose` (volumes, ports, env vars, healthchecks, internal architecture), image inspection, common anti-patterns |
 | [`drizzle-conventions`](skills/drizzle-conventions/SKILL.md) | Schema with `pgTable`, relations, type inference (`$inferSelect`/`$inferInsert`), Query vs Select vs raw SQL, repository with `toDomain`/`toPersistence`, migrations |
+| [`github-actions-conventions`](skills/github-actions-conventions/SKILL.md) | One entry step and one test size per job, `timeout-minutes` from measured durations, PR-only cancellation, pinned gate vs floating canary, a scheduled canary that opens an issue, path selection inside the entry, allowlist workflow guards, macOS legs for platform checks only |
 | [`pnpm-workspace`](skills/pnpm-workspace/SKILL.md) | Workspace layout (`packages/shared + apps/api + apps/web`), `workspace:*` protocol, build order (shared first), filtering, shared vs per-package deps |
 | [`zod-conventions`](skills/zod-conventions/SKILL.md) | `FooSchema` naming, `packages/shared` location, composition (extend/pick/omit/merge), `z.coerce` for HTTP, NestJS `ZodValidationPipe`, error formatting |
 
