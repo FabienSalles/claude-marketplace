@@ -38,7 +38,6 @@ const DECLARED: readonly Check[] = [
     command: ['node', 'plugins/skills/scripts/certify.ts', '--diff', 'origin/main'],
   },
   { name: 'goal plugin doc anchors', group: 'structure', requirements: [], command: ['./scripts/validate-anchors.sh', 'plugins/goal'] },
-  { name: 'goal plugin doc counts', group: 'structure', requirements: [], command: ['./scripts/check-doc-counts.sh', 'plugins/goal'] },
   {
     name: 'scripts tests',
     group: 'structure',

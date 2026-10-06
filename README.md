@@ -15,8 +15,7 @@ Then use it: `/goal:spec <your ticket>` turns the ticket into a functional contr
 
 Most of this marketplace is conventions: prose that shapes how Claude writes code. **One pack is
 not.** [`goal`](plugins/goal/README.md) turns a ticket into a pull request without you in the
-loop: a runner and a gate, 2,761 lines of TypeScript under 444 tests, built around rules most
-autonomous loops do not have.
+loop: a runner and a gate, built around rules most autonomous loops do not have.
 
 > A slice of work is accepted by a **program** that runs the command the plan declared and reads
 > its exit code, never by a model's opinion of its own output. That program is the only thing

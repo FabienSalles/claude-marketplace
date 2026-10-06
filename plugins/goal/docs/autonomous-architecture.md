@@ -16,8 +16,8 @@ moving.
 | # | Layer | Medium | Holds |
 |---|---|---|---|
 | 0 | The plan | markdown, gitignored, hashed | what to build, and the exact commands that prove it |
-| 1 | Verification | TypeScript run natively by node (`goal-gate.ts`, eleven modules under `gate/`) | did this iteration pass: the only authority, and the only thing that commits |
-| 2 | Orchestration | a node process (`goal-run.ts`, fourteen modules under `run/`) | preflight, order, halt, quota wait, publication |
+| 1 | Verification | TypeScript run natively by node (`goal-gate.ts` and its modules under `gate/`) | did this iteration pass: the only authority, and the only thing that commits |
+| 2 | Orchestration | a node process (`goal-run.ts` and its modules under `run/`) | preflight, order, halt, quota wait, publication |
 | 3 | Advisory quality | agents (reviewer, lens, auditor) | what the gate structurally cannot see |
 | 4 | Session lifecycle | a command (`/goal:supervise`) | classify a halt, repair or discard, relaunch once |
 | 5 | Remote surface | a draft pull request on the plan's declared remote | where a human sees it |
@@ -102,10 +102,9 @@ refused it, and the pull request body stayed empty for six iterations.
 **A command that launches a node script that launches `claude -p`.** What each part buys:
 
 - **the script**, against the workflow: `git status` is a system call, not a model call.
-- **node**, against bash: `goal-run.ts` plus fourteen modules under `run/`, 1639 lines measured
-  today, the largest at 250 (where the bash original was 594 in one file and the abandoned
-  Workflow 941), and whole classes of bug disappear structurally, since `landed: string[]`
-  (`run/publish.ts`) cannot produce bash's empty alternative.
+- **node**, against bash: `goal-run.ts` plus its modules under `run/` (where the bash original
+  was 594 lines in one file and the abandoned Workflow 941), and whole classes of bug disappear
+  structurally, since `landed: string[]` (`run/publish.ts`) cannot produce bash's empty alternative.
 - **`claude -p`**, against a subagent: one fresh, bounded session per iteration, no context
   leaking from one slice into the next, each one persisted separately, which is what makes a
   session auditor possible at all.
