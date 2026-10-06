@@ -57,7 +57,7 @@ const inheritedLimit = (): number => {
 export const ceilingFor = (live: number, inherited: number): string => {
   const target = live + settingValue('GOAL_PROC_HEADROOM', process.env);
 
-  return target >= inherited ? '' : `ulimit -u ${target} || exit 1`;
+  return target >= inherited ? '' : `ulimit -u ${target} || { echo "goal: cannot set the process ceiling (ulimit -u ${target})" >&2; exit 1; }`;
 };
 
 export const ceiling = (): string => {
