@@ -39,10 +39,10 @@ import { fileNameWorkId, workIdNotice, workIdOf } from '../core/plan.ts';
 import { REFUSED } from '../core/verdict.ts';
 import { frontmatter, header, iterationNumbers, topRegion } from '../gate/plan.ts';
 import { command } from '../adapters/command.ts';
-import { autoUpdaterWarning } from './advisory.ts';
+import type { AgentSessions } from '../ports.ts';
 import { repoOf, unpushedSubjects } from './publish.ts';
 import type { Reporter } from './report.ts';
-import { quote } from './shell.ts';
+import { quote } from '../core/shell.ts';
 import { sweep } from './sweep.ts';
 
 export { REFUSED } from '../core/verdict.ts';
@@ -58,7 +58,7 @@ export type PreflightResult = {
   cleanup: boolean;
 };
 
-export const preflight = (plan: string, source: string, reporter: Reporter, gate: string): PreflightResult => {
+export const preflight = (plan: string, source: string, reporter: Reporter, gate: string, agents: AgentSessions): PreflightResult => {
   const planBase = basename(plan);
   const workId = workIdOf(plan, source);
   const cleanup = planBase.endsWith('-cleanup-spec.md');
@@ -330,7 +330,7 @@ export const preflight = (plan: string, source: string, reporter: Reporter, gate
     reporter.say('RUN preflight: no fixup or squash commit is waiting to be pushed');
   }
 
-  const warning = autoUpdaterWarning();
+  const warning = agents.startupWarning?.();
 
   if (warning !== undefined && warning !== '') {
     reporter.say(`RUN preflight: warning — ${warning}`);

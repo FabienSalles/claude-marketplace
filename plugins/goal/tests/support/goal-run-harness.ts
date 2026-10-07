@@ -670,7 +670,7 @@ export const runInProcess = async (
     }
 
     const preflightStart = Date.now();
-    const { policy, remote } = preflight(plan!, source, reporter, gateLabel);
+    const { policy, remote } = preflight(plan!, source, reporter, gateLabel, agents);
     reporter.say(`RUN stage=preflight duration_ms=${Date.now() - preflightStart} exit=0`);
 
     const iterations = iterationArg !== undefined ? [iterationArg] : iterationNumbers(source, false);
