@@ -8,8 +8,8 @@ Complements `audit` (codebase audit overlay) and `netresearch/security-audit-ski
 
 | Hook | Event | What it does |
 |---|---|---|
-| `claudemd-scanner.sh` | `SessionStart` | Scans `~/.claude/CLAUDE.md`, `./CLAUDE.md`, `./.claude/CLAUDE.md` for prompt-injection patterns (role overrides, system tags, exfiltration hints, zero-width chars). Warns on stderr. Non-blocking. |
-| `prompt-injection-detector.sh` | `PreToolUse` (Bash) | Inspects the Bash command string for AI-instruction overrides (`ignore previous instructions`, `<\|im_start\|>system`, `[INST]`, etc.) and null bytes. **Blocks** (exit 2) on match. |
+| `claudemd-scanner.sh` | `SessionStart` | Scans `~/.claude/CLAUDE.md`, `./CLAUDE.md`, `./.claude/CLAUDE.md` for prompt-injection patterns (role overrides, system tags, exfiltration hints, zero-width chars). Reports its findings to you and to Claude as SessionStart JSON on stdout. Non-blocking. |
+| `prompt-injection-detector.sh` | `PreToolUse` (Bash) | Inspects the Bash command string for AI-instruction overrides (`ignore previous instructions`, `<\|im_start\|>system`, `[INST]`, etc.). **Blocks** (exit 2) on match. |
 | `secret-file-guard.sh` | `PreToolUse` (Read, Grep, Bash) | Refuses to open credential files: `.env.local`, `.env.*.local`, `auth.json`, `credentials.json`, `*.pem`, `id_rsa`, `id_ed25519`, `.npmrc`, `.pgpass`, `.netrc`, anything under `.ssh/`. **Blocks** (exit 2) on match. |
 
 ## Why these layers
