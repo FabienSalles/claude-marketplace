@@ -4,6 +4,8 @@ import { chmodSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { claudeAgentSessions, reportOf } from '../src/adapters/claude/session.ts';
+import { ceiling } from '../src/gate/bounded.ts';
+import type { AgentRole } from '../src/ports.ts';
 import { tmpDir } from './support/tmp.ts';
 
 const stream = (name: string): string => readFileSync(join(import.meta.dirname, 'fixtures', 'claude-streams', name), 'utf8');
@@ -106,4 +108,78 @@ test('Claude\'s adapter provides the start-up warning and the postmortem', () =>
 
   assert.equal(typeof adapter.startupWarning, 'function');
   assert.equal(typeof adapter.postmortem, 'function');
+});
+
+const recordLaunches = async (roles: AgentRole[], env: Record<string, string>) => {
+  const dir = tmpDir('adapter-claude-');
+  const bin = join(dir, 'bin');
+  mkdirSync(bin);
+  writeFileSync(join(bin, 'claude'), `#!/bin/sh\nprintf '%s %s %s\\n' "$3" "$(ulimit -u)" "$DISABLE_AUTOUPDATER" >> "${dir}/launches"\nsleep 0.2\n`);
+  chmodSync(join(bin, 'claude'), 0o755);
+  const saved = { ...process.env };
+  Object.assign(process.env, env, { PATH: `${bin}:${saved.PATH}` });
+  delete process.env.DISABLE_AUTOUPDATER;
+
+  try {
+    const sessions = claudeAgentSessions();
+
+    await Promise.all(
+      roles.map((role) =>
+        sessions.launch(role, 'brief', { outPath: join(dir, `${role}.out`), errPath: join(dir, `${role}.err`), onTool: () => {}, onSession: () => {} }, new AbortController().signal),
+      ),
+    );
+
+    return readFileSync(join(dir, 'launches'), 'utf8').split('\n').filter((line) => line !== '').map((line) => line.split(' ') as [string, string, string]);
+  } finally {
+    process.env = saved;
+  }
+};
+
+const probe = (env: Record<string, string>): boolean => {
+  const saved = process.env.GOAL_PROC_HEADROOM;
+  Object.assign(process.env, env);
+
+  try {
+    return ceiling() !== '';
+  } finally {
+    if (saved === undefined) {
+      delete process.env.GOAL_PROC_HEADROOM;
+    } else {
+      process.env.GOAL_PROC_HEADROOM = saved;
+    }
+  }
+};
+
+const ROLES: AgentRole[] = ['implementer', 'lens', 'reviewer', 'auditor'];
+
+// R1 R5 R6 — the four roles, launched together, each start with the auto-updater off and record a
+// bounded ceiling.
+test('every role starts with the auto-updater off under the same ceiling', async (t) => {
+  const env = { GOAL_PROC_HEADROOM: '200' };
+  const launches = await recordLaunches(ROLES, env);
+
+  if (!probe(env)) {
+    t.skip('this shell cannot express the ceiling');
+    return;
+  }
+
+  assert.equal(launches.length, 4);
+
+  for (const [, limit, updater] of launches) {
+    assert.equal(updater, '1');
+    assert.ok(Number.isFinite(Number(limit)), `no bounded ulimit recorded: ${limit}`);
+  }
+});
+
+// R3 — where the inherited limit is already lower than live plus headroom, no role is bounded and every role starts.
+test('no role carries a ceiling when the inherited limit is already below it', async () => {
+  const inherited = (await recordLaunches(['auditor'], { GOAL_PROC_HEADROOM: '1000000' }))[0]![1];
+  const launches = await recordLaunches(ROLES, { GOAL_PROC_HEADROOM: '1000000' });
+
+  assert.equal(launches.length, 4);
+
+  for (const [, limit, updater] of launches) {
+    assert.equal(limit, inherited);
+    assert.equal(updater, '1');
+  }
 });

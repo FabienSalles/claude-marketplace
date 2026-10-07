@@ -18,7 +18,7 @@ const RUN = resolve(import.meta.dirname, 'run.sh');
 // the nested one, and asserting it is what let the regression below through.
 
 test('a declared command is either prefixed with a ceiling or already under one', () => {
-  assert.match(bounded('true'), /^(ulimit -u [0-9]+ \|\| exit 1\n)?true$/);
+  assert.match(bounded('true'), /^(ulimit -u [0-9]+ \|\| \{ echo [^\n]*>&2; exit 1; \}\n)?true$/);
 });
 
 // `ulimit -u` is a bash extension and `shell: true` runs `/bin/sh`, which is dash on Debian and
@@ -54,9 +54,19 @@ test('a ceiling already in force is not re-set', () => {
   assert.equal(ceilingFor(600, 900), '', 'a ceiling above the inherited one was attempted');
 });
 
+const REFUSABLE_900 = 'ulimit -u 900 || { echo "goal: cannot set the process ceiling (ulimit -u 900)" >&2; exit 1; }';
+
+test('a ceiling the shell refuses prints its cause on stderr and runs nothing after it', () => {
+  const run = spawnSync(`ulimit -u 100\n${bounded('echo ran', ceilingFor(1000, Infinity))}`, { shell: true, encoding: 'utf8' });
+
+  assert.equal(run.status, 1);
+  assert.match(run.stderr, /cannot set the process ceiling \(ulimit -u 1\d\d\d\)/);
+  assert.doesNotMatch(run.stdout, /ran/);
+});
+
 test('a ceiling that genuinely lowers the inherited limit is emitted', () => {
-  assert.equal(ceilingFor(500, 10666), 'ulimit -u 900 || exit 1');
-  assert.equal(ceilingFor(500, 901), 'ulimit -u 900 || exit 1', 'one process of headroom is still headroom');
+  assert.equal(ceilingFor(500, 10666), REFUSABLE_900);
+  assert.equal(ceilingFor(500, 901), REFUSABLE_900, 'one process of headroom is still headroom');
 });
 
 test('nothing running under the ceiling can raise it back', () => {

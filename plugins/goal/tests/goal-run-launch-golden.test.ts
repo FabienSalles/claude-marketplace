@@ -17,10 +17,6 @@ const agentOf = (record: LaunchRecord) => record.argv[record.argv.indexOf('--age
 const inheritedCeiling = () => spawnSync('/bin/sh', ['-c', 'ulimit -u'], { encoding: 'utf8' }).stdout.trim();
 
 const ceilingOf = (record: LaunchRecord, inherited: string): string => {
-  if (agentOf(record) !== 'goal:goal-run-implementer') {
-    return record.ulimit === inherited ? 'inherited' : record.ulimit;
-  }
-
   const bounded = inherited === 'unlimited' || Number(record.ulimit) <= Number(inherited);
 
   return bounded ? '<ceiling>' : record.ulimit;

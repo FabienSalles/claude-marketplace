@@ -48,5 +48,5 @@ test('R8: bounded.ts reads both settings when a command is prepared, not at impo
   `;
   const run = spawnSync(process.execPath, ['--input-type=module', '-e', script], { encoding: 'utf8', env: { ...process.env, GOAL_CMD_TIMEOUT: '5', GOAL_PROC_HEADROOM: '9' } });
 
-  assert.equal(run.stdout, '7000 ulimit -u 111 || exit 1', run.stderr);
+  assert.equal(run.stdout, '7000 ulimit -u 111 || { echo "goal: cannot set the process ceiling (ulimit -u 111)" >&2; exit 1; }', run.stderr);
 });

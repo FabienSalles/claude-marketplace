@@ -5,6 +5,8 @@ import { join, relative } from 'node:path';
 
 import { HASH, PAUSED, PLAN, git, jsonlOf, repo, run, runDirOf, runInProcess } from './support/goal-run-harness.ts';
 import { tmpDir } from './support/tmp.ts';
+import { command } from '../src/adapters/command.ts';
+import { ceiling } from '../src/gate/bounded.ts';
 import { claudeAgentSessions } from '../src/adapters/claude/session.ts';
 import { close, LANDED } from '../src/run/close.ts';
 import { createPublisher } from '../src/run/publish.ts';
@@ -643,6 +645,72 @@ test('close folds the report untransformed and ends the pull request body with t
     );
     assert.ok(!last.includes(fixture.dir) && !last.includes(realpathSync(fixture.dir)), `the pull request body carries an absolute local path:\n${last}`);
   } finally {
+    process.chdir(originalCwd);
+    process.env.PATH = originalPath;
+  }
+});
+
+// R4 — a ceiling the shell refuses stops each advisory launch before claude runs, names its cause
+// in the run log, and the run still lands.
+test('an advisory session whose ceiling cannot be set stays advisory and names its cause', async (t) => {
+  const fixture = repo({ planText: PLAN_PR_REVIEW, remote: true });
+  const originalCwd = process.cwd();
+  const originalPath = process.env.PATH;
+  const originalSpawn = command.spawn;
+  const originalHeadroom = process.env.GOAL_PROC_HEADROOM;
+
+  process.env.GOAL_PROC_HEADROOM = '200';
+
+  if (ceiling() === '') {
+    delete process.env.GOAL_PROC_HEADROOM;
+    t.skip('this shell cannot express the ceiling');
+    return;
+  }
+
+  process.chdir(fixture.dir);
+  process.env.PATH = `${fixture.bin}:${originalPath ?? ''}`;
+  command.spawn = (cmd, args, options) =>
+    originalSpawn(cmd, args.map((arg) => arg.replace(/ulimit -u \d+/g, 'ulimit -u refused')), options);
+
+  try {
+    const messages: string[] = [];
+    const reporter: Reporter = {
+      say: (message) => {
+        messages.push(message);
+      },
+      stop: () => {
+        throw new Error('unexpected stop');
+      },
+      record: () => {},
+      setLog: () => {},
+    };
+
+    const code = await close(
+      fixture.plan,
+      join(fixture.bin, 'fake-gate'),
+      HASH,
+      'origin',
+      { isComplete: () => true, publish: () => undefined, state: { publishes: true, prOpen: true, landed: ['1'], onRemote: ['1'] } },
+      ['1'],
+      'run-dir',
+      reporter,
+      claudeAgentSessions(),
+    );
+    const log = messages.join('\n');
+
+    assert.equal(code, LANDED, log);
+    assert.ok(!existsSync(fixture.claudeLog), 'an agent ran though its ceiling was refused');
+
+    for (const stage of ['lens', 'reviewer', 'auditor']) {
+      assert.match(log, new RegExp(`^RUN diagnostics stage=${stage}: [^]*?cannot set the process ceiling`, 'm'), log);
+    }
+  } finally {
+    command.spawn = originalSpawn;
+    if (originalHeadroom === undefined) {
+      delete process.env.GOAL_PROC_HEADROOM;
+    } else {
+      process.env.GOAL_PROC_HEADROOM = originalHeadroom;
+    }
     process.chdir(originalCwd);
     process.env.PATH = originalPath;
   }

@@ -70,15 +70,12 @@ export const claudeAgentSessions = (): AgentSessions => {
 
         try {
           const claudeArgs = ['-p', '--agent', AGENTS[role], '--permission-mode', 'auto', '--output-format', 'stream-json', '--verbose', brief];
-          const ended =
-            role === 'implementer'
-              ? await command.spawn('/bin/sh', ['-c', `${ceiling()}\nexec "$@"`, 'sh', 'claude', ...claudeArgs], {
-                  encoding: 'utf8',
-                  env: { ...process.env, DISABLE_AUTOUPDATER: '1' },
-                  stdio: ['ignore', fdOut, fdErr],
-                  signal: stop,
-                })
-              : await command.spawn('claude', claudeArgs, { encoding: 'utf8', stdio: ['ignore', fdOut, fdErr], signal: stop });
+          const ended = await command.spawn('/bin/sh', ['-c', `${ceiling()}\nexec "$@"`, 'sh', 'claude', ...claudeArgs], {
+            encoding: 'utf8',
+            env: { ...process.env, DISABLE_AUTOUPDATER: '1' },
+            stdio: ['ignore', fdOut, fdErr],
+            signal: stop,
+          });
 
           end = { status: ended.status, signal: ended.signal ?? null, ...(ended.error === undefined ? {} : { error: ended.error }) };
         } finally {
