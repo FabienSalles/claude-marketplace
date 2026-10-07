@@ -1,6 +1,6 @@
 {
   "name": "security-runtime",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Runtime security hooks: CLAUDE.md injection scanner (SessionStart) + Bash prompt injection detector (PreToolUse)",
   "author": {
     "name": "FabienSalles"

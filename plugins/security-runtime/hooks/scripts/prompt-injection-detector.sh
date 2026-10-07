@@ -42,10 +42,4 @@ for pattern in "${PATTERNS[@]}"; do
   fi
 done
 
-# Null byte injection
-if printf '%s' "$COMMAND" | LC_ALL=C grep -qP '\x00' 2>/dev/null; then
-  printf 'BLOCKED by security-runtime/prompt-injection-detector: null byte in command\n' >&2
-  exit 2
-fi
-
 exit 0
