@@ -15,7 +15,7 @@ import { HALTED, LANDED, PAUSED } from '../core/verdict.ts';
 import { pauseLine, readyPauseLine } from '../core/publication.ts';
 import type { AgentReport, AgentRole, AgentSessions } from '../ports.ts';
 import { endOf, exitOf, tokensLine } from './narrate.ts';
-import { remoteNote, repoOf, type Publisher } from './publish.ts';
+import { remoteNote, repoOf, repoRelative, type Publisher } from './publish.ts';
 import type { Reporter } from './report.ts';
 
 export { HALTED, LANDED } from '../core/verdict.ts';
@@ -90,6 +90,8 @@ Read the plan's own declarations for each landed iteration and the commits on th
 write one review with inline comments: design, error handling, security posture, and this
 project's own conventions — the reading a gate is not built to give.
 
+Paths are relative to the repository root; name every file that way in what you write, never by an absolute path.
+
 ${postsReview
   ? 'This plan carries a `Review: comment` header, opting into posting. Post it with `gh` as a comment review, never `REQUEST_CHANGES`: nothing you post can block a pull request that already shipped. Open the review with a banner stating plainly that it is the output of the goal-run-reviewer AI agent, never written as if the developer authored it.'
   : 'This plan carries no `Review: comment` header. Do not post it to GitHub: return your review as text, so it reaches the developer through the run log only.'}`;
@@ -162,12 +164,14 @@ this run: it is advisory only.`;
 
   const reportPath = join(dir, 'report.md');
   const auditBrief = `Audit the run that just ended on plan ${basename(plan)} and write its report to
-${reportPath}.
+${repoRelative(reportPath)}.
 
-Every stage this run timed is recorded as a JSON event in ${jsonl}: read it for what happened and
+Every stage this run timed is recorded as a JSON event in ${repoRelative(jsonl)}: read it for what happened and
 what each stage cost, per iteration.
 
-Read the other reports already under ${dirname(dir)}/ and say which failures recur across runs
+Paths are relative to the repository root; name every file that way in what you write, never by an absolute path.
+
+Read the other reports already under ${repoRelative(dirname(dir))}/ and say which failures recur across runs
 rather than describing this one twice. Write it in two sections, \`### Outcome\` then
 \`### Cost\`, no other heading anywhere in the file. Do not edit a single line of code, do
 not stage anything, and do not judge whether the work was correct — the gate already did that.`;

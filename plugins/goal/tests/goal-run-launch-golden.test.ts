@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, relative } from 'node:path';
 
 import { PLAN, launchesOf, repo, runInProcess, runDirOf, type LaunchRecord } from './support/goal-run-harness.ts';
 import { spawnSync } from 'node:child_process';
@@ -48,7 +48,7 @@ const launchLines = async (): Promise<string[]> => {
   const runDirs = [realpathSync(runDirOf(fixture)), runDirOf(fixture)];
 
   const normalise = (text: string) => {
-    let out = text;
+    let out = text.replace(new RegExp(escaped(relative(fixture.dir, runDirOf(fixture))), 'g'), '<run-dir>');
 
     for (const [paths, token] of [[runDirs, '<run-dir>'], [roots, '<repo>'], [temps, '<tmp>']] as const) {
       for (const path of paths) {

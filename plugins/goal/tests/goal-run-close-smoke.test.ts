@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
+import { join, relative } from 'node:path';
 
 import { HASH, PAUSED, PLAN, git, jsonlOf, repo, run, runDirOf, runInProcess } from './support/goal-run-harness.ts';
 import { tmpDir } from './support/tmp.ts';
@@ -98,8 +98,8 @@ test('the auditor is invoked with the run\'s own JSONL path, not an elapsed stri
   assert.equal(code, 0, output);
   const args = readFileSync(fixture.claudeLog, 'utf8');
   assert.match(args, /^goal:goal-run-auditor$/m, `the auditor was never invoked:\n${args}`);
-  assert.ok(args.includes(jsonlOf(fixture)), `the auditor was not handed the run's own JSONL path:\n${args}`);
-  assert.ok(args.includes(runDirOf(fixture)), `the auditor was not told to write into the run's own directory:\n${args}`);
+  assert.ok(args.includes(relative(fixture.dir, jsonlOf(fixture))), `the auditor was not handed the run's own JSONL path:\n${args}`);
+  assert.ok(args.includes(relative(fixture.dir, runDirOf(fixture))), `the auditor was not told to write into the run's own directory:\n${args}`);
   assert.ok(!args.includes(fixture.plan), `the plan's absolute path leaked into an agent's argv:\n${args}`);
 });
 
@@ -574,6 +574,19 @@ test('a Definition of Done refusal still leaves the draft pull request open from
   assert.match(calls, /pr\ncreate/, `expected a draft pull request opened once the first iteration landed:\n${calls}`);
 });
 
+test('the auditor is handed repository-relative paths and told never to name an absolute one', async () => {
+  const fixture = repo();
+
+  const { code, output } = await land(fixture);
+
+  assert.equal(code, 0, output);
+  const log = readFileSync(fixture.claudeLog, 'utf8');
+  const args = log.slice(log.indexOf('goal:goal-run-auditor'));
+  assert.ok(args.includes('Paths are relative to the repository root; name every file that way in what you write, never by an absolute path.'), `the auditor brief carries no relative-path rule:\n${args}`);
+  assert.match(args, /\.claude\/goal-runs\/demo\/[^/\s]+\/report\.md/, `the auditor brief names no repository-relative report path:\n${args}`);
+  assert.ok(!args.includes(fixture.dir) && !args.includes(realpathSync(fixture.dir)), `the auditor brief carries an absolute local path:\n${args}`);
+});
+
 // One report format everywhere — the auditor's brief names the same `### Outcome` /
 // `### Cost` skeleton the agent's own prose is written against, so the two cannot diverge
 // silently.
@@ -593,7 +606,8 @@ test('the auditor is briefed with the ### Outcome / ### Cost skeleton', async ()
 // so both are copy-pastable straight off the pull request.
 test('close folds the report untransformed and ends the pull request body with the plan and run-directory paths', async () => {
   const fixture = repo({ planText: PLAN_PR, remote: true });
-  const dir = tmpDir('goal-run-report-footer-');
+  const dir = join(fixture.dir, '.claude', 'goal-runs', 'demo', 'run-1');
+  mkdirSync(dir, { recursive: true });
   const reportText = '# Report\n\n### Outcome\n\nNothing recurs.\n\n### Cost\n\nCosts: 1 iteration.\n';
   writeFileSync(join(dir, 'report.md'), reportText);
 
@@ -624,9 +638,10 @@ test('close folds the report untransformed and ends the pull request body with t
 
     assert.ok(last.includes(reportText), `the report was transformed before being folded into the pull request body:\n${last}`);
     assert.ok(
-      last.trimEnd().endsWith(`*Plan and logs (local, gitignored):*\n- \`${fixture.plan}\`\n- \`${dir}\``),
+      last.trimEnd().endsWith(`*Plan and logs (local, gitignored):*\n- \`.claude/plans/demo-spec.md\`\n- \`.claude/goal-runs/demo/run-1\``),
       `the pull request body does not end with the "Plan and logs" line then one bullet per path:\n${last}`,
     );
+    assert.ok(!last.includes(fixture.dir) && !last.includes(realpathSync(fixture.dir)), `the pull request body carries an absolute local path:\n${last}`);
   } finally {
     process.chdir(originalCwd);
     process.env.PATH = originalPath;
