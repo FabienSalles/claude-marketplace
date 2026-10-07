@@ -11,14 +11,13 @@ export type TestAgents = {
   postmortems: number[];
 };
 
-const reportOf = (failureClass: FailureClass, outPath: string, errPath: string): AgentReport => ({
+const reportOf = (failureClass: FailureClass, stderr = ''): AgentReport => ({
   end: { status: failureClass === 'success' ? 0 : 1, signal: null },
   outcome: { text: `${failureClass} answer`, isError: failureClass !== 'success', class: failureClass, quote: 'second adapter' },
-  consumption: { usage: { input_tokens: 3, output_tokens: 4 }, compactions: 0 },
+  consumption: { inputTokens: 3, outputTokens: 4 },
   sessionId: 'second-session',
   durationMs: 1,
-  outPath,
-  errPath,
+  stderr,
   ignoredLines: 0,
 });
 
@@ -35,7 +34,7 @@ export const testAgents = (implementerClasses: FailureClass[]): TestAgents => {
       options.onSession('second-session');
 
       if (role !== 'implementer') {
-        return reportOf('success', options.outPath, options.errPath);
+        return reportOf('success', role === 'lens' ? 'second adapter lens complaint\n' : '');
       }
 
       options.onTool('RUN tool second-adapter wrote a.txt');
@@ -43,7 +42,7 @@ export const testAgents = (implementerClasses: FailureClass[]): TestAgents => {
       const failureClass = implementerClasses[Math.min(implementerLaunches, implementerClasses.length - 1)]!;
       implementerLaunches += 1;
 
-      return reportOf(failureClass, options.outPath, options.errPath);
+      return reportOf(failureClass);
     },
     postmortem: (report, say, context) => {
       postmortems.push(context.attempt);

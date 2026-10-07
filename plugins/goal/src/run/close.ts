@@ -20,8 +20,6 @@ import type { Reporter } from './report.ts';
 
 export { HALTED, LANDED } from '../core/verdict.ts';
 
-const readOrEmpty = (path: string): string => (fs.exists(path) ? fs.readFile(path) : '');
-
 const launchAdvisory = (agents: AgentSessions, role: AgentRole, brief: string, dir: string): Promise<AgentReport> =>
   agents.launch(role, brief, { outPath: join(dir, `${role}.out`), errPath: join(dir, `${role}.err`), onTool: () => {}, onSession: () => {} }, new AbortController().signal);
 
@@ -142,7 +140,7 @@ this run: it is advisory only.`;
         reporter.say(tokens);
       }
 
-      const stderr = readOrEmpty(report.errPath);
+      const stderr = report.stderr;
 
       if (stderr.trim() !== '') {
         reporter.say(`RUN diagnostics stage=${job.name}: ${stderr.trim()}`);
@@ -188,7 +186,7 @@ not stage anything, and do not judge whether the work was correct — the gate a
     reporter.say(auditTokens);
   }
 
-  const auditStderr = readOrEmpty(audit.errPath);
+  const auditStderr = audit.stderr;
 
   if (auditStderr.trim() !== '') {
     reporter.say(`RUN diagnostics stage=auditor: ${auditStderr.trim()}`);

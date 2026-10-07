@@ -109,16 +109,5 @@ export const extract = (raw: string, onEvent?: (event: StreamEvent) => void): Ex
   return { usage, model, peakTokens, compactions, text, ignoredLines };
 };
 
-// The last session id any JSONL event of a transcript carried.
-export const lastSessionId = (raw: string): string | undefined => {
-  let found: string | undefined;
-  extract(raw, (event) => {
-    if (event.session_id !== undefined && event.session_id !== '') {
-      found = event.session_id;
-    }
-  });
-  return found;
-};
-
 // Claude Code keys a project's transcripts by its absolute cwd with every `/` and `.` turned into a `-`.
 export const projectDir = (cwd: string, root: string): string => join(root, cwd.replace(/[/.]/g, '-'));

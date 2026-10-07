@@ -19,7 +19,10 @@ test('a test-only adapter carries an iteration through a quota relaunch to the g
   assert.deepEqual(launched.map((l) => l.role), ['implementer', 'implementer', 'lens', 'auditor']);
   assert.match(launched[0]?.brief ?? '', /write a\.txt/);
   assert.match(output, /RUN tool second-adapter wrote a\.txt/);
-  assert.match(output, /RUN tokens stage=implementer input_tokens=3 output_tokens=4/);
+  assert.match(output, /^RUN tokens stage=implementer input_tokens=3 output_tokens=4 cache_creation_input_tokens=0 cache_read_input_tokens=0 compactions=0$/m);
+  assert.doesNotMatch(output, /context_pct/);
+  assert.match(output, /^RUN diagnostics stage=lens: second adapter lens complaint$/m);
+  assert.doesNotMatch(output, /RUN diagnostics stage=auditor/);
   assert.match(output, /looks quota-exhausted/);
   assert.match(output, /second adapter diagnosis of attempt 1: exhausted/);
   assert.deepEqual(postmortems, [1]);

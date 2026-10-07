@@ -12,8 +12,7 @@ const reportOf = (failureClass: FailureClass | string, extra: Partial<AgentRepor
   end: { status: failureClass === 'success' ? 0 : 1, signal: null },
   outcome: { text: '', isError: failureClass !== 'success', class: failureClass as FailureClass, quote: 'scripted' },
   durationMs: 1,
-  outPath: '/dev/null',
-  errPath: '/dev/null',
+  stderr: '',
   ignoredLines: 0,
   ...extra,
 });
@@ -94,7 +93,7 @@ test('a report without consumption produces no RUN tokens line', async () => {
   const withUsage = repo();
 
   const none = await runInProcess(bare, [bare.plan, '1'], env, scripted(['success']).adapter);
-  const some = await runInProcess(withUsage, [withUsage.plan, '1'], env, scripted(['success'], { consumption: { usage: { input_tokens: 1, output_tokens: 2 }, compactions: 0 } }).adapter);
+  const some = await runInProcess(withUsage, [withUsage.plan, '1'], env, scripted(['success'], { consumption: { inputTokens: 1, outputTokens: 2, compactions: 0 } }).adapter);
 
   assert.doesNotMatch(none.output, /RUN tokens stage=implementer/);
   assert.match(some.output, /RUN tokens stage=implementer input_tokens=1 output_tokens=2 .*compactions=0/);
@@ -137,11 +136,11 @@ test('the lens, the reviewer and the auditor are launched through the port, and 
   const recorded: string[] = [];
   const reporter: Reporter = { say: (line) => said.push(line), stop: () => { throw new Error('unexpected stop'); }, record: (text) => recorded.push(text), setLog: () => {} };
   const adapter: AgentSessions = {
-    launch: async (role, _brief, options, stop) => {
+    launch: async (role, _brief, _options, stop) => {
       launched.push({ role, stopped: stop.aborted });
       const failing = role === 'lens';
 
-      return reportOf(failing ? 'unrecognised' : 'success', { outcome: { text: `${role} answer`, isError: failing, class: failing ? 'unrecognised' : 'success', quote: '' }, outPath: options.outPath, errPath: options.errPath });
+      return reportOf(failing ? 'unrecognised' : 'success', { outcome: { text: `${role} answer`, isError: failing, class: failing ? 'unrecognised' : 'success', quote: '' } });
     },
   };
   const originalCwd = process.cwd();
@@ -159,6 +158,58 @@ test('the lens, the reviewer and the auditor are launched through the port, and 
     assert.deepEqual(recorded.slice(0, 2).sort(), ['lens answer', 'reviewer answer']);
     assert.ok(said.some((line) => line.includes('RUN the reviewer finished')), said.join('\n'));
     assert.equal(existsSync(join(fixture.dir, 'claude-args.txt')), false);
+  } finally {
+    process.chdir(originalCwd);
+    process.env.PATH = originalPath;
+  }
+});
+
+// R4 — a provider reporting no cache counts, no window and no compactions still prints a tokens line, with zeros and no percentage.
+test('a report with only input and output counts prints zero cache counts and no percentage', async () => {
+  const fixture = repo();
+
+  const { output } = await runInProcess(fixture, [fixture.plan, '1'], env, scripted(['success'], { consumption: { inputTokens: 7, outputTokens: 9, contextTokens: 1234 } }).adapter);
+
+  assert.match(output, /^RUN tokens stage=implementer input_tokens=7 output_tokens=9 cache_creation_input_tokens=0 cache_read_input_tokens=0 context_tokens=1234 compactions=0$/m);
+  assert.doesNotMatch(output, /context_pct/);
+});
+
+// R5 — the runner only divides: the window the adapter reports gives the percentage.
+test('a report naming its own context window prints the percentage against it', async () => {
+  const fixture = repo();
+
+  const { output } = await runInProcess(fixture, [fixture.plan, '1'], env, scripted(['success'], { consumption: { inputTokens: 1, outputTokens: 1, contextTokens: 50_000, contextWindow: 400_000, model: 'some-model' } }).adapter);
+
+  assert.match(output, /model=some-model context_tokens=50000 context_pct=13% compactions=0$/m);
+});
+
+// R3 — each advisory role's diagnostics come from the report's own stderr, never from a file the launch was given.
+test('close prints each role\'s diagnostics from the report stderr, ignoring the launch error file', async () => {
+  const fixture = repo({ planText: PLAN.replace('Policy: commit\n', 'Policy: commit+pr\n'), remote: true });
+  const said: string[] = [];
+  const reporter: Reporter = { say: (line) => said.push(line), stop: () => { throw new Error('unexpected stop'); }, record: () => {}, setLog: () => {} };
+  const stderrs: Record<string, string> = { lens: ' lens complaint \n', reviewer: 'reviewer complaint', auditor: '  \n' };
+  const adapter: AgentSessions = {
+    launch: async (role, _brief, options) => {
+      appendFileSync(options.errPath, 'file only noise');
+
+      return reportOf('success', { stderr: stderrs[role] ?? '' });
+    },
+  };
+  const originalCwd = process.cwd();
+  const originalPath = process.env.PATH;
+
+  process.chdir(fixture.dir);
+  process.env.PATH = `${fixture.bin}:${originalPath ?? ''}`;
+
+  try {
+    const code = await close(fixture.plan, join(fixture.bin, 'fake-gate'), HASH, 'origin', { isComplete: () => true, publish: () => undefined, state: { publishes: true, prOpen: true, landed: ['1'], onRemote: ['1'] } }, ['1'], 'run-dir', reporter, adapter);
+
+    assert.equal(code, LANDED);
+    assert.ok(said.includes('RUN diagnostics stage=lens: lens complaint'), said.join('\n'));
+    assert.ok(said.includes('RUN diagnostics stage=reviewer: reviewer complaint'), said.join('\n'));
+    assert.ok(!said.some((line) => line.startsWith('RUN diagnostics stage=auditor')), said.join('\n'));
+    assert.ok(!said.some((line) => line.includes('file only noise')), said.join('\n'));
   } finally {
     process.chdir(originalCwd);
     process.env.PATH = originalPath;
