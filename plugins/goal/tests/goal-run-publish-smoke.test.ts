@@ -147,6 +147,63 @@ test('a fixup commit ahead of the first push blocks it, and nothing is pushed', 
   assert.equal(git(fixture.dir, 'ls-remote', '--heads', 'origin').stdout, '', 'the branch was pushed carrying a fixup commit');
 });
 
+// R7 — the scan reads everything the push would send: a fixup older than this run's landed
+// commits blocks the push, and so does one that lands after an earlier push already went out.
+const publishDirect = (fixture: ReturnType<typeof repo>, steps: (publisher: ReturnType<typeof createPublisher>) => void) => {
+  const originalCwd = process.cwd();
+  const originalPath = process.env.PATH;
+  process.chdir(fixture.dir);
+  process.env.PATH = `${stubGh()}:${fixture.bin}:${originalPath ?? ''}`;
+  process.env.STUB_GH_LOG = join(fixture.dir, 'stub-gh-calls.txt');
+  process.env.STUB_PR_VIEW = '{"number":1,"state":"OPEN"}';
+
+  try {
+    const publisher = createPublisher(fixture.plan, fixture.plan, 'commit+pr', 'origin', silentReporter, 'true');
+
+    steps(publisher);
+
+    return publisher;
+  } finally {
+    process.chdir(originalCwd);
+    process.env.PATH = originalPath;
+    delete process.env.STUB_GH_LOG;
+    delete process.env.STUB_PR_VIEW;
+  }
+};
+
+test('a fixup commit older than the landed ones still blocks the push', () => {
+  const fixture = repo({ planText: PLAN_PR, remote: true });
+  git(fixture.dir, 'commit', '--allow-empty', '-qm', 'fixup! stray edit');
+  git(fixture.dir, 'commit', '--allow-empty', '-qm', 'iteration 1');
+
+  let refusal: string | undefined;
+  publishDirect(fixture, (p) => {
+    refusal = p.publish('1');
+  });
+
+  assert.match(refusal ?? '', /fixup|squash/i);
+  assert.equal(git(fixture.dir, 'ls-remote', '--heads', 'origin').stdout, '', 'the branch was pushed carrying a fixup commit');
+});
+
+test('a fixup commit landing after the first push blocks every later push', () => {
+  const fixture = repo({ planText: PLAN_PR, remote: true });
+  git(fixture.dir, 'commit', '--allow-empty', '-qm', 'iteration 1');
+
+  const refusals: (string | undefined)[] = [];
+  publishDirect(fixture, (p) => {
+    refusals.push(p.publish('1'));
+    git(fixture.dir, 'commit', '--allow-empty', '-qm', 'squash! iteration 1');
+    refusals.push(p.publish('2'));
+    git(fixture.dir, 'commit', '--allow-empty', '-qm', 'iteration 3');
+    refusals.push(p.publish());
+  });
+
+  assert.equal(refusals[0], undefined);
+  assert.match(refusals[1] ?? '', /fixup|squash/i);
+  assert.match(refusals[2] ?? '', /fixup|squash/i);
+  assert.equal(git(fixture.dir, 'rev-parse', 'origin/feature/demo').stdout.trim(), git(fixture.dir, 'rev-parse', 'HEAD~2').stdout.trim(), 'a later push went out');
+});
+
 // R13 — the pull request opens as a draft at the first landed commit, targeting the plan's
 // declared `PR base:` line when it carries one.
 test('the first landed iteration opens a draft pull request against the declared PR base', async () => {

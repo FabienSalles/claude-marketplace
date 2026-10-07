@@ -75,3 +75,55 @@ export const freeLock = (held: boolean, lockPath: string, unlockHint: string): R
 
 export const caughtUpWithBase = (isAncestor: boolean, base: string, missing: string): Result<void, string> =>
   isAncestor ? ok(undefined) : err(`the branch is behind ${base}:\n${missing}\n\nFetch and rebase before relaunching.`);
+
+export const baseResolved = (base: string | undefined, tried: readonly string[]): Result<string, string> =>
+  base !== undefined
+    ? ok(base)
+    : err(
+        `no base resolves; tried ${tried.join(', ')}. Declare \`PR base:\` in the plan, or run \`git remote set-head <remote> -a\` so the remote's HEAD resolves.`,
+      );
+
+export const remoteFetched = (fetched: boolean, remote: string, detail: string): Result<void, string> =>
+  fetched
+    ? ok(undefined)
+    : err(
+        `could not fetch ${remote}, so the branch cannot be compared against it:\n${detail}\n\nRestore the connection to ${remote}, or fix its URL with \`git remote set-url ${remote} <url>\`, then relaunch.`,
+      );
+
+export const onGithub = (url: string): boolean => /^(?:https?:\/\/(?:[^@/]+@)?|ssh:\/\/git@|git@)github\.com[:/]/.test(url);
+
+export const forkUndetermined = (policy: string, remote: string, detail: string): Result<string, string> =>
+  policy === 'commit+pr'
+    ? err(
+        `could not ask GitHub whether ${remote} is a fork, so the branch cannot be checked against a parent:\n${detail}\n\nRun \`gh auth login\` (or restore the connection), then relaunch.`,
+      )
+    : ok(`${remote} is on github.com but gh could not tell whether it is a fork, so the parent was not checked (${detail})`);
+
+export const parentRemoteFound = (found: string | undefined, parent: string): Result<string, string> =>
+  found !== undefined
+    ? ok(found)
+    : err(`${parent} is the parent of this fork, and no local remote points at it. Add one with \`git remote add upstream https://github.com/${parent}\`, then relaunch.`);
+
+export const parentFetched = (fetched: boolean, remote: string, detail: string): Result<void, string> =>
+  fetched
+    ? ok(undefined)
+    : err(
+        `could not fetch ${remote}, the parent of this fork, so the branch cannot be compared against it:\n${detail}\n\nFetch it by hand with \`git fetch ${remote}\`, or fix its URL with \`git remote set-url ${remote} <url>\`, then relaunch.`,
+      );
+
+export const parentBranchFound = (ref: string | undefined, remote: string, branch: string): Result<string, string> =>
+  ref !== undefined
+    ? ok(ref)
+    : err(
+        `${remote}, the parent of this fork, has no branch ${branch}. Correct \`PR base:\` in the plan, or run \`git remote set-head ${remote} -a\` if the parent's default branch is what is meant.`,
+      );
+
+export const foldedHistory = (subjects: readonly string[]): Result<void, string> => {
+  const pending = subjects.filter((subject) => /^(fixup|squash)!/.test(subject));
+
+  return pending.length === 0
+    ? ok(undefined)
+    : err(
+        `the commits a push would send carry a fixup or squash:\n${pending.join('\n')}\n\nNothing may be pushed until they are folded: run \`git rebase -i --autosquash\` yourself, then relaunch.`,
+      );
+};

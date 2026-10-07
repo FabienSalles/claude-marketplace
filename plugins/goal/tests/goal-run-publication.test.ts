@@ -8,7 +8,7 @@ import { PAUSED, PLAN, REFUSED, git, repo, runInProcess } from './support/goal-r
 const PLAN_PR = PLAN.replace('Policy: commit\n', 'Policy: commit+pr\n');
 
 const unreachable = (fixture: ReturnType<typeof repo>): void => {
-  git(fixture.dir, 'remote', 'set-url', 'origin', '/nonexistent/acme/demo.git');
+  git(fixture.dir, 'config', 'remote.origin.pushurl', '/nonexistent/acme/demo.git');
 };
 
 test('a refused first push pauses the run after iteration 1 with no second implementer', async () => {
@@ -117,7 +117,6 @@ const launch = (fixture: ReturnType<typeof repo>, args: string[]) =>
 
 test('a relaunch publishes before the next implementer, pauses again while the remote stays unreachable, and each iteration is implemented and committed once', async () => {
   const fixture = repo({ planText: THREE, remote: true });
-  const origin = git(fixture.dir, 'remote', 'get-url', 'origin').stdout.trim();
   unreachable(fixture);
 
   const first = await launch(fixture, [fixture.plan]);
@@ -132,7 +131,7 @@ test('a relaunch publishes before the next implementer, pauses again while the r
   assert.equal(implementers(fixture), 1, still.output);
   assert.equal(git(fixture.dir, 'status', '--porcelain').stdout, '', still.output);
 
-  git(fixture.dir, 'remote', 'set-url', 'origin', origin);
+  git(fixture.dir, 'config', '--unset', 'remote.origin.pushurl');
 
   const second = await launch(fixture, [fixture.plan]);
   assert.equal(second.code, 0, second.output);
@@ -164,7 +163,6 @@ const ticked = (remote: boolean) => {
 
 test('a relaunch on a fully ticked, unpublished plan replays the DoD, publishes, marks ready, then reviews', async () => {
   const fixture = ticked(true);
-  const origin = git(fixture.dir, 'remote', 'get-url', 'origin').stdout.trim();
   unreachable(fixture);
 
   const first = await launch(fixture, [fixture.plan]);
@@ -172,7 +170,7 @@ test('a relaunch on a fully ticked, unpublished plan replays the DoD, publishes,
   assert.match(first.output, /stage=dod/, first.output);
   assert.match(first.output.trim().split('\n').pop() ?? '', /push failed.*local only: 1, 2, 3/i, first.output);
 
-  git(fixture.dir, 'remote', 'set-url', 'origin', origin);
+  git(fixture.dir, 'config', '--unset', 'remote.origin.pushurl');
 
   const second = await launch(fixture, [fixture.plan]);
   assert.equal(second.code, 0, second.output);

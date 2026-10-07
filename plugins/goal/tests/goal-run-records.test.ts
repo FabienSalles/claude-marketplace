@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, relative } from 'node:path';
 
 import { jsonlOf, logOf, repo, run, runDirOf, sessionOf } from './support/goal-run-harness.ts';
 
@@ -69,5 +69,5 @@ test('close briefs the auditor to write its report in the run\'s own directory',
   assert.equal(code, 0, output);
   const args = readFileSync(fixture.claudeLog, 'utf8');
   assert.match(args, /^goal:goal-run-auditor$/m, `the auditor was never invoked:\n${args}`);
-  assert.ok(args.includes(join(runDirOf(fixture), 'report.md')), `the auditor was not told to write into the run's own directory:\n${args}`);
+  assert.ok(args.includes(relative(fixture.dir, join(runDirOf(fixture), 'report.md'))), `the auditor was not told to write into the run's own directory:\n${args}`);
 });
