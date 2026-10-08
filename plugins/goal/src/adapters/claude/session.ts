@@ -23,6 +23,15 @@ const AGENTS: Record<AgentRole, string> = {
 
 const EFFECTIVE_WINDOWS: Record<string, number> = {
   'claude-sonnet-5': 200_000,
+  'claude-sonnet-5-5': 1_000_000,
+  'claude-opus-4-6': 200_000,
+  'claude-opus-4-7': 1_000_000,
+  'claude-opus-4-8': 1_000_000,
+  'claude-opus-5': 1_000_000,
+  'claude-opus-5-5': 1_000_000,
+  'claude-haiku-4-5': 200_000,
+  'claude-haiku-4-5-20251001': 200_000,
+  'claude-haiku-5-5': 1_000_000,
   'claude-fable-5': 1_000_000,
 };
 

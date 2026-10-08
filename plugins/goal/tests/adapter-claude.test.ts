@@ -45,11 +45,17 @@ test('the report carries the consumption the stream stated, in neutral names', (
 });
 
 // R5 — the adapter knows each model's window.
-test('the adapter reports the effective window of both known models and none for an unknown one', () => {
+test('the adapter reports the effective window of known models and none for an unknown one', () => {
   const result = (model: string): string => `${JSON.stringify({ type: 'assistant', message: { model, usage: { input_tokens: 1 } } })}\n${JSON.stringify({ type: 'result', usage: { input_tokens: 1 } })}\n`;
 
   assert.equal(reportOf(ended, result('claude-sonnet-5'), '', 5, paths).consumption?.contextWindow, 200_000);
   assert.equal(reportOf(ended, result('claude-fable-5'), '', 5, paths).consumption?.contextWindow, 1_000_000);
+  for (const model of ['claude-opus-4-6', 'claude-haiku-4-5', 'claude-haiku-4-5-20251001']) {
+    assert.equal(reportOf(ended, result(model), '', 5, paths).consumption?.contextWindow, 200_000, model);
+  }
+  for (const model of ['claude-opus-4-7', 'claude-opus-4-8', 'claude-opus-5', 'claude-opus-5-5', 'claude-haiku-5-5', 'claude-sonnet-5-5']) {
+    assert.equal(reportOf(ended, result(model), '', 5, paths).consumption?.contextWindow, 1_000_000, model);
+  }
   assert.equal('contextWindow' in (reportOf(ended, result('claude-unknown-9'), '', 5, paths).consumption ?? {}), false);
 });
 
