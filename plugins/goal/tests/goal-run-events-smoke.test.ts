@@ -262,55 +262,53 @@ test('resultEnvelope falls back to the raw text when the input is not a json env
   assert.equal(usage, undefined);
 });
 
-// R20 — the one line format a Claude-session stage reports its cost in, so a run report can total
+// R20 — the one line format a stage reports its cost in, so a run report can total
 // the four classes without re-deriving them from a `stage=` line that carries none.
 test('tokensLine formats the four classes for a named stage', () => {
-  const line = tokensLine('lens', {
-    usage: { input_tokens: 1, output_tokens: 2, cache_creation_input_tokens: 3, cache_read_input_tokens: 4 },
-    compactions: 0,
-  });
+  const line = tokensLine('lens', { inputTokens: 1, outputTokens: 2, cacheCreationInputTokens: 3, cacheReadInputTokens: 4, compactions: 0 });
 
   assert.equal(line, 'RUN tokens stage=lens input_tokens=1 output_tokens=2 cache_creation_input_tokens=3 cache_read_input_tokens=4 compactions=0');
 });
 
-// R3 — a usage block missing a token class still prints a digit for it, never `undefined`.
-test('tokensLine prints 0 for a token class the usage block omits', () => {
-  const line = tokensLine('lens', { usage: { input_tokens: 1, output_tokens: 2 }, compactions: 0 });
-
-  assert.equal(line, 'RUN tokens stage=lens input_tokens=1 output_tokens=2 cache_creation_input_tokens=0 cache_read_input_tokens=0 compactions=0');
+// R4 — a count the provider omits still prints a digit for it, never `undefined`.
+test('tokensLine prints 0 for a count the report omits', () => {
+  assert.equal(tokensLine('lens', { inputTokens: 1, outputTokens: 2 }), 'RUN tokens stage=lens input_tokens=1 output_tokens=2 cache_creation_input_tokens=0 cache_read_input_tokens=0 compactions=0');
+  assert.equal(tokensLine('lens', {}), 'RUN tokens stage=lens input_tokens=0 output_tokens=0 cache_creation_input_tokens=0 cache_read_input_tokens=0 compactions=0');
 });
 
-// R21 — the peak reads against the served model's own effective window: a known model carries
-// both the raw tokens and the percentage they represent of that window.
-test('tokensLine reads the peak against the served model\'s effective window', () => {
-  const line = tokensLine('implementer', {
-    usage: { input_tokens: 1, output_tokens: 2, cache_creation_input_tokens: 3, cache_read_input_tokens: 4 },
-    model: 'claude-sonnet-5',
-    peakTokens: 100_000,
-    compactions: 1,
-  });
+// R5 — the runner only divides the context by the window the report names.
+test('tokensLine reads the context against the window the report names', () => {
+  const line = tokensLine('implementer', { inputTokens: 1, outputTokens: 2, cacheCreationInputTokens: 3, cacheReadInputTokens: 4, model: 'claude-sonnet-5', contextTokens: 100_000, contextWindow: 200_000, compactions: 1 });
 
   assert.match(line ?? '', /model=claude-sonnet-5 context_tokens=100000 context_pct=50% compactions=1$/);
 });
 
-// R21 — the unknown-model rule: a served model absent from the effective-window map still reports
-// its peak in tokens, with no percentage to read it against.
-test('tokensLine reports the peak in tokens with no percentage for an unmapped model', () => {
-  const line = tokensLine('implementer', {
-    usage: { input_tokens: 1, output_tokens: 2, cache_creation_input_tokens: 3, cache_read_input_tokens: 4 },
-    model: 'claude-unknown-9',
-    peakTokens: 12_345,
-    compactions: 0,
-  });
+// R5 — a missing or zero window still reports the context in tokens, with no percentage, whatever the model is called.
+test('tokensLine reports the context in tokens with no percentage when the window is missing or zero', () => {
+  const missing = tokensLine('implementer', { model: 'claude-sonnet-5', contextTokens: 12_345, compactions: 0 });
+  const zero = tokensLine('implementer', { model: 'claude-sonnet-5', contextTokens: 12_345, contextWindow: 0, compactions: 0 });
 
-  assert.match(line ?? '', /model=claude-unknown-9 context_tokens=12345 compactions=0$/);
-  assert.ok(!(line ?? '').includes('context_pct'), `an unmapped model still reported a percentage:\n${line}`);
+  assert.match(missing ?? '', /model=claude-sonnet-5 context_tokens=12345 compactions=0$/);
+  assert.match(zero ?? '', /model=claude-sonnet-5 context_tokens=12345 compactions=0$/);
+  assert.ok(!(missing ?? '').includes('context_pct'), `a missing window still reported a percentage:\n${missing}`);
 });
 
-// R20 — a non-session stage (the gate, `gh pr ready`, a push) never carries usage, and
+// R20 — a non-session stage (the gate, `gh pr ready`, a push) never carries consumption, and
 // tokensLine() reports that by returning nothing to emit, rather than a line of dashes.
-test('tokensLine returns undefined when there is no usage to report', () => {
+test('tokensLine returns undefined when there is no consumption to report', () => {
   assert.equal(tokensLine('gate', undefined), undefined);
+});
+
+// R6 — narration captures the last non-empty session id while still announcing every one.
+test('narrate returns the last session id and announces each one as it goes', () => {
+  const announced: string[] = [];
+  const stdout = [{ type: 'assistant', session_id: 'a' }, { type: 'assistant', session_id: '' }, { type: 'result', session_id: 'b' }, { type: 'result' }].map((event) => JSON.stringify(event)).join('\n');
+
+  const extraction = narrate(stdout, { say: () => {}, session: (id) => announced.push(id) });
+
+  assert.equal(extraction.sessionId, 'b');
+  assert.deepEqual(announced, ['a', 'b']);
+  assert.equal(narrate('{"type":"result"}', { say: () => {} }).sessionId, undefined);
 });
 
 // R20 / R21 — driven end to end against the fixture's fake `claude`, a landed run's own

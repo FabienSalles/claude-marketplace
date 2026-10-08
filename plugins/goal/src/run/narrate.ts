@@ -4,15 +4,7 @@
 import { constants } from 'node:os';
 
 import { extract, type Extraction } from '../core/events.ts';
-
-// Claude Code's own effective context windows, not the documented API limits: this tool truncates
-// a transcript before the API would refuse it, so a peak read against the API figure would still
-// call a session comfortable that Claude Code was already about to compact. Maintained data, not
-// machine-verified against the CLI's own future defaults — only that it is consulted at all.
-const EFFECTIVE_WINDOWS: Record<string, number> = {
-  'claude-sonnet-5': 200_000,
-  'claude-fable-5': 1_000_000,
-};
+import type { Consumption } from '../ports.ts';
 
 // A stage advisory agents (lens, reviewer, auditor) answer with once asked for
 // a JSONL event stream: the same one narrate() already parses, its prose in the
@@ -25,29 +17,27 @@ export const resultEnvelope = (raw: string): Extraction & { text: string } => {
   return { text: text ?? raw, ...extraction };
 };
 
-// The one line format every Claude-session stage reports its cost in, so a run report can total
+// The one line format every session stage reports its cost in, so a run report can total
 // the four classes without re-deriving them from `stage=` lines that carry none. Non-session
-// stages (the gate, `gh pr ready`, a push) never call this: `extraction` stays undefined and no
-// line is emitted. The unknown-model rule: a served model absent from EFFECTIVE_WINDOWS still
-// reports its peak in tokens, just with no percentage to read it against.
-export const tokensLine = (stage: string, extraction?: Extraction): string | undefined => {
-  if (extraction?.usage === undefined) {
+// stages (the gate, `gh pr ready`, a push) never call this: `consumption` stays undefined and no
+// line is emitted. A missing or zero window keeps the context in tokens, with no percentage.
+export const tokensLine = (stage: string, consumption?: Consumption): string | undefined => {
+  if (consumption === undefined) {
     return undefined;
   }
 
-  const { usage, model, peakTokens, compactions } = extraction;
-  const window = model !== undefined && model !== '' ? EFFECTIVE_WINDOWS[model] : undefined;
+  const { model, contextTokens, contextWindow } = consumption;
   const peak =
-    peakTokens === undefined
+    contextTokens === undefined
       ? ''
-      : window !== undefined && window !== 0
-        ? ` context_tokens=${peakTokens} context_pct=${Math.round((peakTokens / window) * 100)}%`
-        : ` context_tokens=${peakTokens}`;
+      : contextWindow !== undefined && contextWindow !== 0
+        ? ` context_tokens=${contextTokens} context_pct=${Math.round((contextTokens / contextWindow) * 100)}%`
+        : ` context_tokens=${contextTokens}`;
 
   return (
-    `RUN tokens stage=${stage} input_tokens=${usage.input_tokens ?? 0} output_tokens=${usage.output_tokens ?? 0} ` +
-    `cache_creation_input_tokens=${usage.cache_creation_input_tokens ?? 0} cache_read_input_tokens=${usage.cache_read_input_tokens ?? 0}` +
-    `${model !== undefined && model !== '' ? ` model=${model}` : ''}${peak} compactions=${compactions}`
+    `RUN tokens stage=${stage} input_tokens=${consumption.inputTokens ?? 0} output_tokens=${consumption.outputTokens ?? 0} ` +
+    `cache_creation_input_tokens=${consumption.cacheCreationInputTokens ?? 0} cache_read_input_tokens=${consumption.cacheReadInputTokens ?? 0}` +
+    `${model !== undefined && model !== '' ? ` model=${model}` : ''}${peak} compactions=${consumption.compactions ?? 0}`
   );
 };
 

@@ -24,7 +24,7 @@ import { createPublisher, remoteNote } from '../src/run/publish.ts';
 import { close, LANDED } from '../src/run/close.ts';
 import { pauseLine } from '../src/core/publication.ts';
 import { PAUSED } from '../src/core/verdict.ts';
-import { quote } from '../src/run/shell.ts';
+import { quote } from '../src/core/shell.ts';
 import { claudeAgentSessions } from '../src/adapters/claude/session.ts';
 import { defaultSettingsPath } from '../src/adapters/claude/warning.ts';
 import { defaultProjectsRoot } from '../src/adapters/claude/postmortem.ts';
@@ -83,7 +83,7 @@ const main = async (): Promise<void> => {
   const agents = claudeAgentSessions();
 
   const preflightStart = Date.now();
-  const { policy, remote } = preflight(plan, source, reporter, gateLabel);
+  const { policy, remote } = preflight(plan, source, reporter, gateLabel, agents);
   reporter.say(`RUN stage=preflight duration_ms=${Date.now() - preflightStart} exit=0`);
 
   const iterations = iteration !== undefined ? [iteration] : iterationNumbers(source, false);

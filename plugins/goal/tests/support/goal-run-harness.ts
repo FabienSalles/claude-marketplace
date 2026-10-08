@@ -128,7 +128,7 @@ if [ -n "$FAKE_CLAUDE_MARKER" ]; then
 fi
 # Appended, not overwritten: a second call against the same target has to leave a real diff
 # behind it, or a resumed iteration reads as "the implementer wrote nothing".
-[ -n "$FAKE_CLAUDE_WRITES" ] && printf 'written %s\\n' "$$-$RANDOM" >> "$FAKE_CLAUDE_WRITES"
+[ -n "$FAKE_CLAUDE_WRITES" ] && printf 'written %s\\n' "\${FAKE_CLAUDE_WRITE_TAG:-$$-$RANDOM}" >> "$FAKE_CLAUDE_WRITES"
 [ -n "$FAKE_CLAUDE_COMMITS" ] && git add -A >/dev/null 2>&1 && git commit -qm "implementer commit"
 # Opt-in, symmetric to FAKE_CLAUDE_COMMITS: bash's tests never set it, so the shared fake claude
 # stays untouched for them. Commits, pushes that commit to origin's current branch, which is what
@@ -606,6 +606,7 @@ export const runInProcess = async (
 
   let output = '';
   let jsonl = '';
+  let sessionPath = '';
   const emit = (event: string, fields: Record<string, unknown>): void => {
     if (jsonl !== '') {
       appendFileSync(jsonl, `${JSON.stringify({ v: 1, ts: new Date().toISOString(), event, ...fields })}\n`);
@@ -629,6 +630,13 @@ export const runInProcess = async (
     },
     setLog: (dir) => {
       jsonl = join(dir, '.run.jsonl');
+      sessionPath = join(dir, '.run.session');
+    },
+    session: (id) => {
+      if (sessionPath !== '') {
+        appendFileSync(sessionPath, `${id}\n`);
+        emit('session', { payload: id });
+      }
     },
   };
 
@@ -662,7 +670,7 @@ export const runInProcess = async (
     }
 
     const preflightStart = Date.now();
-    const { policy, remote } = preflight(plan!, source, reporter, gateLabel);
+    const { policy, remote } = preflight(plan!, source, reporter, gateLabel, agents);
     reporter.say(`RUN stage=preflight duration_ms=${Date.now() - preflightStart} exit=0`);
 
     const iterations = iterationArg !== undefined ? [iterationArg] : iterationNumbers(source, false);

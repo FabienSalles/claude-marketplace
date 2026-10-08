@@ -1,15 +1,15 @@
 // The evidence a killed attempt used to take a half-day to dig up by hand, gathered here on
 // every non-zero implementer exit: the attempt's own output, the dying session's transcript
 // tail, and whether the `claude` binary itself changed underneath it. The runner only
-// asks the adapter for it and narrates nothing itself. Every finding below is a prose event line through Reporter.say — the JSONL schema stays untouched.
+// asks the adapter for it and narrates nothing itself. Every finding below is a prose event line through `say` — the JSONL schema stays untouched.
 
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 
 import { command } from '../../adapters/command.ts';
 import { fs } from '../../adapters/fs.ts';
-import { lastSessionId, projectDir } from '../../core/events.ts';
+import { projectDir } from '../../core/events.ts';
 import { settingValue } from '../../core/settings.ts';
-import type { Reporter } from '../../run/report.ts';
+import type { AgentSessions } from '../../ports.ts';
 
 // Overridable the same way warning.ts's defaultSettingsPath() is: a test points it at a tmp
 // directory rather than the real ~/.claude/projects.
@@ -35,10 +35,20 @@ export const claudeBinaryMtime = (path: string | undefined): number | undefined 
   }
 };
 
-const persistAttemptOutput = (dir: string, attempt: number, output: string): void => {
-  try {
-    const path = join(dir, `implementer-attempt-${attempt}.out`);
+export type ClaudeLaunch = { stdout: string; outPath: string; binaryBefore: number | undefined };
 
+export const claudeLaunchOf = (data: unknown): ClaudeLaunch | undefined => {
+  if (typeof data !== 'object' || data === null || !('stdout' in data) || !('outPath' in data) || !('binaryBefore' in data)) {
+    return undefined;
+  }
+
+  const { stdout, outPath, binaryBefore } = data;
+
+  return typeof stdout === 'string' && typeof outPath === 'string' && (binaryBefore === undefined || typeof binaryBefore === 'number') ? { stdout, outPath, binaryBefore } : undefined;
+};
+
+const persistAttemptOutput = (path: string, output: string): void => {
+  try {
     if (!fs.exists(path)) {
       fs.writeFile(path, output);
     }
@@ -72,31 +82,24 @@ const transcriptTail = (sessionId: string | undefined, cwd: string, lines = 20):
 // shutdown; its absence leaves the sender of the SIGTERM unnamed, flagged for the auditor.
 const confirmedShutdown = (tail: string[]): boolean => tail.some((line) => line.includes('"interruptedByShutdown":true'));
 
-export const postmortem = (
-  reporter: Pick<Reporter, 'say'>,
-  dir: string,
-  attempt: number,
-  cwd: string,
-  status: number,
-  stdout: string,
-  stderr: string,
-  binaryBefore: number | undefined,
-): void => {
-  persistAttemptOutput(dir, attempt, `${stdout}${stderr}`);
-  reporter.say(`RUN postmortem: attempt ${attempt} exited ${status}, output saved to implementer-attempt-${attempt}.out`);
+export const postmortem: NonNullable<AgentSessions['postmortem']> = (report, say, { attempt, cwd, dir }) => {
+  const launch = claudeLaunchOf(report.providerData) ?? { stdout: '', outPath: join(dir, `implementer-attempt-${attempt}.out`), binaryBefore: undefined };
 
-  const tail = transcriptTail(lastSessionId(stdout), cwd);
+  persistAttemptOutput(launch.outPath, `${launch.stdout}${report.stderr}`);
+  say(`RUN postmortem: attempt ${attempt} exited ${report.end.status ?? 1}, output saved to ${basename(launch.outPath)}`);
+
+  const tail = transcriptTail(report.sessionId, cwd);
 
   if (tail.length === 0) {
-    reporter.say('RUN postmortem: no transcript found for the dying session, evidence degrades to output and binary mtime alone');
+    say('RUN postmortem: no transcript found for the dying session, evidence degrades to output and binary mtime alone');
   } else {
     const cls = confirmedShutdown(tail) ? 'shutdown (confirmed)' : 'sigterm (sender unknown)';
-    reporter.say(`RUN postmortem: class is ${cls} — dying words: ${tail[tail.length - 1]}`);
+    say(`RUN postmortem: class is ${cls} — dying words: ${tail[tail.length - 1]}`);
   }
 
   const binaryAfter = claudeBinaryMtime(claudeBinaryPath());
 
-  if (binaryBefore !== undefined && binaryAfter !== undefined && binaryBefore !== binaryAfter) {
-    reporter.say('RUN postmortem: the claude binary\'s mtime changed during the attempt, naming the auto-updater');
+  if (launch.binaryBefore !== undefined && binaryAfter !== undefined && launch.binaryBefore !== binaryAfter) {
+    say('RUN postmortem: the claude binary\'s mtime changed during the attempt, naming the auto-updater');
   }
 };

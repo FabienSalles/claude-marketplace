@@ -11,7 +11,7 @@ import { commitAndTick, runLock } from '../gate/scope.ts';
 import { dodCheck, secretScan } from '../gate/ship.ts';
 import { monotonicityCheck } from '../gate/ticked.ts';
 import { check, verify } from '../gate/verbs.ts';
-import { quote } from '../run/shell.ts';
+import { quote } from '../core/shell.ts';
 
 export type GateResult = { status: number; stdout: string; stderr: string };
 

@@ -36,5 +36,4 @@ plugins/goal/src/run/preflight.ts
 plugins/goal/src/run/publish.ts
 plugins/goal/src/run/quota.ts
 plugins/goal/src/run/report.ts
-plugins/goal/src/run/shell.ts
 plugins/goal/src/transcripts.ts
