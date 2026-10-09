@@ -2,7 +2,7 @@
   "success": {
     "code": 0,
     "lines": [
-      "RUN writing this run's records to <repo>/.claude/goal-runs/demo/<run-id>",
+      "RUN writing this run's records to <repo>/.goal/runs/demo/<run-id>",
       "RUN preflight: the plan carries a --- metadata block",
       "RUN preflight: Policy is commit",
       "RUN preflight: Remote is origin",
@@ -38,7 +38,7 @@
       ""
     ],
     "events": [
-      {"v":1,"ts":"<ts>","event":"say","message":"RUN writing this run's records to <repo>/.claude/goal-runs/demo/<run-id>"},
+      {"v":1,"ts":"<ts>","event":"say","message":"RUN writing this run's records to <repo>/.goal/runs/demo/<run-id>"},
       {"v":1,"ts":"<ts>","event":"say","message":"RUN preflight: the plan carries a --- metadata block"},
       {"v":1,"ts":"<ts>","event":"say","message":"RUN preflight: Policy is commit"},
       {"v":1,"ts":"<ts>","event":"say","message":"RUN preflight: Remote is origin"},
@@ -90,7 +90,7 @@
   "quota relaunch": {
     "code": 0,
     "lines": [
-      "RUN writing this run's records to <repo>/.claude/goal-runs/demo/<run-id>",
+      "RUN writing this run's records to <repo>/.goal/runs/demo/<run-id>",
       "RUN preflight: the plan carries a --- metadata block",
       "RUN preflight: Policy is commit",
       "RUN preflight: Remote is origin",
@@ -132,7 +132,7 @@
       ""
     ],
     "events": [
-      {"v":1,"ts":"<ts>","event":"say","message":"RUN writing this run's records to <repo>/.claude/goal-runs/demo/<run-id>"},
+      {"v":1,"ts":"<ts>","event":"say","message":"RUN writing this run's records to <repo>/.goal/runs/demo/<run-id>"},
       {"v":1,"ts":"<ts>","event":"say","message":"RUN preflight: the plan carries a --- metadata block"},
       {"v":1,"ts":"<ts>","event":"say","message":"RUN preflight: Policy is commit"},
       {"v":1,"ts":"<ts>","event":"say","message":"RUN preflight: Remote is origin"},
@@ -192,7 +192,7 @@
   "unrecognised pause": {
     "code": 3,
     "lines": [
-      "RUN writing this run's records to <repo>/.claude/goal-runs/demo/<run-id>",
+      "RUN writing this run's records to <repo>/.goal/runs/demo/<run-id>",
       "RUN preflight: the plan carries a --- metadata block",
       "RUN preflight: Policy is commit",
       "RUN preflight: Remote is origin",
@@ -215,7 +215,7 @@
       ""
     ],
     "events": [
-      {"v":1,"ts":"<ts>","event":"say","message":"RUN writing this run's records to <repo>/.claude/goal-runs/demo/<run-id>"},
+      {"v":1,"ts":"<ts>","event":"say","message":"RUN writing this run's records to <repo>/.goal/runs/demo/<run-id>"},
       {"v":1,"ts":"<ts>","event":"say","message":"RUN preflight: the plan carries a --- metadata block"},
       {"v":1,"ts":"<ts>","event":"say","message":"RUN preflight: Policy is commit"},
       {"v":1,"ts":"<ts>","event":"say","message":"RUN preflight: Remote is origin"},
@@ -250,7 +250,7 @@
   "close with lens, reviewer and auditor": {
     "code": 0,
     "lines": [
-      "RUN writing this run's records to <repo>/.claude/goal-runs/demo/<run-id>",
+      "RUN writing this run's records to <repo>/.goal/runs/demo/<run-id>",
       "RUN preflight: the plan carries a --- metadata block",
       "RUN preflight: Policy is commit+pr",
       "RUN preflight: Remote is origin",
@@ -313,7 +313,7 @@
       ""
     ],
     "events": [
-      {"v":1,"ts":"<ts>","event":"say","message":"RUN writing this run's records to <repo>/.claude/goal-runs/demo/<run-id>"},
+      {"v":1,"ts":"<ts>","event":"say","message":"RUN writing this run's records to <repo>/.goal/runs/demo/<run-id>"},
       {"v":1,"ts":"<ts>","event":"say","message":"RUN preflight: the plan carries a --- metadata block"},
       {"v":1,"ts":"<ts>","event":"say","message":"RUN preflight: Policy is commit+pr"},
       {"v":1,"ts":"<ts>","event":"say","message":"RUN preflight: Remote is origin"},

@@ -122,7 +122,7 @@ Exit `0` landed · `1` the gate refused a slice · `2` refused before anything w
 | Item | Needed for | Note |
 |---|---|---|
 | Node 24 | the runner and the gate | Types are stripped at run time, never checked; `npm run verify` runs `tsc --noEmit` and `eslint` (`strict-boolean-expressions`), as CI does, from the checks in `scripts/verify/checks.ts` |
-| Git-ignored `.claude/plans/` and `.claude/goal-runs/` | every run | Preflight refuses a plan directory git can see. The run records must be out of git's sight too: the gate would read them as an undeclared scope leak. The rest of `.claude/` may stay tracked |
+| Git-ignored plan directory and `<artifact-root>/runs/` (`.goal/runs/` by default) | every run | Preflight currently refuses a plan directory git can see. The run records must be out of git's sight too: the gate would read them as an undeclared scope leak. Ignore the records directory separately so planning-document versioning remains a Git choice |
 | `betterleaks` or `gitleaks` | any push | The push is refused, not skipped, when neither is installed |
 | `gh` authenticated | `Policy: commit+pr`, or a GitHub source | `gh auth login` |
 | Atlassian MCP | a Jira source | Or paste with `inline` |
@@ -211,8 +211,27 @@ More, including the axes that are entirely empty: [`docs/comparison.md`](docs/co
 The **work-id** generalises the old issue number: `issue-<N>` for a GitHub issue, the lowercased
 key (`ct-1234`) for Jira, a slug for a file or inline source. The plan lives at
 `.claude/plans/<work-id>-spec.md`; a run's records go to
-`.claude/goal-runs/<work-id>/<run-id>/`: `.run.log`, `.run.jsonl`, `.run.session` and the
+`<artifact-root>/runs/<work-id>/<run-id>/`: `.run.log`, `.run.jsonl`, `.run.session` and the
 auditor's `report.md`. Only `<plan>.run.lock` stays beside the plan.
+The artifact root comes from `GOAL_ROOT_PATH`: process/container environment, then the Git
+project root's `.env.local`, then `.env`. Missing files are optional; absence of the variable
+uses `.goal/`. A selected empty value, unreadable required source or unusable destination fails
+instead of falling back. Relative paths resolve from the Git root; absolute paths and spaces
+are supported. Environment-file values are parsed literally, without shell execution or
+variable expansion, and unrelated variables are neither exported nor printed.
+
+The run resolves its paths once at launch. Changing a project file affects the next launch,
+while the active run's records and report links retain their original root. Ignore only the
+in-repository `runs/` directory and transient `*.run.lock/` and `*.tick.lock/` paths in the
+project `.gitignore`; an external root needs no repository exclusion. Do not ignore the whole
+artifact root solely to hide run records.
+
+Existing plans run in place when supplied by their explicit path, without migration. Old run
+records are not consulted by default. Inspect an old work-id history explicitly with
+`node plugins/goal/src/transcripts.ts <cwd> <plan> --runs-path <absolute-work-id-history-directory>`.
+The override selects goal records only; Claude-native transcript storage remains unchanged.
+The shared resolver is also callable as `node plugins/goal/src/artifacts.ts <project-directory>`;
+it prints JSON containing only the project, root, plans, runs, source and supplied status.
 The plan's `Work-id:` header names the run and the expected branch when present; the file name
 is the fallback only when the header is absent, and a branch refusal names both when they differ.
 

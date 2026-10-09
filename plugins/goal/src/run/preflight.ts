@@ -11,7 +11,7 @@
 // session start, so it described a future session and never the running one. What replaces it is
 // detection in run/iteration.ts, which is executed.
 
-import { basename, dirname } from 'node:path';
+import { basename, dirname, isAbsolute, relative } from 'node:path';
 
 import { fs } from '../adapters/fs.ts';
 import { git } from '../adapters/git.ts';
@@ -58,7 +58,7 @@ export type PreflightResult = {
   cleanup: boolean;
 };
 
-export const preflight = (plan: string, source: string, reporter: Reporter, gate: string, agents: AgentSessions): PreflightResult => {
+export const preflight = (plan: string, source: string, reporter: Reporter, gate: string, agents: AgentSessions, runs: string): PreflightResult => {
   const planBase = basename(plan);
   const workId = workIdOf(plan, source);
   const cleanup = planBase.endsWith('-cleanup-spec.md');
@@ -112,8 +112,9 @@ export const preflight = (plan: string, source: string, reporter: Reporter, gate
   // or that check fires on this run's fresh records with "the tree is not clean" — the symptom,
   // not the cause. Held before check 5, since the run's log directory is created before preflight
   // runs. The check holds before the directory exists: check-ignore evaluates patterns, not files.
-  const goalRunsDir = '.claude/goal-runs';
-  const goalRunsResult = goalRunsIgnored(git('check-ignore', '-q', goalRunsDir).status === 0, goalRunsDir);
+  const goalRunsDir = relative(git('rev-parse', '--show-toplevel').stdout.trim(), runs);
+  const isExternal = goalRunsDir === '..' || goalRunsDir.startsWith('../') || isAbsolute(goalRunsDir);
+  const goalRunsResult = goalRunsIgnored(isExternal || git('check-ignore', '-q', '--', runs).status === 0, goalRunsDir);
 
   if (!goalRunsResult.ok) {
     reporter.stop(goalRunsResult.error, REFUSED);

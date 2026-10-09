@@ -88,7 +88,7 @@ test("it refuses when .claude/goal-runs is visible to git, naming the directory 
   const { code, output } = run(fixture, [fixture.plan, '1']);
 
   assert.notEqual(code, 0);
-  assert.match(output, /STOP \.claude\/goal-runs is visible to git\. Add it to \.gitignore:\n\.claude\/goal-runs/, output);
+  assert.match(output, /STOP \.goal\/runs is visible to git\. Add it to \.gitignore:\n\.goal\/runs/, output);
   assert.ok(!output.includes('STOP the tree is not clean'), output);
   assert.ok(!existsSync(fixture.claudeLog), 'an implementer was spawned on a refusal');
 });
@@ -96,7 +96,7 @@ test("it refuses when .claude/goal-runs is visible to git, naming the directory 
 test('it is valid on a first run, before .claude/goal-runs ever exists', () => {
   const fixture = repo();
 
-  assert.ok(!existsSync(join(fixture.dir, '.claude', 'goal-runs')), 'the fixture already carries a goal-runs directory');
+  assert.ok(!existsSync(join(fixture.dir, '.goal', 'runs')), 'the fixture already carries a goal-runs directory');
 
   const { code, output } = run(fixture, [fixture.plan, '1'], { FAKE_CLAUDE_WRITES: join(fixture.dir, 'a.txt') });
 

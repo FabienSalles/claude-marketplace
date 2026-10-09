@@ -3,3 +3,6 @@
 node_modules/
 __pycache__/
 *.pyc
+.goal/runs/
+*.run.lock/
+*.tick.lock/
