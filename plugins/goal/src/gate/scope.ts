@@ -1,3 +1,6 @@
+import { realpathSync } from 'node:fs';
+import { isAbsolute, relative } from 'node:path';
+
 import { fs } from '../adapters/fs.ts';
 import { git } from '../adapters/git.ts';
 import { covers } from '../core/plan.ts';
@@ -7,6 +10,26 @@ import { noIgnoredPaths, noScopeLeak } from '../core/rules/scope.ts';
 import type { Halt } from '../core/verdict.ts';
 import { halt, heldLocks } from './halt.ts';
 import { sectionBounds } from './plan.ts';
+
+const trackedPlanPath = (plan: string): string | undefined => {
+  const root = git('rev-parse', '--show-toplevel');
+  const path = relative(root.stdout.trim(), realpathSync(plan));
+
+  if (path === '..' || path.startsWith('../') || isAbsolute(path)) return undefined;
+
+  const index = git('ls-files', '--error-unmatch', '--', path);
+  const head = git('cat-file', '-e', `HEAD:${path}`);
+
+  return index.status === 0 || head.status === 0 ? path : undefined;
+};
+
+export const protectPlan = (plan: string, source: string): void => {
+  const path = trackedPlanPath(plan);
+
+  if (fs.readFile(plan) !== source || (path !== undefined && git('diff', '--quiet', 'HEAD', '--', path).status !== 0)) {
+    halt('The plan was modified by the implementer.', `Refused: ${plan}\nOnly the gate may update an iteration checkbox after verification.`);
+  }
+};
 
 // Returns the paths git reports as changed, so the commit stages what the tree really holds
 // rather than what the plan hoped for.
@@ -130,27 +153,48 @@ export const commitAndTick = (
 
   takeLock(`${plan}.tick.lock`, iteration);
 
-  // Incidental paths are staged too, and only when the tree actually moved them: a tsconfig
-  // tolerated by the scope check but left out of the commit would turn the next iteration red
-  // on a file missing from the repository — a deferred failure in place of an honest halt.
-  const staged = [...paths, ...incidental].filter((path) => fs.exists(path) || changed.has(path));
-  const add = git('add', '--', ...staged);
-
-  if (add.status !== 0) {
-    halt(`Staging failed for iteration ${iteration}.`, `${add.stderr}\n\nDeclared: ${paths.join(' ')}`);
-  }
-
-  const commit = git('commit', '-m', declared.get('commit_msg') ?? '');
-
-  if (commit.status !== 0) {
-    halt(
-      `The commit failed for iteration ${iteration}.`,
-      `${commit.stdout}${commit.stderr}\n\nThe plan was left unticked, so the iteration can be retried once the cause is fixed.`,
-    );
-  }
+  protectPlan(plan, source);
+  const tracked = trackedPlanPath(plan);
+  const indexPath = tracked === undefined ? undefined : git('rev-parse', '--git-path', 'index').stdout.trim();
+  const index = indexPath === undefined ? undefined : fs.readFileBuffer(indexPath);
 
   lines[start + box] = lines[start + box]!.replace('- [ ]', '- [x]');
-  fs.writeFile(plan, lines.join('\n'));
+  const ticked = lines.join('\n');
+
+  if (tracked !== undefined) fs.writeFile(plan, ticked);
+
+  let committed = false;
+
+  try {
+    // Incidental paths are staged too, and only when the tree actually moved them: a tsconfig
+    // tolerated by the scope check but left out of the commit would turn the next iteration red
+    // on a file missing from the repository — a deferred failure in place of an honest halt.
+    const staged = [...paths, ...incidental, ...(tracked === undefined ? [] : [tracked])].filter((path) => fs.exists(path) || changed.has(path));
+    const add = git('add', '--', ...staged);
+
+    if (add.status !== 0) {
+      halt(`Staging failed for iteration ${iteration}.`, `${add.stderr}\n\nDeclared: ${paths.join(' ')}`);
+    }
+
+    const commit = git('commit', '-m', declared.get('commit_msg') ?? '');
+
+    if (commit.status !== 0) {
+      halt(
+        `The commit failed for iteration ${iteration}.`,
+        `${commit.stdout}${commit.stderr}\n\nThe plan was left unticked, so the iteration can be retried once the cause is fixed.`,
+      );
+    }
+
+    committed = true;
+
+    if (tracked === undefined) fs.writeFile(plan, ticked);
+  } finally {
+    if (!committed && tracked !== undefined) {
+      fs.writeFile(plan, source);
+
+      if (indexPath !== undefined && index !== undefined) fs.writeFile(indexPath, index);
+    }
+  }
 
   return `OK: iteration ${iteration} committed and ticked.\n`;
 };

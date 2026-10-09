@@ -113,7 +113,7 @@ goal-run-preflight.test.ts	a preflight refusal exits exactly 2
 goal-run-preflight.test.ts	it refuses when .claude/goal-runs is visible to git, naming the directory and the gitignore line, before the clean-tree check
 goal-run-preflight.test.ts	it is valid on a first run, before .claude/goal-runs ever exists
 goal-run-preflight.test.ts	it refuses when the tree carries uncommitted work
-goal-run-preflight.test.ts	it refuses when the plan's own directory is visible to git
+goal-run-preflight.test.ts	it accepts a clean tracked plan without requiring its directory to be ignored
 goal-run-preflight.test.ts	it refuses a cleanup iteration (a Trigger line) sitting inside a feature plan
 goal-run-preflight.test.ts	a Trigger line is left alone in a *-cleanup-spec.md plan
 goal-run-preflight.test.ts	it refuses when another run already holds the plan

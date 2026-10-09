@@ -7,7 +7,7 @@ import { determinismCheck, runGates } from './commands.ts';
 import { regressionWall, resolvabilityCheck } from './cross-iteration.ts';
 import { unwrap, type Say } from './halt.ts';
 import { blockOf, declaredPaths, incidentalPaths, lockedHash, readPlan } from './plan.ts';
-import { scopeCheck } from './scope.ts';
+import { protectPlan, scopeCheck } from './scope.ts';
 import { tickedSet } from './ticked.ts';
 
 export const check = (plan: string, iteration: string, locked?: string): string => {
@@ -22,7 +22,8 @@ export const check = (plan: string, iteration: string, locked?: string): string 
 // The order is the contract: everything cheap and mechanical runs before any command is spawned,
 // so a slice that already broke its budget does not spend the wall-clock of a suite it will halt
 // on anyway; the bite check runs last because it is the only one that touches the tree.
-export const verify = (source: string, iteration: string, declared: Map<string, string>, say: Say) => {
+export const verify = (source: string, iteration: string, declared: Map<string, string>, say: Say, plan: string) => {
+  protectPlan(plan, source);
   const paths = declaredPaths(declared);
   const incidental = incidentalPaths(source);
   const changed = unwrap(scopeCheck(paths, iteration, incidental));
@@ -39,6 +40,8 @@ export const verify = (source: string, iteration: string, declared: Map<string, 
   unwrap(determinismCheck(declared, iteration));
   unwrap(regressionWall(source, iteration, declared));
   biteCheck(declared, iteration, changed, say);
+
+  protectPlan(plan, source);
 
   return { paths, incidental, changed, passed };
 };

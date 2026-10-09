@@ -115,18 +115,14 @@ test('it refuses when the tree carries uncommitted work', () => {
   assert.ok(!existsSync(fixture.claudeLog), 'an implementer was spawned on a refusal');
 });
 
-test("it refuses when the plan's own directory is visible to git", () => {
+test('it accepts a clean tracked plan without requiring its directory to be ignored', () => {
   const fixture = repo({ trackPlan: true });
 
   const { code, output } = run(fixture, [fixture.plan, '1']);
 
-  assert.notEqual(code, 0);
-  assert.match(
-    output,
-    /STOP the plan's directory is visible to git: .*plans\. Ignore it, untracking any spec already committed\./,
-    output,
-  );
-  assert.ok(!existsSync(fixture.claudeLog), 'an implementer was spawned on a refusal');
+  assert.equal(code, 3, output);
+  assert.match(output, /plan is clean and may be tracked or ignored/);
+  assert.ok(existsSync(fixture.claudeLog), 'no implementer was invoked for a clean tracked plan');
 });
 
 test('it refuses a cleanup iteration (a Trigger line) sitting inside a feature plan', () => {
@@ -458,7 +454,7 @@ test('every preflight check narrates on stdout once it passes', () => {
   assert.match(output, /RUN preflight: Remote is origin/, output);
   assert.match(output, /RUN preflight: branch is feature\/demo/, output);
   assert.match(output, /RUN preflight: the tree is clean/, output);
-  assert.match(output, /RUN preflight: plan directory .*\.claude\/plans is git-ignored/, output);
+  assert.match(output, /RUN preflight: plan is clean and may be tracked or ignored/, output);
   assert.match(output, /RUN preflight: no cleanup iteration inside this feature plan/, output);
   assert.match(output, /RUN preflight: no other run holds the lock/, output);
   assert.match(output, /RUN base sweep: \d+ distinct commands? run, \d+ declared/, output);

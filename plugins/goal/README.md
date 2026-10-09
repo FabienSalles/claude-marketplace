@@ -122,7 +122,7 @@ Exit `0` landed · `1` the gate refused a slice · `2` refused before anything w
 | Item | Needed for | Note |
 |---|---|---|
 | Node 24 | the runner and the gate | Types are stripped at run time, never checked; `npm run verify` runs `tsc --noEmit` and `eslint` (`strict-boolean-expressions`), as CI does, from the checks in `scripts/verify/checks.ts` |
-| Git-ignored plan directory and `<artifact-root>/runs/` (`.goal/runs/` by default) | every run | Preflight currently refuses a plan directory git can see. The run records must be out of git's sight too: the gate would read them as an undeclared scope leak. Ignore the records directory separately so planning-document versioning remains a Git choice |
+| Clean tracked, ignored or external plan and git-ignored `<artifact-root>/runs/` (`.goal/runs/` by default) | every run | A tracked plan receives its gate-generated checkbox update in the same commit as the code. Failed staging or commit restores the plan and index without erasing implementation work. The run records must be out of git's sight too: the gate would read them as an undeclared scope leak. Ignore the records directory separately so planning-document versioning remains a Git choice |
 | `betterleaks` or `gitleaks` | any push | The push is refused, not skipped, when neither is installed |
 | `gh` authenticated | `Policy: commit+pr`, or a GitHub source | `gh auth login` |
 | Atlassian MCP | a Jira source | Or paste with `inline` |

@@ -58,11 +58,6 @@ export const goalRunsIgnored = (ignored: boolean, goalRunsDir: string): Result<v
 export const cleanTree = (dirty: string): Result<void, string> =>
   dirty === '' ? ok(undefined) : err(`the tree is not clean:\n${dirty}`);
 
-export const planDirIgnored = (ignored: boolean, planDir: string): Result<void, string> =>
-  ignored
-    ? ok(undefined)
-    : err(`the plan's directory is visible to git: ${planDir}. Ignore it, untracking any spec already committed.`);
-
 export const noCleanupIteration = (cleanup: boolean, hasTrigger: boolean): Result<void, string> =>
   !cleanup && hasTrigger
     ? err(
