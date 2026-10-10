@@ -8,7 +8,8 @@ import { git } from '../adapters/git.ts';
 import { covers } from '../core/plan.ts';
 import { bounded, spawnOptions } from './bounded.ts';
 import { emitCommand } from './commands.ts';
-import { halt, heldLocks, restorers, type Say } from './halt.ts';
+import { halt, HaltError, heldLocks, restorers, type Say } from './halt.ts';
+import type { Services } from './services.ts';
 
 export const gitDir = (): string => {
   const dir = git('rev-parse', '--absolute-git-dir');
@@ -50,7 +51,7 @@ export const fingerprint = (paths: string[]): string => {
 // the tree back by overwrite. gate1 alone is bitten: R2 makes it the one mandatory command, so
 // it is the acceptance criterion by construction, where gate2..N are supporting lints that pass
 // with or without the implementation.
-export const biteCheck = (declared: Map<string, string>, iteration: string, changed: Set<string>, say: Say): void => {
+export const biteCheck = (declared: Map<string, string>, iteration: string, changed: Set<string>, say: Say, services?: Services): void => {
   if ((declared.get('test_files') ?? '') === '') {
     say(`SKIP: iteration ${iteration} declares no test_files, so there is nothing to set aside.\n`);
 
@@ -111,7 +112,17 @@ export const biteCheck = (declared: Map<string, string>, iteration: string, chan
 
   const command = declared.get('gate1') ?? '';
   const start = clock.now();
-  const run = runner.run(bounded(command), [], spawnOptions());
+  let refusal: HaltError | undefined;
+
+  try {
+    services?.before('bite');
+  } catch (error) {
+    if (!(error instanceof HaltError)) throw error;
+
+    refusal = error;
+  }
+
+  const run = refusal === undefined ? runner.run(bounded(command), [], spawnOptions()) : { status: 1 };
 
   emitCommand('bite', command, clock.now() - start, run.status);
 
@@ -125,12 +136,21 @@ export const biteCheck = (declared: Map<string, string>, iteration: string, chan
     );
   }
 
+  if (refusal !== undefined) {
+    halt(
+      `Iteration ${iteration} has an unproven bite: a declared service cannot start without its implementation.`,
+      `${refusal.reason}\n${refusal.detail}\n\nThe tree was restored. A gate1 that cannot run proves nothing about this slice; let the service start without ${declared.get('impl_files')} so gate1 can fail on its assertions.`,
+    );
+  }
+
   if (run.status === 0) {
     halt(
       `Iteration ${iteration}'s tests pass without its implementation.`,
       `Command: ${declared.get('gate1')}\nSet aside: ${aside.length > 0 ? aside.join(' ') : '(nothing — impl_files declares no changed path)'}\n\nThe acceptance command exited 0 with the implementation out of the tree, so it asserts nothing this slice built. The tree was restored; rewrite the test until it fails without ${declared.get('impl_files')}.`,
     );
   }
+
+  services?.before('restore');
 
   say(`OK: gate1 fails without iteration ${iteration}'s implementation.\n`);
 };

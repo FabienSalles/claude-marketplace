@@ -23,7 +23,7 @@ export type Plan = {
   readonly deliveryMode: DeliveryMode;
 };
 
-const ALLOWED_KEY = /^(test_files|impl_files|max_diff|commit_msg|gate[1-9][0-9]*)$/;
+const ALLOWED_KEY = /^(test_files|impl_files|max_diff|commit_msg|gate[1-9][0-9]*|service[1-9][0-9]*(_ready|_paths)?)$/;
 const REQUIRED_KEYS = ['gate1', 'impl_files', 'commit_msg'] as const;
 
 const split = (value: string | undefined): string[] =>
@@ -38,7 +38,19 @@ const legalKeys = (declared: ReadonlyMap<string, string>, iteration: string): Ha
   if (forbidden.length > 0) {
     return halt(
       `Iteration ${iteration} declares a key it may not set.`,
-      `Refused: ${forbidden.join(' ')}\n\nAn iteration gate block sets only test_files, impl_files, max_diff, commit_msg and gate1..N. Any other key either belongs to the run rather than the slice — the plan hash, the global DoD, whether anything ships — or is not a key at all. A slice that could set them would be rewriting the terms it is judged by.`,
+      `Refused: ${forbidden.join(' ')}\n\nAn iteration gate block sets only test_files, impl_files, max_diff, commit_msg, gate1..N and service1..N (with service1_ready.. and service1_paths..). Any other key either belongs to the run rather than the slice — the plan hash, the global DoD, whether anything ships — or is not a key at all. A slice that could set them would be rewriting the terms it is judged by.`,
+    );
+  }
+
+  const unpaired = [...declared.keys()]
+    .filter((key) => /^service[1-9][0-9]*(_ready|_paths)?$/.test(key))
+    .map((key) => key.replace(/_(ready|paths)$/, ''))
+    .filter((service) => (declared.get(service) ?? '') === '' || (declared.get(`${service}_ready`) ?? '') === '');
+
+  if (unpaired.length > 0) {
+    return halt(
+      `Iteration ${iteration} declares a service the gate cannot run.`,
+      `Incomplete: ${[...new Set(unpaired)].join(' ')}\n\nA service needs both its command (serviceN) and the command that proves it ready (serviceN_ready); serviceN_paths alone, or without them, names nothing to start. A gate that started a service it could not wait for would run its first command against a server that is not listening yet.`,
     );
   }
 

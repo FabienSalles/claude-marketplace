@@ -118,3 +118,35 @@ test('a secret named only on the Incidental header is refused too', () => {
   assert.equal(result.ok, false);
   assert.match(result.error.reason, /must never be committed/);
 });
+
+// R6 — a service is declared by service<N> with its service<N>_ready, and optionally service<N>_paths
+test('a gate block declaring a service with its readiness and paths builds a Plan', () => {
+  const declared = new Map(VALID);
+  declared.set('service1', 'node server.js');
+  declared.set('service1_ready', 'curl -sf localhost:3000');
+  declared.set('service1_paths', 'src/');
+
+  assert.equal(makePlan('1', declared).ok, true);
+});
+
+test('a service without a readiness command is refused', () => {
+  const declared = new Map(VALID);
+  declared.set('service1', 'node server.js');
+
+  const result = makePlan('1', declared);
+
+  assert.equal(result.ok, false);
+  assert.match(result.error.detail, /service1/);
+});
+
+for (const orphan of ['service2_ready', 'service2_paths']) {
+  test(`${orphan} without its service is refused`, () => {
+    const declared = new Map(VALID);
+    declared.set(orphan, 'true');
+
+    const result = makePlan('1', declared);
+
+    assert.equal(result.ok, false);
+    assert.match(result.error.detail, /service2/);
+  });
+}
