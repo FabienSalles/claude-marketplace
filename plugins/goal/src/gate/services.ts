@@ -12,7 +12,7 @@ import { stopGroup } from './group-run.ts';
 import { halt, restorers } from './halt.ts';
 
 const LOG_TAIL = 4000;
-const READY_POLL_SECONDS = 0.2;
+const READY_POLL_SECONDS = 0.05;
 
 type Service = {
   key: string;

@@ -59,8 +59,10 @@ describe('declared services', { concurrency: true }, () => {
     const { repo, plan } = fixture([
       `service1=echo one >> ${state}/order; echo $$ > ${state}/pid1; exec tail -f /dev/null`,
       `service1_ready=test -f ${state}/ready1 || { touch ${state}/ready1; false; }`,
+      'service1_paths=src/other.txt',
       `service2=echo two >> ${state}/order; echo $$ > ${state}/pid2; touch ${state}/ready2; exec tail -f /dev/null`,
       `service2_ready=test -f ${state}/ready2`,
+      'service2_paths=src/other.txt',
       `gate1=${BITING} && test -f ${state}/ready1 && test -f ${state}/ready2`,
     ]);
 
@@ -77,6 +79,7 @@ describe('declared services', { concurrency: true }, () => {
     const { repo, plan } = fixture([
       `service1=echo $$ > ${state}/pid1; touch ${state}/ready1; exec tail -f /dev/null`,
       `service1_ready=test -f ${state}/ready1`,
+      'service1_paths=src/other.txt',
       'gate1=false',
     ]);
 
@@ -110,6 +113,7 @@ describe('declared services', { concurrency: true }, () => {
     const { repo, plan } = fixture([
       `service1=echo $$ > ${state}/pid1; touch ${state}/ready1; echo last-words; exec tail -f /dev/null`,
       `service1_ready=test -f ${state}/ready1`,
+      'service1_paths=src/other.txt',
       `gate1=${BITING}; pid=$(cat ${state}/pid1); kill $pid; while ps -o stat= -p $pid | grep -qv Z; do :; done`,
       `gate2=touch ${state}/ran2`,
     ]);
