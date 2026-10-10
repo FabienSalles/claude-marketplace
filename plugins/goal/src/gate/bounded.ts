@@ -85,9 +85,9 @@ const GROUP_RUN = fileURLToPath(new URL('./group-run.ts', import.meta.url));
 const quoted = (text: string): string => `'${text.replaceAll("'", "'\\''")}'`;
 
 export const bounded = (command: string, limit: string = ceiling()): string =>
-  [process.execPath, GROUP_RUN, String(settingValue('GOAL_CMD_TIMEOUT', process.env)), withCeiling(command, limit)]
+  `exec ${[process.execPath, GROUP_RUN, String(settingValue('GOAL_CMD_TIMEOUT', process.env)), withCeiling(command, limit)]
     .map(quoted)
-    .join(' ');
+    .join(' ')}`;
 
 // A run's state reaches its gate through GOAL_RUN_* environment — the JSONL path today, the
 // ticked set until it moved to argv. None of it is addressed to the commands the gate runs: the
