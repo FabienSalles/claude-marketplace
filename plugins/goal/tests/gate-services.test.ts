@@ -1,6 +1,6 @@
-import { test } from 'node:test';
+import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
+import { execFile, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
@@ -36,15 +36,15 @@ const fixture = (gateLines: string[]): { repo: string; plan: string } => {
   return { repo, plan };
 };
 
-const runGate = (repo: string, plan: string): { code: number; output: string } => {
-  const run = spawnSync('node', [GATE, 'verify', plan, '1'], {
-    cwd: repo,
-    encoding: 'utf8',
-    env: { ...process.env, GOAL_CMD_TIMEOUT: '3' },
+const runGate = (repo: string, plan: string, timeout = '3'): Promise<{ code: number; output: string }> =>
+  new Promise((done) => {
+    execFile(
+      'node',
+      [GATE, 'verify', plan, '1'],
+      { cwd: repo, encoding: 'utf8', env: { ...process.env, GOAL_CMD_TIMEOUT: timeout } },
+      (error, stdout, stderr) => done({ code: error === null ? 0 : Number(error.code ?? -1), output: `${stdout}${stderr}` }),
+    );
   });
-
-  return { code: run.status ?? -1, output: `${run.stdout}${run.stderr}` };
-};
 
 const alive = (pidFile: string): boolean => {
   try {
@@ -56,116 +56,118 @@ const alive = (pidFile: string): boolean => {
   }
 };
 
-// R6, R7, R12 — services start in order, ready before the first gate, and are gone once the pass ends
-test('declared services start in order, are ready before gate1, and are stopped when the pass ends', () => {
-  const state = tmpDir('goal-gate-services-state-');
-  const { repo, plan } = fixture([
-    `service1=echo one >> ${state}/order; echo $$ > ${state}/pid1; exec tail -f /dev/null`,
-    `service1_ready=test -f ${state}/ready1 || { touch ${state}/ready1; false; }`,
-    `service2=echo two >> ${state}/order; echo $$ > ${state}/pid2; touch ${state}/ready2; exec tail -f /dev/null`,
-    `service2_ready=test -f ${state}/ready2`,
-    `gate1=${BITING} && test -f ${state}/ready1 && test -f ${state}/ready2`,
-  ]);
+describe('declared services', { concurrency: true }, () => {
+  // R6, R7, R12 — services start in order, ready before the first gate, and are gone once the pass ends
+  test('declared services start in order, are ready before gate1, and are stopped when the pass ends', async () => {
+    const state = tmpDir('goal-gate-services-state-');
+    const { repo, plan } = fixture([
+      `service1=echo one >> ${state}/order; echo $$ > ${state}/pid1; exec tail -f /dev/null`,
+      `service1_ready=test -f ${state}/ready1 || { touch ${state}/ready1; false; }`,
+      `service2=echo two >> ${state}/order; echo $$ > ${state}/pid2; touch ${state}/ready2; exec tail -f /dev/null`,
+      `service2_ready=test -f ${state}/ready2`,
+      `gate1=${BITING} && test -f ${state}/ready1 && test -f ${state}/ready2`,
+    ]);
 
-  const { code, output } = runGate(repo, plan);
+    const { code, output } = await runGate(repo, plan);
 
-  assert.equal(code, 0, output);
-  assert.equal(readFileSync(join(state, 'order'), 'utf8').split('\n').slice(0, 2).join(), 'one,two');
-  assert.equal(alive(join(state, 'pid1')), false);
-  assert.equal(alive(join(state, 'pid2')), false);
-});
+    assert.equal(code, 0, output);
+    assert.equal(readFileSync(join(state, 'order'), 'utf8').split('\n').slice(0, 2).join(), 'one,two');
+    assert.equal(alive(join(state, 'pid1')), false);
+    assert.equal(alive(join(state, 'pid2')), false);
+  });
 
-test('a service is stopped when the iteration is refused', () => {
-  const state = tmpDir('goal-gate-services-state-');
-  const { repo, plan } = fixture([
-    `service1=echo $$ > ${state}/pid1; touch ${state}/ready1; exec tail -f /dev/null`,
-    `service1_ready=test -f ${state}/ready1`,
-    'gate1=false',
-  ]);
+  test('a service is stopped when the iteration is refused', async () => {
+    const state = tmpDir('goal-gate-services-state-');
+    const { repo, plan } = fixture([
+      `service1=echo $$ > ${state}/pid1; touch ${state}/ready1; exec tail -f /dev/null`,
+      `service1_ready=test -f ${state}/ready1`,
+      'gate1=false',
+    ]);
 
-  const { code, output } = runGate(repo, plan);
+    const { code, output } = await runGate(repo, plan);
 
-  assert.equal(code, 1, output);
-  assert.equal(alive(join(state, 'pid1')), false);
-});
+    assert.equal(code, 1, output);
+    assert.equal(alive(join(state, 'pid1')), false);
+  });
 
-// R8 — never ready
-test('a service that never gets ready refuses the iteration with its log, before any gate', () => {
-  const state = tmpDir('goal-gate-services-state-');
-  const { repo, plan } = fixture([
-    'service1=echo booting-forever; exec tail -f /dev/null',
-    'service1_ready=false',
-    `gate1=touch ${state}/ran; true`,
-  ]);
+  // R8 — never ready
+  test('a service that never gets ready refuses the iteration with its log, before any gate', async () => {
+    const state = tmpDir('goal-gate-services-state-');
+    const { repo, plan } = fixture([
+      'service1=echo booting-forever; exec tail -f /dev/null',
+      'service1_ready=false',
+      `gate1=touch ${state}/ran; true`,
+    ]);
 
-  const { code, output } = runGate(repo, plan);
+    const { code, output } = await runGate(repo, plan, '1');
 
-  assert.equal(code, 1, output);
-  assert.match(output, /service1/);
-  assert.match(output, /never ready/);
-  assert.match(output, /booting-forever/);
-  assert.equal(existsSync(join(state, 'ran')), false);
-});
+    assert.equal(code, 1, output);
+    assert.match(output, /service1/);
+    assert.match(output, /never ready/);
+    assert.match(output, /booting-forever/);
+    assert.equal(existsSync(join(state, 'ran')), false);
+  });
 
-// R8 — died
-test('a service that dies during a gate refuses the iteration, names that gate, and skips the rest', () => {
-  const state = tmpDir('goal-gate-services-state-');
-  const { repo, plan } = fixture([
-    `service1=echo $$ > ${state}/pid1; touch ${state}/ready1; echo last-words; exec tail -f /dev/null`,
-    `service1_ready=test -f ${state}/ready1`,
-    `gate1=${BITING}; pid=$(cat ${state}/pid1); kill $pid; while ps -o stat= -p $pid | grep -qv Z; do :; done`,
-    `gate2=touch ${state}/ran2`,
-  ]);
+  // R8 — died
+  test('a service that dies during a gate refuses the iteration, names that gate, and skips the rest', async () => {
+    const state = tmpDir('goal-gate-services-state-');
+    const { repo, plan } = fixture([
+      `service1=echo $$ > ${state}/pid1; touch ${state}/ready1; echo last-words; exec tail -f /dev/null`,
+      `service1_ready=test -f ${state}/ready1`,
+      `gate1=${BITING}; pid=$(cat ${state}/pid1); kill $pid; while ps -o stat= -p $pid | grep -qv Z; do :; done`,
+      `gate2=touch ${state}/ran2`,
+    ]);
 
-  const { code, output } = runGate(repo, plan);
+    const { code, output } = await runGate(repo, plan);
 
-  assert.equal(code, 1, output);
-  assert.match(output, /service1/);
-  assert.match(output, /died/);
-  assert.match(output, /gate1/);
-  assert.match(output, /last-words/);
-  assert.equal(existsSync(join(state, 'ran2')), false);
-});
+    assert.equal(code, 1, output);
+    assert.match(output, /service1/);
+    assert.match(output, /died/);
+    assert.match(output, /gate1/);
+    assert.match(output, /last-words/);
+    assert.equal(existsSync(join(state, 'ran2')), false);
+  });
 
-// R9 — restart follows the judged tree
-test('a service restarts when its paths changed, when it has none, and keeps running otherwise', () => {
-  const state = tmpDir('goal-gate-services-state-');
-  const start = (name: string): string => `echo x >> ${state}/${name}; rm -f ${state}/${name}.ready; touch ${state}/${name}.ready; exec tail -f /dev/null`;
-  const { repo, plan } = fixture(
-    [
-      `service1=${start('changed')}`,
-      `service1_ready=test -f ${state}/changed.ready`,
+  // R9 — restart follows the judged tree
+  test('a service restarts when its paths changed, when it has none, and keeps running otherwise', async () => {
+    const state = tmpDir('goal-gate-services-state-');
+    const start = (name: string): string => `echo x >> ${state}/${name}; rm -f ${state}/${name}.ready; touch ${state}/${name}.ready; exec tail -f /dev/null`;
+    const { repo, plan } = fixture(
+      [
+        `service1=${start('changed')}`,
+        `service1_ready=test -f ${state}/changed.ready`,
+        'service1_paths=src/a.ts',
+        `service2=${start('untouched')}`,
+        `service2_ready=test -f ${state}/untouched.ready`,
+        'service2_paths=src/other.txt',
+        `service3=${start('nopaths')}`,
+        `service3_ready=test -f ${state}/nopaths.ready`,
+        `gate1=${BITING}`,
+        'gate2=echo "// edited" >> src/a.ts',
+        `gate3=test $(wc -l < ${state}/changed) = 2 && test $(wc -l < ${state}/untouched) = 1 && test $(wc -l < ${state}/nopaths) = 3`,
+      ],
+    );
+
+    const { code, output } = await runGate(repo, plan);
+
+    assert.equal(code, 0, output);
+  });
+
+  // R10 — a service that cannot start without the implementation proves no bite
+  test('a service that cannot start without the implementation is refused as an unproven bite', async () => {
+    const state = tmpDir('goal-gate-services-state-');
+    const { repo, plan } = fixture([
+      `service1=rm -f ${state}/ready1; ${BITING} || exit 1; touch ${state}/ready1; exec tail -f /dev/null`,
+      `service1_ready=test -f ${state}/ready1`,
       'service1_paths=src/a.ts',
-      `service2=${start('untouched')}`,
-      `service2_ready=test -f ${state}/untouched.ready`,
-      'service2_paths=src/other.txt',
-      `service3=${start('nopaths')}`,
-      `service3_ready=test -f ${state}/nopaths.ready`,
       `gate1=${BITING}`,
-      'gate2=echo "// edited" >> src/a.ts',
-      `gate3=test $(wc -l < ${state}/changed) = 2 && test $(wc -l < ${state}/untouched) = 1 && test $(wc -l < ${state}/nopaths) = 3`,
-    ],
-  );
+    ]);
 
-  const { code, output } = runGate(repo, plan);
+    const { code, output } = await runGate(repo, plan);
 
-  assert.equal(code, 0, output);
-});
-
-// R10 — a service that cannot start without the implementation proves no bite
-test('a service that cannot start without the implementation is refused as an unproven bite', () => {
-  const state = tmpDir('goal-gate-services-state-');
-  const { repo, plan } = fixture([
-    `service1=rm -f ${state}/ready1; ${BITING} || exit 1; touch ${state}/ready1; exec tail -f /dev/null`,
-    `service1_ready=test -f ${state}/ready1`,
-    'service1_paths=src/a.ts',
-    `gate1=${BITING}`,
-  ]);
-
-  const { code, output } = runGate(repo, plan);
-
-  assert.equal(code, 1, output);
-  assert.match(output, /unproven bite/);
-  assert.match(output, /service1/);
-  assert.equal(readFileSync(join(repo, 'src', 'a.ts'), 'utf8'), 'export const a = 2;\n');
+    assert.equal(code, 1, output);
+    assert.match(output, /unproven bite/);
+    assert.match(output, /service1/);
+    assert.equal(readFileSync(join(repo, 'src', 'a.ts'), 'utf8'), 'export const a = 2;\n');
+  });
 });
