@@ -22,11 +22,14 @@ fi
 if echo "$COMMAND" | grep -qiE 'Co-Authored-By:[[:space:]]*(Claude|ChatGPT|GPT-?[0-9]|Codex|Copilot|Cursor|Anthropic|OpenAI|Gemini)'; then
     cat << 'EOF'
 {
-  "decision": "block",
-  "reason": "Co-Authored-By trailer for an AI assistant is forbidden in this user's commits.\n\nFix: rewrite the commit message to drop the `Co-Authored-By: …` line entirely (and its preceding blank line). Do NOT replace it with a `Generated-By:`, `Assistant:`, or any equivalent — the trailer must be removed, not renamed.\n\nThen retry the same `git commit` command without that line."
+  "hookSpecificOutput": {
+    "hookEventName": "PreToolUse",
+    "permissionDecision": "deny",
+    "permissionDecisionReason": "Co-Authored-By trailer for an AI assistant is forbidden in this user's commits.\n\nFix: rewrite the commit message to drop the `Co-Authored-By: …` line entirely (and its preceding blank line). Do NOT replace it with a `Generated-By:`, `Assistant:`, or any equivalent — the trailer must be removed, not renamed.\n\nThen retry the same `git commit` command without that line."
+  }
 }
 EOF
-    exit 2
+    exit 0
 fi
 
 exit 0

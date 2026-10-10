@@ -26,10 +26,11 @@ expect_silent() {
 }
 
 expect_blocked() {
-  expect_status 2
+  expect_status 0
   expect_stderr_empty
-  expect_stdout_json '.decision == "block"'
-  expect_stdout_json --arg text "$STALE_REFS" '.reason | contains($text)'
+  expect_stdout_json '.hookSpecificOutput.hookEventName == "PreToolUse"'
+  expect_stdout_json '.hookSpecificOutput.permissionDecision == "deny"'
+  expect_stdout_json --arg text "$STALE_REFS" '.hookSpecificOutput.permissionDecisionReason | contains($text)'
 }
 
 a_repository_with_a_remote() {

@@ -63,8 +63,11 @@ fi
 
 cat << 'EOF'
 {
-  "decision": "block",
-  "reason": "Refs de suivi périmées (pas de `git fetch` récent). Avant de raisonner sur l'état distant ou de pousser : `git fetch --prune`, puis relance la commande. Échappatoires : aucun remote configuré, un fetch de moins de 10 min, ou un `git fetch` enchaîné avec `&&` avant la création de branche dans la même commande (`git fetch --prune && git checkout -b ma-branche`). Un `;` ne suffit pas : il laisse passer un fetch en échec."
+  "hookSpecificOutput": {
+    "hookEventName": "PreToolUse",
+    "permissionDecision": "deny",
+    "permissionDecisionReason": "Refs de suivi périmées (pas de `git fetch` récent). Avant de raisonner sur l'état distant ou de pousser : `git fetch --prune`, puis relance la commande. Échappatoires : aucun remote configuré, un fetch de moins de 10 min, ou un `git fetch` enchaîné avec `&&` avant la création de branche dans la même commande (`git fetch --prune && git checkout -b ma-branche`). Un `;` ne suffit pas : il laisse passer un fetch en échec."
+  }
 }
 EOF
-exit 2
+exit 0
