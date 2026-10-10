@@ -1,5 +1,10 @@
 # Loops: what each kind is for
 
+`<runs>` denotes the absolute runs directory from the [shared artifact resolver](../README.md).
+Sessions use the same resolver for `<plans>`; identifier misses ask for a full path.
+Explicit old plans remain in place; new associated documents use the current plans root
+and reference their source plan. Historical records require an absolute `--runs-path`.
+
 Several unrelated things get called "the loop", and conflating them produces designs that
 cannot work. The distinction that decides everything is **where a loop runs**, because that is
 what fixes whether it can wait: a process can sleep, a session has to be woken, a scheduler
@@ -102,7 +107,7 @@ by their own tests, and by nothing else.
 The evidence it classifies from is written. `skills/supervise/SKILL.md` says to read the gate's own
 `HALT` block back from the run log, and on a gate refusal `run/iteration.ts` passes
 `verdict.stdout` and `verdict.stderr`, concatenated, to `reporter.record()`, which appends them
-to the run's own log, `.claude/goal-runs/<work-id>/<run-id>/.run.log` (`run/report.ts#record`).
+to the run's own log, `<runs>/<work-id>/<run-id>/.run.log` (`run/report.ts#record`).
 `tests/goal-run-halt-log.test.ts` asserts the block
 reaches the log even when the gate splits it across both streams. **What is untested is the
 classification itself, not its input.**

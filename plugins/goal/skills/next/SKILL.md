@@ -27,13 +27,50 @@ You do **not** write production code, and you **cannot** clear the context or la
 final act is to print the next `/goal` prompt for the developer to paste in a fresh
 session.
 
+## Project artifact root
+
+Before resolving the source, run the existing resolver from the installed goal plugin:
+
+```bash
+project="$(git rev-parse --show-toplevel)"
+node "${CLAUDE_PLUGIN_ROOT}/src/artifacts.ts" "$project"
+```
+
+Use the returned absolute `root`, `plans` and `runs` as `<artifact-root>`, `<plans>`
+and `<runs>` in every destination and handoff. Stop on resolver errors. The priority
+is process/container `GOAL_ROOT_PATH`, project-root `.env.local`, project-root `.env`,
+then `.goal/` only on absence. Relative values resolve from the Git project root;
+absolute values and spaces remain intact. Never read unrelated environment values.
+
+Use the effective value without asking for a location. If no value is supplied,
+use the returned default; location selection belongs to `/goal:spec`.
+
+Discover identifiers only in `<plans>`. On a miss, ask for the full path and wait;
+never search an old provider directory or fetch a substitute source. Explicit paths
+select exactly that file; missing or unreadable files fail clearly. Existing selected
+plans stay in place and are updated there. New associated documents go in `<plans>`
+and include `Source plan: <absolute selected plan path>`. Preserve every command and
+path embedded in locked plans; never migrate artifacts or rewrite historical documents.
+Old history requires `--runs-path <absolute work-id history directory>`.
+
+Git ignore rules determine planning-document versioning. Tracked, ignored and external
+plans are supported; a tracked plan must be clean at launch and the gate owns its ticks.
+Before launching, prepare exact exclusions in project `.gitignore` for the resolved
+in-repository `<runs>/` and the selected `<plan>.run.lock/` and `<plan>.tick.lock/`.
+Do not ignore the whole artifact root or require plans to be ignored. External paths
+need no repository exclusion. Write project-relative, root-anchored ignore entries,
+escaping Git pattern characters so the exclusions name only those exact paths.
+Never write `.git/info/exclude`.
+
 ## Resolve the plan
 
 Plan: `$ARGUMENTS`
-- A path → use it.
-- Empty → find it: the `.claude/plans/*-spec.md` most recently modified, or the one
+- A full path → use exactly it; fail clearly if missing or unreadable.
+- An identifier → look only for `<plans>/<work-id>-spec.md`; on a miss ask for
+  the full path and wait. Never substitute a plan from another directory.
+- Empty → find it: the `<plans>/*-spec.md` most recently modified, or the one
   referenced by the active goal. Ambiguous (several candidates) → list them and ASK.
-  None → STOP: _"No plan found — run `/goal:plan` first."_
+  None → ask for the full path and wait.
 
 Read the plan and locate:
 - **the finished iteration** = the last `[x]` before the first `[ ]`.
@@ -128,8 +165,8 @@ safe depends on the commit policy, and in **manual** mode staging is the
   ```
   Confirm nothing is lost (every piece of the iteration's work is present on disk —
   staged or not), then **list plainly what remains for the developer to review and
-  stage manually**. `.claude/plans/` is gitignored, so the plan file stays on disk — that is
-  fine, it is durable there.
+  stage manually**. The selected plan stays at its original path; Git ignore rules determine
+  whether it is tracked. Do not stage its update in manual mode.
   - If a prior step (or you) already staged something in manual mode, follow `git:git`
     §I (Manual mode (index)) — it is the sole owner of what may and may not touch the
     index here.

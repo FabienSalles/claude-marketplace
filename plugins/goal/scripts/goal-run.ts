@@ -14,6 +14,8 @@
 
 import { resolve } from 'node:path';
 
+import { resolveArtifacts } from '../src/artifacts.ts';
+
 import { fs } from '../src/adapters/fs.ts';
 import { rootCatch } from '../src/gate/halt.ts';
 import { createReporter, runDir, type Reporter } from '../src/run/report.ts';
@@ -61,7 +63,11 @@ const main = async (): Promise<void> => {
     reporter.stop(`iteration ${iteration} is already ticked in ${plan}, so nothing was attempted`, REFUSED);
   }
 
-  const dir = runDir(workIdOf(plan, source));
+  const artifacts = resolveArtifacts(process.cwd(), process.env);
+
+  if (!artifacts.ok) reporter.stop(artifacts.error, REFUSED);
+
+  const dir = runDir(artifacts.value.runs, workIdOf(plan, source));
   reporter.setLog(dir);
   reporter.say(`RUN writing this run's records to ${dir}`);
   const resolved: Record<string, string> = { GOAL_RUN_SETTINGS_PATH: defaultSettingsPath(), GOAL_RUN_PROJECTS_ROOT: defaultProjectsRoot() };
@@ -83,7 +89,7 @@ const main = async (): Promise<void> => {
   const agents = claudeAgentSessions();
 
   const preflightStart = Date.now();
-  const { policy, remote } = preflight(plan, source, reporter, gateLabel, agents);
+  const { policy, remote } = preflight(plan, source, reporter, gateLabel, agents, artifacts.value.runs);
   reporter.say(`RUN stage=preflight duration_ms=${Date.now() - preflightStart} exit=0`);
 
   const iterations = iteration !== undefined ? [iteration] : iterationNumbers(source, false);

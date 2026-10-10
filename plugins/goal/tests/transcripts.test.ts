@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { join, resolve } from 'node:path';
 
@@ -38,7 +38,7 @@ test('runTranscripts returns every transcript under the project dir that names t
   writeFileSync(join(dir, 'lens.jsonl'), 'Refute the iteration(s) 3 of my-plan-spec.md\n');
   writeFileSync(join(dir, 'unrelated.jsonl'), 'Some other session entirely\n');
 
-  const found = runTranscripts('/Users/dev/my-repo', 'my-plan-spec.md', '', root);
+  const found = runTranscripts('/Users/dev/my-repo', 'my-plan-spec.md', '', join('/unused', 'runs'), root);
 
   assert.deepEqual(found.sort(), [join(dir, 'implementer.jsonl'), join(dir, 'lens.jsonl')].sort());
 });
@@ -48,7 +48,7 @@ test('runTranscripts returns every transcript under the project dir that names t
 test('runTranscripts returns nothing when the project dir does not exist', () => {
   const root = projectRoot();
 
-  assert.deepEqual(runTranscripts('/Users/dev/never-ran', 'my-plan-spec.md', '', root), []);
+  assert.deepEqual(runTranscripts('/Users/dev/never-ran', 'my-plan-spec.md', '', join('/unused', 'runs'), root), []);
 });
 
 // R9 — the ids `report.ts` records for the sessions the runner spawned resolve exactly, without
@@ -63,11 +63,11 @@ test('runTranscripts unions the recorded session ids with the content scan, with
   writeFileSync(join(dir, 'implementer.jsonl'), 'Implement iteration 3 of my-plan-spec.md\n');
   writeFileSync(join(dir, 'silent.jsonl'), 'a session that never names the plan\n');
 
-  const runDir = join(repoDir, '.claude', 'goal-runs', 'my-plan', 'run-1');
+  const runDir = join(repoDir, '.goal', 'runs', 'my-plan', 'run-1');
   mkdirSync(runDir, { recursive: true });
   writeFileSync(join(runDir, '.run.session'), 'implementer\nsilent\nvanished\n');
 
-  const found = runTranscripts(repoDir, plan, '', root);
+  const found = runTranscripts(repoDir, plan, '', join(repoDir, '.goal', 'runs'), root);
 
   assert.deepEqual(found.sort(), [join(dir, 'implementer.jsonl'), join(dir, 'silent.jsonl')].sort());
 });
@@ -80,7 +80,7 @@ test('runTranscripts ignores non-jsonl entries even when they name the plan', ()
   mkdirSync(dir, { recursive: true });
   writeFileSync(join(dir, 'notes.txt'), 'my-plan-spec.md\n');
 
-  assert.deepEqual(runTranscripts('/Users/dev/my-repo', 'my-plan-spec.md', '', root), []);
+  assert.deepEqual(runTranscripts('/Users/dev/my-repo', 'my-plan-spec.md', '', join('/unused', 'runs'), root), []);
 });
 
 // #142 — the plan's own Work-id header names its run directory, read from the source the caller
@@ -93,13 +93,13 @@ test('runTranscripts finds the recorded sessions under the run directory the Wor
   mkdirSync(dir, { recursive: true });
   writeFileSync(join(dir, 'implementer.jsonl'), 'a session that never names the plan\n');
 
-  const runDir = join(repoDir, '.claude', 'goal-runs', 'issue-9', 'run-1');
+  const runDir = join(repoDir, '.goal', 'runs', 'issue-9', 'run-1');
   mkdirSync(runDir, { recursive: true });
   writeFileSync(join(runDir, '.run.session'), 'implementer\n');
 
   const source = '# Spec: x\n\n---\nWork-id: issue-9\n---\n\n## Rules\n';
 
-  assert.deepEqual(runTranscripts(repoDir, plan, source, root), [join(dir, 'implementer.jsonl')]);
+  assert.deepEqual(runTranscripts(repoDir, plan, source, join(repoDir, '.goal', 'runs'), root), [join(dir, 'implementer.jsonl')]);
 });
 
 // #142 — a plan the command line cannot read is refused by name, never silently resolved to the
@@ -112,3 +112,49 @@ test('the transcripts command refuses a plan it cannot read', () => {
   assert.match(result.stderr, /plan not readable: .*missing-spec\.md/);
 });
 
+test('default history excludes old records and explicit history selects only the named work-id directory', () => {
+  const root = projectRoot();
+  const cwd = tmpDir('history-project-');
+  const dir = projectDir(cwd, root);
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(join(dir, 'old.jsonl'), 'a session without the plan name\n');
+  writeFileSync(join(dir, 'new.jsonl'), 'another session without the plan name\n');
+  const old = join(cwd, '.claude', 'goal-runs', 'demo');
+  const current = join(cwd, '.goal', 'runs', 'demo');
+  for (const [history, id] of [[old, 'old'], [current, 'new']] as const) {
+    mkdirSync(join(history, 'run-1'), { recursive: true });
+    writeFileSync(join(history, 'run-1', '.run.session'), `${id}\n`);
+  }
+
+  assert.deepEqual(runTranscripts(cwd, 'demo-spec.md', '', join(cwd, '.goal', 'runs'), root), [join(dir, 'new.jsonl')]);
+  assert.deepEqual(runTranscripts(cwd, 'demo-spec.md', '', join(cwd, '.goal', 'runs'), root, old), [join(dir, 'old.jsonl')]);
+  assert.equal(readFileSync(join(old, 'run-1', '.run.session'), 'utf8'), 'old\n');
+});
+
+test('the history CLI refuses missing, relative or file --runs-path values without fallback', () => {
+  const cwd = tmpDir('history-cli-');
+  writeFileSync(join(cwd, 'plan.md'), '# Spec: demo\n');
+  const script = resolve(import.meta.dirname, '..', 'src', 'transcripts.ts');
+
+  for (const path of ['relative', join(cwd, 'missing'), join(cwd, 'plan.md')]) {
+    const result = spawnSync('node', [script, cwd, 'plan.md', '--runs-path', path], { encoding: 'utf8' });
+
+    assert.equal(result.status, 2, result.stderr);
+    assert.ok(result.stderr.includes(path), result.stderr);
+  }
+});
+
+test('the history CLI accepts an absolute directory without consulting the current root', () => {
+  const cwd = tmpDir('history-cli-');
+  writeFileSync(join(cwd, 'plan.md'), '# Spec: demo\n');
+  const history = join(cwd, 'old', 'demo');
+  mkdirSync(history, { recursive: true });
+  const script = resolve(import.meta.dirname, '..', 'src', 'transcripts.ts');
+
+  const result = spawnSync('node', [script, cwd, 'plan.md', '--runs-path', history], {
+    encoding: 'utf8', env: { ...process.env, GOAL_ROOT_PATH: '' },
+  });
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout, '');
+});

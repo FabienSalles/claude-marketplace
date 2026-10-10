@@ -29,11 +29,46 @@ deliveries.
 ```
 (chantier: vision doc / brain dump / initiative brief)
    └─ /goal:tickets ← YOU ARE HERE
-        ├─ ordered backlog written to .claude/plans/<chantier-id>-backlog.md   (always)
+        ├─ ordered backlog written to <plans>/<chantier-id>-backlog.md   (always)
         └─ GitHub milestone + one issue per ticket                             (only if the developer says yes)
              └─ per ticket, at its turn: /goal:spec → /goal:plan → /goal + /goal:next, or /goal:supervise
                   └─ /goal:tickets <backlog>  (reconcile, then arm the next ticket)
 ```
+
+## Project artifact root
+
+Before resolving the source, run the existing resolver from the installed goal plugin:
+
+```bash
+project="$(git rev-parse --show-toplevel)"
+node "${CLAUDE_PLUGIN_ROOT}/src/artifacts.ts" "$project"
+```
+
+Use the returned absolute `root`, `plans` and `runs` as `<artifact-root>`, `<plans>`
+and `<runs>` in every destination and handoff. Stop on resolver errors. The priority
+is process/container `GOAL_ROOT_PATH`, project-root `.env.local`, project-root `.env`,
+then `.goal/` only on absence. Relative values resolve from the Git project root;
+absolute values and spaces remain intact. Never read unrelated environment values.
+
+Use the effective value without asking for a location. If no value is supplied,
+use the returned default; location selection belongs to `/goal:spec`.
+
+Discover identifiers only in `<plans>`. On a miss, ask for the full path and wait;
+never search an old provider directory or fetch a substitute source. Explicit paths
+select exactly that file; missing or unreadable files fail clearly. Existing selected
+plans stay in place and are updated there. New associated documents go in `<plans>`
+and include `Source plan: <absolute selected plan path>`. Preserve every command and
+path embedded in locked plans; never migrate artifacts or rewrite historical documents.
+Old history requires `--runs-path <absolute work-id history directory>`.
+
+Git ignore rules determine planning-document versioning. Tracked, ignored and external
+plans are supported; a tracked plan must be clean at launch and the gate owns its ticks.
+Before launching, prepare exact exclusions in project `.gitignore` for the resolved
+in-repository `<runs>/` and the selected `<plan>.run.lock/` and `<plan>.tick.lock/`.
+Do not ignore the whole artifact root or require plans to be ignored. External paths
+need no repository exclusion. Write project-relative, root-anchored ignore entries,
+escaping Git pattern characters so the exclusions name only those exact paths.
+Never write `.git/info/exclude`.
 
 ## Argument — resolve the chantier
 
@@ -120,7 +155,8 @@ executor-agnostic; the goal pipeline only claims the code-shaped tickets.
 
 ## Phase 4 — Persist the backlog
 
-Always write `.claude/plans/<chantier-id>-backlog.md`:
+Write a new backlog at `<plans>/<chantier-id>-backlog.md`. Reconcile an explicitly
+selected existing backlog in place and use that selected path in its handoff:
 
 ````markdown
 # Backlog: <chantier title>
@@ -186,7 +222,7 @@ the PR is the deliverable.
 Print exactly this shape, the command last, nothing after it:
 
 ```
-✓ Backlog written — .claude/plans/<chantier-id>-backlog.md
+✓ Backlog written — <plans>/<chantier-id>-backlog.md
 ✓ GitHub milestone + <T> issues created — <URL>       (omit this line when local-only)
 
 This backlog has
@@ -200,8 +236,11 @@ It deliberately does NOT have yet
   · no branch, no code, nothing committed, nothing pushed
 
 Next
-    /goal:spec .claude/plans/<chantier-id>-backlog.md
+    /goal:spec <plans>/<chantier-id>-backlog.md
 ```
+
+When reconciling an existing backlog, print and pass its selected full path in the
+handoff above, rather than substituting the current-root destination.
 
 When ticket 1's route is not `/goal:spec`, print that route's own next step
 instead — the backlog names it.
@@ -246,6 +285,6 @@ with the order question asked, never by silently specing ticket 4.
   the backlog says so per ticket rather than forcing everything into the pipeline.
 - **GitHub is opt-in.** Never call `gh` unless the developer said yes in Phase 5.
 - **Nothing is committed, nothing is pushed.** The backlog is durable on disk
-  (`.claude/plans/` is gitignored); the GitHub mirror is the shared view when
+  (versioned according to Git ignore rules); the GitHub mirror is the shared view when
   one is wanted.
 - **The handoff command is the last line you print.**

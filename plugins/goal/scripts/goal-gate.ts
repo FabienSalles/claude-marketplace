@@ -17,7 +17,7 @@ import { biteCheck } from '../src/gate/bite.ts';
 import { checkGateSettings } from '../src/core/settings.ts';
 import { misuse, rootCatch, unwrap, type Say } from '../src/gate/halt.ts';
 import { blockOf, declaredPaths, incidentalPaths, lockedHash, readPlan } from '../src/gate/plan.ts';
-import { commitAndTick, runLock, scopeCheck } from '../src/gate/scope.ts';
+import { commitAndTick, protectPlan, runLock, scopeCheck } from '../src/gate/scope.ts';
 import { dodCheck, secretScan } from '../src/gate/ship.ts';
 import { monotonicityCheck } from '../src/gate/ticked.ts';
 import { check, verify } from '../src/gate/verbs.ts';
@@ -86,6 +86,7 @@ const main = (): void => {
   // by overwrite — the same mechanism `verify` runs last, invocable on demand so an implementer
   // proves RED without paying for the whole pipeline, and without reaching for `git stash`.
   if (subcommand === 'bite') {
+    protectPlan(plan, source);
     const paths = declaredPaths(declared);
     const incidental = incidentalPaths(source);
     const changed = unwrap(scopeCheck(paths, iteration, incidental));
@@ -95,7 +96,7 @@ const main = (): void => {
     return;
   }
 
-  const { paths, incidental, changed, passed } = verify(source, iteration, declared, say);
+  const { paths, incidental, changed, passed } = verify(source, iteration, declared, say, plan);
 
   if (subcommand === 'verify') {
     process.stdout.write(

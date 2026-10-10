@@ -9,7 +9,6 @@ import {
   goalRunsIgnored,
   freeLock,
   metadataDeclared,
-  planDirIgnored,
   runnablePolicy,
   remoteDeclared,
 } from '../src/core/preflight.ts';
@@ -80,16 +79,11 @@ test('featureBranch refuses outside a git repository and off the plan\'s own bra
   assert.equal(featureBranch(true, 'feature/demo-more', CTX.workId).ok, true);
 });
 
-test('goalRunsIgnored and planDirIgnored refuse a directory git can see', () => {
+test('goalRunsIgnored refuses a directory git can see', () => {
   const visible = goalRunsIgnored(false, '.claude/goal-runs');
   assert.equal(visible.ok, false);
   assert.match((visible as { error: string }).error, /\.claude\/goal-runs is visible to git/);
   assert.equal(goalRunsIgnored(true, '.claude/goal-runs').ok, true);
-
-  const planDir = planDirIgnored(false, '.claude/plans');
-  assert.equal(planDir.ok, false);
-  assert.match((planDir as { error: string }).error, /plan's directory is visible to git: \.claude\/plans/);
-  assert.equal(planDirIgnored(true, '.claude/plans').ok, true);
 });
 
 test('cleanTree refuses uncommitted work, carrying the git status', () => {

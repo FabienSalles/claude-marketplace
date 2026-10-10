@@ -65,6 +65,15 @@ signal. One spec for that would freeze guesses about parts nobody has learned an
 
 ## Stage 1 (`/goal:spec`): settle what must become true
 
+Goal sessions use the [shared artifact resolver](../README.md) from the Git project root.
+Only when no effective `GOAL_ROOT_PATH` exists does spec ask for `docs/goal/`, `.goal/`
+or a custom path, then the project environment file to update without changing unrelated
+content. Existing values suppress the question; invalid values fail. New documents use
+the resolved plans directory. Identifier misses require a full path, with no old-directory
+fallback. An explicitly selected old plan stays in place; new associated documents reference
+that source plan under the current root. Git controls plan versioning; only in-repository
+run records and transient locks need exclusions, never the whole root.
+
 1. **Your source is read, and the session refuses to proceed if it never evidenced a real
    problem.** A source that only says "improve X" stops with a question.
    *Why:* an invented problem statement sits at the head of a chain nothing downstream ever
@@ -364,7 +373,9 @@ on anyway.
 
 23. **Only if all of that passed does the judge stage exactly the declared files, commit them under
     the message the slice declared, and tick that slice's checkbox.** All three happen in one
-    process, in that order.
+    process. For a tracked plan, the gate-generated tick is staged with the code before
+    committing; failure restores the plan and prior index state. Ignored and external
+    plans keep the commit-then-tick order.
     *Why:* the checkbox is the entire durable memory of the run, so one tick must mean exactly one
     verified commit. Otherwise a relaunch resumes in the wrong place. Verifying and committing in
     the same process is what stops an orchestrator that misread a result from producing a bad commit.

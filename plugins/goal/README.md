@@ -111,7 +111,7 @@ Then, from the branch the plan locked:
 **Under `commit+pr`**: the whole plan, once.
 
 ```text
-> /goal:supervise .claude/plans/<work-id>-spec.md
+> /goal:supervise <plans>/<work-id>-spec.md
 ```
 
 Exit `0` landed · `1` the gate refused a slice · `2` refused before anything was attempted ·
@@ -122,7 +122,7 @@ Exit `0` landed · `1` the gate refused a slice · `2` refused before anything w
 | Item | Needed for | Note |
 |---|---|---|
 | Node 24 | the runner and the gate | Types are stripped at run time, never checked; `npm run verify` runs `tsc --noEmit` and `eslint` (`strict-boolean-expressions`), as CI does, from the checks in `scripts/verify/checks.ts` |
-| Git-ignored `.claude/plans/` and `.claude/goal-runs/` | every run | Preflight refuses a plan directory git can see. The run records must be out of git's sight too: the gate would read them as an undeclared scope leak. The rest of `.claude/` may stay tracked |
+| Clean tracked, ignored or external plan and git-ignored `<artifact-root>/runs/` (`.goal/runs/` by default) | every run | A tracked plan receives its gate-generated checkbox update in the same commit as the code. Failed staging or commit restores the plan and index without erasing implementation work. The run records must be out of git's sight too: the gate would read them as an undeclared scope leak. Ignore the records directory separately so planning-document versioning remains a Git choice |
 | `betterleaks` or `gitleaks` | any push | The push is refused, not skipped, when neither is installed |
 | `gh` authenticated | `Policy: commit+pr`, or a GitHub source | `gh auth login` |
 | Atlassian MCP | a Jira source | Or paste with `inline` |
@@ -209,10 +209,39 @@ More, including the axes that are entirely empty: [`docs/comparison.md`](docs/co
 | `done-criteria.template` · `goal-handoff.template` · `post-merge.template` | `templates/` | The DoD baseline, the handoff `/goal:next` fills, and the merge-day checklist. Printed, never executed |
 
 The **work-id** generalises the old issue number: `issue-<N>` for a GitHub issue, the lowercased
-key (`ct-1234`) for Jira, a slug for a file or inline source. The plan lives at
-`.claude/plans/<work-id>-spec.md`; a run's records go to
-`.claude/goal-runs/<work-id>/<run-id>/`: `.run.log`, `.run.jsonl`, `.run.session` and the
+key (`ct-1234`) for Jira, a slug for a file or inline source. New plans live at
+`<plans>/<work-id>-spec.md`, using the resolver's absolute `plans` directory; a run's records go to
+`<artifact-root>/runs/<work-id>/<run-id>/`: `.run.log`, `.run.jsonl`, `.run.session` and the
 auditor's `report.md`. Only `<plan>.run.lock` stays beside the plan.
+The artifact root comes from `GOAL_ROOT_PATH`: process/container environment, then the Git
+project root's `.env.local`, then `.env`. Missing files are optional; absence of the variable
+uses `.goal/`. A selected empty value, unreadable required source or unusable destination fails
+instead of falling back. Relative paths resolve from the Git root; absolute paths and spaces
+are supported. Environment-file values are parsed literally, without shell execution or
+variable expansion, and unrelated variables are neither exported nor printed.
+
+The run resolves its paths once at launch. Changing a project file affects the next launch,
+while the active run's records and report links retain their original root. Ignore only the
+in-repository `runs/` directory and transient `*.run.lock/` and `*.tick.lock/` paths in the
+project `.gitignore`; an external root needs no repository exclusion. Do not ignore the whole
+artifact root solely to hide run records.
+
+Existing plans run in place when supplied by their explicit path, without migration. Old run
+records are not consulted by default. Inspect an old work-id history explicitly with
+`node plugins/goal/src/transcripts.ts <cwd> <plan> --runs-path <absolute-work-id-history-directory>`.
+The override selects goal records only; Claude-native transcript storage remains unchanged.
+The shared resolver is also callable as `node plugins/goal/src/artifacts.ts <project-directory>`;
+it prints JSON containing only the project, root, plans, runs, source and supplied status.
+All goal sessions and templates use this resolver. `<plans>` and `<runs>` denote its
+absolute directories. Identifier discovery searches only `<plans>`; a miss asks for a
+full path without searching an old directory. An explicit old plan stays in place;
+new associated documents go in `<plans>` with `Source plan: <absolute selected plan path>`.
+Locked commands and historical documents are never rewritten automatically.
+During `/goal:spec`, `supplied: false` asks for `docs/goal/`, `.goal/` or a custom path,
+then the developer's choice of `.env` or `.env.local`. Update only `GOAL_ROOT_PATH`,
+preserving unrelated content, and pass the chosen value to the resolver for this session.
+An effective process or file value suppresses the question; an invalid value fails.
+Git ignore rules govern both the environment definition and planning-document versioning.
 The plan's `Work-id:` header names the run and the expected branch when present; the file name
 is the fallback only when the header is absent, and a branch refusal names both when they differ.
 
@@ -223,7 +252,6 @@ Every row is a refusal the code can still reach today.
 | Symptom | Cause | Fix |
 |---|---|---|
 | Exit 2, "the base is not green" | a command the plan holds every slice to already fails on the untouched tree | Fix the base. The sweep runs before a byte is written, so nothing needs undoing. The refusal ends with `declared by:` and every swept line that declares the command (`Iteration <n> gate<k>`, `the plan's Definition of Done dod<k>`); when one of them is a `dodN` line, it adds that a final-state check belongs in the `gate1` of the iteration that makes it true |
-| Exit 2, "the plan's directory is visible to git" | `.claude/plans/` is not git-ignored | Ignore that directory, untracking any spec already committed |
 | Exit 2, "Policy is manual" | the runner has nowhere to put the work | That plan is for the manual loop: run it with `/goal` and `/goal:next`, or change the `Policy:` line |
 | Exit 2, "the plan declares no Remote line" | never defaulted to `origin` | Write the remote on the plan. Guessing here pushes a fork's work to its parent |
 | Exit 2, "could not fetch &lt;remote&gt;" | the declared remote (or `origin`) is unreachable: offline, bad URL, no access | Restore the connection or fix the URL, then relaunch. Every remote the branch is compared against is fetched by name in the run, so a stale ref is never read |

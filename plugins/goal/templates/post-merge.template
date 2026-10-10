@@ -11,13 +11,19 @@ whatever is not written down at that moment is what gets forgotten.
 
 ## How to fill it
 
+Resolve artifacts with `node "${CLAUDE_PLUGIN_ROOT}/src/artifacts.ts" "<project-directory>"`.
+Use its absolute `plans` directory as `<plans>` for new associated documents, with
+`Source plan: <absolute selected plan path>`. `<plan path>` remains the selected absolute
+path; reconcile that file in place, preserving locked commands and historical documents.
+If the plan names an existing follow-up explicitly, keep that literal path.
+
 - `<default>` = the repository's default branch (`main` unless the plan says otherwise).
 - `<branch>` = the run's branch, one line per branch when the plan had parallel tracks.
 - `<work-id>` = the plan's `Work-id:` header.
 - `<backup refs>` = any tag or branch created as a safety net during the run; drop the
   line when there is none.
 - `<issue>` = the backing issue number; drop lines 5 and 6 when no issue backs the work.
-- `<follow-up>` = `.claude/plans/<work-id>-tracks-spec.md` or `-cleanup-spec.md` when the
+- `<follow-up>` = `<plans>/<work-id>-tracks-spec.md` or `-cleanup-spec.md` when the
   plan named one; drop the line when it did not.
 
 ## The block
@@ -30,7 +36,7 @@ The PR is merged. What that leaves behind, none of which the run may do for you:
    leaves the branch looking unmerged to `git branch --merged` while its work is on
    <default>. Check a file the PR added is present there.
 3. Delete <backup refs> — the rebase net, useless once the merge holds.
-4. Reconcile .claude/plans/<work-id>-spec.md: its checkboxes still carry the placeholder
+4. Reconcile <plan path>: its checkboxes still carry the placeholder
    label the plan was written with. Say what landed, with the PR number and merge commit.
 5. Clear the run controls on issue #<issue> — `goal:no-ship`, `goal:stop`,
    `goal:skip-lenses`. They persist across runs, and a stale one silently blocks the next.

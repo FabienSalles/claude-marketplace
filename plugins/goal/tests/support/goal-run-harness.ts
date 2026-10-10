@@ -4,6 +4,8 @@ import { appendFileSync, chmodSync, cpSync, existsSync, linkSync, lstatSync, mkd
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
+import { resolveArtifacts } from '../../src/artifacts.ts';
+
 import { clock } from '../../src/adapters/clock.ts';
 import { command } from '../../src/adapters/command.ts';
 import { fs } from '../../src/adapters/fs.ts';
@@ -129,6 +131,9 @@ fi
 # Appended, not overwritten: a second call against the same target has to leave a real diff
 # behind it, or a resumed iteration reads as "the implementer wrote nothing".
 [ -n "$FAKE_CLAUDE_WRITES" ] && printf 'written %s\\n' "\${FAKE_CLAUDE_WRITE_TAG:-$$-$RANDOM}" >> "$FAKE_CLAUDE_WRITES"
+if [ -n "$FAKE_CLAUDE_EXEC" ]; then
+  case "$*" in *goal-run-implementer*) sh "$FAKE_CLAUDE_EXEC" ;; esac
+fi
 [ -n "$FAKE_CLAUDE_COMMITS" ] && git add -A >/dev/null 2>&1 && git commit -qm "implementer commit"
 # Opt-in, symmetric to FAKE_CLAUDE_COMMITS: bash's tests never set it, so the shared fake claude
 # stays untouched for them. Commits, pushes that commit to origin's current branch, which is what
@@ -322,13 +327,7 @@ const initialCheckout = (): string => {
     git(dir, 'config', 'maintenance.auto', 'false');
     writeFileSync(join(dir, 'README.md'), '# scratch\n');
 
-    // The plan's directory is gitignored, which the real preflight requires and this fixture has
-    // to honour: visible to git, the spec and the run's own log show up in `git status`, the tree
-    // is never clean, and "the implementer wrote nothing" could never be observed. `trackPlan`
-    // deliberately breaks that for the plan's own directory, to exercise the check that catches it
-    // — `.claude/` stays ignored either way, since that is where a run's own records land now,
-    // never inside the plan's directory.
-    writeFileSync(join(dir, '.gitignore'), '.claude/\nfake-bin/\n*-args.txt\n');
+    writeFileSync(join(dir, '.gitignore'), '.claude/\n.goal/runs/\n*.run.lock/\n*.tick.lock/\nfake-bin/\n*-args.txt\n');
 
     git(dir, 'add', '-A');
     git(dir, 'commit', '-qm', 'init');
@@ -500,6 +499,7 @@ export const run = (fixture: Fixture, args: string[], env: Record<string, string
     encoding: 'utf8',
     env: {
       ...process.env,
+      GOAL_ROOT_PATH: undefined,
       PATH: `${fixture.bin}:${process.env.PATH ?? ''}`,
       GOAL_GATE: `${join(fixture.bin, 'fake-gate')}`,
       ...env,
@@ -590,7 +590,7 @@ export const runInProcess = async (
   const originalCwd = process.cwd();
   const originalPath = process.env.PATH;
   const originalExit = process.exit;
-  const touched = Object.entries(env);
+  const touched = Object.entries({ GOAL_ROOT_PATH: undefined, ...env });
   const saved = new Map(touched.map(([key]) => [key, process.env[key]]));
 
   process.chdir(fixture.dir);
@@ -659,7 +659,11 @@ export const runInProcess = async (
       reporter.stop(`the iteration must be a number, got: ${iterationArg}`, REFUSED);
     }
 
-    const dir = runDir(workIdOf(plan!, fs.readFile(plan!)));
+    const artifacts = resolveArtifacts(process.cwd(), process.env);
+
+    if (!artifacts.ok) reporter.stop(artifacts.error, REFUSED);
+
+    const dir = runDir(artifacts.value.runs, workIdOf(plan!, fs.readFile(plan!)));
     reporter.setLog(dir);
     reporter.say(`RUN writing this run's records to ${dir}`);
 
@@ -670,7 +674,7 @@ export const runInProcess = async (
     }
 
     const preflightStart = Date.now();
-    const { policy, remote } = preflight(plan!, source, reporter, gateLabel, agents);
+    const { policy, remote } = preflight(plan!, source, reporter, gateLabel, agents, artifacts.value.runs);
     reporter.say(`RUN stage=preflight duration_ms=${Date.now() - preflightStart} exit=0`);
 
     const iterations = iterationArg !== undefined ? [iterationArg] : iterationNumbers(source, false);
@@ -787,9 +791,8 @@ export const lockOf = (fixture: Fixture) => `${fixture.plan}.run.lock`;
 
 export { REFUSED, workIdOf };
 
-// The one run directory a fixture's single launch wrote under `.claude/goal-runs/<work-id>/`.
 export const runDirOf = (fixture: Fixture): string => {
-  const root = join(fixture.dir, '.claude', 'goal-runs', workIdOf(fixture.plan, fs.readFile(fixture.plan)));
+  const root = join(fixture.dir, '.goal', 'runs', workIdOf(fixture.plan, fs.readFile(fixture.plan)));
   const [runId] = readdirSync(root);
 
   return join(root, runId!);

@@ -14,12 +14,8 @@ export type Reporter = {
   session?: (id: string) => void;
 };
 
-// One directory per launch, `.claude/goal-runs/<work-id>/<run-id>/`, created before anything is
-// written into it. The run-id is the launch timestamp, so two launches of the same plan never
-// collide, and pruning a finished work-id is one `rm -rf .claude/goal-runs/<work-id>/` rather than
-// a search through `.claude/plans/` for whatever a run left beside the spec.
-export const runDir = (workId: string): string => {
-  const dir = join(process.cwd(), '.claude', 'goal-runs', workId, new Date().toISOString().replace(/[:.]/g, '-'));
+export const runDir = (runs: string, workId: string): string => {
+  const dir = join(runs, workId, new Date().toISOString().replace(/[:.]/g, '-'));
   fs.mkdir(dir, { recursive: true });
 
   return dir;

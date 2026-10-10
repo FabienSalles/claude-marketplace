@@ -585,7 +585,7 @@ test('the auditor is handed repository-relative paths and told never to name an 
   const log = readFileSync(fixture.claudeLog, 'utf8');
   const args = log.slice(log.indexOf('goal:goal-run-auditor'));
   assert.ok(args.includes('Paths are relative to the repository root; name every file that way in what you write, never by an absolute path.'), `the auditor brief carries no relative-path rule:\n${args}`);
-  assert.match(args, /\.claude\/goal-runs\/demo\/[^/\s]+\/report\.md/, `the auditor brief names no repository-relative report path:\n${args}`);
+  assert.match(args, /\.goal\/runs\/demo\/[^/\s]+\/report\.md/, `the auditor brief names no repository-relative report path:\n${args}`);
   assert.ok(!args.includes(fixture.dir) && !args.includes(realpathSync(fixture.dir)), `the auditor brief carries an absolute local path:\n${args}`);
 });
 
@@ -608,7 +608,7 @@ test('the auditor is briefed with the ### Outcome / ### Cost skeleton', async ()
 // so both are copy-pastable straight off the pull request.
 test('close folds the report untransformed and ends the pull request body with the plan and run-directory paths', async () => {
   const fixture = repo({ planText: PLAN_PR, remote: true });
-  const dir = join(fixture.dir, '.claude', 'goal-runs', 'demo', 'run-1');
+  const dir = join(fixture.dir, '.goal', 'runs', 'demo', 'run-1');
   mkdirSync(dir, { recursive: true });
   const reportText = '# Report\n\n### Outcome\n\nNothing recurs.\n\n### Cost\n\nCosts: 1 iteration.\n';
   writeFileSync(join(dir, 'report.md'), reportText);
@@ -640,7 +640,7 @@ test('close folds the report untransformed and ends the pull request body with t
 
     assert.ok(last.includes(reportText), `the report was transformed before being folded into the pull request body:\n${last}`);
     assert.ok(
-      last.trimEnd().endsWith(`*Plan and logs (local, gitignored):*\n- \`.claude/plans/demo-spec.md\`\n- \`.claude/goal-runs/demo/run-1\``),
+      last.trimEnd().endsWith(`*Plan and logs (local, gitignored):*\n- \`.claude/plans/demo-spec.md\`\n- \`.goal/runs/demo/run-1\``),
       `the pull request body does not end with the "Plan and logs" line then one bullet per path:\n${last}`,
     );
     assert.ok(!last.includes(fixture.dir) && !last.includes(realpathSync(fixture.dir)), `the pull request body carries an absolute local path:\n${last}`);

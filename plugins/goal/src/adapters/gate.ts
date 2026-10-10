@@ -102,7 +102,7 @@ export const inProcessGateAdapter = (): GateAdapter => ({
         lockedHash(plan, source, `iteration ${iteration}`, hash);
 
         const declared = blockOf(source, iteration);
-        const { paths, incidental, changed } = verify(source, iteration, declared, say);
+        const { paths, incidental, changed } = verify(source, iteration, declared, say, plan);
 
         unwrap(monotonicityCheck(source, iteration, ticked));
 

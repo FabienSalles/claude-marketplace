@@ -19,7 +19,7 @@ test('a run writes .run.log, .run.jsonl and .run.session under .claude/goal-runs
   assert.equal(code, 0, output);
 
   const dir = runDirOf(fixture);
-  assert.ok(dir.startsWith(join(fixture.dir, '.claude', 'goal-runs', 'demo')), `run directory is not under the work-id: ${dir}`);
+  assert.ok(dir.startsWith(join(fixture.dir, '.goal', 'runs', 'demo')), `run directory is not under the work-id: ${dir}`);
 
   assert.ok(existsSync(logOf(fixture)), 'no .run.log was written in the run directory');
   assert.match(readFileSync(logOf(fixture), 'utf8'), /^STOP /m);
@@ -53,7 +53,7 @@ test('the runner prints the run directory at launch', () => {
   });
 
   assert.equal(code, 0, output);
-  assert.match(output, new RegExp(`^RUN .*${join(fixture.dir, '.claude', 'goal-runs', 'demo').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'm'), output);
+  assert.match(output, new RegExp(`^RUN .*${join(fixture.dir, '.goal', 'runs', 'demo').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'm'), output);
 });
 
 // close() tells the auditor to write its report in the same directory the rest of this run's

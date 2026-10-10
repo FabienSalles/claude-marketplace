@@ -1,5 +1,11 @@
 # Target harness
 
+The [shared artifact resolver](../README.md) supplies absolute `<plans>` and `<runs>`
+to sessions and artifact consumers. Identifier discovery uses only `<plans>`; a miss
+asks for a full path. Explicit old plans remain in place; new associated documents
+use the current plans root and reference their source plan. Git controls plan versioning;
+only in-repository records and transient locks require exclusions.
+
 What the autonomous loop must guarantee, and by what. Nothing here is about any particular
 plan: a plan is only the input.
 
@@ -216,15 +222,15 @@ make, which makes an untick invisible to the hash too. A second check covers it.
 iteration 3 mid-run, which would otherwise remove its commands from the regression wall of every
 iteration after it, is refused. That check is scoped to one run: the set is captured at check
 time and carried by argument, so an untick between two runs is simply the state the next run
-locks. The plan lives in a directory the preflight requires gitignored (`run/preflight.ts`),
-so no scope check sees the edit either. Separately: the hash is self-derived at the start of the
+locks. The selected plan may be tracked, ignored or external (`run/preflight.ts`),
+and tracked-plan edits are checked against gate-owned progress. Separately: the hash is self-derived at the start of the
 run (`goal-run.ts`). It pins the plan against the executor, never against whatever edited
 it between the human grill and the launch.
 
 **5. Every claim is a command that ran.** The gate honours it, and the runner now carries it
 through the refusal. `gate/halt.ts` writes the verdict (`HALT`, `REASON:`, `DETAIL:`) on its
 own stdout; `run/iteration.ts` concatenates that stdout with stderr into `reporter.record()`,
-which appends it to the run's own log, `.claude/goal-runs/<work-id>/<run-id>/.run.log`
+which appends it to the run's own log, `<runs>/<work-id>/<run-id>/.run.log`
 (`run/report.ts#record`), before the run prints its one line
 and exits. `tests/goal-run-halt-log.test.ts` asserts it, split streams included. So
 `skills/supervise/SKILL.md`, which calls that block "the only evidence there is" and forbids

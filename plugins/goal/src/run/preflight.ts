@@ -1,9 +1,3 @@
-// The ten refusals a run judges before writing a byte: policy, remote, branch, ignored goal-runs
-// directory, clean tree, ignored plan directory, cleanup iteration inside a feature plan,
-// existing lock, base sweep (with the Bootstrap carve-out), and branch behind its base. Every one
-// is a refusal, never a warning, and every one runs before the lock is taken: a run that starts
-// wrong is worse than one that never starts.
-//
 // A `.claude/settings.local.json` deny rule is not among them: an earlier check reading it was a
 // substring match over raw JSON, so a file whose permissions.allow granted `Bash(git commit:*)`
 // satisfied it while granting the opposite; it was installed project-wide, so it also restrained
@@ -11,7 +5,7 @@
 // session start, so it described a future session and never the running one. What replaces it is
 // detection in run/iteration.ts, which is executed.
 
-import { basename, dirname } from 'node:path';
+import { basename, isAbsolute, relative } from 'node:path';
 
 import { fs } from '../adapters/fs.ts';
 import { git } from '../adapters/git.ts';
@@ -30,7 +24,6 @@ import {
   parentBranchFound,
   parentFetched,
   parentRemoteFound,
-  planDirIgnored,
   remoteDeclared,
   remoteFetched,
   runnablePolicy,
@@ -58,7 +51,7 @@ export type PreflightResult = {
   cleanup: boolean;
 };
 
-export const preflight = (plan: string, source: string, reporter: Reporter, gate: string, agents: AgentSessions): PreflightResult => {
+export const preflight = (plan: string, source: string, reporter: Reporter, gate: string, agents: AgentSessions, runs: string): PreflightResult => {
   const planBase = basename(plan);
   const workId = workIdOf(plan, source);
   const cleanup = planBase.endsWith('-cleanup-spec.md');
@@ -112,8 +105,9 @@ export const preflight = (plan: string, source: string, reporter: Reporter, gate
   // or that check fires on this run's fresh records with "the tree is not clean" — the symptom,
   // not the cause. Held before check 5, since the run's log directory is created before preflight
   // runs. The check holds before the directory exists: check-ignore evaluates patterns, not files.
-  const goalRunsDir = '.claude/goal-runs';
-  const goalRunsResult = goalRunsIgnored(git('check-ignore', '-q', goalRunsDir).status === 0, goalRunsDir);
+  const goalRunsDir = relative(git('rev-parse', '--show-toplevel').stdout.trim(), runs);
+  const isExternal = goalRunsDir === '..' || goalRunsDir.startsWith('../') || isAbsolute(goalRunsDir);
+  const goalRunsResult = goalRunsIgnored(isExternal || git('check-ignore', '-q', '--', runs).status === 0, goalRunsDir);
 
   if (!goalRunsResult.ok) {
     reporter.stop(goalRunsResult.error, REFUSED);
@@ -127,17 +121,6 @@ export const preflight = (plan: string, source: string, reporter: Reporter, gate
     reporter.stop(cleanTreeResult.error, REFUSED);
   }
 
-  // 6. What the run writes must be out of git's sight, or the spec, the ticked box and this
-  // run's own log become an undeclared modification the gate reads as a scope leak. Nothing
-  // narrates before this point: a line written ahead of this check would itself dirty the
-  // tree check 5 just ran, on the very tree this check exists to catch as untracked.
-  const planDir = dirname(plan);
-  const planDirResult = planDirIgnored(git('check-ignore', '-q', planDir).status === 0, planDir);
-
-  if (!planDirResult.ok) {
-    reporter.stop(planDirResult.error, REFUSED);
-  }
-
   reporter.say(`RUN preflight: Policy is ${policy}`);
   reporter.say(`RUN preflight: Remote is ${remote}`);
   reporter.say(`RUN preflight: branch is ${branch}`);
@@ -149,7 +132,7 @@ export const preflight = (plan: string, source: string, reporter: Reporter, gate
   }
 
   reporter.say('RUN preflight: the tree is clean');
-  reporter.say(`RUN preflight: plan directory ${planDir} is git-ignored`);
+  reporter.say(`RUN preflight: plan is clean and may be tracked or ignored`);
 
   // 7. No cleanup iteration hiding inside a feature plan: its Trigger asserts something about
   // production this run cannot observe, and running it here deletes the fallback in the same PR
