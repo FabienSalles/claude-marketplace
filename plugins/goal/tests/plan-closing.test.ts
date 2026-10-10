@@ -50,3 +50,32 @@ test('Phase 5 orders the per-iteration /goal block withheld under commit+pr when
     phase5,
   );
 });
+
+const conventionSkillsCases = [
+  {
+    rule: 'a fully gateable commit+pr plan omits the convention-skills claim from its Definition of Done',
+    pattern: /Under `commit\+pr` with every iteration gateable, omit it/,
+  },
+  {
+    rule: 'a manual plan keeps the convention-skills handoff',
+    pattern: /Keep `Project convention skills were loaded before coding \(see handoff\)` under `manual`/,
+  },
+  {
+    rule: 'a commit+pr plan with a non-gateable iteration keeps the convention-skills handoff',
+    pattern: /under `manual` and under `commit\+pr` with one or more iterations that are not gateable/,
+  },
+];
+
+for (const { rule, pattern } of conventionSkillsCases) {
+  test(`the plan's convention-skills line follows the execution route: ${rule}`, () => {
+    const plan = readFileSync(
+      join(import.meta.dirname, '..', 'skills', 'plan', 'SKILL.md'),
+      'utf8',
+    );
+
+    const start = plan.indexOf('**The convention-skills line follows the execution route.**');
+    assert.notStrictEqual(start, -1, 'the convention-skills routing rule is missing');
+    const routing = plan.slice(start, plan.indexOf('\n\n', start)).replace(/\s+/g, ' ');
+    assert.match(routing, pattern, routing);
+  });
+}

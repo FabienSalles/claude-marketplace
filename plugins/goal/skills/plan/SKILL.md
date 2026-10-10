@@ -829,6 +829,13 @@ gate4=<project lint/QA>
   A: <answer>
 ````
 
+**The convention-skills line follows the execution route.** Keep
+`Project convention skills were loaded before coding (see handoff)` under `manual` and under
+`commit+pr` with one or more iterations that are not gateable: a human drives the handoff
+that loads them. Under `commit+pr` with every iteration gateable, omit it: `/goal:supervise`
+runs `goal-run-implementer`, which has no `Skill` tool, so no one in that run can make the
+claim true.
+
 Show the plan. Ask: **"Does this plan match our conversation? The iterations
 are the review checkpoints — edit the split or any criterion before I lock it?"**
 WAIT for explicit confirmation.
