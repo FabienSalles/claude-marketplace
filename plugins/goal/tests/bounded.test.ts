@@ -197,6 +197,12 @@ test('the gate spawns commands it does not trust', () => {
   }
 });
 
+test('the compile cache the wrapper starts under never reaches the command', () => {
+  const run = spawnSync(bounded('echo "cache=${NODE_COMPILE_CACHE:-none}"', ''), spawnOptions());
+
+  assert.equal(run.stdout.trim(), 'cache=none');
+});
+
 test('a command that outlives the wall clock is killed rather than left hanging', () => {
   const modulePath = resolve(import.meta.dirname, '../src/gate/bounded.ts');
   const script = `

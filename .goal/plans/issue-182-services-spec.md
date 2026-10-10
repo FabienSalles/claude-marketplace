@@ -87,7 +87,7 @@ Also true, and not expressible as a command of its own:
 ## Functional iterations
 
 ### Iteration 1 — An iteration's declared services run around its gates and its bite
-- [ ] Not done yet
+- [x] Not done yet
 - **Goal:** A plan declares the services its gates need, and the gate starts them ready before the first gate, restarts them when the code they depend on changes, refuses the iteration when one fails, and stops them all when its pass ends.
 - **Shippable after it:** a plan can test against a server or a database across its gates without leaking it; an iteration whose service never gets ready or dies is refused with the service's log.
 - **Files to touch:** `plugins/goal/src/core/plan.ts` (accepts and validates `service<N>`, `service<N>_ready`, `service<N>_paths`), `plugins/goal/src/gate/services.ts` (new: start, readiness, liveness, restart, stop through the group wrapper), `plugins/goal/src/gate/verbs.ts` (`verify()` owns the services' life), `plugins/goal/src/gate/commands.ts` (no gate runs on a dead service), `plugins/goal/src/gate/bite.ts` (restart around the set-aside and the restore, unproven bite), `plugins/goal/skills/plan/SKILL.md` (documents the keys), `plugins/goal/tests/gate-services.test.ts` (new), `plugins/goal/tests/core-plan.test.ts`
@@ -111,7 +111,7 @@ gate3=node node_modules/eslint/bin/eslint.js --config eslint.config.js plugins s
 ```
 
 ### Iteration 2 — A replayed command runs with the services of the iteration it comes from
-- [ ] Not done yet
+- [x] Not done yet
 - **Goal:** The regression wall and the preflight base sweep replay an earlier iteration's commands with that iteration's services running and ready, and stop them once the replay is done.
 - **Shippable after it:** a plan whose services serve several iterations keeps its regression wall and its preflight green; nothing a replay started survives it.
 - **Files to touch:** `plugins/goal/src/gate/cross-iteration.ts`, `plugins/goal/src/core/rules/cross-iteration.ts` (two identical commands are deduplicated only when their services are identical too), `plugins/goal/src/run/sweep.ts`, `plugins/goal/tests/gate-cross-iteration.test.ts`, `plugins/goal/tests/goal-run-sweep.test.ts`

@@ -15,6 +15,7 @@ import { fileURLToPath } from 'node:url';
 
 import { command as runner } from '../adapters/command.ts';
 import { settingValue } from '../core/settings.ts';
+import { COMPILE_CACHE } from './group-run.ts';
 import type { CommandOptions } from '../ports.ts';
 
 
@@ -84,8 +85,11 @@ const GROUP_RUN = fileURLToPath(new URL('./group-run.ts', import.meta.url));
 
 const quoted = (text: string): string => `'${text.replaceAll("'", "'\\''")}'`;
 
+const compileCache = (): string =>
+  process.env.NODE_COMPILE_CACHE === undefined ? `/usr/bin/env NODE_COMPILE_CACHE=${quoted(COMPILE_CACHE)} ` : '';
+
 export const bounded = (command: string, limit: string = ceiling()): string =>
-  `exec ${[process.execPath, GROUP_RUN, String(settingValue('GOAL_CMD_TIMEOUT', process.env)), withCeiling(command, limit)]
+  `exec ${compileCache()}${[process.execPath, GROUP_RUN, String(settingValue('GOAL_CMD_TIMEOUT', process.env)), withCeiling(command, limit)]
     .map(quoted)
     .join(' ')}`;
 

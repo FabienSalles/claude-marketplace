@@ -540,6 +540,15 @@ are not — and where the granularity from `Policy:` lands as a number: fine und
 fatter under `commit+pr`, never past one functional outcome. And a slice with
 nothing to test declares `test_files=` empty, which skips the bite rather than faking it.
 
+**Services.** A gate that needs a server or a database declares it in the block:
+`service<N>=<command>` starts it, `service<N>_ready=<command>` is re-run until it exits 0 (within
+`GOAL_CMD_TIMEOUT`), and `service<N>_paths=<paths>` lists the files whose change restarts it. The
+first two go together; `_paths` is optional, and a service without it is restarted before every
+command after the first. Services start in number order before `gate1`, stop in reverse once the
+pass ends, and a service that never gets ready, or dies, refuses the iteration with the last 4000
+characters of its output. A service that cannot start with the implementation set aside refuses
+the iteration as an unproven bite.
+
 **Scope every `gateN` to the slice it verifies, never to the whole project** — with one
 exception, the typecheck, ruled below. A gate line never runs once. Read from `goal-gate.ts`
 and the runner, this is what each line costs:

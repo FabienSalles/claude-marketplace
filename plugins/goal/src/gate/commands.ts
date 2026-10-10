@@ -5,6 +5,7 @@ import { ok, type Result } from '../core/result.ts';
 import { determinismHeld, gatePassed } from '../core/rules/commands.ts';
 import type { Halt } from '../core/verdict.ts';
 import { bounded, spawnOptions } from './bounded.ts';
+import type { Services } from './services.ts';
 
 // The runner's own event stream, appended to only when GOAL_RUN_JSONL names one: a gate run
 // outside the runner — the sanctioned RED check among them — writes nothing here, so every
@@ -38,10 +39,13 @@ export const runGates = (
   iteration: string,
   origin?: Map<string, string>,
   wall = false,
+  services?: Services,
 ): Result<number, Halt> => {
   const commands = gateCommands(declared);
 
   for (const [key, command] of commands) {
+    services?.before(wall ? `wall:${key}` : key);
+
     const start = clock.now();
     const run = runner.run(bounded(command), [], spawnOptions());
 
@@ -60,10 +64,12 @@ export const DETERMINISM_RUNS = 3;
 // gate1 alone, for the same reason the bite check bites it alone: R2 makes it the one
 // mandatory command, where gate2..N are lints that cannot flake. runGates() already spent
 // the first of the three runs.
-export const determinismCheck = (declared: Map<string, string>, iteration: string): Result<void, Halt> => {
+export const determinismCheck = (declared: Map<string, string>, iteration: string, services?: Services): Result<void, Halt> => {
   const command = declared.get('gate1') ?? '';
 
   for (let run = 2; run <= DETERMINISM_RUNS; run += 1) {
+    services?.before(`determinism${run}`);
+
     const start = clock.now();
     const result = runner.run(bounded(command), [], spawnOptions());
 

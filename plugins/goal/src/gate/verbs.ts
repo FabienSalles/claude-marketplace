@@ -8,6 +8,7 @@ import { regressionWall, resolvabilityCheck } from './cross-iteration.ts';
 import { unwrap, type Say } from './halt.ts';
 import { blockOf, declaredPaths, incidentalPaths, lockedHash, readPlan } from './plan.ts';
 import { protectPlan, scopeCheck } from './scope.ts';
+import { declaredServices } from './services.ts';
 import { tickedSet } from './ticked.ts';
 
 export const check = (plan: string, iteration: string, locked?: string): string => {
@@ -35,11 +36,18 @@ export const verify = (source: string, iteration: string, declared: Map<string, 
   unwrap(removalCheck(source, paths, iteration));
   unwrap(resolvabilityCheck(source, iteration));
 
-  const passed = unwrap(runGates(declared, iteration));
+  const services = declaredServices(declared);
+  let passed: number;
 
-  unwrap(determinismCheck(declared, iteration));
-  unwrap(regressionWall(source, iteration, declared));
-  biteCheck(declared, iteration, changed, say);
+  try {
+    services.start();
+    passed = unwrap(runGates(declared, iteration, undefined, false, services));
+    unwrap(determinismCheck(declared, iteration, services));
+    unwrap(regressionWall(source, iteration, declared));
+    biteCheck(declared, iteration, changed, say, services);
+  } finally {
+    services.stop();
+  }
 
   protectPlan(plan, source);
 

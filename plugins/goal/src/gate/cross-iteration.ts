@@ -3,12 +3,13 @@ import { dirname } from 'node:path';
 import { fs } from '../adapters/fs.ts';
 import { git } from '../adapters/git.ts';
 import { ok, type Result } from '../core/result.ts';
-import { resolvablePaths, selectReplay } from '../core/rules/cross-iteration.ts';
+import { resolvablePaths, selectReplay, servicesOf } from '../core/rules/cross-iteration.ts';
 import type { Halt } from '../core/verdict.ts';
 import { gateCommands, runGates } from './commands.ts';
 import { blockOf, declaredPaths, iterationNumbers } from './plan.ts';
+import { declaredServices } from './services.ts';
 
-// The checked iterations' commands, deduplicated by command string and replayed, so a slice that
+// The checked iterations' commands, deduplicated by command string within one set of services, and replayed with them, so a slice that
 // breaks an earlier one halts where the cause is. It re-enters runGates(); the slice's own
 // commands are already spent there, so they count as seen.
 export const regressionWall = (
@@ -16,19 +17,41 @@ export const regressionWall = (
   iteration: string,
   declared: Map<string, string>,
 ): Result<void, Halt> => {
-  const seen = new Set(gateCommands(declared).map(([, command]) => command));
-  const earlier: [string, string][] = [];
+  const own = servicesOf(declared);
+  const ownCommands = gateCommands(declared).map(([, command]) => command);
+  const groups = new Map<string, { block: Map<string, string>; earlier: [string, string][] }>();
 
   for (const checked of iterationNumbers(source, true)) {
-    for (const [, command] of gateCommands(blockOf(source, checked))) {
-      earlier.push([checked, command]);
+    const block = blockOf(source, checked);
+    const key = servicesOf(block);
+    const group = groups.get(key) ?? { block, earlier: [] };
+
+    for (const [, command] of gateCommands(block)) {
+      group.earlier.push([checked, command]);
+    }
+
+    groups.set(key, group);
+  }
+
+  for (const [key, { block, earlier }] of groups) {
+    const { replay, origin } = selectReplay(new Set(key === own ? ownCommands : []), earlier);
+
+    if (replay.size === 0) continue;
+
+    const services = declaredServices(block);
+
+    try {
+      services.start();
+
+      const result = runGates(replay, iteration, origin, true, services);
+
+      if (!result.ok) return result;
+    } finally {
+      services.stop();
     }
   }
 
-  const { replay, origin } = selectReplay(seen, earlier);
-  const result = runGates(replay, iteration, origin, true);
-
-  return result.ok ? ok(undefined) : result;
+  return ok(undefined);
 };
 
 export const inHead = (path: string): boolean => git('cat-file', '-e', `HEAD:${path}`).status === 0;
