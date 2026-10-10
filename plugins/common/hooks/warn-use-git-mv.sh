@@ -23,11 +23,14 @@ sys.exit(0 if sources and tracked else 1)
 ' 2>/dev/null; then
     cat << 'EOF'
 {
-  "decision": "block",
-  "reason": "Use `git mv` instead of `mv` to rename/move files in a git repo.\n\nProblem: the file will not be tracked correctly by git.\n\nSolution: git mv source destination"
+  "hookSpecificOutput": {
+    "hookEventName": "PreToolUse",
+    "permissionDecision": "deny",
+    "permissionDecisionReason": "Use `git mv` instead of `mv` to rename/move files in a git repo.\n\nProblem: the file will not be tracked correctly by git.\n\nSolution: git mv source destination"
+  }
 }
 EOF
-    exit 2
+    exit 0
 fi
 
 exit 0

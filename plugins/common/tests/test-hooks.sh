@@ -19,10 +19,11 @@ expect_context() {
 }
 
 expect_blocked() {
-  expect_status 2
+  expect_status 0
   expect_stderr_empty
-  expect_stdout_json '.decision == "block"'
-  expect_stdout_json --arg text "$1" '.reason | contains($text)'
+  expect_stdout_json '.hookSpecificOutput.hookEventName == "PreToolUse"'
+  expect_stdout_json '.hookSpecificOutput.permissionDecision == "deny"'
+  expect_stdout_json --arg text "$1" '.hookSpecificOutput.permissionDecisionReason | contains($text)'
 }
 
 a_repository() {
