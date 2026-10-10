@@ -56,7 +56,7 @@ Old history requires `--runs-path <absolute work-id history directory>`.
 Git ignore rules determine planning-document versioning. Tracked, ignored and external
 plans are supported; a tracked plan must be clean at launch and the gate owns its ticks.
 Before launching, prepare exact exclusions in project `.gitignore` for the resolved
-in-repository `<runs>/` and the selected `<plan>.run.lock/` and `<plan>.tick.lock/`.
+in-repository `<runs>/`.
 Do not ignore the whole artifact root or require plans to be ignored. External paths
 need no repository exclusion. Write project-relative, root-anchored ignore entries,
 escaping Git pattern characters so the exclusions name only those exact paths.

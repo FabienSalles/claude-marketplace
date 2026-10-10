@@ -212,7 +212,7 @@ The **work-id** generalises the old issue number: `issue-<N>` for a GitHub issue
 key (`ct-1234`) for Jira, a slug for a file or inline source. New plans live at
 `<plans>/<work-id>-spec.md`, using the resolver's absolute `plans` directory; a run's records go to
 `<artifact-root>/runs/<work-id>/<run-id>/`: `.run.log`, `.run.jsonl`, `.run.session` and the
-auditor's `report.md`. Only `<plan>.run.lock` stays beside the plan.
+auditor's `report.md`. Locks live in `/tmp/goal-locks-<uid>/` (or `GOAL_LOCK_ROOT`), never beside the plan.
 The artifact root comes from `GOAL_ROOT_PATH`: process/container environment, then the Git
 project root's `.env.local`, then `.env`. Missing files are optional; absence of the variable
 uses `.goal/`. A selected empty value, unreadable required source or unusable destination fails
@@ -222,8 +222,7 @@ variable expansion, and unrelated variables are neither exported nor printed.
 
 The run resolves its paths once at launch. Changing a project file affects the next launch,
 while the active run's records and report links retain their original root. Ignore only the
-in-repository `runs/` directory and transient `*.run.lock/` and `*.tick.lock/` paths in the
-project `.gitignore`; an external root needs no repository exclusion. Do not ignore the whole
+in-repository `runs/` directory in the project `.gitignore`; an external root needs no repository exclusion. Do not ignore the whole
 artifact root solely to hide run records.
 
 Existing plans run in place when supplied by their explicit path, without migration. Old run
@@ -258,7 +257,7 @@ Every row is a refusal the code can still reach today.
 | Exit 2, "the branch is behind &lt;base&gt;" | the base moved after the branch was cut | Rebase, then relaunch. A green sweep against a stale base certifies nothing anyone will merge into |
 | Exit 2, "the branch is behind &lt;parent-ref&gt;" on a `github.com` fork | the branch lacks commits of the fork's parent (`gh repo view` names it) | Rebase onto the parent's base. Also refused: a parent with no local remote (`git remote add upstream <url>`), unfetchable, or without the `PR base:` branch. `gh` unavailable warns under `commit`, refuses under `commit+pr` (`gh auth login`) |
 | Exit 2, "no base resolves" | no `PR base:` resolves on the declared remote and neither `<remote>/HEAD` nor `origin/HEAD` exists, so there is nothing to compare the branch against | Declare `PR base:` in the plan, or run `git remote set-head <remote> -a`. The refusal lists the refs it tried |
-| Exit 2, "another run holds this plan" | a `<plan>.run.lock` survived a dead run | `node <plugin>/scripts/goal-gate.ts unlock <plan>` once you know the holder is gone |
+| Exit 2, "another run holds this plan" | a lock in `/tmp/goal-locks-<uid>/` (or beside the plan, from an older version) survived a dead run | `node <plugin>/scripts/goal-gate.ts unlock <plan>` once you know the holder is gone |
 | Exit 1, a slice was refused | the gate halted | The reason is in the run log and on the terminal. Reproduce it from the repo root: `node <plugin>/scripts/goal-gate.ts verify <plan> <n>` |
 | Exit 3, "is not converging: paused after N attempt(s)" | the attempt ceiling `GOAL_RUN_QUOTA_MAX_RETRIES` was reached; the pause lists each attempt with its class (exhausted, burst, signal) | Relaunch when the cause has cleared. Checkboxes are the whole state, so it resumes at the first unticked box |
 | Exit 3, "the implementer committed on its own" | the implementer ran `git commit` (or moved `.git/`, pushed, moved a ref) in an attempt, even one that then failed | Review the commit named by its SHA before relaunching: only the gate commits. The runner resets nothing |

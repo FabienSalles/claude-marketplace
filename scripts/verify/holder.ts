@@ -1,6 +1,8 @@
 import { spawnSync } from 'node:child_process';
-import { existsSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { basename, join } from 'node:path';
+import { existsSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { basename, join, sep } from 'node:path';
+
+import { lockRoot } from '../../plugins/goal/src/gate/locks.ts';
 
 type Proc = { readonly pid: number; readonly ppid: number; readonly command: string };
 
@@ -45,14 +47,24 @@ const hasGoalRunAncestor = (all: readonly Proc[], pid: number, marker: string): 
   return false;
 };
 
-export const goalRunLocks = (root: string): readonly string[] => {
-  const plans = join(root, '.claude', 'plans');
+export type GoalRunLock = { readonly plan: string; readonly lock: string };
 
-  return existsSync(plans)
-    ? readdirSync(plans)
-        .filter((entry) => entry.endsWith(LOCK_SUFFIX))
-        .map((entry) => join(plans, entry.slice(0, -LOCK_SUFFIX.length)))
-    : [];
+const namesIn = (dir: string): readonly string[] => (existsSync(dir) ? readdirSync(dir).filter((entry) => entry.endsWith(LOCK_SUFFIX)) : []);
+
+export const goalRunLocks = (root: string): readonly GoalRunLock[] => {
+  const plans = join(root, '.claude', 'plans');
+  const base = realpathSync(root) + sep;
+  const old = namesIn(plans).map((entry) => ({ plan: join(plans, entry.slice(0, -LOCK_SUFFIX.length)), lock: join(plans, entry) }));
+  const dir = lockRoot();
+  const current = namesIn(dir).flatMap((entry) => {
+    const lock = join(dir, entry);
+    const file = join(lock, 'plan');
+    const plan = existsSync(file) ? readFileSync(file, 'utf8').trim() : '';
+
+    return plan.startsWith(base) ? [{ plan, lock }] : [];
+  });
+
+  return [...old, ...current];
 };
 
 export const lockPath = (gitDir: string): string => join(gitDir, 'verify.lock');
@@ -71,15 +83,15 @@ export const findHolders = (root: string, gitDir: string, marker: string = GOAL_
   const notes: string[] = [];
   const ownCall = hasGoalRunAncestor(all, process.pid, marker);
 
-  for (const plan of goalRunLocks(root)) {
+  for (const { plan, lock } of goalRunLocks(root)) {
     const live = all.some((proc) => runsGoalRun(proc, marker) && proc.command.split(/\s+/).some((token) => basename(token) === basename(plan)));
 
     if (live && !ownCall) {
-      return { refusal: `refused: a goal run holds this checkout (${plan}${LOCK_SUFFIX}, a ${marker} process is running it)`, notes };
+      return { refusal: `refused: a goal run holds this checkout (${lock}, a ${marker} process is running it)`, notes };
     }
 
     if (!live) {
-      notes.push(`stale goal run lock ${plan}${LOCK_SUFFIX}, release it with: goal-gate.ts unlock ${plan}`);
+      notes.push(`stale goal run lock ${lock}, release it with: goal-gate.ts unlock ${plan}`);
     }
   }
 
