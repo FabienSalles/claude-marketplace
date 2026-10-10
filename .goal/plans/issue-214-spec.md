@@ -1,10 +1,13 @@
-# Spec: A plan stops promising convention skills an unattended implementer never loads
+# Spec: Make convention-skills claims match the execution policy
 
-Source: ticket 0f of the goal-multi-provider backlog
+---
+Source: https://github.com/FabienSalles/claude-marketplace/issues/214
 Source plan: /Users/fabiensalles/projects/github/claude-marketplace/.claude/plans/goal-multi-provider-backlog.md
 Work-id: issue-214
-Status: spec — functional contract settled; /goal:plan builds the executable plan.
-Adversarial grill: skipped — small non-interactive policy/template change with no meaningful state matrix
+Policy: manual
+Delivery mode: no-bc-break
+Cleanup: none
+---
 
 ## Business intent
 
@@ -17,25 +20,6 @@ Adversarial grill: skipped — small non-interactive policy/template change with
 **Affected.** `/goal:plan` authors and `goal-run.ts` unattended runs are protected from an unverifiable Definition of Done line. Developers using manual execution retain the convention-skills handoff.
 
 The ticket closes a mismatch between the plan contract and the executor that consumes it. The autonomous route is verified by the gate and supervision workflow, not by a human loading skills during an iteration. The manual route still has a human who can follow the canonical handoff, so its convention-skills guidance remains useful and intentional.
-
-## Reproduction
-
-```text
-rg -n --fixed-strings -- "Project convention skills were loaded before coding (see handoff)" plugins/goal/skills/plan/SKILL.md
-778:- Project convention skills were loaded before coding (see handoff)
-
-sed -n '1,7p' plugins/goal/agents/goal-run-implementer.md
----
-name: goal-run-implementer
-description: "Implements one iteration of a locked goal plan for goal-run.ts, test-first, inside the paths its gate block declares. Cannot commit, push, stage or tick a checkbox. Examples: <example>Context: goal-run.ts reached iteration 5 of a locked plan. assistant: 'I'll use the goal-run-implementer agent to implement that iteration inside its declared scope.' <commentary>The implementer writes; the gate judges and commits.</commentary></example>"
-tools: Read, Write, Edit, Grep, Glob, Bash
-model: sonnet
-color: green
----
-
-rg -n --fixed-strings -- "Skill" plugins/goal/agents/goal-run-implementer.md || true
-<no output>
-```
 
 ## Scope IN
 
@@ -51,28 +35,76 @@ rg -n --fixed-strings -- "Skill" plugins/goal/agents/goal-run-implementer.md || 
 - Changing the global loop, gate, commit authority, provider behavior, or the definition of gateability.
 - Writing production code or an executable iteration plan in this contract.
 
-## Business rules (functional DoD — one observable criterion per rule)
+## Business rules (each must map to a command in the DoD)
 
-- A fully gateable `commit+pr` plan has no convention-skills claim in its global Definition of Done → observed when its generated plan contains the test, typecheck, and lint/QA DoD entries but no “Project convention skills were loaded before coding” line, and its closing route is the `/goal:supervise` handoff.
-- A `manual` plan retains the convention-skills handoff → observed when the generated manual handoff still names the resolved convention skills and tells the human executor to load them before coding.
-- A `commit+pr` plan with at least one non-gateable iteration retains the convention-skills handoff → observed when the generated fallback handoff contains the same convention-skills guidance for the human-driven iteration.
-- The unattended implementer is not made responsible for loading convention skills → observed when the unattended agent contract still exposes no `Skill` tool or equivalent preloading requirement.
+- A fully gateable `commit+pr` plan has no convention-skills claim in its global Definition of Done → verified by `node --test plugins/goal/tests/plan-closing.test.ts`.
+- A `manual` plan retains the convention-skills handoff → verified by `node --test plugins/goal/tests/plan-closing.test.ts`.
+- A `commit+pr` plan with at least one non-gateable iteration retains the convention-skills handoff → verified by `node --test plugins/goal/tests/plan-closing.test.ts`.
+- The unattended implementer is not made responsible for loading convention skills → verified by `node scripts/verify.ts goal-gate`.
 
-## Deferred decisions
+## Delivery strategy
 
-- none
+Pure documentation and test change. The manual handoff remains available, while fully gateable autonomous plans stop carrying an unverifiable claim. No feature flag, migration, compatibility path, or cleanup slice is needed.
 
-## Files (as found in source)
+## Files NOT to touch
 
-- none named explicitly in the source
+- `plugins/goal/templates/goal-handoff.template`
+- `plugins/goal/agents/goal-run-implementer.md`
+- `plugins/goal/skills/next/SKILL.md`
+- `plugins/goal/src/`
+- `plugins/goal/scripts/`
 
-## Flags for /goal:plan
+## Definition of Done (global, command-line verifiable)
 
-- The policy split spans the plan skill’s global DoD and its closing/handoff rules; the implementation must keep those two sources coherent.
-- Existing plan-closing and instruction-contract tests may encode the unconditional line or the current output branches and need to be checked together.
+```gate
+# rule: every business rule has a passing covering test
+dod1=node scripts/verify.ts goal-gate
+# rule: the goal plugin remains type-safe
+dod2=node node_modules/typescript/bin/tsc --noEmit
+# rule: the project lint and QA checks remain green
+dod3=node node_modules/eslint/bin/eslint.js --config eslint.config.js plugins scripts
+```
+
+Also true, and not expressible as a command of its own:
+- Every business rule above has a passing covering test (proven by `dod1`)
+- Project convention skills were loaded before coding (see handoff)
+
+## Functional iterations
+
+### Iteration 1 — Make convention-skills claims policy-aware
+
+- [x] Done
+- **Goal:** Future plans make convention-skills claims only when their execution policy can fulfill them.
+- **Shippable after it:** `/goal:plan` produces an honest autonomous closing while preserving the manual handoff.
+- **Files to touch:** `plugins/goal/skills/plan/SKILL.md`, `plugins/goal/tests/plan-closing.test.ts`
+- **Business rules covered:** all four business rules above
+- **Delivery:** additive documentation contract and regression coverage; manual behavior remains unchanged
+- **Not machine-verifiable:** none
+
+```gate
+test_files=plugins/goal/tests/plan-closing.test.ts plugins/goal/tests/implementer-report.test.ts
+impl_files=plugins/goal/skills/plan/SKILL.md plugins/goal/tests/plan-closing.test.ts
+max_diff=120
+commit_msg=fix(goal): make convention skills claim policy-aware
+# rule: policy-aware plan closing keeps autonomous claims honest and manual guidance available
+gate1=node --test plugins/goal/tests/plan-closing.test.ts plugins/goal/tests/implementer-report.test.ts
+# rule: the goal plugin remains type-safe
+gate2=node node_modules/typescript/bin/tsc --noEmit
+# rule: the project lint and QA checks remain green
+gate3=node node_modules/eslint/bin/eslint.js --config eslint.config.js plugins scripts
+```
+
+## Out-of-band decisions captured during grill
+
+- Q: How should the execution sessions handle commits and the PR?
+  A: `manual`; the developer reviews and commits each iteration.
+- Q: Which delivery mode applies?
+  A: `no-bc-break`; the manual handoff remains compatible and no existing consumer contract is broken.
+- Q: Was the adversarial grill run?
+  A: No. The change is a small non-interactive policy/template correction with no meaningful state matrix.
 
 ## Notes / decisions from source
 
-- Ticket 0f is issue #188 and follows 0b4 delivered by PR #213.
+- Ticket 0f follows 0b4 delivered by PR #213.
 - The manual convention-skills handoff is deliberately retained.
 - The unattended path must not gain a `Skill` tool or an unenforced loading order.
