@@ -38,6 +38,41 @@ level is settled, and runs `/goal:spec` first when it is not.
 > `superpowers` verification/debugging, `common` spec-first-dev, `craft` TDD,
 > language convention skills) sharpen the workflow but none are mandatory.
 
+## Project artifact root
+
+Before resolving the source, run the existing resolver from the installed goal plugin:
+
+```bash
+project="$(git rev-parse --show-toplevel)"
+node "${CLAUDE_PLUGIN_ROOT}/src/artifacts.ts" "$project"
+```
+
+Use the returned absolute `root`, `plans` and `runs` as `<artifact-root>`, `<plans>`
+and `<runs>` in every destination and handoff. Stop on resolver errors. The priority
+is process/container `GOAL_ROOT_PATH`, project-root `.env.local`, project-root `.env`,
+then `.goal/` only on absence. Relative values resolve from the Git project root;
+absolute values and spaces remain intact. Never read unrelated environment values.
+
+Use the effective value without asking for a location. If no value is supplied,
+use the returned default; location selection belongs to `/goal:spec`.
+
+Discover identifiers only in `<plans>`. On a miss, ask for the full path and wait;
+never search an old provider directory or fetch a substitute source. Explicit paths
+select exactly that file; missing or unreadable files fail clearly. Existing selected
+plans stay in place and are updated there. New associated documents go in `<plans>`
+and include `Source plan: <absolute selected plan path>`. Preserve every command and
+path embedded in locked plans; never migrate artifacts or rewrite historical documents.
+Old history requires `--runs-path <absolute work-id history directory>`.
+
+Git ignore rules determine planning-document versioning. Tracked, ignored and external
+plans are supported; a tracked plan must be clean at launch and the gate owns its ticks.
+Before launching, prepare exact exclusions in project `.gitignore` for the resolved
+in-repository `<runs>/` and the selected `<plan>.run.lock/` and `<plan>.tick.lock/`.
+Do not ignore the whole artifact root or require plans to be ignored. External paths
+need no repository exclusion. Write project-relative, root-anchored ignore entries,
+escaping Git pattern characters so the exclusions name only those exact paths.
+Never write `.git/info/exclude`.
+
 ## Argument — resolve the source
 
 Source: `$ARGUMENTS`
@@ -47,40 +82,41 @@ Resolve it to a **work item** and a stable **work-id**:
 **Spec-first — check the local artifact BEFORE any external I/O.** For a Jira
 key or an issue number, the work-id is derivable from the argument alone (no
 network): `CT-5856` → `ct-5856`, `42` → `issue-42`. So **first** look for
-`.claude/plans/<work-id>-spec.md`:
+`<plans>/<work-id>-spec.md`:
 - **It exists** → `/goal:spec` already ran and captured the source (Jira/issue
   content, business rules, decisions) into that contract. It is the **primary
   source** — read it, do NOT re-fetch Jira/gh to rebuild what it already holds.
   Only call the Atlassian MCP / `gh` to fill a **specific gap the contract
   explicitly flags** (e.g. an unread screenshot). This skips a pointless OAuth
   round-trip and guarantees a fresh session picks up the right element.
-- **It does not exist** → fall through to the external resolution table below.
+- **It does not exist** → ask for the full path and wait. Do not search another
+  directory or fetch an external substitute. For new work, route to `/goal:spec`.
 
 | `$ARGUMENTS` shape | How to read it | work-id |
 |---|---|---|
-| Jira key `^[A-Z][A-Z0-9]+-[0-9]+$` (e.g. `CT-1234`) | Atlassian MCP — see below | key lowercased → `ct-1234` |
-| Bare integer `42` or `#42` | `gh issue view 42 --json number,title,body,labels,assignees,comments` (needs `gh auth`) | `issue-42` |
+| Jira key `^[A-Z][A-Z0-9]+-[0-9]+$` (e.g. `CT-1234`) | Discover `<plans>/ct-1234-spec.md`; on a miss ask for the full path | key lowercased → `ct-1234` |
+| Bare integer `42` or `#42` | Discover `<plans>/issue-42-spec.md`; on a miss ask for the full path | `issue-42` |
 | A path ending in `.md` | Read the file | ≤40-char kebab slug of the title |
 | `inline` or empty | Ask the developer to paste the source now | ≤40-char kebab slug of the title |
 | Anything else that doesn't resolve | STOP and report | — |
 
-**Reading a Jira source via MCP:** load the Atlassian tools first with
+**Filling a Jira gap explicitly flagged by the selected contract:** load the Atlassian tools first with
 `ToolSearch` (`select:getAccessibleAtlassianResources,getJiraIssue`), get the
 `cloudId` from `getAccessibleAtlassianResources`, then `getJiraIssue` with the
 key. Extract: summary, description, acceptance criteria (if any), status, and
 the comment thread (comments often hold the real requirements). If the MCP is
 unreachable, STOP and tell the developer to paste the US with `inline`.
 
-The **work-id** drives every artifact: spec at `.claude/plans/<work-id>-spec.md`,
-branch `feature/<work-id>-<slug>`, log at `.claude/plans/<work-id>-execution-log.md`.
+The **work-id** drives every artifact: spec at `<plans>/<work-id>-spec.md`,
+branch `feature/<work-id>-<slug>`, log at `<plans>/<work-id>-execution-log.md`.
 
 ## Phase 0 — Preconditions
 
 Verify in one round:
 - `git rev-parse --show-toplevel` succeeds (we're in a repo)
 - The current branch is clean; if dirty, ask the developer to stash/commit first
-- **Only if the source is a GitHub issue AND no local spec covers it:** `gh auth status` succeeds
-- **Only if the source is Jira AND no local spec covers it:** the Atlassian MCP resolves (`getAccessibleAtlassianResources` returns a resource). When the spec-first check found `.claude/plans/<work-id>-spec.md`, skip this — no MCP/OAuth needed.
+- **Only if the selected contract explicitly flags a GitHub gap:** `gh auth status` succeeds
+- **Only if the selected contract explicitly flags a Jira gap:** the Atlassian MCP resolves (`getAccessibleAtlassianResources` returns a resource). Otherwise skip it.
 
 Do **not** require `gh` for a Jira/file/inline source. If a needed check fails,
 STOP and tell the developer what to fix.
@@ -412,16 +448,16 @@ merge, discovered after both runs have paid for themselves.
 
 ### What a split actually writes
 
-One file per part, named `.claude/plans/<work-id>-<suffix>-spec.md`, where the suffix says
+One file per part, named `<plans>/<work-id>-<suffix>-spec.md`, where the suffix says
 what the part delivers — `astro`, `marketing`, `foundation`. Each is an ordinary plan and is
-run the ordinary way: `/goal:supervise .claude/plans/<work-id>-<suffix>-spec.md`.
+run the ordinary way: `/goal:supervise <plans>/<work-id>-<suffix>-spec.md`.
 
 **Every one carries the full header**, copied rather than inherited: `Policy:`,
 `Delivery mode:`, `Cleanup:` and `Remote:`. Nothing inherits anything, because each file is
 read alone by its own run — and a plan whose header lacks `Remote:` is refused at preflight
 rather than defaulted. "Self-sufficient" is literal here, not a figure of speech.
 
-Then one index, `.claude/plans/<work-id>-plans.md`. **Not `-spec.md`**: `/goal:supervise` with no
+Then one index, `<plans>/<work-id>-plans.md`. **Not `-spec.md`**: `/goal:supervise` with no
 argument resolves the most recently modified `*-spec.md`, and the index is written last, so
 naming it `-spec.md` would make it the file a bare launch picks up and tries to run.
 
@@ -436,18 +472,18 @@ itself, and its own `Trigger:` line is what a run reads.
 
 ## Order
 
-1. `.claude/plans/<work-id>-foundation-spec.md` — <one line>. Nothing waits on it.
+1. `<plans>/<work-id>-foundation-spec.md` — <one line>. Nothing waits on it.
 2. Then, in parallel, one run each:
-   - `.claude/plans/<work-id>-astro-spec.md` — <one line>
-   - `.claude/plans/<work-id>-marketing-spec.md` — <one line>
+   - `<plans>/<work-id>-astro-spec.md` — <one line>
+   - `<plans>/<work-id>-marketing-spec.md` — <one line>
 
 ## Launch
 
 ```bash
-/goal:supervise .claude/plans/<work-id>-foundation-spec.md
+/goal:supervise <plans>/<work-id>-foundation-spec.md
 # once its pull request is merged, then in separate sessions:
-/goal:supervise .claude/plans/<work-id>-astro-spec.md
-/goal:supervise .claude/plans/<work-id>-marketing-spec.md
+/goal:supervise <plans>/<work-id>-astro-spec.md
+/goal:supervise <plans>/<work-id>-marketing-spec.md
 ```
 ````
 
@@ -467,8 +503,11 @@ is missing. So **every split plan's global DoD carries this line**, which fails 
 plan is absent from the index or any listed file has disappeared:
 
 ```
-dodN=for f in .claude/plans/<work-id>*-spec.md; do grep -q "$(basename "$f")" .claude/plans/<work-id>-plans.md || exit 1; done; for f in $(grep -oE '<work-id>[a-z-]*-spec\.md' .claude/plans/<work-id>-plans.md); do test -f ".claude/plans/$f" || exit 1; done
+dodN=for f in "<plans>"/<work-id>*-spec.md; do grep -q "$(basename "$f")" "<plans>/<work-id>-plans.md" || exit 1; done; for f in $(grep -oE '<work-id>[a-z-]*-spec\.md' "<plans>/<work-id>-plans.md"); do test -f "<plans>/$f" || exit 1; done
 ```
+
+When authoring a new plan, replace `<plans>` with the resolved absolute directory,
+keeping the quotes for spaces. Never update commands in an existing locked plan.
 
 Both directions matter and neither implies the other: the first catches a plan added later and
 never listed, the second an entry pointing at a file that was renamed or deleted.
@@ -612,7 +651,7 @@ contradiction, and in an autonomous run it is worse: the agent would delete the 
 the same PR that introduces the thing it falls back to.
 
 So collect every cleanup slice into a separate **follow-up plan**, written at lock time as
-`.claude/plans/<work-id>-cleanup-spec.md`. Each keeps its **Trigger** line (the production
+`<plans>/<work-id>-cleanup-spec.md`. Each keeps its **Trigger** line (the production
 evidence that must hold first) and its proof. It becomes its own PR later, when the
 developer runs the workflow on that plan. Nor does it become one of the sibling plans a
 split produced: those are launched alongside each other, and cleanup is strictly after.
@@ -661,7 +700,9 @@ the rules, the notes, the iteration bodies below their Goal. `Source:`, `Work-id
 English too — the header is one block, and a reader who sees half of it translated cannot tell
 which half matters.
 
-Persist at `.claude/plans/<work-id>-spec.md`:
+For a new plan, persist at `<plans>/<work-id>-spec.md`. If a spec or plan was
+selected explicitly, update and lock that exact file in place, including an old root.
+Use the selected path in every launch and reconciliation handoff:
 
 ````markdown
 # Spec: <title>
@@ -765,7 +806,7 @@ gate3=<project lint/QA>
 - ...
 
 <No Cleanup iteration here. Anything that removes a flag, a compat path or an old
-column goes to `.claude/plans/<work-id>-cleanup-spec.md`, in this shape:>
+column goes to `<plans>/<work-id>-cleanup-spec.md`, in this shape:>
 
 ### Iteration 1 — Cleanup: <what is removed>
 - [ ] Not done yet
@@ -797,12 +838,11 @@ WAIT for explicit confirmation.
 ```bash
 slug="<≤40-char kebab slug of the title>"
 git checkout -b "feature/<work-id>-$slug"
-mkdir -p .claude/plans
-# the plan file is already written at .claude/plans/<work-id>-spec.md
+mkdir -p "<plans>"
 ```
 
 **Write the cleanup follow-up plan**, if Phase 3 produced any cleanup slice. Same shape as
-the main spec (header, DoD, iterations), at `.claude/plans/<work-id>-cleanup-spec.md`.
+the main spec (header, DoD, iterations), at `<plans>/<work-id>-cleanup-spec.md`.
 Never fold it back into the main plan. Its header depends on the `Cleanup:` answer:
 
 - **`later`** → `Policy: manual`, so nobody runs it unattended by accident, and a first
@@ -815,8 +855,8 @@ Never fold it back into the main plan. Its header depends on the `Cleanup:` answ
   the feature never drags the cleanup in with it.
 
 **Write the split plans and their index**, if Phase 3 produced a split. One
-`.claude/plans/<work-id>-<suffix>-spec.md` per part, each with the full header copied, then
-`.claude/plans/<work-id>-plans.md` listing them in order — and the index-check line in every
+`<plans>/<work-id>-<suffix>-spec.md` per part, each with the full header copied, then
+`<plans>/<work-id>-plans.md` listing them in order — and the index-check line in every
 split plan's global DoD. Write the index **last**, once every plan it names exists, or its
 own check fails on the first plan the developer runs.
 
@@ -824,11 +864,11 @@ Read the launch commands back to them, one per plan, and say plainly which may r
 same time and which waits on a merge. A split whose order lives only in this conversation is
 a split the developer reconstructs from file names at midnight.
 
-**Never commit the plan, whatever the policy.** `.claude/plans/` is gitignored in most
-projects, so `git add .claude/plans/<work-id>-spec.md` exits 1 and the commit that
-follows exits 1 too: an instruction to "lock the contract" as a commit silently
-achieves nothing. The plan does not need to be tracked anyway. It is durable on disk
-and every session reads it from there.
+**Planning-document versioning follows Git ignore rules.** Do not force a plan to be
+ignored or untrack it. Under `manual`, leave all staging and committing to the developer.
+For a clean tracked plan in an autonomous run, the gate commits its validated checkbox
+with the iteration's code and restores the plan and prior index state if commit fails.
+Ignored and external plans retain their commit-then-tick flow.
 
 **Refresh the issue's intent projection, when an issue exists — and never publish the plan
 there.** The **intent projection** is the part of the spec that does not move: `## Business
@@ -841,7 +881,8 @@ second commit and actively misleads a reader — this happened on this plugin's 
 advertised a script the PR had deleted. Duplication is the fault; refreshing a copy more often
 does not fix it, it only pays for it more often.
 
-Where each thing lives, and why: the **plan** is local and gitignored, so it can move freely.
+Where each thing lives, and why: the **plan** stays at its selected path, versioned
+according to Git ignore rules.
 The **PR body** is rewritten at every slice, so it is the live view of what actually landed.
 The **issue** is the log — the why, the boundaries, and the pointers.
 
@@ -885,7 +926,7 @@ In the two rows that do call for it — `manual`, and `commit+pr` with a non-gat
 iteration — emit the canonical `/goal` handoff from
 `templates/goal-handoff.template`, filled
 per that file's **"How to fill it"** section: `<plan path>` =
-`.claude/plans/<work-id>-spec.md`, the spec's real test/lint commands, `<policy>` =
+the selected absolute plan path, the spec's real test/lint commands, `<policy>` =
 the chosen policy verbatim, `<delivery-mode>` = the spec's `Delivery mode:` line verbatim.
 Fold the policy and delivery-mode blocks to the single active branch of each — an executor
 reads its own mode, never the one it is not in. Respect the **≤ 4000-character hard limit**:

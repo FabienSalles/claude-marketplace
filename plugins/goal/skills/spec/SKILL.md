@@ -28,11 +28,53 @@ session entirely.
    └─ /goal:tickets ─▶ ordered backlog; each ticket lands here at its turn
 (idea / Jira US / GitHub issue / PRD / BMAD story / brainstorm)
    └─ /goal:spec ← YOU ARE HERE
-        ├─ functional contract written to .claude/plans/<work-id>-spec.md   (always)
+        ├─ functional contract written to <plans>/<work-id>-spec.md   (always)
         └─ GitHub issue mirror                                             (only if the developer says yes)
              └─ /goal:plan <source>
                   └─ manual: /goal + /goal:next · commit+pr: /goal:supervise
 ```
+
+## Project artifact root
+
+Before resolving the source, run the existing resolver from the installed goal plugin:
+
+```bash
+project="$(git rev-parse --show-toplevel)"
+node "${CLAUDE_PLUGIN_ROOT}/src/artifacts.ts" "$project"
+```
+
+Use the returned absolute `root`, `plans` and `runs` as `<artifact-root>`, `<plans>`
+and `<runs>` in every destination and handoff. Stop on resolver errors. The priority
+is process/container `GOAL_ROOT_PATH`, project-root `.env.local`, project-root `.env`,
+then `.goal/` only on absence. Relative values resolve from the Git project root;
+absolute values and spaces remain intact. Never read unrelated environment values.
+
+If `supplied` is false, ask for **docs/goal/**, **.goal/** or a **custom path** and
+wait for the answer. Ask which project-root file, `.env` or `.env.local`, should
+hold `GOAL_ROOT_PATH`. Preserve all unrelated content; update only its assignment,
+quoting the chosen literal path. Do not execute shell expressions or expand variable
+references. A selected empty or invalid value is an error, never an absent value.
+If `supplied` is true, use the effective value without asking for a location.
+Use the chosen value for this session by passing it as the resolver process's
+`GOAL_ROOT_PATH`; a child cannot change the parent session's environment. Resolve
+again with that value before writing. Do not create Claude JSON configuration.
+
+Discover identifiers only in `<plans>`. On a miss, ask for the full path and wait;
+never search an old provider directory or fetch a substitute source. Explicit paths
+select exactly that file; missing or unreadable files fail clearly. Existing selected
+plans stay in place and are updated there. New associated documents go in `<plans>`
+and include `Source plan: <absolute selected plan path>`. Preserve every command and
+path embedded in locked plans; never migrate artifacts or rewrite historical documents.
+Old history requires `--runs-path <absolute work-id history directory>`.
+
+Git ignore rules determine planning-document versioning. Tracked, ignored and external
+plans are supported; a tracked plan must be clean at launch and the gate owns its ticks.
+Before launching, prepare exact exclusions in project `.gitignore` for the resolved
+in-repository `<runs>/` and the selected `<plan>.run.lock/` and `<plan>.tick.lock/`.
+Do not ignore the whole artifact root or require plans to be ignored. External paths
+need no repository exclusion. Write project-relative, root-anchored ignore entries,
+escaping Git pattern characters so the exclusions name only those exact paths.
+Never write `.git/info/exclude`.
 
 ## Argument — resolve the source
 
@@ -196,7 +238,8 @@ enumerated or waved through.
 
 ## Phase 4 — Write the functional contract
 
-Always write `.claude/plans/<work-id>-spec.md`:
+Write a new contract at `<plans>/<work-id>-spec.md`. When updating an explicitly
+selected existing contract, keep its path and update it in place:
 
 ````markdown
 # Spec: <title>
@@ -278,7 +321,8 @@ If **yes**:
 2. Render the **intent projection** — and only it — into a temp file. The projection is
    `## Business intent`, `## Scope IN`, `## Scope OUT` and the flags: the sections that will
    still be true in three weeks. Add one closing line saying the executable plan lives locally
-   (gitignored) and that the pull request body is where the delivered work is read.
+   (versioned according to Git ignore rules) and that the pull request body is where the
+   delivered work is read.
 
    Everything `/goal:plan` will later produce — the command-mapped Definition of Done, the
    iterations, the `gate` blocks — stays **out**. Those change at every slice, and an issue
@@ -294,7 +338,8 @@ If **yes**:
      [--label "<labels>"] [--milestone "<milestone>"] [--assignee "<assignee>"]
    ```
 4. Capture the issue number `<N>`. From now on the work-id is `issue-<N>`; rename
-   the spec to `.claude/plans/issue-<N>-spec.md` so `/goal:plan <N>` finds it.
+   the newly created spec to `<plans>/issue-<N>-spec.md` so `/goal:plan <N>` finds it.
+   An explicitly selected existing contract stays in place; hand off its full path instead.
 
 Do **not** auto-create labels/milestones/assignees — only what the developer named.
 
@@ -305,7 +350,7 @@ deliberately does not yet, and the single next command.** Print exactly that sha
 the command the last thing on screen — nothing after it, no commentary, no summary.
 
 ```
-✓ Functional contract written — .claude/plans/<work-id>-spec.md
+✓ Functional contract written — <plans>/<work-id>-spec.md
 ✓ GitHub issue created — <URL>            (omit this line when local-only)
 
 This contract has
@@ -330,6 +375,8 @@ cost the most to resolve — a developer who reads "4 flags" learns nothing, one
 session will ask them.
 
 If the source was local-only, drop the issue line and use the work-id in the command.
+When an existing contract was selected explicitly, print its actual path and pass that
+full path to `/goal:plan`, rather than an identifier or a current-root substitute.
 
 ## Rules
 

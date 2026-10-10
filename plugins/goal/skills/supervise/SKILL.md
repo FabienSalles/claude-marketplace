@@ -24,14 +24,54 @@ implementer's real work for nothing, or ships a plan quietly rewritten to stop r
 **This is a hypothesis, not a proven procedure.** The classification rule below was written from
 two cases. Read the report at the end as evidence for or against it, not as a verdict on this run.
 
+## Project artifact root
+
+Before resolving the source, run the existing resolver from the installed goal plugin:
+
+```bash
+project="$(git rev-parse --show-toplevel)"
+node "${CLAUDE_PLUGIN_ROOT}/src/artifacts.ts" "$project"
+```
+
+Use the returned absolute `root`, `plans` and `runs` as `<artifact-root>`, `<plans>`
+and `<runs>` in every destination and handoff. Stop on resolver errors. The priority
+is process/container `GOAL_ROOT_PATH`, project-root `.env.local`, project-root `.env`,
+then `.goal/` only on absence. Relative values resolve from the Git project root;
+absolute values and spaces remain intact. Never read unrelated environment values.
+
+Use the effective value without asking for a location. If no value is supplied,
+use the returned default; location selection belongs to `/goal:spec`.
+
+Discover identifiers only in `<plans>`. On a miss, ask for the full path and wait;
+never search an old provider directory or fetch a substitute source. Explicit paths
+select exactly that file; missing or unreadable files fail clearly. Existing selected
+plans stay in place and are updated there. New associated documents go in `<plans>`
+and include `Source plan: <absolute selected plan path>`. Preserve every command and
+path embedded in locked plans; never migrate artifacts or rewrite historical documents.
+Old history requires `--runs-path <absolute work-id history directory>`.
+
+Git ignore rules determine planning-document versioning. Tracked, ignored and external
+plans are supported; a tracked plan must be clean at launch and the gate owns its ticks.
+Before launching, prepare exact exclusions in project `.gitignore` for the resolved
+in-repository `<runs>/` and the selected `<plan>.run.lock/` and `<plan>.tick.lock/`.
+Do not ignore the whole artifact root or require plans to be ignored. External paths
+need no repository exclusion. Write project-relative, root-anchored ignore entries,
+escaping Git pattern characters so the exclusions name only those exact paths.
+Never write `.git/info/exclude`.
+
 ## Phase 0 — Resolve the plan
 
 Argument: `$ARGUMENTS`
 
-- A path ending in `.md` → that is the plan.
-- Empty → the `.claude/plans/*-spec.md` most recently modified, excluding
+- A full path ending in `.md` → that is the plan; fail clearly if missing or unreadable.
+- An identifier → look only for `<plans>/<work-id>-spec.md`; on a miss ask for
+  the full path and wait. Never substitute a plan from another directory.
+- Empty → the `<plans>/*-spec.md` most recently modified, excluding
   `*-cleanup-spec.md`. Several equally plausible candidates → list them
-  and ASK. None → STOP: _"No plan found. Run `/goal:plan` first."_
+  and ASK. None → ask for the full path and wait.
+
+If the developer confirms there is no existing plan to select, STOP:
+_"No plan exists. Run `/goal:plan` first."_
 
 ## Phase 1 — Launch in the background
 
@@ -39,7 +79,7 @@ Argument: `$ARGUMENTS`
 node ${CLAUDE_PLUGIN_ROOT}/scripts/goal-run.ts <plan>
 ```
 
-Start it as a background shell. It writes nothing you need to poll for: `<plan>.run.log`
+Start it as a background shell. It writes nothing you need to poll for: `<runs>/<work-id>/<run-id>/.run.log`
 accumulates the same lines it prints, so the transcript survives you looking away.
 
 ## Phase 2 — Wait for it to end
@@ -59,7 +99,7 @@ Every non-zero exit is reported in one structured block, in this order:
 
 1. **Command** — the exact command the run executed, verbatim from the log (`make php/qa`, the
    `gateN=` line the gate refused…).
-2. **Output** — the failing part of that command's output, verbatim from `<plan>.run.log`: the
+2. **Output** — the failing part of that command's output, verbatim from `<runs>/<work-id>/<run-id>/.run.log`: the
    error lines plus enough surrounding context to read them (the failing suites, the assertion
    diff, the lint error). Trim the green noise, never the failure.
 3. **Reproduce** — the command the developer can run themselves to see the same thing, what it
@@ -139,7 +179,7 @@ Sort what it names into exactly one bucket:
 1. Discard exactly what the halted attempt wrote, and nothing that predates it — the preflight
    already required a clean tree, so everything `git status --short` shows now belongs to this
    attempt: `git checkout -- .` for tracked changes, `git clean -fd` for untracked ones. Never
-   `-x`: that would also sweep the ignored `.claude/plans/` directory the run itself writes into.
+   `-x`: that would also sweep ignored planning documents the developer chose to keep local.
 2. Confirm the tree is clean (`git status --short` prints nothing) before relaunching.
 3. Relaunch the same iteration, plan untouched:
    `node ${CLAUDE_PLUGIN_ROOT}/scripts/goal-run.ts <plan> <iteration>`.
@@ -272,7 +312,7 @@ total.
 ## Closing paths
 
 Every closing report names the plan and the run directories it produced, so the developer can
-open them without hunting: the plan path, then each run directory under `.claude/goal-runs/`,
+open them without hunting: the plan path, then each run directory under `<runs>/`,
 one path per line — never a single `·`-joined line. A developer copy-pasting a path off a run
 that used commas or middle dots as separators is the failure this rule exists to avoid.
 

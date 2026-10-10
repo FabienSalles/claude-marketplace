@@ -13,7 +13,11 @@ once an emitter has decided the block is called for.
 
 ## How to fill it
 
-- `<plan path>` = the resolved spec path (e.g. `.claude/plans/<work-id>-spec.md`).
+- Resolve artifacts with `node "${CLAUDE_PLUGIN_ROOT}/src/artifacts.ts" "<project-directory>"`.
+  Use its absolute `plans` directory as `<plans>` for new documents. For an existing
+  plan, `<plan path>` is the selected absolute path, even outside the current root.
+  Keep that plan in place and preserve its embedded commands literally. New associated
+  documents go in `<plans>` with `Source plan: <absolute selected plan path>`.
 - `<skills résolus pour l'itération>` = the concrete skill names, derived from the
   iteration's `test_files` + `impl_files`: `*Test.php` → `craft:testing-principles` +
   `phpunit:php-test-conventions` (+ `symfony:symfony-test-conventions` when a kernel

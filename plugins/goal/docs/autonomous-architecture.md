@@ -13,9 +13,15 @@ moving.
 
 ## The six layers
 
+`<plans>` and `<runs>` are the absolute directories returned by the
+[shared artifact resolver](../README.md), used by sessions and templates. Identifier
+lookup is confined to `<plans>`; misses require a full path. Explicit old plans stay
+in place, with new associated documents under `<plans>` referencing their source plan.
+Git controls plan versioning; exclude only in-repository records and transient locks.
+
 | # | Layer | Medium | Holds |
 |---|---|---|---|
-| 0 | The plan | markdown, gitignored, hashed | what to build, and the exact commands that prove it |
+| 0 | The plan | markdown, Git-controlled versioning, hashed | what to build, and the exact commands that prove it |
 | 1 | Verification | TypeScript run natively by node (`goal-gate.ts` and its modules under `gate/`) | did this iteration pass: the only authority, and the only thing that commits |
 | 2 | Orchestration | a node process (`goal-run.ts` and its modules under `run/`) | preflight, order, halt, quota wait, publication |
 | 3 | Advisory quality | agents (reviewer, lens, auditor) | what the gate structurally cannot see |
@@ -36,7 +42,9 @@ correct.[^judge] Nothing built on that signal may decide whether work advances.
 An exit code has none of those properties. It is the anchor, and every other layer is
 arranged so that no path reaches a commit without passing through it.
 
-Concretely: `goal-gate.ts commit` verifies, commits and ticks **inside one process**, in that order.
+Concretely: `goal-gate.ts commit` verifies, commits and ticks **inside one process**. For a tracked plan, it stages its own
+validated tick with the code before committing; failure restores the plan and prior index
+state. Ignored and external plans keep the commit-then-tick order.
 The orchestrator does not commit. It calls a script that commits only after it has verified,
 so an orchestrator that misreads a result cannot produce a bad commit.
 
@@ -130,8 +138,8 @@ hypothetical.[^overcorrect]
 The three agents are invoked at the close, after everything is committed and pushed, which makes
 that rule structural rather than a promise: none of them can undo what the gate already
 verified. Their answers land in the run's own log,
-`.claude/goal-runs/<work-id>/<run-id>/.run.log` (`run/close.ts`) and, for the auditor, in
-`.claude/goal-runs/<work-id>/<run-id>/report.md`. The developer adjudicates them awake.
+`<runs>/<work-id>/<run-id>/.run.log` (`run/close.ts`) and, for the auditor, in
+`<runs>/<work-id>/<run-id>/report.md`. The developer adjudicates them awake.
 
 ## Layer 4: what survives the process
 
@@ -154,7 +162,7 @@ from two halts, and it is a hypothesis rather than a proven procedure.
 
 The evidence that call runs on is on disk. On a gate refusal the runner concatenates the gate's
 stdout and stderr and hands them to `reporter.record()` (`run/iteration.ts`), which appends
-them to the run's own log, `.claude/goal-runs/<work-id>/<run-id>/.run.log`
+them to the run's own log, `<runs>/<work-id>/<run-id>/.run.log`
 (`run/report.ts#record`), before exiting. The HALT block the classifier
 is told to read is therefore in the log the classifier reads, and
 `tests/goal-run-halt-log.test.ts` asserts it, including the case where the gate splits the block
@@ -204,9 +212,8 @@ So:
   number, `gh pr view --json number` (`run/publish.ts`), and it reads it only to decide
   whether to create a pull request or edit the one that exists. Reading a source happens once,
   in `/goal:spec`, under a human's eyes, and its output is the local plan.
-- **The plan is the only instruction source**, it is gitignored (a plan directory visible to
-  git is a refusal, not a warning, `run/preflight.ts`) and its hash is checked at every
-  iteration. An instruction that is not in the plan is not an instruction.
+- **The plan is the only instruction source**. Tracked, ignored and external plans are
+  accepted; a tracked plan must be clean at launch and its hash is checked at every iteration. An instruction that is not in the plan is not an instruction.
 - **Gate commands come from the plan**, frozen by a human at lock time. The run installs
   nothing and resolves no dependency it was not told to.
 - Agents that write to GitHub receive the text to post as data; they do not decide what to
