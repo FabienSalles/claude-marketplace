@@ -74,7 +74,7 @@ mutations.push(
 mutations.push({
   name: 'bounded() reduced to the identity function',
   file: resolve('plugins/goal/src/gate/bounded.ts'),
-  find: "export const bounded = (command: string, limit: string = ceiling()): string =>\n  `exec ${[process.execPath, GROUP_RUN, String(settingValue('GOAL_CMD_TIMEOUT', process.env)), withCeiling(command, limit)]\n    .map(quoted)\n    .join(' ')}`;",
+  find: "export const bounded = (command: string, limit: string = ceiling()): string =>\n  `exec ${compileCache()}${[process.execPath, GROUP_RUN, String(settingValue('GOAL_CMD_TIMEOUT', process.env)), withCeiling(command, limit)]\n    .map(quoted)\n    .join(' ')}`;",
   replacement: 'export const bounded = (command: string, limit: string = ceiling()): string => command;',
   target: resolve('plugins/goal/tests/bounded.test.ts'),
 });

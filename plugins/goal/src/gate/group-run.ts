@@ -1,9 +1,13 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { writeSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const EARLIER_THAN_CALLER_MS = 250;
 const STOP_ATTEMPTS = 10;
+
+export const COMPILE_CACHE = join(tmpdir(), 'goal-group-run-compile-cache');
 
 type Member = { pid: number; line: string };
 
@@ -57,7 +61,9 @@ export const stopGroup = (pgid: number): string[] => {
 };
 
 export const groupRun = (script: string, seconds: number): void => {
-  const child = spawn('/bin/sh', ['-c', script], { detached: true, stdio: 'inherit' });
+  const { NODE_COMPILE_CACHE, ...inherited } = process.env;
+  const env = NODE_COMPILE_CACHE === COMPILE_CACHE ? inherited : process.env;
+  const child = spawn('/bin/sh', ['-c', script], { detached: true, stdio: 'inherit', env });
   const pgid = child.pid as number;
   let stopped: string[] = [];
   let onClock = false;
