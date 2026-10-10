@@ -5,7 +5,7 @@ import { resolve } from 'node:path';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 
-import { bounded, ceilingFor, spawnOptions } from '../src/gate/bounded.ts';
+import { bounded, ceiling, ceilingFor, spawnOptions, withCeiling } from '../src/gate/bounded.ts';
 
 const RUN = resolve(import.meta.dirname, 'run.sh');
 
@@ -18,7 +18,7 @@ const RUN = resolve(import.meta.dirname, 'run.sh');
 // the nested one, and asserting it is what let the regression below through.
 
 test('a declared command is either prefixed with a ceiling or already under one', () => {
-  assert.match(bounded('true'), /^(ulimit -u [0-9]+ \|\| \{ echo [^\n]*>&2; exit 1; \}\n)?true$/);
+  assert.match(withCeiling('true', ceiling()), /^(ulimit -u [0-9]+ \|\| \{ echo [^\n]*>&2; exit 1; \}\n)?true$/);
 });
 
 // `ulimit -u` is a bash extension and `shell: true` runs `/bin/sh`, which is dash on Debian and
@@ -30,7 +30,7 @@ test('no ceiling is emitted where the shell cannot express one', () => {
   const supported = spawnSync('/bin/sh', ['-c', 'ulimit -u'], { encoding: 'utf8' }).status === 0;
 
   assert.ok(
-    supported || bounded('true') === 'true',
+    supported || withCeiling('true', ceiling()) === 'true',
     'a ceiling was emitted for a shell whose ulimit has no -u, so every declared command would fail on it',
   );
 });
@@ -40,8 +40,9 @@ test('no ceiling is emitted where the shell cannot express one', () => {
 // is passed in rather than read from the machine: `ceiling()` returns `''` under dash, and a test
 // that reads the host cannot refuse that mutation on the shells where it returns nothing.
 test('bounded() attaches the ceiling it is given', () => {
-  assert.equal(bounded('true', 'ulimit -u 500 || exit 1'), 'ulimit -u 500 || exit 1\ntrue');
-  assert.equal(bounded('true', ''), 'true', 'an empty ceiling was attached anyway');
+  assert.equal(withCeiling('true', 'ulimit -u 500 || exit 1'), 'ulimit -u 500 || exit 1\ntrue');
+  assert.equal(withCeiling('true', ''), 'true', 'an empty ceiling was attached anyway');
+  assert.match(bounded('true', 'ulimit -u 500 || exit 1'), /ulimit -u 500 \|\| exit 1\ntrue'$/);
 });
 
 // The regression that took the whole suite red on 2026-08-03, 35 failures for one cause:
@@ -57,7 +58,7 @@ test('a ceiling already in force is not re-set', () => {
 const REFUSABLE_900 = 'ulimit -u 900 || { echo "goal: cannot set the process ceiling (ulimit -u 900)" >&2; exit 1; }';
 
 test('a ceiling the shell refuses prints its cause on stderr and runs nothing after it', () => {
-  const run = spawnSync(`ulimit -u 100\n${bounded('echo ran', ceilingFor(1000, Infinity))}`, { shell: true, encoding: 'utf8' });
+  const run = spawnSync(`ulimit -u 100\n${withCeiling('echo ran', ceilingFor(1000, Infinity))}`, { shell: true, encoding: 'utf8' });
 
   assert.equal(run.status, 1);
   assert.match(run.stderr, /cannot set the process ceiling \(ulimit -u 1\d\d\d\)/);
