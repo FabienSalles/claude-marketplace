@@ -47,13 +47,9 @@ const runGate = (repo: string, plan: string, timeout = '3'): Promise<{ code: num
   });
 
 const alive = (pidFile: string): boolean => {
-  try {
-    process.kill(Number(readFileSync(pidFile, 'utf8')), 0);
+  const ps = spawnSync('ps', ['-o', 'stat=', '-p', readFileSync(pidFile, 'utf8').trim()], { encoding: 'utf8' });
 
-    return true;
-  } catch {
-    return false;
-  }
+  return ps.status === 0 && !ps.stdout.trim().startsWith('Z');
 };
 
 describe('declared services', { concurrency: true }, () => {
