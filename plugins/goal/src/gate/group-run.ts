@@ -30,6 +30,12 @@ export const stopGroup = (pgid: number): string[] => {
   const stopped = new Map<number, string>();
 
   for (let attempt = 0; attempt < STOP_ATTEMPTS; attempt++) {
+    try {
+      process.kill(-pgid, 0);
+    } catch {
+      break;
+    }
+
     const alive = members(pgid);
 
     if (alive.length === 0) {
