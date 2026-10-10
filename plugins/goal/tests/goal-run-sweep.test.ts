@@ -1,9 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { PLAN, repo, run } from './support/goal-run-harness.ts';
+import { tmpDir } from './support/tmp.ts';
 
 // PLAN's own Iteration 2 declares no gate block, since no existing preflight test ever reaches
 // it: sweeping every declared iteration now requires one, so it is given the smallest valid block.
@@ -85,4 +86,25 @@ test('a swept command running a missing file no iteration declares still refuses
   assert.notEqual(code, 0);
   assert.match(output, /STOP the base is not green: `\.\/check\.sh` exited 127/, output);
   assert.ok(!existsSync(fixture.claudeLog), 'a missing file nobody declared was skipped');
+});
+
+// R11 — a swept command runs with its own iteration's services, stopped after the sweep
+test("a swept command runs with its iteration's services up, and they are stopped afterwards", () => {
+  const state = tmpDir('goal-sweep-state-');
+  const planText = PLAN2.replace(
+    'gate1=true\n```\n',
+    () => [
+      'gate1=true',
+      `service1=echo $$ > ${state}/pid1; touch ${state}/ready1; exec tail -f /dev/null`,
+      `service1_ready=test -f ${state}/ready1`,
+      `gate2=kill -0 $(cat ${state}/pid1)`,
+      '```\n',
+    ].join('\n'),
+  );
+  const fixture = repo({ planText });
+
+  const { code, output } = run(fixture, [fixture.plan, '1'], { FAKE_CLAUDE_WRITES: join(fixture.dir, 'a.txt') });
+
+  assert.equal(code, 0, output);
+  assert.throws(() => process.kill(Number(readFileSync(join(state, 'pid1'), 'utf8')), 0));
 });

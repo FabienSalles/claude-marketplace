@@ -4,6 +4,13 @@
 import { err, ok, type Result } from '../result.ts';
 import { halt, type Halt } from '../verdict.ts';
 
+export const servicesOf = (declared: ReadonlyMap<string, string>): string =>
+  [...declared.entries()]
+    .filter(([key]) => /^service[1-9][0-9]*(_ready|_paths)?$/.test(key))
+    .sort(([a], [b]) => (a < b ? -1 : 1))
+    .map(([key, value]) => `${key}=${value}`)
+    .join('\n');
+
 // Deduplicated by command string, against what the slice's own commands already cover and
 // against each other: a command two earlier iterations share is replayed once, under the first.
 export const selectReplay = (

@@ -111,7 +111,7 @@ gate3=node node_modules/eslint/bin/eslint.js --config eslint.config.js plugins s
 ```
 
 ### Iteration 2 — A replayed command runs with the services of the iteration it comes from
-- [ ] Not done yet
+- [x] Not done yet
 - **Goal:** The regression wall and the preflight base sweep replay an earlier iteration's commands with that iteration's services running and ready, and stop them once the replay is done.
 - **Shippable after it:** a plan whose services serve several iterations keeps its regression wall and its preflight green; nothing a replay started survives it.
 - **Files to touch:** `plugins/goal/src/gate/cross-iteration.ts`, `plugins/goal/src/core/rules/cross-iteration.ts` (two identical commands are deduplicated only when their services are identical too), `plugins/goal/src/run/sweep.ts`, `plugins/goal/tests/gate-cross-iteration.test.ts`, `plugins/goal/tests/goal-run-sweep.test.ts`

@@ -107,6 +107,66 @@ test('a command declared by two checked iterations is replayed once', () => {
   assert.equal(counted(runs), 1);
 });
 
+const serviceLines = (state: string): string[] => [
+  `service1=echo $$ > ${state}/pid1; touch ${state}/ready1; exec tail -f /dev/null`,
+  `service1_ready=test -f ${state}/ready1`,
+];
+
+const pidAlive = (pidFile: string): boolean => {
+  try {
+    process.kill(Number(readFileSync(pidFile, 'utf8')), 0);
+
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+// R11 — a replayed command runs with its own iteration's services, stopped after the replay
+test("an earlier iteration's command is replayed with its services running, then stopped", () => {
+  const state = tmpDir('goal-gate-cross-state-');
+  const { repo, plan } = fixture([
+    { ticked: true, lines: slice(...serviceLines(state), `gate1=kill -0 $(cat ${state}/pid1)`) },
+    { ticked: false, lines: SLICE },
+  ]);
+  touchDeclared(repo);
+
+  const { code, output } = runGate(repo, 'verify', plan, '2');
+
+  assert.equal(code, 0, output);
+  assert.equal(pidAlive(join(state, 'pid1')), false);
+});
+
+test('a replayed service is stopped when the replay fails', () => {
+  const state = tmpDir('goal-gate-cross-state-');
+  const { repo, plan } = fixture([
+    { ticked: true, lines: slice(...serviceLines(state), `gate1=test -f ${state}/ready1 && false`) },
+    { ticked: false, lines: SLICE },
+  ]);
+  touchDeclared(repo);
+
+  const { code, output } = runGate(repo, 'verify', plan, '2');
+
+  assert.equal(code, 1, output);
+  assert.equal(pidAlive(join(state, 'pid1')), false);
+});
+
+test('two identical commands with different services are both replayed', () => {
+  const runs = tally();
+  const state = tmpDir('goal-gate-cross-state-');
+  const { repo, plan } = fixture([
+    { ticked: true, lines: slice(...serviceLines(state), `gate1=echo run >> ${runs}`) },
+    { ticked: true, lines: slice(`gate1=echo run >> ${runs}`) },
+    { ticked: false, lines: SLICE },
+  ]);
+  touchDeclared(repo);
+
+  const { code, output } = runGate(repo, 'verify', plan, '3');
+
+  assert.equal(code, 0, output);
+  assert.equal(counted(runs), 2);
+});
+
 test('the slice being verified does not replay its own command', () => {
   const runs = tally();
   const command = `echo run >> ${runs}; grep -q "a = 2" src/a.ts`;
