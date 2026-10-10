@@ -30,6 +30,7 @@ import {
 } from '../core/preflight.ts';
 import { fileNameWorkId, workIdNotice, workIdOf } from '../core/plan.ts';
 import { REFUSED } from '../core/verdict.ts';
+import { lockPaths } from '../gate/locks.ts';
 import { frontmatter, header, iterationNumbers, topRegion } from '../gate/plan.ts';
 import { command } from '../adapters/command.ts';
 import type { AgentSessions } from '../ports.ts';
@@ -148,7 +149,8 @@ export const preflight = (plan: string, source: string, reporter: Reporter, gate
   );
 
   // 8. No run already holds the plan.
-  const lockPath = `${plan}.run.lock`;
+  const paths = lockPaths(plan);
+  const lockPath = [paths.run, paths.oldRun, paths.oldTick].find((path) => fs.exists(path)) ?? paths.run;
   const lockResult = freeLock(fs.exists(lockPath), lockPath, `${gate} unlock ${quote(plan)}`);
 
   if (!lockResult.ok) {

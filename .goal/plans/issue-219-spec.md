@@ -141,7 +141,7 @@ Also true, and not expressible as a command of its own:
 ## Functional iterations
 
 ### Iteration 1 — Run and tick locks are taken in the per-user temp directory, old locks still block
-- [ ] Not done yet
+- [x] Not done yet
 - **Goal:** A run's locks are created outside the repository, in a per-user temp directory, while an old lock beside the plan still blocks and unlock clears both.
 - **Shippable after it:** every run and every gate commit locks in `/tmp/goal-locks-<uid>/` (or `GOAL_LOCK_ROOT`); nothing lock-related appears beside a plan; an old-version lock still blocks and `unlock` clears it; the repository verify still detects a goal run. The skills still mention the old exclusions, harmlessly.
 - **Files to touch:** `plugins/goal/src/gate/locks.ts` (new: the lock directory, a lock's paths from the plan's real path, the old-location paths), `plugins/goal/src/gate/scope.ts`, `plugins/goal/src/run/preflight.ts`, `plugins/goal/src/core/preflight.ts`, `plugins/goal/src/core/settings.ts`, `plugins/goal/scripts/goal-gate.ts`, `scripts/verify/holder.ts` (+ `plugins/goal/tests/gate-locks.test.ts` (new), `scripts/tests/verify-holder.test.ts`, and the tests that pin `${plan}.run.lock`: `plugins/goal/tests/support/goal-run-harness.ts`, `tracked-plan`, `gate-commit`, `core-run`, `goal-run-events-smoke`, `goal-run-halt-log`)

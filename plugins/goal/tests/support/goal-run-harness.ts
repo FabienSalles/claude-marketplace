@@ -25,6 +25,8 @@ import { AWAIT_DEADLINE_MS } from './await-state.ts';
 import { tmpDir } from './tmp.ts';
 
 export const RUN_NODE = resolve(import.meta.dirname, '..', '..', 'scripts', 'goal-run.ts');
+process.env.GOAL_LOCK_ROOT ??= tmpDir('goal-run-locks-');
+
 const AWAIT_MARKER = resolve(import.meta.dirname, 'await-marker.sh');
 
 export const git = (cwd: string, ...args: string[]) => spawnSync('git', args, { cwd, encoding: 'utf8' });

@@ -7,6 +7,8 @@ import { join, resolve } from 'node:path';
 import { tmpDir } from './support/tmp.ts';
 import { repo, run } from './support/goal-run-harness.ts';
 
+process.env.GOAL_LOCK_ROOT = tmpDir('tracked-plan-locks-');
+
 const GATE = resolve(import.meta.dirname, '../scripts/goal-gate.ts');
 const git = (cwd: string, ...args: string[]) => spawnSync('git', args, { cwd, encoding: 'utf8' });
 const gate = (cwd: string, plan: string, verb: string, iteration = '1', env: NodeJS.ProcessEnv = process.env) =>

@@ -18,7 +18,7 @@ test('R6: every verb refuses a faulty GOAL_CMD_TIMEOUT or GOAL_PROC_HEADROOM wit
   const plan = join(dir, 'plan.md');
 
   for (const verb of ['verify', 'commit', 'bite', 'check']) {
-    for (const env of [{ GOAL_CMD_TIMEOUT: '0' }, { GOAL_CMD_TIMEOUT: '' }, { GOAL_PROC_HEADROOM: 'abc' }, { GOAL_CMD_FOO: '1' }, { GOAL_PROC_BAR: '1' }]) {
+    for (const env of [{ GOAL_CMD_TIMEOUT: '0' }, { GOAL_LOCK_ROOT: 'relative' }, { GOAL_LOCK_ROOT: '' }, { GOAL_CMD_TIMEOUT: '' }, { GOAL_PROC_HEADROOM: 'abc' }, { GOAL_CMD_FOO: '1' }, { GOAL_PROC_BAR: '1' }]) {
       const run = gate([verb, plan, '1'], env);
       const name = `${verb} ${JSON.stringify(env)}`;
 

@@ -1,5 +1,5 @@
 import { realpathSync } from 'node:fs';
-import { isAbsolute, relative } from 'node:path';
+import { isAbsolute, join, relative } from 'node:path';
 
 import { fs } from '../adapters/fs.ts';
 import { git } from '../adapters/git.ts';
@@ -9,6 +9,7 @@ import { noNeverVersionedPaths } from '../core/rules/never.ts';
 import { noIgnoredPaths, noScopeLeak } from '../core/rules/scope.ts';
 import type { Halt } from '../core/verdict.ts';
 import { halt, heldLocks } from './halt.ts';
+import { lockPaths, lockRoot, realPlan } from './locks.ts';
 import { sectionBounds } from './plan.ts';
 
 const trackedPlanPath = (plan: string): string | undefined => {
@@ -97,13 +98,13 @@ export const scopeCheck = (
   return ok(changed);
 };
 
-export const takeLock = (path: string, iteration: string): void => {
+export const takeLock = (path: string, iteration: string, plan: string): void => {
   try {
     fs.mkdir(path);
   } catch {
     halt(
       `Another writer holds the plan lock for iteration ${iteration}.`,
-      `Held: ${path}\n\nTwo writers to the plan would tick the same box from different trees, and the second would overwrite the first's contract. Wait for the holder to finish, or remove the lock if you know its process is gone.`,
+      `Held: ${path}\n\nTwo writers to the plan would tick the same box from different trees, and the second would overwrite the first's contract. Wait for the holder to finish, or release it with: goal-gate.ts unlock ${plan}`,
     );
   }
 
@@ -111,22 +112,29 @@ export const takeLock = (path: string, iteration: string): void => {
 };
 
 export const runLock = (subcommand: string, plan: string): string => {
-  const path = `${plan}.run.lock`;
+  const { run, oldRun, oldTick } = lockPaths(plan);
 
   if (subcommand === 'unlock') {
-    fs.removeTree(path);
+    [run, oldRun, oldTick].forEach((path) => fs.removeTree(path));
 
     return `OK: run lock released.\n`;
   }
 
+  const held = [oldRun, oldTick].find((path) => fs.exists(path));
+
   try {
-    fs.mkdir(path);
+    if (held !== undefined) throw new Error(held);
+
+    fs.mkdir(lockRoot(), { recursive: true });
+    fs.mkdir(run);
   } catch {
     halt(
       'Another run holds this plan.',
-      `Held: ${path}\n\nTwo runs on the same plan implement the same iteration twice, and the second commits over the first. Wait for the holder to finish, or release it with: goal-gate.ts unlock ${plan}`,
+      `Held: ${held ?? run}\n\nTwo runs on the same plan implement the same iteration twice, and the second commits over the first. Wait for the holder to finish, or release it with: goal-gate.ts unlock ${plan}`,
     );
   }
+
+  fs.writeFile(join(run, 'plan'), realPlan(plan));
 
   return `OK: run lock taken.\n`;
 };
@@ -151,7 +159,10 @@ export const commitAndTick = (
     );
   }
 
-  takeLock(`${plan}.tick.lock`, iteration);
+  const { tick, oldTick } = lockPaths(plan);
+
+  fs.mkdir(lockRoot(), { recursive: true });
+  takeLock(fs.exists(oldTick) ? oldTick : tick, iteration, plan);
 
   protectPlan(plan, source);
   const tracked = trackedPlanPath(plan);

@@ -5,6 +5,9 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node
 import { join, resolve } from 'node:path';
 
 import { tmpDir } from './support/tmp.ts';
+import { lockPaths } from '../src/gate/locks.ts';
+
+process.env.GOAL_LOCK_ROOT = tmpDir('goal-gate-locks-');
 
 const GATE = resolve(import.meta.dirname, '..', 'scripts', 'goal-gate.ts');
 
@@ -194,6 +197,19 @@ test('a run lock is exclusive, and unlock hands it back', () => {
   assert.equal(runGate(repo, 'lock', plan).code, 1);
   assert.equal(runGate(repo, 'unlock', plan).code, 0);
   assert.equal(runGate(repo, 'lock', plan).code, 0);
+});
+
+test('a commit is refused while the tick lock of the lock directory is held', () => {
+  const { repo, plan } = fixture();
+  touchDeclared(repo);
+  const { tick } = lockPaths(plan);
+  mkdirSync(tick, { recursive: true });
+
+  const { code, output } = runGate(repo, 'commit', plan, '1');
+
+  assert.equal(code, 1, output);
+  assert.match(output, new RegExp(tick));
+  assert.equal(git(repo, 'log', '-1', '--pretty=%s').stdout.trim(), 'init');
 });
 
 test('a commit is refused while another writer holds the tick lock', () => {
