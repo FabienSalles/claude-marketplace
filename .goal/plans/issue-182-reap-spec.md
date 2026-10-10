@@ -83,7 +83,7 @@ Also true, and not expressible as a command of its own:
 ## Functional iterations
 
 ### Iteration 1 — Every declared command runs in its own process group, stopped and reported as a whole
-- [ ] Not done yet
+- [x] Not done yet
 - **Goal:** When the gate is done with a declared command, on its clock or after it exits, nothing the command started is still running, and the gate's output lists what it stopped.
 - **Shippable after it:** an unattended run no longer leaves orphaned test runners loading the machine; a gate output shows the pid and command line of every leftover it stopped.
 - **Files to touch:** `plugins/goal/src/gate/group-run.ts` (new: runs the command in its own process group, enforces the clock, stops the group on the clock and after exit, lists what it stopped, returns the command's verdict), `plugins/goal/src/gate/bounded.ts` (routes `bounded()` through it, rewrites the header that called the surviving grandchild "scope"), `plugins/goal/tests/gate-group-run.test.ts` (new), `plugins/goal/tests/bounded.test.ts`

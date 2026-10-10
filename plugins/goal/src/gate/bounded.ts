@@ -5,11 +5,13 @@
 // which bounds again), so the ceiling is emitted only when it would genuinely lower what was
 // inherited; nested calls are no-ops and the outermost one binds them all.
 //
-// Alongside the process ceiling, `spawnOptions()` puts a wall clock on the command itself: a test
-// waiting on a port or a prompt nobody answers otherwise blocks an unattended run until the
-// machine is switched off. `timeout` kills only the direct child `spawnSync` started — a
-// grandchild the command forked and detached from it is not in that process group and survives
-// the clock. That gap is scope, not a bug to gate on.
+// Alongside the process ceiling, `bounded()` runs the command in a process group of its own
+// (`group-run.ts`) that puts a wall clock on it and stops every member of the group once the
+// command is done: a test waiting on a port or a prompt nobody answers otherwise blocks an
+// unattended run until the machine is switched off, and a runner the command forked would outlive
+// it. `spawnOptions()` keeps its own clock on the wrapper as the backstop.
+
+import { fileURLToPath } from 'node:url';
 
 import { command as runner } from '../adapters/command.ts';
 import { settingValue } from '../core/settings.ts';
@@ -75,8 +77,17 @@ export const ceiling = (): string => {
 
 // A newline, never `&&`: the command keeps its own shape, so a `!` negation or a pipeline still
 // parses as its author wrote it.
-export const bounded = (command: string, limit: string = ceiling()): string =>
+export const withCeiling = (command: string, limit: string): string =>
   limit === '' ? command : `${limit}\n${command}`;
+
+const GROUP_RUN = fileURLToPath(new URL('./group-run.ts', import.meta.url));
+
+const quoted = (text: string): string => `'${text.replaceAll("'", "'\\''")}'`;
+
+export const bounded = (command: string, limit: string = ceiling()): string =>
+  [process.execPath, GROUP_RUN, String(settingValue('GOAL_CMD_TIMEOUT', process.env)), withCeiling(command, limit)]
+    .map(quoted)
+    .join(' ');
 
 // A run's state reaches its gate through GOAL_RUN_* environment — the JSONL path today, the
 // ticked set until it moved to argv. None of it is addressed to the commands the gate runs: the
