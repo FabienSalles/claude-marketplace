@@ -32,7 +32,8 @@ const checkInstructions = (source: string): void => {
   assert.match(source, /Preserve every command and\s+path embedded in locked plans/);
   assert.match(source, /Git ignore rules determine planning-document versioning/);
   assert.match(source, /Tracked, ignored and external\s+plans are supported/);
-  assert.match(source, /in-repository `<runs>\/` and the selected `<plan>\.run\.lock\/` and `<plan>\.tick\.lock\/`/);
+  assert.match(source, /in-repository `<runs>\/`\./);
+  assert.doesNotMatch(source, /<plan>\.(?:run|tick)\.lock/);
   assert.match(source, /Do not ignore the whole artifact root/);
   assert.match(source, /Never write `\.git\/info\/exclude`/);
   assert.match(source, /--runs-path <absolute work-id history directory>/);

@@ -174,7 +174,7 @@ gate5=node --test plugins/goal/tests/suite-guards.test.ts
 ```
 
 ### Iteration 2 — The goal skills and the README stop asking for lock exclusions
-- [ ] Not done yet
+- [x] Not done yet
 - **Goal:** The goal skills prepare only the runs exclusion, the README documents where locks now live, and the goal plugin ships as 3.4.0.
 - **Shippable after it:** a developer running any goal skill is no longer told to add `<plan>.run.lock/` or `<plan>.tick.lock/` to `.gitignore`; the README's troubleshooting row names the lock directory and the unlock command; the plugin version moves from 3.3.5 to 3.4.0, so installed copies pick up this change and #221 and #222.
 - **Files to touch:** `plugins/goal/skills/spec/SKILL.md`, `plugins/goal/skills/plan/SKILL.md`, `plugins/goal/skills/next/SKILL.md`, `plugins/goal/skills/tickets/SKILL.md`, `plugins/goal/skills/supervise/SKILL.md`, `plugins/goal/README.md`, `plugins/goal/.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json` (the goal entry's version only)
