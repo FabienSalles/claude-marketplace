@@ -3,6 +3,7 @@ import { closeSync, openSync } from 'node:fs';
 import { clock } from '../clock.ts';
 import { command } from '../command.ts';
 import { fs } from '../fs.ts';
+import { classifyTerminal } from './classify.ts';
 import { ceiling } from '../../gate/bounded.ts';
 import type { AgentReport, AgentSessions, Consumption } from '../../ports.ts';
 
@@ -88,13 +89,11 @@ const reportOf = (end: End, stdout: string, stderr: string, durationMs: number, 
           ...(counts?.cacheReadTokens === undefined ? {} : { cacheReadInputTokens: counts.cacheReadTokens }),
           ...(servedModel === undefined ? {} : { model: servedModel }),
         };
-  const failed = end.status !== 0 || (result?.exitCode !== undefined && result.exitCode !== 0);
-  const killed = end.status === 143 || end.signal !== null;
-  const quote = failed ? stderr.trim() : '';
+  const terminal = classifyTerminal({ ...end, stdout, stderr });
 
   return {
     end,
-    outcome: { text: summary ?? '', isError: failed, class: !failed ? 'success' : killed ? 'signal' : 'unrecognised', quote },
+    outcome: { text: summary ?? '', isError: terminal.failed, class: terminal.class, quote: terminal.quote },
     ...(consumption === undefined ? {} : { consumption }),
     ...(sessionId === undefined || sessionId === '' ? {} : { sessionId }),
     stderr,
@@ -105,6 +104,7 @@ const reportOf = (end: End, stdout: string, stderr: string, durationMs: number, 
 
 export const copilotAgentSessions = (continues: number): AgentSessions => ({
   provider: 'copilot',
+  onExhausted: 'pause',
   launch: async (role, brief, options, stop) => {
     if (role !== 'implementer') throw new Error(`the Copilot adapter launches the implementer only, not the ${role}`);
 
