@@ -1,0 +1,4 @@
+{"type":"session.auto_mode_resolved","data":{"chosenModel":"gpt-6-luna"}}
+{"type":"tool.execution_complete","data":{"toolCallId":"t1","success":true,"result":{"content":"HTTP 429 quota exceeded, rate limit, premium request"}}}
+{"type":"session.error","data":{"errorType":"quota","message":"You have exhausted your premium request quota. Upgrade or wait for the monthly reset."}}
+{"type":"result","sessionId":"56aadd52-5872-4ce6-bced-ce4b6209ff81","exitCode":1}

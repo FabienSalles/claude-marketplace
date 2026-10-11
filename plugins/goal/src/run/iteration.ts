@@ -115,6 +115,10 @@ export const runIteration = async (
 
     reporter.say(`RUN stage=implementer duration_ms=${report.durationMs} ${endOf(report.end)}`);
 
+    const model = report.consumption?.model;
+
+    reporter.say(`RUN implementer provider=${agents.provider ?? 'unknown'}${model === undefined || model === '' ? '' : ` model=${model}`}`);
+
     const tokens = tokensLine('implementer', report.consumption);
 
     if (tokens !== undefined && tokens !== '') {
@@ -150,6 +154,15 @@ export const runIteration = async (
     }
 
     history.push(`attempt ${attempt}: ${quotaClass}`);
+
+    const pausesOnQuota = (agents.onExhausted === 'pause' || agents.provider === 'copilot') && (quotaClass === 'exhausted' || (quotaClass === 'burst' && attempt >= quotaMax));
+
+    if (pausesOnQuota) {
+      reporter.stop(
+        `the Copilot quota is spent (${quotaClass === 'burst' ? `rate limit persisted over ${attempt} attempt(s)` : 'quota exhausted'}). The tree holds unjudged partial work from iteration ${iteration}. To finish on Claude: run \`git stash push --include-untracked\` (or review and discard that work), then relaunch with GOAL_RUN_IMPLEMENTER unset.${remoteNote(publisher)}`,
+        PAUSED,
+      );
+    }
 
     if (attempt >= quotaMax) {
       reporter.stop(

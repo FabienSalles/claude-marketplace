@@ -14,12 +14,16 @@ const SETTINGS = {
   GOAL_RUN_PROJECTS_ROOT: { kind: 'text' },
   GOAL_GATE: { kind: 'text' },
   GOAL_LOCK_ROOT: { kind: 'text' },
+  GOAL_RUN_IMPLEMENTER: { kind: 'text' },
+  GOAL_RUN_COPILOT_CONTINUES: { kind: 'number', minimum: 0, maximum: 50, default: 3 },
 } as const satisfies Record<string, Numeric | Text>;
 
 export type SettingName = keyof typeof SETTINGS;
 export type SettingValue<N extends SettingName> = (typeof SETTINGS)[N] extends Numeric ? number : string | undefined;
 export type Env = Readonly<Record<string, string | undefined>>;
 export type Effective = { value: number | string | undefined; source: 'environment' | 'default' };
+
+export const IMPLEMENTERS = ['claude', 'copilot'];
 
 const INTERNAL = ['GOAL_RUN_JSONL', 'GOAL_RUN_TICKED'];
 const GUARDED_PREFIXES = ['GOAL_RUN_', 'GOAL_CMD_', 'GOAL_PROC_', 'GOAL_LOCK_'];
@@ -54,6 +58,7 @@ const faultOf = (name: SettingName, raw: string): string | undefined => {
 
   if (raw === '') return `${name} is empty: unset the variable to get the default`;
   if (name === 'GOAL_LOCK_ROOT' && !raw.startsWith('/')) return `${name}="${raw}" is not an absolute path: unset the variable to get the default`;
+  if (name === 'GOAL_RUN_IMPLEMENTER' && !IMPLEMENTERS.includes(raw)) return `${name}="${raw}" is not a known provider: expected ${IMPLEMENTERS.join(' or ')}, unset the variable to get claude`;
   if (setting.kind === 'text') return undefined;
   if (!/^[0-9]+$/.test(raw)) return `${name}="${raw}" is not a whole number written in digits: expected ${shape(setting)}`;
 

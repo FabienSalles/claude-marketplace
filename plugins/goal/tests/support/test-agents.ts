@@ -27,6 +27,7 @@ export const testAgents = (implementerClasses: FailureClass[]): TestAgents => {
   let implementerLaunches = 0;
 
   const adapter: AgentSessions = {
+    provider: 'second-adapter',
     launch: async (role, brief, options) => {
       launched.push({ role, brief });
       writeFileSync(options.outPath, '');

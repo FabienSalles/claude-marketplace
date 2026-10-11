@@ -28,6 +28,7 @@ export const RUN_NODE = resolve(import.meta.dirname, '..', '..', 'scripts', 'goa
 process.env.GOAL_LOCK_ROOT ??= tmpDir('goal-run-locks-');
 
 const AWAIT_MARKER = resolve(import.meta.dirname, 'await-marker.sh');
+const COPILOT_FIXTURES = resolve(import.meta.dirname, '..', 'fixtures', 'providers', 'copilot', '1.0.95');
 
 export const git = (cwd: string, ...args: string[]) => spawnSync('git', args, { cwd, encoding: 'utf8' });
 
@@ -212,6 +213,31 @@ case "$*" in
   *goal-run-auditor*) exit \${FAKE_CLAUDE_AUDIT_EXIT:-0} ;;
 esac
 exit \${FAKE_CLAUDE_EXIT:-0}
+`,
+  copilot: `#!/bin/sh
+d=$(dirname "$0")/..
+case "$*" in
+  *"single word OK"*)
+    [ -n "$FAKE_COPILOT_STDERR" ] && printf '%s\\n' "$FAKE_COPILOT_STDERR" >&2
+    if [ -n "$FAKE_COPILOT_RAW" ]; then printf '%s\\n' "$FAKE_COPILOT_RAW"; else cat "${COPILOT_FIXTURES}/probe-ok.jsonl"; fi
+    exit \${FAKE_COPILOT_EXIT:-0}
+    ;;
+esac
+printf '%s\\n' "$@" >> "$d/copilot-args.txt"
+[ -n "$FAKE_COPILOT_WRITES" ] && printf 'written %s\\n' "\${FAKE_COPILOT_WRITE_TAG:-$$-$RANDOM}" >> "$FAKE_COPILOT_WRITES"
+[ -n "$FAKE_COPILOT_OUTSIDE" ] && printf 'stray\\n' >> "$FAKE_COPILOT_OUTSIDE"
+fixture="\${FAKE_COPILOT_FIXTURE:-probe-ok}"
+calls=$(( $(cat "$d/fake-bin/copilot-calls" 2>/dev/null || echo 0) + 1 ))
+echo "$calls" > "$d/fake-bin/copilot-calls"
+if [ "$calls" -le "\${FAKE_COPILOT_FAILS:-0}" ]; then cat "${COPILOT_FIXTURES}/$FAKE_COPILOT_FAIL_FIXTURE.jsonl"; exit 1; fi
+if [ -n "$FAKE_COPILOT_COMMITS" ]; then
+  case "$*" in
+    *"shell(git commit)"*) fixture=denied-git ;;
+    *) git add -A >/dev/null 2>&1; git commit -qm "copilot commit" ;;
+  esac
+fi
+cat "${COPILOT_FIXTURES}/$fixture.jsonl"
+exit \${FAKE_COPILOT_EXIT:-0}
 `,
   'fake-gate': `#!/bin/sh
 d=$(dirname "$0")/..
