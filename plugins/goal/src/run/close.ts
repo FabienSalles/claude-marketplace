@@ -20,8 +20,26 @@ import type { Reporter } from './report.ts';
 
 export { HALTED, LANDED } from '../core/verdict.ts';
 
-const launchAdvisory = (agents: AgentSessions, role: AgentRole, brief: string, dir: string): Promise<AgentReport> =>
-  agents.launch(role, brief, { outPath: join(dir, `${role}.out`), errPath: join(dir, `${role}.err`), onTool: () => {}, onSession: () => {} }, new AbortController().signal);
+const providerOf = (agents: AgentSessions, role: AgentRole): string => agents.providerOf?.(role) ?? agents.provider ?? 'unknown';
+
+const launchAdvisory = (agents: AgentSessions, role: AgentRole, brief: string, dir: string, reporter: Reporter): Promise<AgentReport> => {
+  const narrates = providerOf(agents, role) === 'copilot';
+
+  reporter.say(`RUN ${role} on ${providerOf(agents, role)}`);
+
+  return agents.launch(
+    role,
+    brief,
+    { outPath: join(dir, `${role}.out`), errPath: join(dir, `${role}.err`), onTool: narrates ? (line) => reporter.say(line) : () => {}, onSession: () => {} },
+    new AbortController().signal,
+  );
+};
+
+const sayFailure = (agents: AgentSessions, role: AgentRole, report: AgentReport, reporter: Reporter): void => {
+  if (providerOf(agents, role) === 'copilot' && report.outcome.isError) {
+    reporter.say(`RUN ${role} failed (${report.outcome.class}): ${report.outcome.quote}`);
+  }
+};
 
 export const close = async (
   plan: string,
@@ -126,13 +144,14 @@ this run: it is advisory only.`;
 
     fs.mkdir(dir, { recursive: true });
     const advisoryStart = clock.now();
-    const reports = await Promise.all(jobs.map((job) => launchAdvisory(agents, job.name, job.brief, dir)));
+    const reports = await Promise.all(jobs.map((job) => launchAdvisory(agents, job.name, job.brief, dir, reporter)));
     const advisoryDuration = clock.now() - advisoryStart;
 
     jobs.forEach((job, i) => {
       const report = reports[i]!;
       reporter.record(report.outcome.text);
       reporter.say(`RUN stage=${job.name} duration_ms=${advisoryDuration} ${endOf(report.end)}`);
+      sayFailure(agents, job.name, report, reporter);
 
       const tokens = tokensLine(job.name, report.consumption);
 
@@ -176,9 +195,10 @@ not stage anything, and do not judge whether the work was correct — the gate a
 
   const auditStart = clock.now();
   fs.mkdir(dir, { recursive: true });
-  const audit = await launchAdvisory(agents, 'auditor', auditBrief, dir);
+  const audit = await launchAdvisory(agents, 'auditor', auditBrief, dir, reporter);
   reporter.record(audit.outcome.text);
   reporter.say(`RUN stage=auditor duration_ms=${clock.now() - auditStart} ${endOf(audit.end)}`);
+  sayFailure(agents, 'auditor', audit, reporter);
 
   const auditTokens = tokensLine('auditor', audit.consumption);
 

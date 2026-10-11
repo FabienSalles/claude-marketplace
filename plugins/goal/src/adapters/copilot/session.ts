@@ -1,11 +1,12 @@
 import { closeSync, openSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
 
 import { clock } from '../clock.ts';
 import { command } from '../command.ts';
 import { fs } from '../fs.ts';
 import { classifyTerminal } from './classify.ts';
 import { ceiling } from '../../gate/bounded.ts';
-import type { AgentReport, AgentSessions, Consumption } from '../../ports.ts';
+import type { AgentReport, AgentRole, AgentSessions, Consumption } from '../../ports.ts';
 
 type End = { status: number | null; signal: NodeJS.Signals | null; error?: NodeJS.ErrnoException };
 
@@ -29,6 +30,24 @@ const DENIED = ['add', 'rm', 'mv', 'commit', 'push', 'update-index', 'update-ref
   (command) => `shell(git ${command})`,
 );
 
+const READ_ONLY = ['git log', 'git show', 'git diff', 'git status', 'git blame', 'git grep', 'git ls-files', 'git rev-parse', 'git branch', 'cat', 'head', 'tail', 'grep', 'ls', 'wc'].map(
+  (command) => `shell(${command})`,
+);
+
+const instructionsOf = (role: AgentRole): string =>
+  fs
+    .readFile(join(import.meta.dirname, '..', '..', '..', 'agents', `goal-run-${role}.md`))
+    .replace(/^---\n[\s\S]*?\n---\n/, '')
+    .trim();
+
+const permissionsOf = (role: AgentRole, outPath: string): string[] =>
+  role === 'implementer'
+    ? ['--allow-all-tools']
+    : [
+        ...READ_ONLY.flatMap((tool) => ['--allow-tool', tool]),
+        ...(role === 'auditor' ? ['--allow-tool', `write(${resolve(dirname(outPath), 'report.md')})`] : []),
+      ];
+
 const readOrEmpty = (path: string): string => {
   try {
     return fs.readFile(path);
@@ -48,7 +67,7 @@ const eventsOf = (stdout: string): Event[] =>
     }
   });
 
-const reportOf = (end: End, stdout: string, stderr: string, durationMs: number, onTool: (line: string) => void, onSession: (id: string) => void): AgentReport => {
+const reportOf = (role: AgentRole, end: End, stdout: string, stderr: string, durationMs: number, onTool: (line: string) => void, onSession: (id: string) => void): AgentReport => {
   const events = eventsOf(stdout);
   const started = new Map<string, string>();
   let model: string | undefined;
@@ -66,11 +85,11 @@ const reportOf = (end: End, stdout: string, stderr: string, durationMs: number, 
       const target = data?.arguments?.command ?? data?.arguments?.path ?? '';
 
       started.set(id, target);
-      onTool(`RUN implementer: ${data?.toolName ?? 'tool'}${target === '' ? '' : ` ${target}`}`);
+      if (role === 'implementer') onTool(`RUN implementer: ${data?.toolName ?? 'tool'}${target === '' ? '' : ` ${target}`}`);
     }
 
     if (type === 'tool.execution_complete' && data?.error?.code === 'denied') {
-      onTool(`RUN implementer: refused ${started.get(id) ?? 'a tool call'}`);
+      onTool(`RUN ${role}: refused ${started.get(id) ?? 'a tool call'}`);
     }
   }
 
@@ -108,8 +127,6 @@ export const copilotAgentSessions = (continues: number): AgentSessions => ({
   provider: 'copilot',
   onExhausted: 'pause',
   launch: async (role, brief, options, stop) => {
-    if (role !== 'implementer') throw new Error(`the Copilot adapter launches the implementer only, not the ${role}`);
-
     const started = clock.now();
     let end: End;
 
@@ -120,13 +137,13 @@ export const copilotAgentSessions = (continues: number): AgentSessions => ({
       try {
         const args = [
           '-p',
-          brief,
+          role === 'implementer' ? brief : `${instructionsOf(role)}\n\n${brief}`,
           '--output-format',
           'json',
           '--autopilot',
           '--max-autopilot-continues',
           String(continues),
-          '--allow-all-tools',
+          ...permissionsOf(role, options.outPath),
           '--no-ask-user',
           '--no-auto-update',
           ...DENIED.flatMap((tool) => ['--deny-tool', tool]),
@@ -147,6 +164,6 @@ export const copilotAgentSessions = (continues: number): AgentSessions => ({
       end = { status: null, signal: null, error: error as NodeJS.ErrnoException };
     }
 
-    return reportOf(end, readOrEmpty(options.outPath), readOrEmpty(options.errPath), clock.now() - started, options.onTool, options.onSession);
+    return reportOf(role, end, readOrEmpty(options.outPath), readOrEmpty(options.errPath), clock.now() - started, options.onTool, options.onSession);
   },
 });

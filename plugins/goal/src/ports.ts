@@ -101,6 +101,7 @@ export type AgentOptions = {
 
 export type AgentSessions = {
   provider?: string;
+  providerOf?: (role: AgentRole) => string;
   onExhausted?: 'sleep' | 'pause';
   launch: (role: AgentRole, brief: string, options: AgentOptions, stop: AbortSignal) => Promise<AgentReport>;
   startupWarning?: () => string | undefined;

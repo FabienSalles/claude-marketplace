@@ -1,9 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { git, logOf, PAUSED, repo, run } from './support/goal-run-harness.ts';
+import { git, logOf, PAUSED, repo, run, runDirOf } from './support/goal-run-harness.ts';
 
 const COPILOT = { GOAL_RUN_IMPLEMENTER: 'copilot', FAKE_GATE_COMMITS: '1' };
 
@@ -86,7 +86,7 @@ test('a Copilot run lands through the gate, closes on Claude and names its provi
   assert.equal(code, 0, output);
   assert.match(output, /^RUN stage=implementer duration_ms=\d+ exit=0$/m);
   assert.match(output, /^RUN implementer provider=copilot model=mai-code-1\.1-flash$/m);
-  assert.doesNotMatch(output, /provider=claude/);
+  assert.doesNotMatch(output, /^RUN implementer provider=claude/m);
   assert.match(output, /iteration 1 landed, gate-verified/);
   assert.equal(git(fixture.dir, 'log', '-1', '--format=%an <%ae>').stdout.trim(), 'Run <run@example.com>');
   assert.doesNotMatch(git(fixture.dir, 'log', '-1', '--format=%B').stdout, /Co-Authored-By|Generated with/i);
@@ -175,4 +175,103 @@ test('the real gate commits a Copilot iteration, and refuses an out-of-scope wri
   assert.equal(viaCopilot.code, 1, viaCopilot.output);
   assert.match(viaCopilot.output, /iteration 1 was refused by the gate/);
   assert.equal(git(stray.dir, 'rev-list', '--count', 'HEAD').stdout.trim(), '1');
+});
+
+const ALL = { GOAL_RUN_PROVIDER: 'copilot', FAKE_GATE_COMMITS: '1', GOAL_RUN_QUOTA_SLEEP: '0' };
+
+const copilotArgs = (fixture: { dir: string }): string => readFileSync(join(fixture.dir, 'copilot-args.txt'), 'utf8');
+
+// R2, R7 — the implementer, the lens and the auditor run on Copilot; only the reviewer is left on Claude.
+test('GOAL_RUN_PROVIDER=copilot launches the implementer, the lens and the auditor through Copilot and names each provider', () => {
+  const fixture = repo();
+  const { code, output } = run(fixture, [fixture.plan, '1'], { ...ALL, FAKE_COPILOT_WRITES: join(fixture.dir, 'a.txt') });
+
+  assert.equal(code, 0, output);
+  assert.match(output, /^RUN implementer provider=copilot/m);
+  assert.match(output, /^RUN lens on copilot$/m);
+  assert.match(output, /^RUN auditor on copilot$/m);
+  assert.match(copilotArgs(fixture), /Refute the iteration/);
+  assert.match(copilotArgs(fixture), /Audit the run that just ended/);
+  assert.match(copilotArgs(fixture), new RegExp(`write\\(${realpathSync(runDirOf(fixture))}/report\\.md\\)`));
+  assert.doesNotMatch(claudeAgents(fixture), /goal-run-(implementer|lens|auditor)/);
+});
+
+// R7 — a Claude close names Claude.
+test('a Claude close names claude beside each stage', () => {
+  const fixture = repo();
+  const { output } = run(fixture, [fixture.plan, '1'], { FAKE_GATE_COMMITS: '1', FAKE_CLAUDE_WRITES: join(fixture.dir, 'a.txt') });
+
+  assert.match(output, /^RUN lens on claude$/m);
+  assert.match(output, /^RUN auditor on claude$/m);
+});
+
+// R3 — the implementer override reaches the implementer alone.
+test('GOAL_RUN_IMPLEMENTER=claude under GOAL_RUN_PROVIDER=copilot keeps Claude as implementer and Copilot for the close', () => {
+  const fixture = repo();
+  const { code, output } = run(fixture, [fixture.plan, '1'], { ...ALL, GOAL_RUN_IMPLEMENTER: 'claude', FAKE_CLAUDE_WRITES: join(fixture.dir, 'a.txt') });
+
+  assert.equal(code, 0, output);
+  assert.match(output, /^RUN implementer provider=claude/m);
+  assert.match(output, /^RUN lens on copilot$/m);
+  assert.match(claudeAgents(fixture), /goal-run-implementer/);
+  assert.doesNotMatch(claudeAgents(fixture), /goal-run-(lens|auditor)/);
+  assert.match(copilotArgs(fixture), /Refute the iteration/);
+});
+
+// R15 — a Claude implementer sleeps whatever the close uses.
+test('a Claude implementer still sleeps on an exhausted quota when the close is on Copilot', () => {
+  const fixture = repo();
+  const { code, output } = run(fixture, [fixture.plan, '1'], {
+    ...ALL,
+    GOAL_RUN_IMPLEMENTER: 'claude',
+    FAKE_CLAUDE_QUOTA_UNTIL: '1',
+    FAKE_CLAUDE_QUOTA_COUNTER: join(fixture.dir, 'quota-counter'),
+    FAKE_CLAUDE_WRITES: join(fixture.dir, 'a.txt'),
+  });
+
+  assert.equal(code, 0, output);
+  assert.match(output, /the implementer looks quota-exhausted, sleeping 0s/);
+  assert.doesNotMatch(output, /Copilot quota/);
+});
+
+// R16 — the Claude postmortem survives the composite.
+test('a failing Claude implementer leaves its postmortem in a mixed run', () => {
+  const failing = { FAKE_GATE_COMMITS: '1', FAKE_CLAUDE_FINAL_ERROR: 'API Error: Unable to connect to API (ECONNRESET)', FAKE_CLAUDE_EXIT: '1' };
+  const alone = repo();
+  const mixed = repo();
+  const postmortems = (output: string): string[] => output.split('\n').filter((line) => line.startsWith('RUN postmortem:')).map((line) => line.replace(/output saved to .*/, ''));
+  const expected = postmortems(run(alone, [alone.plan, '1'], failing).output);
+  const { output } = run(mixed, [mixed.plan, '1'], { ...failing, GOAL_RUN_PROVIDER: 'copilot', GOAL_RUN_IMPLEMENTER: 'claude' });
+
+  assert.ok(expected.length > 0);
+  assert.deepEqual(postmortems(output), expected);
+});
+
+// R14 — a failing Copilot close session changes nothing about the outcome.
+test('a lens that ends exhausted is named with its failure class and Copilot words, and the run still lands', () => {
+  const fixture = repo();
+  const { code, output } = run(fixture, [fixture.plan, '1'], {
+    ...ALL,
+    FAKE_COPILOT_WRITES: join(fixture.dir, 'a.txt'),
+    FAKE_COPILOT_FAIL_ON: 'Refute the iteration',
+    FAKE_COPILOT_FAIL_FIXTURE: 'synthetic-exhausted',
+  });
+
+  assert.equal(code, 0, output);
+  assert.match(output, /^RUN lens failed \(exhausted\): You have exhausted your premium request quota/m);
+  assert.equal(Number(readFileSync(join(fixture.dir, 'fake-bin', 'copilot-calls'), 'utf8')), 3);
+  assert.doesNotMatch(output, /sleeping|backing off/);
+});
+
+test('an auditor that crashes leaves the exit code the gate made it', () => {
+  const fixture = repo();
+  const { code, output } = run(fixture, [fixture.plan, '1'], {
+    ...ALL,
+    FAKE_COPILOT_WRITES: join(fixture.dir, 'a.txt'),
+    FAKE_COPILOT_FAIL_ON: 'Audit the run',
+    FAKE_COPILOT_FAIL_FIXTURE: 'synthetic-unrecognised',
+  });
+
+  assert.equal(code, 0, output);
+  assert.match(output, /^RUN auditor failed \(unrecognised\): The model stopped answering\./m);
 });

@@ -136,7 +136,7 @@ dod4=bash plugins/goal/tests/support/mutate.sh
 ## Functional iterations
 
 ### Iteration 1 — Copilot runs the lens and the auditor
-- [ ] Not done yet
+- [x] Not done yet
 - **Goal:** With `GOAL_RUN_PROVIDER=copilot`, the lens and the run auditor run on Copilot, read-only except for the auditor's report, while a Claude implementer in the same run keeps its quota sleep and its postmortem.
 - **Shippable after it:** a Copilot-only run whose lens and auditor never start Claude; only the reviewer still does.
 - **Files to touch:** `plugins/goal/src/core/settings.ts`, `plugins/goal/src/ports.ts`, `plugins/goal/src/adapters/copilot/session.ts`, `plugins/goal/scripts/goal-run.ts`, `plugins/goal/src/run/iteration.ts`, `plugins/goal/src/run/close.ts`, the harness and fake agents, the report golden, README, plugin version (+ the tests below).

@@ -32,9 +32,9 @@ import { copilotRefusal } from '../src/adapters/copilot/availability.ts';
 import { copilotAgentSessions } from '../src/adapters/copilot/session.ts';
 import { defaultSettingsPath } from '../src/adapters/claude/warning.ts';
 import { defaultProjectsRoot } from '../src/adapters/claude/postmortem.ts';
-import type { AgentSessions } from '../src/ports.ts';
+import type { AgentRole, AgentSessions } from '../src/ports.ts';
 import { workIdOf } from '../src/core/plan.ts';
-import { checkSettings, settingValue } from '../src/core/settings.ts';
+import { checkSettings, DEFAULT_PROVIDER, settingValue } from '../src/core/settings.ts';
 import { iterationNumbers, subHeadings } from '../src/gate/plan.ts';
 import { inProcessGateAdapter, spawnGateAdapter, type GateAdapter } from '../src/adapters/gate.ts';
 
@@ -70,7 +70,11 @@ const main = async (): Promise<void> => {
 
   if (!artifacts.ok) reporter.stop(artifacts.error, REFUSED);
 
-  if (settingValue('GOAL_RUN_IMPLEMENTER', process.env) === 'copilot') {
+  const provider = settingValue('GOAL_RUN_PROVIDER', process.env) ?? DEFAULT_PROVIDER;
+  const implementerProvider = settingValue('GOAL_RUN_IMPLEMENTER', process.env) ?? provider;
+  const usesCopilot = [provider, implementerProvider].includes('copilot');
+
+  if (usesCopilot) {
     const refusal = copilotRefusal();
 
     if (refusal !== undefined) reporter.stop(refusal, REFUSED);
@@ -96,14 +100,20 @@ const main = async (): Promise<void> => {
   const gate: GateAdapter = gateCommand !== undefined ? spawnGateAdapter(gateLabel) : inProcessGateAdapter();
 
   const claude = claudeAgentSessions();
-  const copilot = settingValue('GOAL_RUN_IMPLEMENTER', process.env) === 'copilot' ? copilotAgentSessions(settingValue('GOAL_RUN_COPILOT_CONTINUES', process.env)) : undefined;
+  const copilot = usesCopilot ? copilotAgentSessions(settingValue('GOAL_RUN_COPILOT_CONTINUES', process.env)) : undefined;
+  const providerOf = (role: AgentRole): string => (role === 'implementer' ? implementerProvider : role === 'reviewer' ? DEFAULT_PROVIDER : provider);
+  const sessionsOf = (name: string): AgentSessions => (name === 'copilot' && copilot !== undefined ? copilot : claude);
+  const implementer = sessionsOf(implementerProvider);
   const agents: AgentSessions =
     copilot === undefined
       ? claude
       : {
-          provider: 'copilot',
-          launch: (role, brief, options, stop) => (role === 'implementer' ? copilot : claude).launch(role, brief, options, stop),
+          provider: implementerProvider,
+          providerOf,
+          launch: (role, brief, options, stop) => sessionsOf(providerOf(role)).launch(role, brief, options, stop),
           startupWarning: () => claude.startupWarning?.(),
+          ...(implementer.onExhausted === undefined ? {} : { onExhausted: implementer.onExhausted }),
+          ...(implementer.postmortem === undefined ? {} : { postmortem: implementer.postmortem }),
         };
 
   const preflightStart = Date.now();
