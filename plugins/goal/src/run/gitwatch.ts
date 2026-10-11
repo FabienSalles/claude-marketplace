@@ -190,3 +190,33 @@ export const refChanges = (before: RefSnapshot, branch: string): { changes: RefC
 
   return { changes, carriesWork };
 };
+
+export type WorktreeSnapshot = { head: string; files: Map<string, string | null> };
+
+const dirtyPaths = (): string[] => [
+  ...git('diff', 'HEAD', '--no-renames', '--name-only', '-z').stdout.split('\0'),
+  ...git('ls-files', '-o', '--exclude-standard', '-z').stdout.split('\0'),
+  '.claude/settings.json',
+  '.claude/settings.local.json',
+].filter((path) => path !== '');
+
+export const snapshotWorktree = (): WorktreeSnapshot => ({
+  head: git('rev-parse', 'HEAD').stdout.trim(),
+  files: new Map(dirtyPaths().map((path) => [path, read(resolve(path))])),
+});
+
+export const changedWorktreePaths = (before: WorktreeSnapshot, excluded: string): string[] => {
+  const baseline = (path: string): string | null => {
+    if (before.files.has(path)) {
+      return before.files.get(path)!;
+    }
+
+    const shown = git('show', `${before.head}:${path}`);
+
+    return shown.status === 0 ? shown.stdout : null;
+  };
+
+  return [...new Set([...before.files.keys(), ...dirtyPaths()])]
+    .filter((path) => !resolve(path).startsWith(`${excluded}/`) && read(resolve(path)) !== baseline(path))
+    .sort();
+};

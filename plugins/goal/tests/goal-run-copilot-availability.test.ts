@@ -67,3 +67,32 @@ test('a working probe lets the Copilot launch through', () => {
 
   assert.equal(code, 0, output);
 });
+
+// R6 — any role on Copilot triggers the probe.
+test('GOAL_RUN_PROVIDER=copilot with a Claude implementer is refused at launch when Copilot is broken', () => {
+  const fixture = repo();
+  const { code, output } = run(fixture, [fixture.plan, '1'], {
+    GOAL_RUN_PROVIDER: 'copilot',
+    GOAL_RUN_IMPLEMENTER: 'claude',
+    FAKE_GATE_COMMITS: '1',
+    FAKE_COPILOT_EXIT: '1',
+    FAKE_COPILOT_STDERR: 'Error: No authentication information found.',
+  });
+
+  assert.equal(code, 2, output);
+  assert.match(output, /Copilot CLI is installed but cannot run a session \(not authenticated\?\)/);
+  untouched(fixture);
+});
+
+test('GOAL_RUN_PROVIDER=copilot with no copilot on PATH is refused as not installed', () => {
+  const fixture = repo();
+
+  rmSync(join(fixture.bin, 'copilot'));
+  symlinkSync(process.execPath, join(fixture.bin, 'node'));
+
+  const { code, output } = run(fixture, [fixture.plan, '1'], { GOAL_RUN_PROVIDER: 'copilot', GOAL_RUN_IMPLEMENTER: 'claude', FAKE_GATE_COMMITS: '1', PATH: `${fixture.bin}:/usr/bin:/bin` });
+
+  assert.equal(code, 2, output);
+  assert.match(output, /Copilot CLI is not installed/);
+  untouched(fixture);
+});

@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 import { repo, run } from './support/goal-run-harness.ts';
 
@@ -66,4 +67,16 @@ test('R7: the RUN settings line follows the line naming the run records', () => 
   const { output } = run(fixture, [fixture.plan, '1']);
 
   assert.match(output, /RUN writing this run's records to [^\n]*\nRUN settings /, output);
+});
+
+test('R4: a bad GOAL_RUN_PROVIDER refuses the run with exit 2, listed with the other faults, before anything is written', () => {
+  const fixture = repo();
+  const { code, output } = run(fixture, [fixture.plan, '1'], { GOAL_RUN_PROVIDER: 'gemini', GOAL_RUN_BURST_CAP: 'abc' });
+
+  assert.equal(code, 2, output);
+  assert.match(output, /GOAL_RUN_PROVIDER="gemini"/);
+  assert.match(output, /GOAL_RUN_BURST_CAP="abc"/);
+  assert.doesNotMatch(output, /RUN writing/);
+  assert.equal(existsSync(join(fixture.dir, '.goal')), false);
+  assert.equal(existsSync(fixture.claudeLog) ? readFileSync(fixture.claudeLog, 'utf8') : '', '');
 });

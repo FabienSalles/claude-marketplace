@@ -3,7 +3,7 @@
 // belong to an earlier run — and the advisory lens and the auditor are invoked either way,
 // neither able to undo work the gate already verified and shipped.
 
-import { basename, dirname, join } from 'node:path';
+import { basename, dirname, join, resolve } from 'node:path';
 
 import { command } from '../adapters/command.ts';
 import { clock } from '../adapters/clock.ts';
@@ -16,12 +16,67 @@ import { pauseLine, readyPauseLine } from '../core/publication.ts';
 import type { AgentReport, AgentRole, AgentSessions } from '../ports.ts';
 import { endOf, exitOf, tokensLine } from './narrate.ts';
 import { remoteNote, repoOf, repoRelative, type Publisher } from './publish.ts';
+import { changedGitDirPaths, changedWorktreePaths, refChanges, snapshotGitDir, snapshotRefs, snapshotWorktree } from './gitwatch.ts';
 import type { Reporter } from './report.ts';
 
 export { HALTED, LANDED } from '../core/verdict.ts';
 
-const launchAdvisory = (agents: AgentSessions, role: AgentRole, brief: string, dir: string): Promise<AgentReport> =>
-  agents.launch(role, brief, { outPath: join(dir, `${role}.out`), errPath: join(dir, `${role}.err`), onTool: () => {}, onSession: () => {} }, new AbortController().signal);
+const providerOf = (agents: AgentSessions, role: AgentRole): string => agents.providerOf?.(role) ?? agents.provider ?? 'unknown';
+
+const launchAdvisory = (agents: AgentSessions, role: AgentRole, brief: string, dir: string, reporter: Reporter, review?: 'comment'): Promise<AgentReport> => {
+  const narrates = providerOf(agents, role) === 'copilot';
+
+  reporter.say(`RUN ${role} on ${providerOf(agents, role)}`);
+
+  return agents.launch(
+    role,
+    brief,
+    { outPath: join(dir, `${role}.out`), errPath: join(dir, `${role}.err`), ...(review === undefined ? {} : { review }), onTool: narrates ? (line) => reporter.say(line) : () => {}, onSession: () => {} },
+    new AbortController().signal,
+  );
+};
+
+const sayFailure = (agents: AgentSessions, role: AgentRole, report: AgentReport, reporter: Reporter): void => {
+  if (providerOf(agents, role) === 'copilot' && report.outcome.isError) {
+    reporter.say(`RUN ${role} failed (${report.outcome.class}): ${report.outcome.quote}`);
+  }
+};
+
+const watchCopilotClose = (agents: AgentSessions, dir: string, reporter: Reporter) => {
+  if (!(['lens', 'reviewer', 'auditor'] as const).some((role) => providerOf(agents, role) === 'copilot')) {
+    return { start: () => {}, report: () => {} };
+  }
+
+  let before: { worktree: ReturnType<typeof snapshotWorktree>; gitDir: ReturnType<typeof snapshotGitDir>; refs: ReturnType<typeof snapshotRefs> } | undefined;
+
+  return {
+    start: (): void => {
+      before ??= { worktree: snapshotWorktree(), gitDir: snapshotGitDir(), refs: snapshotRefs() };
+    },
+    report: (): void => {
+      if (before === undefined) {
+        return;
+      }
+
+      const lines = changedWorktreePaths(before.worktree, resolve(dir)).map((path) => `file: ${path}`);
+      lines.push(...refChanges(before.refs, git('rev-parse', '--abbrev-ref', 'HEAD').stdout.trim()).changes.map((change) => `ref: ${change.ref}`));
+      const gitDir = changedGitDirPaths(before.gitDir);
+      lines.push(...[...gitDir.attributable, ...gitDir.shared].map((path) => `git directory: ${path}`));
+
+      if (git('rev-parse', 'HEAD').stdout.trim() !== before.worktree.head) {
+        lines.push('HEAD');
+      }
+
+      for (const line of lines) {
+        reporter.say(`RUN copilot close changed ${line}`);
+      }
+
+      if (lines.length === 0) {
+        reporter.say('RUN copilot close left nothing behind');
+      }
+    },
+  };
+};
 
 export const close = async (
   plan: string,
@@ -35,6 +90,7 @@ export const close = async (
   agents: AgentSessions,
 ): Promise<number> => {
   const gate = gateAdapterOf(gateArg);
+  const watch = watchCopilotClose(agents, dir, reporter);
   const jsonl = join(dir, '.run.jsonl');
   const dodStart = clock.now();
   const dod = gate.dod(plan, hash);
@@ -118,21 +174,23 @@ this run: it is advisory only.`;
     // Run once neither can still block anything and each is briefed: the reviewer against a mark
     // pull requests only lands whole, after both have exited, so an advisory duration is paid
     // once instead of twice.
-    const jobs: { name: 'lens' | 'reviewer'; brief: string }[] = [{ name: 'lens', brief: lensBrief }];
+    const jobs: { name: 'lens' | 'reviewer'; brief: string; review?: 'comment' }[] = [{ name: 'lens', brief: lensBrief }];
 
     if (reviewBrief !== undefined) {
-      jobs.push({ name: 'reviewer', brief: reviewBrief });
+      jobs.push({ name: 'reviewer', brief: reviewBrief, ...(postsReview ? { review: 'comment' as const } : {}) });
     }
 
     fs.mkdir(dir, { recursive: true });
+    watch.start();
     const advisoryStart = clock.now();
-    const reports = await Promise.all(jobs.map((job) => launchAdvisory(agents, job.name, job.brief, dir)));
+    const reports = await Promise.all(jobs.map((job) => launchAdvisory(agents, job.name, job.brief, dir, reporter, job.review)));
     const advisoryDuration = clock.now() - advisoryStart;
 
     jobs.forEach((job, i) => {
       const report = reports[i]!;
       reporter.record(report.outcome.text);
       reporter.say(`RUN stage=${job.name} duration_ms=${advisoryDuration} ${endOf(report.end)}`);
+      sayFailure(agents, job.name, report, reporter);
 
       const tokens = tokensLine(job.name, report.consumption);
 
@@ -174,11 +232,13 @@ rather than describing this one twice. Write it in two sections, \`### Outcome\`
 \`### Cost\`, no other heading anywhere in the file. Do not edit a single line of code, do
 not stage anything, and do not judge whether the work was correct — the gate already did that.`;
 
+  watch.start();
   const auditStart = clock.now();
   fs.mkdir(dir, { recursive: true });
-  const audit = await launchAdvisory(agents, 'auditor', auditBrief, dir);
+  const audit = await launchAdvisory(agents, 'auditor', auditBrief, dir, reporter);
   reporter.record(audit.outcome.text);
   reporter.say(`RUN stage=auditor duration_ms=${clock.now() - auditStart} ${endOf(audit.end)}`);
+  sayFailure(agents, 'auditor', audit, reporter);
 
   const auditTokens = tokensLine('auditor', audit.consumption);
 
@@ -193,6 +253,7 @@ not stage anything, and do not judge whether the work was correct — the gate a
   }
 
   reporter.say('RUN audit recorded');
+  watch.report();
 
   // Folded into the pull request body the auditor's report has just been written to, never as a
   // comment: the reviewer reads costs, halts and recurrences on the pull request itself.

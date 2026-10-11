@@ -113,13 +113,9 @@ const serviceLines = (state: string): string[] => [
 ];
 
 const pidAlive = (pidFile: string): boolean => {
-  try {
-    process.kill(Number(readFileSync(pidFile, 'utf8')), 0);
+  const ps = spawnSync('ps', ['-o', 'stat=', '-p', readFileSync(pidFile, 'utf8').trim()], { encoding: 'utf8' });
 
-    return true;
-  } catch {
-    return false;
-  }
+  return ps.status === 0 && !ps.stdout.trim().startsWith('Z');
 };
 
 // R11 — a replayed command runs with its own iteration's services, stopped after the replay

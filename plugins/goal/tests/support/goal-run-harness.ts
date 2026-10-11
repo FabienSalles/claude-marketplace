@@ -224,12 +224,18 @@ case "$*" in
     ;;
 esac
 printf '%s\\n' "$@" >> "$d/copilot-args.txt"
+printf '%s\\n' "$PATH" > "$d/copilot-path-args.txt"
 [ -n "$FAKE_COPILOT_WRITES" ] && printf 'written %s\\n' "\${FAKE_COPILOT_WRITE_TAG:-$$-$RANDOM}" >> "$FAKE_COPILOT_WRITES"
 [ -n "$FAKE_COPILOT_OUTSIDE" ] && printf 'stray\\n' >> "$FAKE_COPILOT_OUTSIDE"
 fixture="\${FAKE_COPILOT_FIXTURE:-probe-ok}"
 calls=$(( $(cat "$d/fake-bin/copilot-calls" 2>/dev/null || echo 0) + 1 ))
 echo "$calls" > "$d/fake-bin/copilot-calls"
 if [ "$calls" -le "\${FAKE_COPILOT_FAILS:-0}" ]; then cat "${COPILOT_FIXTURES}/$FAKE_COPILOT_FAIL_FIXTURE.jsonl"; exit 1; fi
+if [ -n "$FAKE_COPILOT_FAIL_ON" ]; then
+  case "$*" in
+    *"$FAKE_COPILOT_FAIL_ON"*) cat "${COPILOT_FIXTURES}/$FAKE_COPILOT_FAIL_FIXTURE.jsonl"; exit 1 ;;
+  esac
+fi
 if [ -n "$FAKE_COPILOT_COMMITS" ]; then
   case "$*" in
     *"shell(git commit)"*) fixture=denied-git ;;

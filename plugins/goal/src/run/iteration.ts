@@ -159,7 +159,7 @@ export const runIteration = async (
 
     if (pausesOnQuota) {
       reporter.stop(
-        `the Copilot quota is spent (${quotaClass === 'burst' ? `rate limit persisted over ${attempt} attempt(s)` : 'quota exhausted'}). The tree holds unjudged partial work from iteration ${iteration}. To finish on Claude: run \`git stash push --include-untracked\` (or review and discard that work), then relaunch with GOAL_RUN_IMPLEMENTER unset.${remoteNote(publisher)}`,
+        `the ${(agents.provider ?? 'provider').replace(/^./, (letter) => letter.toUpperCase())} quota is spent (${quotaClass === 'burst' ? `rate limit persisted over ${attempt} attempt(s)` : 'quota exhausted'}). The tree holds unjudged partial work from iteration ${iteration}. To finish on Claude: run \`git stash push --include-untracked\` (or review and discard that work), then relaunch with GOAL_RUN_IMPLEMENTER unset.${remoteNote(publisher)}`,
         PAUSED,
       );
     }

@@ -102,3 +102,15 @@ test('R6: the gate checks only its own settings, leaving the runner\'s and the i
   assert.match(checkGateSettings({ GOAL_LOCK_ROOT: '' }).join('\n'), /GOAL_LOCK_ROOT is empty/);
   assert.match(checkSettings({ GOAL_LOCK_ROOT: 'locks' }).faults.join('\n'), /GOAL_LOCK_ROOT/);
 });
+
+test('R4: GOAL_RUN_PROVIDER accepts claude and copilot only, and an empty value is refused', () => {
+  assert.deepEqual(faultsOf({ GOAL_RUN_PROVIDER: 'claude' }), []);
+  assert.deepEqual(faultsOf({ GOAL_RUN_PROVIDER: 'copilot' }), []);
+  assert.equal(settingValue('GOAL_RUN_PROVIDER', {}), undefined);
+
+  const faults = faultsOf({ GOAL_RUN_PROVIDER: 'gemini' });
+
+  assert.equal(faults.length, 1);
+  assert.match(String(faults[0]), /GOAL_RUN_PROVIDER="gemini".*claude or copilot/);
+  assert.match(String(faultsOf({ GOAL_RUN_PROVIDER: '' })[0]), /unset/);
+});
