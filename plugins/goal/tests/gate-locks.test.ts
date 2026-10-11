@@ -96,6 +96,11 @@ test('R7: unlock releases the new lock and the old ones, and succeeds with nothi
   assert.equal(gate('lock', plan, { GOAL_LOCK_ROOT: root }).status, 0);
   assert.equal(gate('unlock', plan, { GOAL_LOCK_ROOT: root }).status, 0);
   assert.equal(existsSync(lockPaths(plan, root).run), false);
+
+  mkdirSync(lockPaths(plan, root).tick);
+
+  assert.equal(gate('unlock', plan, { GOAL_LOCK_ROOT: root }).status, 0);
+  assert.equal(existsSync(lockPaths(plan, root).tick), false);
 });
 
 test('R9: a lock directory that does not exist yet is created by the first lock', () => {

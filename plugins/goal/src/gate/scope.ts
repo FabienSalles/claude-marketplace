@@ -112,10 +112,10 @@ export const takeLock = (path: string, iteration: string, plan: string): void =>
 };
 
 export const runLock = (subcommand: string, plan: string): string => {
-  const { run, oldRun, oldTick } = lockPaths(plan);
+  const { run, tick, oldRun, oldTick } = lockPaths(plan);
 
   if (subcommand === 'unlock') {
-    [run, oldRun, oldTick].forEach((path) => fs.removeTree(path));
+    [run, tick, oldRun, oldTick].forEach((path) => fs.removeTree(path));
 
     return `OK: run lock released.\n`;
   }
