@@ -28,8 +28,10 @@ import { pauseLine } from '../src/core/publication.ts';
 import { PAUSED } from '../src/core/verdict.ts';
 import { quote } from '../src/core/shell.ts';
 import { claudeAgentSessions } from '../src/adapters/claude/session.ts';
+import { copilotAgentSessions } from '../src/adapters/copilot/session.ts';
 import { defaultSettingsPath } from '../src/adapters/claude/warning.ts';
 import { defaultProjectsRoot } from '../src/adapters/claude/postmortem.ts';
+import type { AgentSessions } from '../src/ports.ts';
 import { workIdOf } from '../src/core/plan.ts';
 import { checkSettings, settingValue } from '../src/core/settings.ts';
 import { iterationNumbers, subHeadings } from '../src/gate/plan.ts';
@@ -86,7 +88,16 @@ const main = async (): Promise<void> => {
   const gateLabel = gateCommand ?? `node ${quote(resolve(import.meta.dirname, 'goal-gate.ts'))}`;
   const gate: GateAdapter = gateCommand !== undefined ? spawnGateAdapter(gateLabel) : inProcessGateAdapter();
 
-  const agents = claudeAgentSessions();
+  const claude = claudeAgentSessions();
+  const copilot = settingValue('GOAL_RUN_IMPLEMENTER', process.env) === 'copilot' ? copilotAgentSessions(settingValue('GOAL_RUN_COPILOT_CONTINUES', process.env)) : undefined;
+  const agents: AgentSessions =
+    copilot === undefined
+      ? claude
+      : {
+          provider: 'copilot',
+          launch: (role, brief, options, stop) => (role === 'implementer' ? copilot : claude).launch(role, brief, options, stop),
+          startupWarning: () => claude.startupWarning?.(),
+        };
 
   const preflightStart = Date.now();
   const { policy, remote } = preflight(plan, source, reporter, gateLabel, agents, artifacts.value.runs);

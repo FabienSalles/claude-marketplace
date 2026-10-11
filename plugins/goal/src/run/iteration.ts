@@ -115,6 +115,10 @@ export const runIteration = async (
 
     reporter.say(`RUN stage=implementer duration_ms=${report.durationMs} ${endOf(report.end)}`);
 
+    const model = report.consumption?.model;
+
+    reporter.say(`RUN implementer provider=${agents.provider ?? 'unknown'}${model === undefined || model === '' ? '' : ` model=${model}`}`);
+
     const tokens = tokensLine('implementer', report.consumption);
 
     if (tokens !== undefined && tokens !== '') {

@@ -280,9 +280,15 @@ Every setting is an environment variable. A numeric one is a whole number writte
 | `GOAL_RUN_BURST_CAP` | seconds | 0 | 604800 | 8 |
 | `GOAL_CMD_TIMEOUT` | seconds | 1 | 604800 | 900 |
 | `GOAL_PROC_HEADROOM` | processes | 1 | none | 400 |
+| `GOAL_RUN_IMPLEMENTER` | `claude` or `copilot` | | | unset (`claude`) |
+| `GOAL_RUN_COPILOT_CONTINUES` | Copilot autopilot continuations per session | 0 | 50 | 3 |
 | `GOAL_RUN_SETTINGS_PATH`, `GOAL_RUN_PROJECTS_ROOT`, `GOAL_GATE` | path or command | non-empty | | unset |
 
 An unknown name under `GOAL_RUN_*`, `GOAL_CMD_*` or `GOAL_PROC_*` is refused with the closest known name. The runner refuses with exit 2 before writing a run directory, listing every fault at once; once the settings are accepted it writes one `RUN settings` line to the run log giving each setting's effective value (a path's default resolved to the path it stands for) and whether it came from the environment or the default; `GOAL_GATE` shows its origin only, never the command, which may carry a credential.
+
+### Copilot as the implementer
+
+`GOAL_RUN_IMPLEMENTER=copilot node plugins/goal/scripts/goal-run.ts <plan>` hands every iteration to Copilot CLI instead of Claude. Prerequisite: `copilot` installed and authenticated on the machine. Copilot is refused from staging, committing and pushing; the gate still judges and commits each iteration. The close stage (lens, reviewer, run auditor) stays on Claude. The log names the implementer of each iteration on a `RUN implementer provider=<name>` line. Each Copilot session costs Copilot premium requests.
 
 ## Cost
 

@@ -86,6 +86,7 @@ export const reportOf = (
 
 export const claudeAgentSessions = (): AgentSessions => {
   return {
+    provider: 'claude',
     launch: async (role, brief, options, stop) => {
       const started = clock.now();
       const before = claudeBinaryMtime(claudeBinaryPath());
