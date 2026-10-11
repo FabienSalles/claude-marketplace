@@ -44,10 +44,10 @@ test('the prompt is the brief verbatim', async () => {
 });
 
 // R7 — stage, commit and push are denied in the argv itself.
-test('the argv denies git add, git commit and git push', async () => {
+test('the argv denies every git command that stages, commits, pushes or rewrites a ref', async () => {
   const { args } = await launch({});
 
-  for (const denied of ['shell(git add)', 'shell(git commit)', 'shell(git push)']) {
+  for (const denied of ['add', 'rm', 'mv', 'commit', 'push', 'update-index', 'update-ref', 'tag', 'reset', 'stash'].map((command) => `shell(git ${command})`)) {
     assert.equal(args[args.indexOf(denied) - 1], '--deny-tool', denied);
   }
 });
