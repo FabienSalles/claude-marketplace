@@ -162,7 +162,7 @@ gate2=printf '%b\n' '.PHONY: all types lint' 'all: types lint' 'types:\n\tnode n
 ```
 
 ### Iteration 2 — Every change a Copilot close makes is named
-- [ ] Not done yet
+- [x] Not done yet
 - **Goal:** After a closing stage with any session on Copilot, the log names every file, HEAD, git-directory, ref and `.claude/settings*.json` change made since just before the first close session, leaving them in place and the exit code unchanged.
 - **Shippable after it:** a developer reading a Copilot-closed run's log knows whether the close left anything behind, and what.
 - **Files to touch:** `plugins/goal/src/run/close.ts`, `plugins/goal/src/run/gitwatch.ts` (reused, not duplicated), the harness (+ `plugins/goal/tests/goal-run-copilot-close-check.test.ts`).

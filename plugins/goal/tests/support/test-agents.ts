@@ -21,13 +21,13 @@ const reportOf = (failureClass: FailureClass, stderr = ''): AgentReport => ({
   ignoredLines: 0,
 });
 
-export const testAgents = (implementerClasses: FailureClass[]): TestAgents => {
+export const testAgents = (implementerClasses: FailureClass[], closing?: { provider: string; during: (role: AgentRole) => void }): TestAgents => {
   const launched: Launched[] = [];
   const postmortems: number[] = [];
   let implementerLaunches = 0;
 
   const adapter: AgentSessions = {
-    provider: 'second-adapter',
+    provider: closing?.provider ?? 'second-adapter',
     launch: async (role, brief, options) => {
       launched.push({ role, brief });
       writeFileSync(options.outPath, '');
@@ -35,6 +35,8 @@ export const testAgents = (implementerClasses: FailureClass[]): TestAgents => {
       options.onSession('second-session');
 
       if (role !== 'implementer') {
+        closing?.during(role);
+
         return reportOf('success', role === 'lens' ? 'second adapter lens complaint\n' : '');
       }
 
