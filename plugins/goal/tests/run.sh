@@ -41,6 +41,10 @@ export GIT_CONFIG_VALUE_0=false
 
 cd "$TESTS/../../.."
 
+# The gate's own directory: groupRun strips exactly that value, so it never reaches a declared command.
+NODE_COMPILE_CACHE="$(node -e "import('./plugins/goal/src/gate/group-run.ts').then((m) => process.stdout.write(m.COMPILE_CACHE))")"
+export NODE_COMPILE_CACHE
+
 if [ -n "${GOAL_TESTS_ROOT:-}" ]; then
   GLOB="$GOAL_TESTS_ROOT/*.test.ts"
 else
