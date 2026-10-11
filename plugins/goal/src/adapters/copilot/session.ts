@@ -25,7 +25,9 @@ type Event = {
   };
 };
 
-const DENIED = ['shell(git add)', 'shell(git commit)', 'shell(git push)'];
+const DENIED = ['add', 'rm', 'mv', 'commit', 'push', 'update-index', 'update-ref', 'tag', 'reset', 'stash'].map(
+  (command) => `shell(git ${command})`,
+);
 
 const readOrEmpty = (path: string): string => {
   try {
