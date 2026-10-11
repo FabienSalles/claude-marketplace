@@ -182,7 +182,7 @@ gate2=printf '%b\n' '.PHONY: all types lint' 'all: types lint' 'types:\n\tnode n
 ```
 
 ### Iteration 3 — Copilot reviews the pull request
-- [ ] Not done yet
+- [x] Not done yet
 - **Goal:** The reviewer runs on Copilot too, writing to GitHub only as a comment review and only under a `Review: comment` header, so a `GOAL_RUN_PROVIDER=copilot` run starts no Claude session at all.
 - **Shippable after it:** priority 1's runner side: a run from first iteration to closing review with Copilot alone.
 - **Files to touch:** `plugins/goal/src/adapters/copilot/` (the reviewer's allowlist and the interposed `gh`), `plugins/goal/src/ports.ts`, `plugins/goal/src/run/close.ts`, `plugins/goal/scripts/goal-run.ts`, the harness and fake agents, README (+ `plugins/goal/tests/copilot-gh.test.ts`, `adapter-copilot.test.ts`, `goal-run-copilot.test.ts`).

@@ -95,6 +95,7 @@ export type AgentReport = {
 export type AgentOptions = {
   outPath: string;
   errPath: string;
+  review?: 'comment';
   onTool: (line: string) => void;
   onSession: (id: string) => void;
 };

@@ -101,7 +101,7 @@ const main = async (): Promise<void> => {
 
   const claude = claudeAgentSessions();
   const copilot = usesCopilot ? copilotAgentSessions(settingValue('GOAL_RUN_COPILOT_CONTINUES', process.env)) : undefined;
-  const providerOf = (role: AgentRole): string => (role === 'implementer' ? implementerProvider : role === 'reviewer' ? DEFAULT_PROVIDER : provider);
+  const providerOf = (role: AgentRole): string => (role === 'implementer' ? implementerProvider : provider);
   const sessionsOf = (name: string): AgentSessions => (name === 'copilot' && copilot !== undefined ? copilot : claude);
   const implementer = sessionsOf(implementerProvider);
   const agents: AgentSessions =

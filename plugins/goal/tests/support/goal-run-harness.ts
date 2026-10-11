@@ -224,6 +224,7 @@ case "$*" in
     ;;
 esac
 printf '%s\\n' "$@" >> "$d/copilot-args.txt"
+printf '%s\\n' "$PATH" > "$d/copilot-path-args.txt"
 [ -n "$FAKE_COPILOT_WRITES" ] && printf 'written %s\\n' "\${FAKE_COPILOT_WRITE_TAG:-$$-$RANDOM}" >> "$FAKE_COPILOT_WRITES"
 [ -n "$FAKE_COPILOT_OUTSIDE" ] && printf 'stray\\n' >> "$FAKE_COPILOT_OUTSIDE"
 fixture="\${FAKE_COPILOT_FIXTURE:-probe-ok}"

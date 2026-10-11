@@ -1,5 +1,6 @@
 import { closeSync, openSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
+import { mkdirSync, symlinkSync } from 'node:fs';
 
 import { clock } from '../clock.ts';
 import { command } from '../command.ts';
@@ -40,13 +41,24 @@ const instructionsOf = (role: AgentRole): string =>
     .replace(/^---\n[\s\S]*?\n---\n/, '')
     .trim();
 
-const permissionsOf = (role: AgentRole, outPath: string): string[] =>
+const GH = (verbs: string[]): string[] => verbs.map((verb) => `shell(gh pr ${verb})`);
+
+const permissionsOf = (role: AgentRole, outPath: string, review?: 'comment'): string[] =>
   role === 'implementer'
     ? ['--allow-all-tools']
     : [
-        ...READ_ONLY.flatMap((tool) => ['--allow-tool', tool]),
+        ...[...READ_ONLY, ...(role === 'reviewer' ? GH(review === 'comment' ? ['view', 'diff', 'review'] : ['view', 'diff']) : [])].flatMap((tool) => ['--allow-tool', tool]),
         ...(role === 'auditor' ? ['--allow-tool', `write(${resolve(dirname(outPath), 'report.md')})`] : []),
       ];
+
+const interposedGh = (outPath: string): string => {
+  const bin = join(dirname(outPath), 'reviewer-bin');
+
+  mkdirSync(bin, { recursive: true });
+  symlinkSync(join(import.meta.dirname, 'gh.sh'), join(bin, 'gh'));
+
+  return bin;
+};
 
 const readOrEmpty = (path: string): string => {
   try {
@@ -143,14 +155,17 @@ export const copilotAgentSessions = (continues: number): AgentSessions => ({
           '--autopilot',
           '--max-autopilot-continues',
           String(continues),
-          ...permissionsOf(role, options.outPath),
+          ...permissionsOf(role, options.outPath, options.review),
           '--no-ask-user',
           '--no-auto-update',
           ...DENIED.flatMap((tool) => ['--deny-tool', tool]),
         ];
         const ended = await command.spawn('/bin/sh', ['-c', `${ceiling()}\nexec "$@"`, 'sh', 'copilot', ...args], {
           encoding: 'utf8',
-          env: { ...process.env },
+          env:
+            role === 'reviewer'
+              ? { ...process.env, PATH: `${interposedGh(options.outPath)}:${process.env.PATH ?? ''}`, ...(options.review === undefined ? {} : { GOAL_RUN_REVIEW: options.review }) }
+              : { ...process.env },
           stdio: ['ignore', fdOut, fdErr],
           signal: stop,
         });

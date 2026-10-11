@@ -23,7 +23,7 @@ export { HALTED, LANDED } from '../core/verdict.ts';
 
 const providerOf = (agents: AgentSessions, role: AgentRole): string => agents.providerOf?.(role) ?? agents.provider ?? 'unknown';
 
-const launchAdvisory = (agents: AgentSessions, role: AgentRole, brief: string, dir: string, reporter: Reporter): Promise<AgentReport> => {
+const launchAdvisory = (agents: AgentSessions, role: AgentRole, brief: string, dir: string, reporter: Reporter, review?: 'comment'): Promise<AgentReport> => {
   const narrates = providerOf(agents, role) === 'copilot';
 
   reporter.say(`RUN ${role} on ${providerOf(agents, role)}`);
@@ -31,7 +31,7 @@ const launchAdvisory = (agents: AgentSessions, role: AgentRole, brief: string, d
   return agents.launch(
     role,
     brief,
-    { outPath: join(dir, `${role}.out`), errPath: join(dir, `${role}.err`), onTool: narrates ? (line) => reporter.say(line) : () => {}, onSession: () => {} },
+    { outPath: join(dir, `${role}.out`), errPath: join(dir, `${role}.err`), ...(review === undefined ? {} : { review }), onTool: narrates ? (line) => reporter.say(line) : () => {}, onSession: () => {} },
     new AbortController().signal,
   );
 };
@@ -174,16 +174,16 @@ this run: it is advisory only.`;
     // Run once neither can still block anything and each is briefed: the reviewer against a mark
     // pull requests only lands whole, after both have exited, so an advisory duration is paid
     // once instead of twice.
-    const jobs: { name: 'lens' | 'reviewer'; brief: string }[] = [{ name: 'lens', brief: lensBrief }];
+    const jobs: { name: 'lens' | 'reviewer'; brief: string; review?: 'comment' }[] = [{ name: 'lens', brief: lensBrief }];
 
     if (reviewBrief !== undefined) {
-      jobs.push({ name: 'reviewer', brief: reviewBrief });
+      jobs.push({ name: 'reviewer', brief: reviewBrief, ...(postsReview ? { review: 'comment' as const } : {}) });
     }
 
     fs.mkdir(dir, { recursive: true });
     watch.start();
     const advisoryStart = clock.now();
-    const reports = await Promise.all(jobs.map((job) => launchAdvisory(agents, job.name, job.brief, dir, reporter)));
+    const reports = await Promise.all(jobs.map((job) => launchAdvisory(agents, job.name, job.brief, dir, reporter, job.review)));
     const advisoryDuration = clock.now() - advisoryStart;
 
     jobs.forEach((job, i) => {

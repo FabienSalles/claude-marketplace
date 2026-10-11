@@ -1,13 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, readFileSync, realpathSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 
 import { copilotAgentSessions } from '../src/adapters/copilot/session.ts';
 import type { AgentReport, AgentRole } from '../src/ports.ts';
 import { repo } from './support/goal-run-harness.ts';
 
-const launch = async (env: Record<string, string>, continues = 3, role: AgentRole = 'implementer'): Promise<{ report: AgentReport; tools: string[]; sessions: string[]; args: string[]; dir: string }> => {
+const launch = async (env: Record<string, string>, continues = 3, role: AgentRole = 'implementer', review?: 'comment'): Promise<{ report: AgentReport; tools: string[]; sessions: string[]; args: string[]; dir: string; path: string }> => {
   const fixture = repo();
   const saved = { PATH: process.env.PATH, ...Object.fromEntries(Object.keys(env).map((key) => [key, process.env[key]])) };
   const tools: string[] = [];
@@ -20,11 +20,11 @@ const launch = async (env: Record<string, string>, continues = 3, role: AgentRol
     const report = await copilotAgentSessions(continues).launch(
       role,
       'the brief',
-      { outPath: join(fixture.dir, 'out'), errPath: join(fixture.dir, 'err'), onTool: (line) => tools.push(line), onSession: (id) => sessions.push(id) },
+      { outPath: join(fixture.dir, 'out'), errPath: join(fixture.dir, 'err'), ...(review === undefined ? {} : { review }), onTool: (line) => tools.push(line), onSession: (id) => sessions.push(id) },
       new AbortController().signal,
     );
 
-    return { report, tools, sessions, args: readFileSync(join(fixture.dir, 'copilot-args.txt'), 'utf8').split('\n'), dir: fixture.dir };
+    return { report, tools, sessions, args: readFileSync(join(fixture.dir, 'copilot-args.txt'), 'utf8').split('\n'), dir: fixture.dir, path: readFileSync(join(fixture.dir, 'copilot-path-args.txt'), 'utf8').trim() };
   } finally {
     for (const [key, value] of Object.entries(saved)) {
       if (value === undefined) {
@@ -112,7 +112,7 @@ test('a lens, a reviewer and an auditor get the read-only allowlist and the ten 
 
     for (const denied of GIT_DENIED) assert.equal(args[args.indexOf(denied) - 1], '--deny-tool', `${role} ${denied}`);
 
-    assert.deepEqual(allowedOf(args).filter((tool) => tool.startsWith('shell(')), ALLOWED, role);
+    assert.deepEqual(allowedOf(args).filter((tool) => tool.startsWith('shell(')), role === 'reviewer' ? [...ALLOWED, 'shell(gh pr view)', 'shell(gh pr diff)'] : ALLOWED, role);
   }
 });
 
@@ -150,4 +150,33 @@ test('a refusal by a close session is named after its role', async () => {
 
 test('the adapter names its provider', () => {
   assert.equal(copilotAgentSessions(3).provider, 'copilot');
+});
+
+const GH_READ = ['shell(gh pr view)', 'shell(gh pr diff)'];
+
+// R12 — the reviewer reads a pull request; the lens and the auditor never touch gh.
+test('the reviewer alone may run gh pr view and gh pr diff, and never the review subcommand without the header', async () => {
+  const reviewer = (await launch({}, 3, 'reviewer')).args;
+
+  for (const tool of GH_READ) assert.ok(allowedOf(reviewer).includes(tool), tool);
+
+  assert.equal(allowedOf(reviewer).some((tool) => tool.endsWith('review)')), false);
+
+  for (const role of ['lens', 'auditor'] as const) {
+    assert.equal(allowedOf((await launch({}, 3, role, 'comment')).args).some((tool) => tool.startsWith('shell(gh')), false, role);
+  }
+});
+
+test('under the header the reviewer may also run the review subcommand of gh pr', async () => {
+  assert.ok(allowedOf((await launch({}, 3, 'reviewer', 'comment')).args).includes(`shell(gh pr ${'re'}view)`));
+});
+
+// R12, I4 — the reviewer's PATH starts with the interposed gh, and no other role's does.
+test('the reviewer runs with the interposed gh first on its PATH', async () => {
+  const reviewer = await launch({}, 3, 'reviewer', 'comment');
+  const first = reviewer.path.split(':')[0] ?? '';
+
+  assert.ok(existsSync(join(first, 'gh')), reviewer.path);
+  assert.equal(realpathSync(join(first, 'gh')), realpathSync(resolve(import.meta.dirname, '..', 'src', 'adapters', 'copilot', 'gh.sh')));
+  assert.notEqual((await launch({}, 3, 'lens')).path.split(':')[0], first);
 });

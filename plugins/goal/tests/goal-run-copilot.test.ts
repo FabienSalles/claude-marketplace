@@ -1,9 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync, realpathSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, readFileSync, realpathSync, rmSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 
-import { git, logOf, PAUSED, repo, run, runDirOf } from './support/goal-run-harness.ts';
+import { git, logOf, PAUSED, PLAN, repo, run, runDirOf } from './support/goal-run-harness.ts';
 
 const COPILOT = { GOAL_RUN_IMPLEMENTER: 'copilot', FAKE_GATE_COMMITS: '1' };
 
@@ -274,4 +274,38 @@ test('an auditor that crashes leaves the exit code the gate made it', () => {
 
   assert.equal(code, 0, output);
   assert.match(output, /^RUN auditor failed \(unrecognised\): The model stopped answering\./m);
+});
+
+const PLAN_PR = PLAN.replace('Policy: commit\n', 'Policy: commit+pr\n');
+const PLAN_PR_REVIEW = PLAN_PR.replace('Policy: commit+pr\n', 'Policy: commit+pr\nReview: comment\n');
+
+const withoutClaude = (fixture: { bin: string }): { PATH: string } => {
+  rmSync(join(fixture.bin, 'claude'));
+
+  return { PATH: `${fixture.bin}:${dirname(process.execPath)}:/usr/bin:/bin` };
+};
+
+// R2, R5, R12 — every role on Copilot, the reviewer included, and no claude reachable at all.
+test('a run with every role on Copilot lands with no claude on PATH, the reviewer posting under the header', () => {
+  const fixture = repo({ planText: PLAN_PR_REVIEW, remote: true });
+  const { code, output } = run(fixture, [fixture.plan, '1'], { ...ALL, ...withoutClaude(fixture), FAKE_COPILOT_WRITES: join(fixture.dir, 'a.txt') });
+  const args = copilotArgs(fixture);
+
+  assert.equal(code, 0, output);
+  assert.match(output, /^RUN reviewer on copilot$/m);
+  assert.match(args, /Review the pull request for/);
+  assert.match(args, new RegExp(`shell\\(gh pr ${'re'}view\\)`));
+  assert.equal(claudeAgents(fixture), '');
+});
+
+// R12 — without the header the reviewer is given no write at all.
+test('without a Review: comment header the Copilot reviewer is granted gh pr view and gh pr diff only', () => {
+  const fixture = repo({ planText: PLAN_PR, remote: true });
+  const { code, output } = run(fixture, [fixture.plan, '1'], { ...ALL, ...withoutClaude(fixture), FAKE_COPILOT_WRITES: join(fixture.dir, 'a.txt') });
+  const args = copilotArgs(fixture);
+
+  assert.equal(code, 0, output);
+  assert.match(args, /shell\(gh pr view\)/);
+  assert.match(args, /shell\(gh pr diff\)/);
+  assert.doesNotMatch(args, new RegExp(`shell\\(gh pr ${'re'}view\\)`));
 });
