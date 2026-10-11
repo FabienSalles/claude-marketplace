@@ -216,6 +216,13 @@ exit \${FAKE_CLAUDE_EXIT:-0}
 `,
   copilot: `#!/bin/sh
 d=$(dirname "$0")/..
+case "$*" in
+  *"single word OK"*)
+    [ -n "$FAKE_COPILOT_STDERR" ] && printf '%s\\n' "$FAKE_COPILOT_STDERR" >&2
+    if [ -n "$FAKE_COPILOT_RAW" ]; then printf '%s\\n' "$FAKE_COPILOT_RAW"; else cat "${COPILOT_FIXTURES}/probe-ok.jsonl"; fi
+    exit \${FAKE_COPILOT_EXIT:-0}
+    ;;
+esac
 printf '%s\\n' "$@" >> "$d/copilot-args.txt"
 [ -n "$FAKE_COPILOT_WRITES" ] && printf 'written %s\\n' "\${FAKE_COPILOT_WRITE_TAG:-$$-$RANDOM}" >> "$FAKE_COPILOT_WRITES"
 [ -n "$FAKE_COPILOT_OUTSIDE" ] && printf 'stray\\n' >> "$FAKE_COPILOT_OUTSIDE"

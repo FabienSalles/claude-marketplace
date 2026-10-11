@@ -288,7 +288,7 @@ An unknown name under `GOAL_RUN_*`, `GOAL_CMD_*` or `GOAL_PROC_*` is refused wit
 
 ### Copilot as the implementer
 
-`GOAL_RUN_IMPLEMENTER=copilot node plugins/goal/scripts/goal-run.ts <plan>` hands every iteration to Copilot CLI instead of Claude. Prerequisite: `copilot` installed and authenticated on the machine. Copilot is refused from staging, committing and pushing; the gate still judges and commits each iteration. The close stage (lens, reviewer, run auditor) stays on Claude. The log names the implementer of each iteration on a `RUN implementer provider=<name>` line. Each Copilot session costs Copilot premium requests.
+`GOAL_RUN_IMPLEMENTER=copilot node plugins/goal/scripts/goal-run.ts <plan>` hands every iteration to Copilot CLI instead of Claude. Prerequisite: `copilot` installed and authenticated on the machine. Copilot is refused from staging, committing and pushing; the gate still judges and commits each iteration. The close stage (lens, reviewer, run auditor) stays on Claude. The log names the implementer of each iteration on a `RUN implementer provider=<name>` line. Each Copilot session costs Copilot premium requests. Before anything is written, a Copilot launch runs one probe session (`copilot -p "Reply with the single word OK."`, shell and write denied; about 5 s and one premium request) because Copilot has no auth-status command; a missing `copilot` or a probe that fails is refused with exit 2, naming which.
 
 ## Cost
 

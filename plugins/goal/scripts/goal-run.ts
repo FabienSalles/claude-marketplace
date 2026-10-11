@@ -28,6 +28,7 @@ import { pauseLine } from '../src/core/publication.ts';
 import { PAUSED } from '../src/core/verdict.ts';
 import { quote } from '../src/core/shell.ts';
 import { claudeAgentSessions } from '../src/adapters/claude/session.ts';
+import { copilotRefusal } from '../src/adapters/copilot/availability.ts';
 import { copilotAgentSessions } from '../src/adapters/copilot/session.ts';
 import { defaultSettingsPath } from '../src/adapters/claude/warning.ts';
 import { defaultProjectsRoot } from '../src/adapters/claude/postmortem.ts';
@@ -68,6 +69,12 @@ const main = async (): Promise<void> => {
   const artifacts = resolveArtifacts(process.cwd(), process.env);
 
   if (!artifacts.ok) reporter.stop(artifacts.error, REFUSED);
+
+  if (settingValue('GOAL_RUN_IMPLEMENTER', process.env) === 'copilot') {
+    const refusal = copilotRefusal();
+
+    if (refusal !== undefined) reporter.stop(refusal, REFUSED);
+  }
 
   const dir = runDir(artifacts.value.runs, workIdOf(plan, source));
   reporter.setLog(dir);
