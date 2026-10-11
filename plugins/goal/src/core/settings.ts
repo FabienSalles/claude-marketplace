@@ -13,6 +13,7 @@ const SETTINGS = {
   GOAL_RUN_SETTINGS_PATH: { kind: 'text' },
   GOAL_RUN_PROJECTS_ROOT: { kind: 'text' },
   GOAL_GATE: { kind: 'text' },
+  GOAL_LOCK_ROOT: { kind: 'text' },
 } as const satisfies Record<string, Numeric | Text>;
 
 export type SettingName = keyof typeof SETTINGS;
@@ -21,7 +22,7 @@ export type Env = Readonly<Record<string, string | undefined>>;
 export type Effective = { value: number | string | undefined; source: 'environment' | 'default' };
 
 const INTERNAL = ['GOAL_RUN_JSONL', 'GOAL_RUN_TICKED'];
-const GUARDED_PREFIXES = ['GOAL_RUN_', 'GOAL_CMD_', 'GOAL_PROC_'];
+const GUARDED_PREFIXES = ['GOAL_RUN_', 'GOAL_CMD_', 'GOAL_PROC_', 'GOAL_LOCK_'];
 const RETIRED: Record<string, string> = { GOAL_RUN_SHUTDOWN_MAX_RETRIES: 'GOAL_RUN_QUOTA_MAX_RETRIES' };
 
 const names = Object.keys(SETTINGS) as SettingName[];
@@ -52,6 +53,7 @@ const faultOf = (name: SettingName, raw: string): string | undefined => {
   const setting: Numeric | Text = SETTINGS[name];
 
   if (raw === '') return `${name} is empty: unset the variable to get the default`;
+  if (name === 'GOAL_LOCK_ROOT' && !raw.startsWith('/')) return `${name}="${raw}" is not an absolute path: unset the variable to get the default`;
   if (setting.kind === 'text') return undefined;
   if (!/^[0-9]+$/.test(raw)) return `${name}="${raw}" is not a whole number written in digits: expected ${shape(setting)}`;
 
@@ -79,8 +81,8 @@ export const settingValue = <N extends SettingName>(name: N, env: Env): SettingV
   return (raw === undefined ? setting.default : Number(raw)) as SettingValue<N>;
 };
 
-const GATE_SETTINGS: SettingName[] = ['GOAL_CMD_TIMEOUT', 'GOAL_PROC_HEADROOM'];
-const GATE_PREFIXES = ['GOAL_CMD_', 'GOAL_PROC_'];
+const GATE_SETTINGS: SettingName[] = ['GOAL_CMD_TIMEOUT', 'GOAL_PROC_HEADROOM', 'GOAL_LOCK_ROOT'];
+const GATE_PREFIXES = ['GOAL_CMD_', 'GOAL_PROC_', 'GOAL_LOCK_'];
 
 const faultsFor = (env: Env, owned: SettingName[], prefixes: string[]): string[] => {
   const faults: string[] = [];

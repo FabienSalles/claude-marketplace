@@ -6,7 +6,11 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 
+import { lockPaths } from '../../plugins/goal/src/gate/locks.ts';
 import { findHolders, lockPath, processes, takeLock } from '../verify/holder.ts';
+
+const LOCKS = mkdtempSync(join(tmpdir(), 'verify-holder-locks-'));
+process.env.GOAL_LOCK_ROOT = LOCKS;
 
 const MARKER = 'fake-goal-run.ts';
 const FIXTURE = resolve(import.meta.dirname, 'fixtures', 'verify-guarded.ts');
@@ -37,6 +41,49 @@ test('a live goal run holding the checkout refuses verify, naming the plan', () 
     assert.match(refusal ?? '', /refused: a goal run holds this checkout .*demo-spec\.md\.run\.lock/);
   } finally {
     rmSync(root, { recursive: true, force: true });
+  }
+});
+
+const locked = (plan: string): string => {
+  const { run } = lockPaths(plan, LOCKS);
+  mkdirSync(run, { recursive: true });
+  writeFileSync(join(run, 'plan'), plan);
+
+  return run;
+};
+
+test('a goal run holding a plan through the lock directory refuses verify, and a stale one is reported', () => {
+  const { root, gitDir, plan } = checkout();
+  writeFileSync(plan, '# Spec\n');
+  const lock = locked(realpathSync(plan));
+
+  try {
+    const table = [holding(process.pid, 1, 'node verify'), holding(4242, 1, `node ${MARKER} ${plan}`)];
+
+    assert.match(findHolders(root, gitDir, MARKER, table).refusal ?? '', new RegExp(`refused: a goal run holds this checkout .*${lock}`));
+
+    const { refusal, notes } = findHolders(root, gitDir, MARKER, [holding(process.pid, 1, 'node verify')]);
+
+    assert.equal(refusal, undefined);
+    assert.deepEqual(notes, [`stale goal run lock ${lock}, release it with: goal-gate.ts unlock ${realpathSync(plan)}`]);
+  } finally {
+    rmSync(lock, { recursive: true, force: true });
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('a lock of the lock directory holding a plan of another checkout is ignored', () => {
+  const { root, gitDir } = checkout();
+  const other = checkout();
+  writeFileSync(other.plan, '# Spec\n');
+  const lock = locked(realpathSync(other.plan));
+
+  try {
+    assert.deepEqual(findHolders(root, gitDir, MARKER, [holding(process.pid, 1, 'node verify')]), { refusal: undefined, notes: [] });
+  } finally {
+    rmSync(lock, { recursive: true, force: true });
+    rmSync(root, { recursive: true, force: true });
+    rmSync(other.root, { recursive: true, force: true });
   }
 });
 
