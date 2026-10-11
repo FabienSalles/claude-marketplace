@@ -97,4 +97,8 @@ test('R6: the gate checks only its own settings, leaving the runner\'s and the i
   assert.deepEqual(checkGateSettings({ GOAL_RUN_QUOTA_SLEEP: 'abc', GOAL_RUN_BAD: '1', GOAL_RUN_JSONL: '/x', GOAL_GATE: '' }), []);
   assert.equal(checkGateSettings({ GOAL_CMD_TIMEOUT: '0', GOAL_PROC_HEADROOM: '', GOAL_CMD_FOO: '1', GOAL_PROC_BAR: '1' }).length, 4);
   assert.match(checkGateSettings({ GOAL_CMD_TIMOUT: '1' }).join('\n'), /GOAL_CMD_TIMOUT.*GOAL_CMD_TIMEOUT/);
+  assert.equal(checkGateSettings({ GOAL_LOCK_ROOT: '/tmp/locks' }).length, 0);
+  assert.match(checkGateSettings({ GOAL_LOCK_ROOT: 'relative' }).join('\n'), /GOAL_LOCK_ROOT="relative" is not an absolute path/);
+  assert.match(checkGateSettings({ GOAL_LOCK_ROOT: '' }).join('\n'), /GOAL_LOCK_ROOT is empty/);
+  assert.match(checkSettings({ GOAL_LOCK_ROOT: 'locks' }).faults.join('\n'), /GOAL_LOCK_ROOT/);
 });
