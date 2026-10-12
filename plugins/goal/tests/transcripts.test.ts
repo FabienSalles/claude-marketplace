@@ -202,14 +202,26 @@ test('runTranscripts finds Copilot sessions even when no Claude project dir exis
   );
 });
 
-test('runTranscripts finds Codex rollouts naming the plan, and a missing Codex root is no error', () => {
+test('runTranscripts reads only this project\'s Codex rollouts naming the plan, at any date, and a missing Codex root is no error', () => {
   const codex = tmpDir('codex-');
-  const day = join(codex, '2026', '10', '12');
-  mkdirSync(day, { recursive: true });
-  writeFileSync(join(day, 'rollout-a.jsonl'), '{"type":"session_meta","payload":{"cwd":"/x"}}\n{"type":"response_item","payload":{"arguments":"my-plan-spec.md"}}\n');
-  writeFileSync(join(day, 'rollout-b.jsonl'), '{"type":"session_meta","payload":{"cwd":"/x"}}\n');
-  const find = (root: string) => runTranscripts('/Users/dev/never-ran', 'my-plan-spec.md', '', join('/unused', 'runs'), projectRoot(), undefined, join(codex, 'none'), root);
+  const rollout = (day: string, name: string, cwd: string, body: string) => {
+    const dir = join(codex, ...day.split('/'));
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, name), `${JSON.stringify({ type: 'session_meta', payload: { cwd } })}\n${body}\n`);
+    return join(dir, name);
+  };
+  const named = '{"type":"response_item","payload":{"arguments":"my-plan-spec.md"}}';
+  const here = rollout('2026/10/12', 'rollout-a.jsonl', '/Users/dev/never-ran', named);
+  const older = rollout('2026/09/03', 'rollout-d.jsonl', '/Users/dev/never-ran', named);
+  rollout('2026/10/12', 'rollout-b.jsonl', '/Users/dev/never-ran', '{}');
+  rollout('2026/10/12', 'rollout-c.jsonl', '/Users/dev/other', named);
+  const find = (root: string) =>
+    runTranscripts('/Users/dev/never-ran', 'my-plan-spec.md', '', join('/unused', 'runs'), projectRoot(), undefined, join(codex, 'none'), root).sort();
 
-  assert.deepEqual(find(codex), [join(day, 'rollout-a.jsonl')]);
+  assert.deepEqual(find(codex), [here, older].sort());
   assert.deepEqual(find(join(codex, 'missing')), []);
+});
+
+test('transcripts.ts reads Codex sessions through the fs adapter, not readdirSync', () => {
+  assert.doesNotMatch(readFileSync(resolve(import.meta.dirname, '../src/transcripts.ts'), 'utf8'), /readdirSync/);
 });

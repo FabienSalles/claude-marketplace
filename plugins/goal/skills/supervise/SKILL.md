@@ -7,7 +7,8 @@ disable-model-invocation: true
 ## Outside Claude Code
 
 This skill needs a background shell and an agent tool. Claude Code: background `Bash`, `Agent`.
-Copilot CLI: async `bash` read with `read_bash`, `task` with `goal:goal-session-auditor`. A host with neither a shell nor an agent tool cannot launch or audit a
+Copilot CLI: async `bash` read with `read_bash`, `task` with `goal:goal-session-auditor`.
+Codex CLI: `exec_command` read with `write_stdin`, no agent tool. A host with neither a shell nor an agent tool cannot launch or audit a
 run: state that reason and STOP before Phase 0 runs.
 
 The host never sets or unsets `GOAL_RUN_PROVIDER` or `GOAL_RUN_IMPLEMENTER`: `goal-run.ts` is
@@ -50,8 +51,15 @@ two cases. Read the report at the end as evidence for or against it, not as a ve
 Claude stays the implementer: `goal-run.ts` runs `claude` as under any host, and the host never sets or unsets `GOAL_RUN_PROVIDER` or `GOAL_RUN_IMPLEMENTER`.
 The background shell is `exec_command`, read with `write_stdin`. There is no agent tool.
 
-Before Phase 1 launches anything, run a one-line network probe and a write probe into `$HOME/.claude`.
-When either fails, print `codex -s workspace-write -c sandbox_workspace_write.network_access=true --add-dir "$HOME/.claude"`
+Before Phase 1 launches anything, run a network probe and a write probe into `$HOME/.claude`. Each network probe must print a code other than `000`:
+
+```bash
+curl -s -o /dev/null -w '%{http_code}' --max-time 10 https://api.github.com
+curl -s -o /dev/null -w '%{http_code}' --max-time 10 "${ANTHROPIC_BASE_URL:-https://api.anthropic.com}"
+f="$HOME/.claude/.goal-write-probe-$$" && touch "$f" && rm -f "$f"
+```
+
+When one fails, name the failing probe, print `codex -s workspace-write -c sandbox_workspace_write.network_access=true --add-dir "$HOME/.claude"`
 and launch nothing.
 
 Phase 7 runs `claude -p --agent goal:goal-session-auditor` from the shell, passing the plan's path and `$(pwd)`.

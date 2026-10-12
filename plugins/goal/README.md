@@ -302,7 +302,7 @@ copilot plugin install goal@fabien-claude-marketplace
 
 Copilot holds a copy of the plugin: after a version bump, bring it current with `copilot plugin update goal@fabien-claude-marketplace`. Skills load live, so a new session picks up the installed copy. Each skill prints `goal <skill> · <host> · v<version>` first, and stops with `cannot locate the goal plugin scripts` plus the install command when it cannot find its scripts.
 
-Manual mode needs Claude Code's `/goal`: hosted in Copilot or Codex, `/goal:plan` offers `commit+pr` only and `/goal:next` stops on a manual plan. `/goal:supervise` still stops outside Claude Code.
+Manual mode needs Claude Code's `/goal`: hosted in Copilot or Codex, `/goal:plan` offers `commit+pr` only and `/goal:next` stops on a manual plan.
 
 ### Codex hosts the goal sessions
 
@@ -313,13 +313,13 @@ codex plugin marketplace add FabienSalles/claude-marketplace
 codex plugin add goal@fabien-claude-marketplace
 ```
 
-`codex plugin marketplace upgrade` refreshes Git marketplaces only, so a local marketplace is refreshed by re-running `codex plugin add goal@fabien-claude-marketplace` (hypothesis measured on 2026-10-12: Codex served 3.6.0 while the repository was 3.8.0). Invoke a skill by name in the prompt, for example `$goal:spec`. Supervising launches the runner, which needs network and writes under `~/.claude`: start Codex with
+`codex plugin marketplace upgrade` refreshes Git marketplaces only, so a local marketplace is refreshed by re-running `codex plugin add goal@fabien-claude-marketplace` (it copies the local marketplace's checked-out working tree, so refresh from the branch Codex should run). Invoke a skill by name in the prompt, for example `$goal:spec`. Supervising launches the runner, which needs network and writes under `~/.claude`: start Codex with
 
 ```bash
 codex -s workspace-write -c sandbox_workspace_write.network_access=true --add-dir "$HOME/.claude"
 ```
 
-`/goal:supervise` itself is not yet usable from Codex.
+`/goal:supervise` runs from Codex with that launch command: it probes network and writes first, and launches nothing when a probe fails.
 
 ## Cost
 

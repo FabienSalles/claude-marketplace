@@ -109,7 +109,7 @@ test('digest renders a Copilot events.jsonl in the same line form, anchored on t
 
 const codexCall = (callId: string, name: string, args: Record<string, string>) =>
   JSON.stringify({ type: 'response_item', payload: { type: 'function_call', name, arguments: JSON.stringify(args), call_id: callId } });
-const codexOutput = (callId: string) => JSON.stringify({ type: 'response_item', payload: { type: 'function_call_output', call_id: callId, output: 'x' } });
+const codexOutput = (callId: string) => JSON.stringify({ type: 'response_item', payload: { type: 'function_call_output', call_id: callId, output: 'Exit code: 0\nOutput: x' } });
 
 test('digest renders a Codex rollout function_call items, anchored on the call line', () => {
   const path = fixture([
@@ -120,4 +120,45 @@ test('digest renders a Codex rollout function_call items, anchored on the call l
   ]);
 
   assert.deepEqual(digest(path), ['2: exec_command ls -> ok', '4: apply_patch -> pending']);
+});
+
+const codexExec = (callId: string, cmds: string[]) =>
+  JSON.stringify({
+    type: 'response_item',
+    payload: { type: 'custom_tool_call', name: 'exec', call_id: callId, input: cmds.map((cmd) => `await tools.exec_command({cmd: ${JSON.stringify(cmd)}, yield_time_ms: 1000});`).join('\n') },
+  });
+const chunk = (exitCode: number) => ({ type: 'input_text', text: JSON.stringify({ chunk_id: 'c', exit_code: exitCode }) });
+const execOutput = (callId: string, items: unknown[]) =>
+  JSON.stringify({ type: 'response_item', payload: { type: 'custom_tool_call_output', call_id: callId, output: items } });
+
+test('digest renders one entry per Codex exec_command with its exit code outcome', () => {
+  const path = fixture([
+    codexExec('e1', ['git status', 'false', 'ls']),
+    execOutput('e1', [chunk(0), { type: 'input_text', text: 'note' }, chunk(1), chunk(0)]),
+  ]);
+
+  assert.deepEqual(digest(path), ['1: exec_command git status -> ok', '1: exec_command false -> failed', '1: exec_command ls -> ok']);
+});
+
+test('digest marks Codex commands unknown when output is missing, short of chunks or unparseable', () => {
+  const path = fixture([
+    codexExec('m1', ['a']),
+    codexExec('m2', ['b', 'c']),
+    execOutput('m2', [chunk(0)]),
+    codexExec('m3', ['d']),
+    execOutput('m3', [{ type: 'input_text', text: '{"chunk_id": oops' }]),
+    codexCall('f1', 'exec_command', { cmd: 'e' }),
+    JSON.stringify({ type: 'response_item', payload: { type: 'function_call_output', call_id: 'f1', output: 'no code here' } }),
+    codexCall('f2', 'exec_command', { cmd: 'f' }),
+    JSON.stringify({ type: 'response_item', payload: { type: 'function_call_output', call_id: 'f2', output: 'Exit code: 2' } }),
+  ]);
+
+  assert.deepEqual(digest(path), [
+    '1: exec_command a -> unknown',
+    '2: exec_command b -> ok',
+    '2: exec_command c -> unknown',
+    '4: exec_command d -> unknown',
+    '6: exec_command e -> unknown',
+    '8: exec_command f -> failed',
+  ]);
 });

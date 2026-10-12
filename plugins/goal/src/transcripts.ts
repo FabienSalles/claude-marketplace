@@ -1,4 +1,4 @@
-import { accessSync, constants, readdirSync, statSync } from 'node:fs';
+import { accessSync, constants, statSync } from 'node:fs';
 
 import { basename, isAbsolute, join } from 'node:path';
 
@@ -38,6 +38,28 @@ export const recordedTranscripts = (dir: string, runsRoot: string, copilotRoot?:
   return candidates.filter((path) => fs.exists(path));
 };
 
+const codexRollouts = (root: string, cwd: string): string[] => {
+  const days = fs
+    .readDir(root)
+    .flatMap((year) => fs.readDir(join(root, year)).flatMap((month) => fs.readDir(join(root, year, month)).map((day) => join(root, year, month, day))));
+
+  return days.flatMap((day) =>
+    fs
+      .readDir(day)
+      .filter((entry) => entry.startsWith('rollout-') && entry.endsWith('.jsonl'))
+      .map((entry) => join(day, entry))
+      .filter((path) => codexCwd(fs.readFile(path)) === cwd),
+  );
+};
+
+const codexCwd = (raw: string): unknown => {
+  try {
+    return (JSON.parse(raw.split('\n')[0] ?? '') as { payload?: { cwd?: unknown } }).payload?.cwd;
+  } catch {
+    return undefined;
+  }
+};
+
 const scanned = (paths: string[], needle: string): string[] => paths.filter((path) => fs.readFile(path).includes(needle));
 
 export const runTranscripts = (
@@ -62,11 +84,7 @@ export const runTranscripts = (
 
   const copilot = fs.exists(copilotRoot) ? fs.readDir(copilotRoot).map((id) => join(copilotRoot, id, 'events.jsonl')).filter((path) => fs.exists(path)) : [];
 
-  const codex = fs.exists(codexRoot)
-    ? readdirSync(codexRoot, { recursive: true, encoding: 'utf8' })
-        .filter((entry) => basename(entry).startsWith('rollout-') && entry.endsWith('.jsonl'))
-        .map((entry) => join(codexRoot, entry))
-    : [];
+  const codex = fs.exists(codexRoot) ? codexRollouts(codexRoot, cwd) : [];
 
   return [...new Set([...recordedTranscripts(dir, history ?? join(runs, workIdOf(plan, source)), copilotRoot), ...scanned([...claude, ...copilot, ...codex], needle)])];
 };
