@@ -13,6 +13,9 @@ const documents = [
   'docs/target-harness.md', 'agents/goal-run-auditor.md',
 ];
 
+const read = (path: string): string => readFileSync(join(plugin, path), 'utf8');
+const withShared = (skill: string): string => `${read(`skills/${skill}/SKILL.md`)}\n${read('shared/artifact-root.md')}`;
+
 const fixture = (t: test.TestContext): string => {
   const directory = realpathSync(mkdtempSync(join(tmpdir(), 'goal-artifact-skills-')));
   t.after(() => rmSync(directory, { recursive: true, force: true }));
@@ -41,9 +44,7 @@ const checkInstructions = (source: string): void => {
 
 for (const skill of skills) {
   test(`R1/R3/R7/R12/R14, I1/I3: ${skill} prescribes configured discovery, source references and Git exclusions`, () => {
-    const source = readFileSync(join(plugin, 'skills', skill, 'SKILL.md'), 'utf8');
-
-    checkInstructions(source);
+    checkInstructions(withShared(skill));
   });
 
   test(`R13: ${skill} resolver command selects project-specific roots through isolated CLI fixtures`, (t) => {
@@ -84,7 +85,7 @@ for (const skill of skills) {
 }
 
 test('R10/I6: spec prescribes absent and present branches, preserves unrelated content and carries the choice into the session', () => {
-  const source = readFileSync(join(plugin, 'skills/spec/SKILL.md'), 'utf8');
+  const source = read('skills/spec/SKILL.md');
 
   assert.match(source, /If `supplied` is false, ask for \*\*docs\/goal\/\*\*, \*\*\.goal\/\*\* or a \*\*custom path\*\* and\s+wait for the answer/);
   assert.match(source, /If `supplied` is true, use the effective value without asking for a location/);
@@ -139,10 +140,44 @@ for (const [name, instruction] of [
   test(`instruction checker rejects a temporary ${name} mutation`, (t) => {
     const directory = fixture(t);
     const path = join(directory, 'SKILL.md');
-    const source = readFileSync(join(plugin, 'skills/spec/SKILL.md'), 'utf8');
+    const source = withShared('spec');
     writeFileSync(path, `${source}\n${instruction}\n`);
 
     assert.throws(() => checkInstructions(readFileSync(path, 'utf8')), assert.AssertionError);
     checkInstructions(source);
   });
 }
+
+for (const skill of skills) {
+  test(`R2/R10 ${skill} names the shared artifact-root file and keeps the resolver command inline`, () => {
+    const source = read(`skills/${skill}/SKILL.md`);
+
+    assert.match(source, /read `<root>\/shared\/artifact-root\.md`/);
+    assert.doesNotMatch(source, /Do not ignore the whole artifact root/);
+    assert.doesNotMatch(source, /Never write `\.git\/info\/exclude`/);
+  });
+}
+
+test('R2 the artifact-root trunk lives once, in the shared file', () => {
+  const shared = read('shared/artifact-root.md');
+
+  assert.match(shared, /Do not ignore the whole artifact root/);
+  assert.doesNotMatch(shared, /CLAUDE_PLUGIN_ROOT/);
+  assert.equal(skills.filter((skill) => read(`skills/${skill}/SKILL.md`).includes('Never write `.git/info/exclude`')).length, 0);
+});
+
+test('R4/R5 the shared file carries neither location branch; each skill keeps its own', () => {
+  const shared = read('shared/artifact-root.md');
+
+  assert.doesNotMatch(shared, /ask for \*\*docs\/goal|location selection belongs|without asking for a location/);
+  for (const skill of skills.filter((name) => name !== 'spec')) {
+    const source = read(`skills/${skill}/SKILL.md`);
+
+    assert.match(source, /use the returned default; location selection belongs to `\/goal:spec`/);
+    assert.doesNotMatch(source, /ask for \*\*docs\/goal/);
+  }
+});
+
+test('R10 grill-adversarial reads no artifact-root file', () => {
+  assert.doesNotMatch(read('skills/grill-adversarial/SKILL.md'), /artifact-root/);
+});

@@ -208,7 +208,7 @@ gate2=printf '%b\n' '.PHONY: all types lint' 'all: types lint' 'types:\n\tnode n
 ```
 
 ### Iteration 2 — The artifact-root rules live in one shared file
-- [ ] Not done yet
+- [x] Not done yet
 - **Goal:** The common artifact-root rules move to `shared/artifact-root.md`; each of the five skills keeps only its own location branch inline.
 - **Shippable after it:** an artifact-root rule change is a one-file edit; `spec` still asks for a location, the others still use the default.
 - **Files to touch:** `plugins/goal/shared/artifact-root.md` (new), `plugins/goal/skills/{spec,plan,next,tickets,supervise}/SKILL.md` (+ `plugins/goal/tests/artifact-skills.test.ts` (test))
