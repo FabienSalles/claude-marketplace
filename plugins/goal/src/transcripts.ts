@@ -11,8 +11,9 @@ import { workIdOf } from './core/plan.ts';
 export { projectDir } from './core/events.ts';
 
 const PROJECTS_ROOT = join(fs.homeDir(), '.claude', 'projects');
+const COPILOT_ROOT = join(fs.homeDir(), '.copilot', 'session-state');
 
-export const recordedTranscripts = (dir: string, runsRoot: string): string[] => {
+export const recordedTranscripts = (dir: string, runsRoot: string, copilotRoot?: string): string[] => {
   if (!fs.exists(runsRoot)) {
     return [];
   }
@@ -31,25 +32,35 @@ export const recordedTranscripts = (dir: string, runsRoot: string): string[] => 
       .filter((id) => id !== '');
   });
 
-  return ids.map((id) => join(dir, `${id}.jsonl`)).filter((path) => fs.exists(path));
+  const candidates = ids.flatMap((id) => [join(dir, `${id}.jsonl`), ...(copilotRoot === undefined ? [] : [join(copilotRoot, id, 'events.jsonl')])]);
+
+  return candidates.filter((path) => fs.exists(path));
 };
 
-export const runTranscripts = (cwd: string, plan: string, source: string, runs: string, root: string = PROJECTS_ROOT, history?: string): string[] => {
+const scanned = (paths: string[], needle: string): string[] => paths.filter((path) => fs.readFile(path).includes(needle));
+
+export const runTranscripts = (
+  cwd: string,
+  plan: string,
+  source: string,
+  runs: string,
+  root: string = PROJECTS_ROOT,
+  history?: string,
+  copilotRoot: string = COPILOT_ROOT,
+): string[] => {
   const dir = projectDir(cwd, root);
-
-  if (!fs.exists(dir)) {
-    return [];
-  }
-
   const needle = basename(plan);
 
-  const scanned = fs
-    .readDir(dir)
-    .filter((entry) => entry.endsWith('.jsonl'))
-    .map((entry) => join(dir, entry))
-    .filter((path) => fs.readFile(path).includes(needle));
+  const claude = fs.exists(dir)
+    ? fs
+        .readDir(dir)
+        .filter((entry) => entry.endsWith('.jsonl'))
+        .map((entry) => join(dir, entry))
+    : [];
 
-  return [...new Set([...recordedTranscripts(dir, history ?? join(runs, workIdOf(plan, source))), ...scanned])];
+  const copilot = fs.exists(copilotRoot) ? fs.readDir(copilotRoot).map((id) => join(copilotRoot, id, 'events.jsonl')).filter((path) => fs.exists(path)) : [];
+
+  return [...new Set([...recordedTranscripts(dir, history ?? join(runs, workIdOf(plan, source)), copilotRoot), ...scanned([...claude, ...copilot], needle)])];
 };
 
 if (import.meta.main) {

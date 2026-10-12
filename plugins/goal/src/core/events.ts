@@ -29,6 +29,7 @@ export type StreamEvent = {
   modelUsage?: Record<string, unknown>;
   isCompactSummary?: boolean;
   result?: string;
+  data?: { toolCallId?: string; toolName?: string; arguments?: { command?: string; path?: string }; success?: boolean };
 };
 
 export type ParsedLine = { line: number; event: StreamEvent };

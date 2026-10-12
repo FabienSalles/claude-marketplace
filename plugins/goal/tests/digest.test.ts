@@ -88,3 +88,21 @@ test('digest marks a tool_use with no matching tool_result as pending, and a res
   assert.ok(lines[0]?.endsWith('-> pending') === true, `expected pending, got: ${lines[0]}`);
   assert.ok(lines[1]?.endsWith('-> ok') === true, `expected ok, got: ${lines[1]}`);
 });
+
+const copilotStart = (id: string, toolName: string, args: Record<string, string>) =>
+  JSON.stringify({ type: 'tool.execution_start', data: { toolCallId: id, toolName, arguments: args } });
+const copilotComplete = (id: string, success: boolean) =>
+  JSON.stringify({ type: 'tool.execution_complete', data: { toolCallId: id, success } });
+
+test('digest renders a Copilot events.jsonl in the same line form, anchored on the start line', () => {
+  const path = fixture([
+    JSON.stringify({ type: 'session.start', data: { sessionId: 's' } }),
+    copilotStart('c1', 'bash', { command: 'ls' }),
+    copilotComplete('c1', true),
+    copilotStart('c2', 'view', { path: '/tmp/a.ts' }),
+    copilotComplete('c2', false),
+    copilotStart('c3', 'skill', { skill: 'x' }),
+  ]);
+
+  assert.deepEqual(digest(path), ['2: bash ls -> ok', '4: view /tmp/a.ts -> error', '6: skill -> pending']);
+});

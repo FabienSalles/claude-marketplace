@@ -7,8 +7,23 @@ description: Checkpoint between two /goal iterations — verify the finished ite
 
 This skill degrades gracefully outside Claude Code:
 
-- No `AskUserQuestion` tool → ask the question in plain text and wait for the reply.
+- Shared fallbacks: read `<root>/shared/portability.md`.
 - No `pbcopy` → print the content instead of copying it to the clipboard.
+
+## Host
+
+`<root>` is Claude Code's substituted `${CLAUDE_PLUGIN_ROOT}`. A host that leaves it literal
+(Copilot CLI) reads `<root>` as two levels above `Base directory for this skill:`.
+`$ARGUMENTS` left literal is the text typed after the command (empty when none).
+Use `<root>` wherever a command below says `${CLAUDE_PLUGIN_ROOT}`.
+
+When `<root>/src/artifacts.ts` or a shared file this skill names is missing, print
+`cannot locate the goal plugin scripts`, the host, and the install commands, run nothing and write nothing:
+`copilot plugin marketplace add <repository>` then
+`copilot plugin install goal@fabien-claude-marketplace` under Copilot,
+`/plugin install goal@fabien-claude-marketplace` under Claude Code.
+
+Then read `<root>/shared/host.md`.
 
 # /goal:next — Iteration checkpoint + next-/goal handoff
 
@@ -36,41 +51,21 @@ project="$(git rev-parse --show-toplevel)"
 node "${CLAUDE_PLUGIN_ROOT}/src/artifacts.ts" "$project"
 ```
 
-Use the returned absolute `root`, `plans` and `runs` as `<artifact-root>`, `<plans>`
-and `<runs>` in every destination and handoff. Stop on resolver errors. The priority
-is process/container `GOAL_ROOT_PATH`, project-root `.env.local`, project-root `.env`,
-then `.goal/` only on absence. Relative values resolve from the Git project root;
-absolute values and spaces remain intact. Never read unrelated environment values.
+Then read `<root>/shared/artifact-root.md`.
 
 Use the effective value without asking for a location. If no value is supplied,
 use the returned default; location selection belongs to `/goal:spec`.
-
-Discover identifiers only in `<plans>`. On a miss, ask for the full path and wait;
-never search an old provider directory or fetch a substitute source. Explicit paths
-select exactly that file; missing or unreadable files fail clearly. Existing selected
-plans stay in place and are updated there. New associated documents go in `<plans>`
-and include `Source plan: <absolute selected plan path>`. Preserve every command and
-path embedded in locked plans; never migrate artifacts or rewrite historical documents.
-Old history requires `--runs-path <absolute work-id history directory>`.
-
-Git ignore rules determine planning-document versioning. Tracked, ignored and external
-plans are supported; a tracked plan must be clean at launch and the gate owns its ticks.
-Before launching, prepare exact exclusions in project `.gitignore` for the resolved
-in-repository `<runs>/`.
-Do not ignore the whole artifact root or require plans to be ignored. External paths
-need no repository exclusion. Write project-relative, root-anchored ignore entries,
-escaping Git pattern characters so the exclusions name only those exact paths.
-Never write `.git/info/exclude`.
 
 ## Resolve the plan
 
 Plan: `$ARGUMENTS`
 - A full path → use exactly it; fail clearly if missing or unreadable.
-- An identifier → look only for `<plans>/<work-id>-spec.md`; on a miss ask for
-  the full path and wait. Never substitute a plan from another directory.
+- An identifier → resolve it as `<root>/shared/plan-argument.md` words it.
 - Empty → find it: the `<plans>/*-spec.md` most recently modified, or the one
   referenced by the active goal. Ambiguous (several candidates) → list them and ASK.
   None → ask for the full path and wait.
+
+Hosted in Copilot, a manual plan stops `/goal:next`: say manual mode needs Claude Code's `/goal`, and change nothing.
 
 Read the plan and locate:
 - **the finished iteration** = the last `[x]` before the first `[ ]`.
@@ -206,11 +201,7 @@ machine-verifiable** line carrying the slice's core deliverable. `/goal:supervis
 first of these rather than run, so naming them now saves a run that would stop at iteration
 one.
 
-| `Policy:` | Remaining iterations | Emit |
-|---|---|---|
-| `manual` | any | the per-iteration handoff **only** — `/goal:supervise` refuses `manual` |
-| `commit+pr` | all gateable | the **`/goal:supervise <plan path>` line only** — no per-iteration block |
-| `commit+pr` | one or more not gateable | the per-iteration handoff first, and name the iterations that block a clean autonomous run |
+Read `<root>/shared/handoff.md` for the routing table and follow it.
 
 **Always pass the plan path explicitly** in the `/goal:supervise` line. Bare `/goal:supervise`
 resolves the most recently modified `*-spec.md`, which is whichever plan was last touched —
@@ -242,9 +233,7 @@ exceeds 4000, and print the count with the block. **That file is only a counter*
 goes to the model and not reliably to the developer. The filled block goes **in full into
 your final message**, as one copy-paste block.
 
-**Under `manual`, offer the clipboard before printing.** The counter file already holds
-the exact block, so ask with `AskUserQuestion`: _"Copy the `/goal` handoff to the
-clipboard?"_
+**Under `manual`, offer the clipboard before printing**, as `<root>/shared/handoff.md` words it.
 
 - **yes** (recommended) → `pbcopy < <file>` (macOS; `xclip -selection clipboard` or
   `wl-copy` where `pbcopy` does not exist). The block is in the clipboard, so do **not**

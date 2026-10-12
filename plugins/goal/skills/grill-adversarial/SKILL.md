@@ -3,6 +3,21 @@ name: grill-adversarial
 description: Opt-in adversarial plan-challenging pass for the goal workflow (invoked by /goal:spec when functional gaps are suspected, or on explicit request). Composes the Pocock grill skills (grill-me, grill-with-docs) and goes much further, hunting the functional and technical holes that survive a normal grill — broken invariants and broken execution schemas — BEFORE the iterations are frozen, so the plan is coherent and executable exactly as specified. Highest value on a COMPLEX BEHAVIOUR, and equally on a SIMPLE CHANGE LANDING IN A DENSE ZONE — many invariants, many paths, many things to keep in sync — which is the case most often waved through, since a one-liner invites nobody to re-enumerate anything. ACTIVATE for 'grill adversarial', 'grille adversariale', 'challenge the plan', 'trous fonctionnels', 'incohérences', 'invariants', 'state machine', 'interaction coherence', 'front interactions', 'edge transitions', 'zone complexe', 'effets de bord'.
 ---
 
+## Host
+
+`<root>` is Claude Code's substituted `${CLAUDE_PLUGIN_ROOT}`. A host that leaves it literal
+(Copilot CLI) reads `<root>` as two levels above `Base directory for this skill:`.
+`$ARGUMENTS` left literal is the text typed after the command (empty when none).
+Use `<root>` wherever a command below says `${CLAUDE_PLUGIN_ROOT}`.
+
+When `<root>/src/artifacts.ts` or a shared file this skill names is missing, print
+`cannot locate the goal plugin scripts`, the host, and the install commands, run nothing and write nothing:
+`copilot plugin marketplace add <repository>` then
+`copilot plugin install goal@fabien-claude-marketplace` under Copilot,
+`/plugin install goal@fabien-claude-marketplace` under Claude Code.
+
+Then read `<root>/shared/host.md`.
+
 # Adversarial grill — challenge the plan until no functional hole is left
 
 A normal grill resolves the branches that are **raised**. This pass **generates**

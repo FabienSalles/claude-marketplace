@@ -7,10 +7,25 @@ description: Executable contract of the goal workflow (Session 1) — from a fun
 
 This skill degrades gracefully outside Claude Code:
 
-- No `AskUserQuestion` tool → ask the question in plain text and wait for the reply.
+- Shared fallbacks: read `<root>/shared/portability.md`.
 - No Atlassian MCP → route through the inline paste path, same as `/goal:spec`.
 - No `gh` → skip GitHub reads/writes, same as `/goal:spec`.
 - No `pbcopy` → print the content instead of copying it to the clipboard.
+
+## Host
+
+`<root>` is Claude Code's substituted `${CLAUDE_PLUGIN_ROOT}`. A host that leaves it literal
+(Copilot CLI) reads `<root>` as two levels above `Base directory for this skill:`.
+`$ARGUMENTS` left literal is the text typed after the command (empty when none).
+Use `<root>` wherever a command below says `${CLAUDE_PLUGIN_ROOT}`.
+
+When `<root>/src/artifacts.ts` or a shared file this skill names is missing, print
+`cannot locate the goal plugin scripts`, the host, and the install commands, run nothing and write nothing:
+`copilot plugin marketplace add <repository>` then
+`copilot plugin install goal@fabien-claude-marketplace` under Copilot,
+`/plugin install goal@fabien-claude-marketplace` under Claude Code.
+
+Then read `<root>/shared/host.md`.
 
 # /goal:plan — Spec → locked plan → branch (Session 1 of the goal workflow)
 
@@ -47,31 +62,10 @@ project="$(git rev-parse --show-toplevel)"
 node "${CLAUDE_PLUGIN_ROOT}/src/artifacts.ts" "$project"
 ```
 
-Use the returned absolute `root`, `plans` and `runs` as `<artifact-root>`, `<plans>`
-and `<runs>` in every destination and handoff. Stop on resolver errors. The priority
-is process/container `GOAL_ROOT_PATH`, project-root `.env.local`, project-root `.env`,
-then `.goal/` only on absence. Relative values resolve from the Git project root;
-absolute values and spaces remain intact. Never read unrelated environment values.
+Then read `<root>/shared/artifact-root.md`.
 
 Use the effective value without asking for a location. If no value is supplied,
 use the returned default; location selection belongs to `/goal:spec`.
-
-Discover identifiers only in `<plans>`. On a miss, ask for the full path and wait;
-never search an old provider directory or fetch a substitute source. Explicit paths
-select exactly that file; missing or unreadable files fail clearly. Existing selected
-plans stay in place and are updated there. New associated documents go in `<plans>`
-and include `Source plan: <absolute selected plan path>`. Preserve every command and
-path embedded in locked plans; never migrate artifacts or rewrite historical documents.
-Old history requires `--runs-path <absolute work-id history directory>`.
-
-Git ignore rules determine planning-document versioning. Tracked, ignored and external
-plans are supported; a tracked plan must be clean at launch and the gate owns its ticks.
-Before launching, prepare exact exclusions in project `.gitignore` for the resolved
-in-repository `<runs>/`.
-Do not ignore the whole artifact root or require plans to be ignored. External paths
-need no repository exclusion. Write project-relative, root-anchored ignore entries,
-escaping Git pattern characters so the exclusions name only those exact paths.
-Never write `.git/info/exclude`.
 
 ## Argument — resolve the source
 
@@ -100,12 +94,7 @@ network): `CT-5856` → `ct-5856`, `42` → `issue-42`. So **first** look for
 | `inline` or empty | Ask the developer to paste the source now | ≤40-char kebab slug of the title |
 | Anything else that doesn't resolve | STOP and report | — |
 
-**Filling a Jira gap explicitly flagged by the selected contract:** load the Atlassian tools first with
-`ToolSearch` (`select:getAccessibleAtlassianResources,getJiraIssue`), get the
-`cloudId` from `getAccessibleAtlassianResources`, then `getJiraIssue` with the
-key. Extract: summary, description, acceptance criteria (if any), status, and
-the comment thread (comments often hold the real requirements). If the MCP is
-unreachable, STOP and tell the developer to paste the US with `inline`.
+**Filling a Jira gap explicitly flagged by the selected contract:** read `<root>/shared/jira-source.md` and follow it.
 
 The **work-id** drives every artifact: spec at `<plans>/<work-id>-spec.md`,
 branch `feature/<work-id>-<slug>`, log at `<plans>/<work-id>-execution-log.md`.
@@ -116,7 +105,7 @@ Verify in one round:
 - `git rev-parse --show-toplevel` succeeds (we're in a repo)
 - The current branch is clean; if dirty, ask the developer to stash/commit first
 - **Only if the selected contract explicitly flags a GitHub gap:** `gh auth status` succeeds
-- **Only if the selected contract explicitly flags a Jira gap:** the Atlassian MCP resolves (`getAccessibleAtlassianResources` returns a resource). Otherwise skip it.
+- **Only if the selected contract explicitly flags a Jira gap:** the Atlassian MCP resolves (per `<root>/shared/jira-source.md`). Otherwise skip it.
 
 Do **not** require `gh` for a Jira/file/inline source. If a needed check fails,
 STOP and tell the developer what to fix.
@@ -177,10 +166,7 @@ Ask: **"Is my reading correct? Anything to add before the technical grill?"** WA
 
 Goal of the grill: **surface every technical consequence and map every business
 rule to a command-line check**, so the plan is executable without further human
-input. Pick the best available interview approach, in order:
-
-1. **`pocock:grill-with-docs`** if installed AND `CONTEXT.md`/`docs/adr/` exist.
-2. **`pocock:grill-me`** if installed.
+input. Pick the best available interview approach: read `<root>/shared/grill-approach.md`, then:
 3. **Inlined baseline** (below) — always works.
 
 ### Inlined baseline questions (fallback)
@@ -270,6 +256,8 @@ Ask (this controls what an execution session is allowed to do, and how big a sli
 >   updates that same PR, so you can watch the work land instead of waiting
 >   for the end. It goes ready for review at the last iteration. This is what
 >   `/goal:supervise` needs.
+
+Hosted in Copilot, `manual` is not offered: present `commit+pr` only and say manual mode needs Claude Code's `/goal`.
 
 WAIT for the answer. Then **write it into the spec's `Policy:` header line**, and use the
 same value as `<policy>` in the handoff verbatim.
@@ -918,13 +906,9 @@ Tell the developer where the plan now lives, and read the branch name back.
 ## Phase 5 — Hand off to Session 2 (one /goal per iteration)
 
 Read `Policy:` from the spec header and check every iteration for a `gate` block with a
-`gate1` — this mirrors `/goal:next`'s Phase 5 routing table verbatim:
+`gate1`:
 
-| `Policy:` | Iterations | Emit |
-|---|---|---|
-| `manual` | any | the per-iteration handoff **only** — `/goal:supervise` refuses `manual` |
-| `commit+pr` | all gateable | the **`/goal:supervise <plan path>` line only** — no per-iteration block |
-| `commit+pr` | one or more not gateable | the per-iteration handoff first, and name the iterations that block a clean autonomous run |
+Read `<root>/shared/handoff.md` for the routing table and follow it.
 
 **Always pass the plan path explicitly** in the `/goal:supervise` line, and state in one
 line what it will do: how many iterations it covers, and that it halts hard on the first
@@ -954,9 +938,7 @@ copy-paste block. The
 developer pastes it once per iteration — it always picks the **next unchecked**
 iteration, so the same text works every round.
 
-**Under `manual`, offer the clipboard before printing.** The counter file already holds
-the exact block, so ask with `AskUserQuestion`: _"Copy the `/goal` handoff to the
-clipboard?"_
+**Under `manual`, offer the clipboard before printing**, as `<root>/shared/handoff.md` words it.
 
 - **yes** (recommended) → `pbcopy < <file>` (macOS; `xclip -selection clipboard` or
   `wl-copy` where `pbcopy` does not exist). The block is in the clipboard, so do **not**
