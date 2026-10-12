@@ -11,6 +11,22 @@ spawns `claude -p` and plugin agents (`goal:goal-session-auditor`) to drive the 
 Claude Code there is no `claude -p` to spawn and no agent to invoke. State that reason and
 STOP before Phase 0 runs.
 
+## Host
+
+Claude Code substitutes `${CLAUDE_PLUGIN_ROOT}` and `$ARGUMENTS`. A host that leaves them literal
+(Copilot CLI) reads the root as two levels above `Base directory for this skill:`, and the argument
+as the text typed after the command (empty when none). Use that root wherever a command below
+says `${CLAUDE_PLUGIN_ROOT}`.
+
+The first output line is `goal <skill> · <host> · v<version from <root>/.claude-plugin/plugin.json>`.
+
+When `<root>/src/artifacts.ts` is missing, print `cannot locate the goal plugin scripts`, the host,
+and the install commands, run nothing and write nothing: `copilot plugin marketplace add <repository>`
+then `copilot plugin install goal@fabien-claude-marketplace` under Copilot,
+`/plugin install goal@fabien-claude-marketplace` under Claude Code.
+
+A skill with no one to answer its question (non-interactive session) stops at that question.
+
 # /goal:supervise — Watch a run, classify a halt, repair or relaunch once
 
 You launch `node goal-run.ts` and read what it returns. `goal-run.ts` orders the iterations and

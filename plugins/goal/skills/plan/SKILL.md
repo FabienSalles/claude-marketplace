@@ -12,6 +12,22 @@ This skill degrades gracefully outside Claude Code:
 - No `gh` → skip GitHub reads/writes, same as `/goal:spec`.
 - No `pbcopy` → print the content instead of copying it to the clipboard.
 
+## Host
+
+Claude Code substitutes `${CLAUDE_PLUGIN_ROOT}` and `$ARGUMENTS`. A host that leaves them literal
+(Copilot CLI) reads the root as two levels above `Base directory for this skill:`, and the argument
+as the text typed after the command (empty when none). Use that root wherever a command below
+says `${CLAUDE_PLUGIN_ROOT}`.
+
+The first output line is `goal <skill> · <host> · v<version from <root>/.claude-plugin/plugin.json>`.
+
+When `<root>/src/artifacts.ts` is missing, print `cannot locate the goal plugin scripts`, the host,
+and the install commands, run nothing and write nothing: `copilot plugin marketplace add <repository>`
+then `copilot plugin install goal@fabien-claude-marketplace` under Copilot,
+`/plugin install goal@fabien-claude-marketplace` under Claude Code.
+
+A skill with no one to answer its question (non-interactive session) stops at that question.
+
 # /goal:plan — Spec → locked plan → branch (Session 1 of the goal workflow)
 
 You are helping the developer prepare an **autonomous `/goal` execution** that
@@ -270,6 +286,8 @@ Ask (this controls what an execution session is allowed to do, and how big a sli
 >   updates that same PR, so you can watch the work land instead of waiting
 >   for the end. It goes ready for review at the last iteration. This is what
 >   `/goal:supervise` needs.
+
+Hosted in Copilot, `manual` is not offered: present `commit+pr` only and say manual mode needs Claude Code's `/goal`.
 
 WAIT for the answer. Then **write it into the spec's `Policy:` header line**, and use the
 same value as `<policy>` in the handoff verbatim.

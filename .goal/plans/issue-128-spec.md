@@ -170,7 +170,7 @@ Also true, and not expressible as a command of its own:
 ## Functional iterations
 
 ### Iteration 1 — The goal skills find their scripts and arguments under Copilot
-- [ ] Not done yet
+- [x] Not done yet
 - **Goal:** Every goal skill finds its plugin scripts and its argument when hosted in Copilot CLI, names its host and version first, and stops cleanly when it cannot
 - **Shippable after it:** a developer who installs the plugin in Copilot with the README's two commands can run `/goal:tickets`, `/goal:spec`, `/goal:plan` (commit+pr) and `/goal:next` from Copilot; `/goal:supervise` still stops there, as today.
 - **Files to touch:** `plugins/goal/skills/{spec,plan,next,tickets,supervise,grill-adversarial}/SKILL.md`, `plugins/goal/README.md` (+ `plugins/goal/tests/skill-host.test.ts` (test))

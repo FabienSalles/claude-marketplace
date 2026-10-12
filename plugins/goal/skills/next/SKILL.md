@@ -10,6 +10,22 @@ This skill degrades gracefully outside Claude Code:
 - No `AskUserQuestion` tool → ask the question in plain text and wait for the reply.
 - No `pbcopy` → print the content instead of copying it to the clipboard.
 
+## Host
+
+Claude Code substitutes `${CLAUDE_PLUGIN_ROOT}` and `$ARGUMENTS`. A host that leaves them literal
+(Copilot CLI) reads the root as two levels above `Base directory for this skill:`, and the argument
+as the text typed after the command (empty when none). Use that root wherever a command below
+says `${CLAUDE_PLUGIN_ROOT}`.
+
+The first output line is `goal <skill> · <host> · v<version from <root>/.claude-plugin/plugin.json>`.
+
+When `<root>/src/artifacts.ts` is missing, print `cannot locate the goal plugin scripts`, the host,
+and the install commands, run nothing and write nothing: `copilot plugin marketplace add <repository>`
+then `copilot plugin install goal@fabien-claude-marketplace` under Copilot,
+`/plugin install goal@fabien-claude-marketplace` under Claude Code.
+
+A skill with no one to answer its question (non-interactive session) stops at that question.
+
 # /goal:next — Iteration checkpoint + next-/goal handoff
 
 You are the **handoff between two `/goal` iterations**. An iteration just ran in
@@ -71,6 +87,8 @@ Plan: `$ARGUMENTS`
 - Empty → find it: the `<plans>/*-spec.md` most recently modified, or the one
   referenced by the active goal. Ambiguous (several candidates) → list them and ASK.
   None → ask for the full path and wait.
+
+Hosted in Copilot, a manual plan stops `/goal:next`: say manual mode needs Claude Code's `/goal`, and change nothing.
 
 Read the plan and locate:
 - **the finished iteration** = the last `[x]` before the first `[ ]`.

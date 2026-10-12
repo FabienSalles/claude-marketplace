@@ -3,6 +3,22 @@ name: grill-adversarial
 description: Opt-in adversarial plan-challenging pass for the goal workflow (invoked by /goal:spec when functional gaps are suspected, or on explicit request). Composes the Pocock grill skills (grill-me, grill-with-docs) and goes much further, hunting the functional and technical holes that survive a normal grill — broken invariants and broken execution schemas — BEFORE the iterations are frozen, so the plan is coherent and executable exactly as specified. Highest value on a COMPLEX BEHAVIOUR, and equally on a SIMPLE CHANGE LANDING IN A DENSE ZONE — many invariants, many paths, many things to keep in sync — which is the case most often waved through, since a one-liner invites nobody to re-enumerate anything. ACTIVATE for 'grill adversarial', 'grille adversariale', 'challenge the plan', 'trous fonctionnels', 'incohérences', 'invariants', 'state machine', 'interaction coherence', 'front interactions', 'edge transitions', 'zone complexe', 'effets de bord'.
 ---
 
+## Host
+
+Claude Code substitutes `${CLAUDE_PLUGIN_ROOT}` and `$ARGUMENTS`. A host that leaves them literal
+(Copilot CLI) reads the root as two levels above `Base directory for this skill:`, and the argument
+as the text typed after the command (empty when none). Use that root wherever a command below
+says `${CLAUDE_PLUGIN_ROOT}`.
+
+The first output line is `goal <skill> · <host> · v<version from <root>/.claude-plugin/plugin.json>`.
+
+When `<root>/src/artifacts.ts` is missing, print `cannot locate the goal plugin scripts`, the host,
+and the install commands, run nothing and write nothing: `copilot plugin marketplace add <repository>`
+then `copilot plugin install goal@fabien-claude-marketplace` under Copilot,
+`/plugin install goal@fabien-claude-marketplace` under Claude Code.
+
+A skill with no one to answer its question (non-interactive session) stops at that question.
+
 # Adversarial grill — challenge the plan until no functional hole is left
 
 A normal grill resolves the branches that are **raised**. This pass **generates**
