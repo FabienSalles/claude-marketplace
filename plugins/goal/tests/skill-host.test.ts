@@ -130,3 +130,13 @@ test('R5 README documents the Codex install, refresh, invocation and launch', ()
   assert.match(section, /\$goal:spec|\$goal/);
   assert.match(section, /codex -s workspace-write -c sandbox_workspace_write\.network_access=true --add-dir "\$HOME\/\.claude"/);
 });
+
+test('R1 R2 the README states supervising from Codex and the refresh as facts', () => {
+  const readme = read('README.md');
+  assert.doesNotMatch(readme, /still stops outside Claude Code/);
+  assert.doesNotMatch(readme, /not yet usable from Codex/);
+  assert.doesNotMatch(readme, /hypothesis measured/);
+  const section = /### Codex hosts the goal sessions\n[\s\S]*?(?=\n##? |$)/.exec(readme)?.[0] ?? '';
+  assert.match(section, /`\/goal:supervise`[^\n]*Codex/);
+  assert.match(section, /copies the local marketplace's checked-out working tree/);
+});

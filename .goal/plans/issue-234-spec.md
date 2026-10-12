@@ -173,7 +173,7 @@ gate2=printf '%b\n' '.PHONY: all types lint' 'all: types lint' 'types:\n\tnode n
 ```
 
 ### Iteration 2 — The README and supervise tell the truth about Codex
-- [ ] Not done yet
+- [x] Not done yet
 - **Goal:** The README describes supervising from Codex and refreshing Codex's copy as facts, and /goal:supervise names Codex's tools and runs the same pinned network and write probes before every Codex launch.
 - **Shippable after it:** a developer following the README alone supervises from Codex on 3.9.1.
 - **Files to touch:** `plugins/goal/README.md`, `plugins/goal/skills/supervise/SKILL.md`, `plugins/goal/.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json` (+ `plugins/goal/tests/skill-host.test.ts`, `plugins/goal/tests/supervise-host.test.ts` (test))

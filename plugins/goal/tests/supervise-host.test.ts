@@ -47,13 +47,13 @@ test('R13 pinned supervise texts stay', () => {
   assert.match(supervise, /Unknown stops\./);
 });
 
-test('goal plugin 3.9.0 in both manifests', () => {
+test('goal plugin 3.9.1 in both manifests', () => {
   const manifest = JSON.parse(read('.claude-plugin/plugin.json')) as { version: string };
   const market = JSON.parse(readFileSync(resolve(plugin, '../../.claude-plugin/marketplace.json'), 'utf8')) as {
     plugins: { name: string; version: string }[];
   };
-  assert.equal(manifest.version, '3.9.0');
-  assert.equal(market.plugins.find((p) => p.name === 'goal')?.version, '3.9.0');
+  assert.equal(manifest.version, '3.9.1');
+  assert.equal(market.plugins.find((p) => p.name === 'goal')?.version, '3.9.1');
 });
 
 test('R6 the Codex host never sets the provider or the implementer', () => {
@@ -89,4 +89,23 @@ test('R11 the Codex supervising row reads token_usage_record once per response_i
   assert.match(codexBlock, /`model_context_window`[^\n]*`event_msg`[^\n]*`token_count`/);
   assert.match(codexBlock, /cost `—`/);
   assert.match(codexBlock, /`Total` names which rows/);
+});
+
+test('R7 the host-tools paragraph names the three hosts with their tools', () => {
+  const block = section('Outside Claude Code');
+  assert.match(block, /Claude Code: background `Bash`, `Agent`/);
+  assert.match(block, /Copilot CLI: async `bash`/);
+  assert.match(block, /Codex CLI: `exec_command` read with `write_stdin`/);
+});
+
+test('R8 the pinned probes are given verbatim and a failure names the probe', () => {
+  assert.ok(codexBlock.includes(`curl -s -o /dev/null -w '%{http_code}' --max-time 10 https://api.github.com`));
+  assert.ok(
+    codexBlock.includes(
+      `curl -s -o /dev/null -w '%{http_code}' --max-time 10 "\${ANTHROPIC_BASE_URL:-https://api.anthropic.com}"`,
+    ),
+  );
+  assert.ok(codexBlock.includes(`f="$HOME/.claude/.goal-write-probe-$$" && touch "$f" && rm -f "$f"`));
+  assert.match(codexBlock, /other than `000`/);
+  assert.match(codexBlock, /name the failing probe/);
 });
