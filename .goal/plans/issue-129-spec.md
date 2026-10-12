@@ -192,7 +192,7 @@ gate2=printf '%b\n' '.PHONY: all types lint' 'all: types lint' 'types:\n\tnode n
 ```
 
 ### Iteration 2 — A Codex session transcript is found and audited
-- [ ] Not done yet
+- [x] Not done yet
 - **Goal:** The session auditor finds the Codex rollouts that name a plan and digests their tool calls, beside Claude and Copilot transcripts.
 - **Shippable after it:** a run supervised from Codex can have its supervising session audited.
 - **Files to touch:** `plugins/goal/src/transcripts.ts`, `plugins/goal/src/digest.ts`, `plugins/goal/agents/goal-session-auditor.md` (+ `plugins/goal/tests/transcripts.test.ts`, `plugins/goal/tests/digest.test.ts` (test))

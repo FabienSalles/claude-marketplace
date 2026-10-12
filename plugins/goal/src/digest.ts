@@ -6,6 +6,17 @@
 import { fs } from './adapters/fs.ts';
 import { parseEvents } from './core/events.ts';
 
+const codexTarget = (raw: string | undefined): string => {
+  try {
+    const args = JSON.parse(raw ?? '{}') as { cmd?: unknown; command?: unknown; path?: unknown };
+    const target = args.cmd ?? args.command ?? args.path;
+
+    return typeof target === 'string' ? target : '';
+  } catch {
+    return '';
+  }
+};
+
 export const digest = (transcriptPath: string): string[] => {
   const calls = new Map<string, { line: number; name: string; target: string }>();
   const outcomes = new Map<string, boolean>();
@@ -13,6 +24,16 @@ export const digest = (transcriptPath: string): string[] => {
 
   for (const { line, event } of parseEvents(fs.readFile(transcriptPath))) {
     const { data } = event;
+    const item = (event as { type?: string; payload?: { type?: string; name?: string; arguments?: string; call_id?: string } }).payload;
+
+    if (event.type === 'response_item' && item?.call_id !== undefined) {
+      if (item.type === 'function_call' && item.name !== undefined) {
+        calls.set(item.call_id, { line, name: item.name, target: codexTarget(item.arguments) });
+        order.push(item.call_id);
+      } else if (item.type === 'function_call_output') {
+        outcomes.set(item.call_id, false);
+      }
+    }
 
     if (event.type === 'tool.execution_start' && data?.toolCallId !== undefined && data.toolName !== undefined) {
       calls.set(data.toolCallId, { line, name: data.toolName, target: data.arguments?.command ?? data.arguments?.path ?? '' });

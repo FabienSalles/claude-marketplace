@@ -1,4 +1,4 @@
-import { accessSync, constants, statSync } from 'node:fs';
+import { accessSync, constants, readdirSync, statSync } from 'node:fs';
 
 import { basename, isAbsolute, join } from 'node:path';
 
@@ -12,6 +12,7 @@ export { projectDir } from './core/events.ts';
 
 const PROJECTS_ROOT = join(fs.homeDir(), '.claude', 'projects');
 const COPILOT_ROOT = join(fs.homeDir(), '.copilot', 'session-state');
+const CODEX_ROOT = join(fs.homeDir(), '.codex', 'sessions');
 
 export const recordedTranscripts = (dir: string, runsRoot: string, copilotRoot?: string): string[] => {
   if (!fs.exists(runsRoot)) {
@@ -47,6 +48,7 @@ export const runTranscripts = (
   root: string = PROJECTS_ROOT,
   history?: string,
   copilotRoot: string = COPILOT_ROOT,
+  codexRoot: string = CODEX_ROOT,
 ): string[] => {
   const dir = projectDir(cwd, root);
   const needle = basename(plan);
@@ -60,7 +62,13 @@ export const runTranscripts = (
 
   const copilot = fs.exists(copilotRoot) ? fs.readDir(copilotRoot).map((id) => join(copilotRoot, id, 'events.jsonl')).filter((path) => fs.exists(path)) : [];
 
-  return [...new Set([...recordedTranscripts(dir, history ?? join(runs, workIdOf(plan, source)), copilotRoot), ...scanned([...claude, ...copilot], needle)])];
+  const codex = fs.exists(codexRoot)
+    ? readdirSync(codexRoot, { recursive: true, encoding: 'utf8' })
+        .filter((entry) => basename(entry).startsWith('rollout-') && entry.endsWith('.jsonl'))
+        .map((entry) => join(codexRoot, entry))
+    : [];
+
+  return [...new Set([...recordedTranscripts(dir, history ?? join(runs, workIdOf(plan, source)), copilotRoot), ...scanned([...claude, ...copilot, ...codex], needle)])];
 };
 
 if (import.meta.main) {

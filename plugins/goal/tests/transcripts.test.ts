@@ -7,6 +7,7 @@ import { join, resolve } from 'node:path';
 import { projectDir, runTranscripts } from '../src/transcripts.ts';
 import { tmpDir } from './support/tmp.ts';
 
+const noCodex = tmpDir('codex-none-');
 const projectRoot = (): string => tmpDir('transcripts-');
 
 // R9 — the project directory Claude Code writes into is derived from the cwd alone, so both
@@ -38,7 +39,7 @@ test('runTranscripts returns every transcript under the project dir that names t
   writeFileSync(join(dir, 'lens.jsonl'), 'Refute the iteration(s) 3 of my-plan-spec.md\n');
   writeFileSync(join(dir, 'unrelated.jsonl'), 'Some other session entirely\n');
 
-  const found = runTranscripts('/Users/dev/my-repo', 'my-plan-spec.md', '', join('/unused', 'runs'), root);
+  const found = runTranscripts('/Users/dev/my-repo', 'my-plan-spec.md', '', join('/unused', 'runs'), root, undefined, undefined, noCodex);
 
   assert.deepEqual(found.sort(), [join(dir, 'implementer.jsonl'), join(dir, 'lens.jsonl')].sort());
 });
@@ -48,7 +49,7 @@ test('runTranscripts returns every transcript under the project dir that names t
 test('runTranscripts returns nothing when the project dir does not exist', () => {
   const root = projectRoot();
 
-  assert.deepEqual(runTranscripts('/Users/dev/never-ran', 'my-plan-spec.md', '', join('/unused', 'runs'), root), []);
+  assert.deepEqual(runTranscripts('/Users/dev/never-ran', 'my-plan-spec.md', '', join('/unused', 'runs'), root, undefined, undefined, noCodex), []);
 });
 
 // R9 — the ids `report.ts` records for the sessions the runner spawned resolve exactly, without
@@ -67,7 +68,7 @@ test('runTranscripts unions the recorded session ids with the content scan, with
   mkdirSync(runDir, { recursive: true });
   writeFileSync(join(runDir, '.run.session'), 'implementer\nsilent\nvanished\n');
 
-  const found = runTranscripts(repoDir, plan, '', join(repoDir, '.goal', 'runs'), root);
+  const found = runTranscripts(repoDir, plan, '', join(repoDir, '.goal', 'runs'), root, undefined, undefined, noCodex);
 
   assert.deepEqual(found.sort(), [join(dir, 'implementer.jsonl'), join(dir, 'silent.jsonl')].sort());
 });
@@ -80,7 +81,7 @@ test('runTranscripts ignores non-jsonl entries even when they name the plan', ()
   mkdirSync(dir, { recursive: true });
   writeFileSync(join(dir, 'notes.txt'), 'my-plan-spec.md\n');
 
-  assert.deepEqual(runTranscripts('/Users/dev/my-repo', 'my-plan-spec.md', '', join('/unused', 'runs'), root), []);
+  assert.deepEqual(runTranscripts('/Users/dev/my-repo', 'my-plan-spec.md', '', join('/unused', 'runs'), root, undefined, undefined, noCodex), []);
 });
 
 // #142 — the plan's own Work-id header names its run directory, read from the source the caller
@@ -99,14 +100,14 @@ test('runTranscripts finds the recorded sessions under the run directory the Wor
 
   const source = '# Spec: x\n\n---\nWork-id: issue-9\n---\n\n## Rules\n';
 
-  assert.deepEqual(runTranscripts(repoDir, plan, source, join(repoDir, '.goal', 'runs'), root), [join(dir, 'implementer.jsonl')]);
+  assert.deepEqual(runTranscripts(repoDir, plan, source, join(repoDir, '.goal', 'runs'), root, undefined, undefined, noCodex), [join(dir, 'implementer.jsonl')]);
 });
 
 // #142 — a plan the command line cannot read is refused by name, never silently resolved to the
 // work-id its file name would give.
 test('the transcripts command refuses a plan it cannot read', () => {
   const script = resolve(import.meta.dirname, '..', 'src', 'transcripts.ts');
-  const result = spawnSync('node', [script, tmpDir('transcripts-cwd-'), 'missing-spec.md'], { encoding: 'utf8' });
+  const result = spawnSync('node', [script, tmpDir('transcripts-cwd-'), 'missing-spec.md'], { encoding: 'utf8', env: { ...process.env, HOME: noCodex } });
 
   assert.equal(result.status, 2, result.stderr);
   assert.match(result.stderr, /plan not readable: .*missing-spec\.md/);
@@ -128,8 +129,8 @@ test('default history excludes old records and explicit history selects only the
 
   const copilot = tmpDir('copilot-');
 
-  assert.deepEqual(runTranscripts(cwd, 'demo-spec.md', '', join(cwd, '.goal', 'runs'), root, undefined, copilot), [join(dir, 'new.jsonl')]);
-  assert.deepEqual(runTranscripts(cwd, 'demo-spec.md', '', join(cwd, '.goal', 'runs'), root, old, copilot), [join(dir, 'old.jsonl')]);
+  assert.deepEqual(runTranscripts(cwd, 'demo-spec.md', '', join(cwd, '.goal', 'runs'), root, undefined, copilot, noCodex), [join(dir, 'new.jsonl')]);
+  assert.deepEqual(runTranscripts(cwd, 'demo-spec.md', '', join(cwd, '.goal', 'runs'), root, old, copilot, noCodex), [join(dir, 'old.jsonl')]);
   assert.equal(readFileSync(join(old, 'run-1', '.run.session'), 'utf8'), 'old\n');
 });
 
@@ -139,7 +140,7 @@ test('the history CLI refuses missing, relative or file --runs-path values witho
   const script = resolve(import.meta.dirname, '..', 'src', 'transcripts.ts');
 
   for (const path of ['relative', join(cwd, 'missing'), join(cwd, 'plan.md')]) {
-    const result = spawnSync('node', [script, cwd, 'plan.md', '--runs-path', path], { encoding: 'utf8' });
+    const result = spawnSync('node', [script, cwd, 'plan.md', '--runs-path', path], { encoding: 'utf8', env: { ...process.env, HOME: noCodex } });
 
     assert.equal(result.status, 2, result.stderr);
     assert.ok(result.stderr.includes(path), result.stderr);
@@ -154,7 +155,7 @@ test('the history CLI accepts an absolute directory without consulting the curre
   const script = resolve(import.meta.dirname, '..', 'src', 'transcripts.ts');
 
   const result = spawnSync('node', [script, cwd, 'plan.md', '--runs-path', history], {
-    encoding: 'utf8', env: { ...process.env, GOAL_ROOT_PATH: '' },
+    encoding: 'utf8', env: { ...process.env, GOAL_ROOT_PATH: '', HOME: noCodex },
   });
 
   assert.equal(result.status, 0, result.stderr);
@@ -182,7 +183,7 @@ test('runTranscripts resolves a recorded id to a Copilot events.jsonl and scans 
   mkdirSync(runDir, { recursive: true });
   writeFileSync(join(runDir, '.run.session'), 'recorded\nclaude\n');
 
-  const found = runTranscripts(repoDir, plan, '', join(repoDir, '.goal', 'runs'), root, undefined, copilot);
+  const found = runTranscripts(repoDir, plan, '', join(repoDir, '.goal', 'runs'), root, undefined, copilot, noCodex);
 
   assert.deepEqual(
     found.sort(),
@@ -196,7 +197,19 @@ test('runTranscripts finds Copilot sessions even when no Claude project dir exis
   writeFileSync(join(copilot, 's1', 'events.jsonl'), 'my-plan-spec.md\n');
 
   assert.deepEqual(
-    runTranscripts('/Users/dev/never-ran', 'my-plan-spec.md', '', join('/unused', 'runs'), projectRoot(), undefined, copilot),
+    runTranscripts('/Users/dev/never-ran', 'my-plan-spec.md', '', join('/unused', 'runs'), projectRoot(), undefined, copilot, noCodex),
     [join(copilot, 's1', 'events.jsonl')],
   );
+});
+
+test('runTranscripts finds Codex rollouts naming the plan, and a missing Codex root is no error', () => {
+  const codex = tmpDir('codex-');
+  const day = join(codex, '2026', '10', '12');
+  mkdirSync(day, { recursive: true });
+  writeFileSync(join(day, 'rollout-a.jsonl'), '{"type":"session_meta","payload":{"cwd":"/x"}}\n{"type":"response_item","payload":{"arguments":"my-plan-spec.md"}}\n');
+  writeFileSync(join(day, 'rollout-b.jsonl'), '{"type":"session_meta","payload":{"cwd":"/x"}}\n');
+  const find = (root: string) => runTranscripts('/Users/dev/never-ran', 'my-plan-spec.md', '', join('/unused', 'runs'), projectRoot(), undefined, join(codex, 'none'), root);
+
+  assert.deepEqual(find(codex), [join(day, 'rollout-a.jsonl')]);
+  assert.deepEqual(find(join(codex, 'missing')), []);
 });

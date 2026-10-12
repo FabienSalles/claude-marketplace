@@ -106,3 +106,18 @@ test('digest renders a Copilot events.jsonl in the same line form, anchored on t
 
   assert.deepEqual(digest(path), ['2: bash ls -> ok', '4: view /tmp/a.ts -> error', '6: skill -> pending']);
 });
+
+const codexCall = (callId: string, name: string, args: Record<string, string>) =>
+  JSON.stringify({ type: 'response_item', payload: { type: 'function_call', name, arguments: JSON.stringify(args), call_id: callId } });
+const codexOutput = (callId: string) => JSON.stringify({ type: 'response_item', payload: { type: 'function_call_output', call_id: callId, output: 'x' } });
+
+test('digest renders a Codex rollout function_call items, anchored on the call line', () => {
+  const path = fixture([
+    JSON.stringify({ type: 'session_meta', payload: { cwd: '/x' } }),
+    codexCall('k1', 'exec_command', { cmd: 'ls' }),
+    codexOutput('k1'),
+    codexCall('k2', 'apply_patch', {}),
+  ]);
+
+  assert.deepEqual(digest(path), ['2: exec_command ls -> ok', '4: apply_patch -> pending']);
+});
