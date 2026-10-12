@@ -218,7 +218,7 @@ gate2=printf '%b\n' '.PHONY: all types lint' 'all: types lint' 'types:\n\tnode n
 ```
 
 ### Iteration 3 — A run is supervised from a Codex session
-- [ ] Not done yet
+- [x] Not done yet
 - **Goal:** /goal:supervise run from Codex checks network and writes before launching, runs Claude as implementer, audits through claude -p, and reports its own Codex usage with cost shown as a dash.
 - **Shippable after it:** the whole goal workflow runs from Codex, with Claude executing the iterations.
 - **Files to touch:** `plugins/goal/skills/supervise/SKILL.md`, `plugins/goal/.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json` (+ `plugins/goal/tests/supervise-host.test.ts` (test))

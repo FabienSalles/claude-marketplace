@@ -45,6 +45,23 @@ implementer's real work for nothing, or ships a plan quietly rewritten to stop r
 **This is a hypothesis, not a proven procedure.** The classification rule below was written from
 two cases. Read the report at the end as evidence for or against it, not as a verdict on this run.
 
+## Under Codex
+
+Claude stays the implementer: `goal-run.ts` runs `claude` as under any host, and the host never sets or unsets `GOAL_RUN_PROVIDER` or `GOAL_RUN_IMPLEMENTER`.
+The background shell is `exec_command`, read with `write_stdin`. There is no agent tool.
+
+Before Phase 1 launches anything, run a one-line network probe and a write probe into `$HOME/.claude`.
+When either fails, print `codex -s workspace-write -c sandbox_workspace_write.network_access=true --add-dir "$HOME/.claude"`
+and launch nothing.
+
+Phase 7 runs `claude -p --agent goal:goal-session-auditor` from the shell, passing the plan's path and `$(pwd)`.
+A failed audit is reported with its error instead of an audit, and folds no `### Session audit`.
+
+The supervising row is read from the rollout: sum `token_usage_record.payload.usage` once per `response_id` over the run's window
+(input = `input_tokens` minus `cached_input_tokens`, cache read = `cached_input_tokens`, cache write = `cache_write_input_tokens`,
+output = `output_tokens`), take `model_context_window` from the `event_msg` `token_count` as the window, and show cost `—`.
+`Total` names which rows its sums cover.
+
 ## Project artifact root
 
 Before resolving the source, run the existing resolver from the installed goal plugin:
