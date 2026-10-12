@@ -141,7 +141,7 @@ Also true, and not expressible as a command of its own:
 ## Functional iterations
 
 ### Iteration 1 — The session auditor sees every Codex command with its real outcome
-- [ ] Not done yet
+- [x] Not done yet
 - **Goal:** The session auditor sees every shell command a Codex session ran, one entry per command with an ok, failed or unknown outcome, reading only this project's Codex sessions that name the plan, through the fs adapter.
 - **Shippable after it:** an audit of a Codex-hosted session no longer hides shell commands nor reports a failed one as ok.
 - **Files to touch:** `plugins/goal/src/digest.ts`, `plugins/goal/src/transcripts.ts` (+ `plugins/goal/tests/digest.test.ts`, `plugins/goal/tests/transcripts.test.ts` (test))

@@ -17,21 +17,43 @@ const codexTarget = (raw: string | undefined): string => {
   }
 };
 
+const exitStatus = (text: unknown): string => {
+  const code = typeof text === 'string' ? /"?exit_code"?\s*[:=]\s*(-?\d+)|Exit code:\s*(-?\d+)/i.exec(text) : null;
+  const value = code?.[1] ?? code?.[2];
+
+  return value === undefined ? 'unknown' : value === '0' ? 'ok' : 'failed';
+};
+
+const execCommands = (input: string | undefined): string[] =>
+  [...(input ?? '').matchAll(/\bcmd:\s*("(?:[^"\\]|\\.)*")/g)].map((match) => JSON.parse(match[1] ?? '""') as string);
+
 export const digest = (transcriptPath: string): string[] => {
   const calls = new Map<string, { line: number; name: string; target: string }>();
-  const outcomes = new Map<string, boolean>();
+  const outcomes = new Map<string, string>();
+  const execs = new Map<string, string[]>();
   const order: string[] = [];
 
   for (const { line, event } of parseEvents(fs.readFile(transcriptPath))) {
     const { data } = event;
-    const item = (event as { type?: string; payload?: { type?: string; name?: string; arguments?: string; call_id?: string } }).payload;
+    const item = (event as { type?: string; payload?: { type?: string; name?: string; arguments?: string; call_id?: string; input?: string; output?: unknown } }).payload;
 
     if (event.type === 'response_item' && item?.call_id !== undefined) {
       if (item.type === 'function_call' && item.name !== undefined) {
         calls.set(item.call_id, { line, name: item.name, target: codexTarget(item.arguments) });
         order.push(item.call_id);
       } else if (item.type === 'function_call_output') {
-        outcomes.set(item.call_id, false);
+        outcomes.set(item.call_id, exitStatus(item.output));
+      } else if (item.type === 'custom_tool_call' && item.name === 'exec') {
+        const ids = execCommands(item.input).map((cmd, index) => {
+          const id = `${item.call_id}#${index}`;
+          calls.set(id, { line, name: 'exec_command', target: cmd });
+          order.push(id);
+          return id;
+        });
+        execs.set(item.call_id, ids);
+      } else if (item.type === 'custom_tool_call_output') {
+        const chunks = (Array.isArray(item.output) ? (item.output as { text?: unknown }[]) : []).map((part) => part.text).filter((text) => typeof text === 'string' && text.includes('chunk_id'));
+        (execs.get(item.call_id) ?? []).forEach((id, index) => outcomes.set(id, exitStatus(chunks[index])));
       }
     }
 
@@ -39,7 +61,7 @@ export const digest = (transcriptPath: string): string[] => {
       calls.set(data.toolCallId, { line, name: data.toolName, target: data.arguments?.command ?? data.arguments?.path ?? '' });
       order.push(data.toolCallId);
     } else if (event.type === 'tool.execution_complete' && data?.toolCallId !== undefined) {
-      outcomes.set(data.toolCallId, data.success === false);
+      outcomes.set(data.toolCallId, data.success === false ? 'error' : 'ok');
     }
 
     for (const block of event.message?.content ?? []) {
@@ -48,7 +70,7 @@ export const digest = (transcriptPath: string): string[] => {
         calls.set(block.id, { line, name: block.name, target });
         order.push(block.id);
       } else if (block.type === 'tool_result' && block.tool_use_id !== undefined && block.tool_use_id !== '') {
-        outcomes.set(block.tool_use_id, block.is_error === true);
+        outcomes.set(block.tool_use_id, block.is_error === true ? 'error' : 'ok');
       }
     }
   }
@@ -60,7 +82,7 @@ export const digest = (transcriptPath: string): string[] => {
       return '';
     }
 
-    const status = outcomes.has(id) ? (outcomes.get(id) === true ? 'error' : 'ok') : 'pending';
+    const status = outcomes.get(id) ?? (id.includes('#') ? 'unknown' : 'pending');
     return `${call.line}: ${call.name}${call.target !== undefined && call.target !== '' ? ` ${call.target}` : ''} -> ${status}`;
   });
 };
