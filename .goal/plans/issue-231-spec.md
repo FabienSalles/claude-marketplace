@@ -254,7 +254,7 @@ gate2=printf '%b\n' '.PHONY: all types lint' 'all: types lint' 'types:\n\tnode n
 ```
 
 ### Iteration 4 — The remaining near-duplicate rules converge into shared files
-- [ ] Not done yet
+- [x] Not done yet
 - **Goal:** Portability, grill approach, Jira reading and plan-argument rules are each worded once in a shared file, and the goal plugin version is bumped so installs pick them up.
 - **Shippable after it:** every rule family in the audit has one home; installed copies of the plugin read the shared files.
 - **Files to touch:** `plugins/goal/shared/{portability,grill-approach,jira-source,plan-argument}.md` (new), `plugins/goal/skills/{plan,spec,tickets,next,supervise}/SKILL.md`, `plugins/goal/.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json` (+ `plugins/goal/tests/prose-duplicates.test.ts` (test))

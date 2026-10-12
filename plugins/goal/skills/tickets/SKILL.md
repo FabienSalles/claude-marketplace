@@ -7,7 +7,7 @@ description: Chantier level of the goal workflow — split an initiative too big
 
 This skill degrades gracefully outside Claude Code:
 
-- No `AskUserQuestion` tool → ask the question in plain text and wait for the reply.
+- Shared fallbacks: read `<root>/shared/portability.md`.
 - No Atlassian MCP → route through the inline paste path, same as `/goal:spec`.
 - No `pbcopy` → print the content instead of copying it to the clipboard.
 

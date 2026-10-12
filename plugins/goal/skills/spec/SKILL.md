@@ -7,7 +7,7 @@ description: Functional contract of the goal workflow — normalize any planning
 
 This skill degrades gracefully outside Claude Code:
 
-- No `AskUserQuestion` tool → ask the question in plain text and wait for the reply.
+- Shared fallbacks: read `<root>/shared/portability.md`.
 - No Atlassian MCP → ask the developer to paste the Jira source inline (see the
   `$ARGUMENTS` table below, which already routes to this fallback).
 - No `pbcopy` → print the content instead of copying it to the clipboard.
@@ -83,11 +83,7 @@ Source: `$ARGUMENTS`
 | `inline` or empty | Ask the developer to paste the source now | ≤40-char kebab slug of the title |
 | A path that doesn't exist | STOP and tell the developer | — |
 
-**Reading a Jira source via MCP:** load the Atlassian tools with `ToolSearch`
-(`select:getAccessibleAtlassianResources,getJiraIssue`), get the `cloudId`, then
-`getJiraIssue` with the key. Pull summary, description, acceptance criteria, and
-comments. If the MCP is unreachable, STOP and ask the developer to paste the US
-with `inline`.
+**Reading a Jira source via MCP:** read `<root>/shared/jira-source.md` and follow it.
 
 ## Phase 0 — Preconditions
 
@@ -171,10 +167,7 @@ functional question — once decomposition starts, a functional hole is rework.
 Technical consequences are NOT grilled here: when one surfaces, write it under
 `## Flags for /goal:plan` and move on.
 
-Pick the best available interview approach, in order:
-
-1. **`pocock:grill-with-docs`** if installed AND `CONTEXT.md`/`docs/adr/` exist.
-2. **`pocock:grill-me`** if installed.
+Pick the best available interview approach: read `<root>/shared/grill-approach.md`, then:
 3. **`common:spec-first-dev` Phase 1 questions** if `common` is installed.
 4. **Inlined baseline** (below) — always works.
 

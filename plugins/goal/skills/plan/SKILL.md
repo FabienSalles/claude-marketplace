@@ -7,7 +7,7 @@ description: Executable contract of the goal workflow (Session 1) — from a fun
 
 This skill degrades gracefully outside Claude Code:
 
-- No `AskUserQuestion` tool → ask the question in plain text and wait for the reply.
+- Shared fallbacks: read `<root>/shared/portability.md`.
 - No Atlassian MCP → route through the inline paste path, same as `/goal:spec`.
 - No `gh` → skip GitHub reads/writes, same as `/goal:spec`.
 - No `pbcopy` → print the content instead of copying it to the clipboard.
@@ -94,12 +94,7 @@ network): `CT-5856` → `ct-5856`, `42` → `issue-42`. So **first** look for
 | `inline` or empty | Ask the developer to paste the source now | ≤40-char kebab slug of the title |
 | Anything else that doesn't resolve | STOP and report | — |
 
-**Filling a Jira gap explicitly flagged by the selected contract:** load the Atlassian tools first with
-`ToolSearch` (`select:getAccessibleAtlassianResources,getJiraIssue`), get the
-`cloudId` from `getAccessibleAtlassianResources`, then `getJiraIssue` with the
-key. Extract: summary, description, acceptance criteria (if any), status, and
-the comment thread (comments often hold the real requirements). If the MCP is
-unreachable, STOP and tell the developer to paste the US with `inline`.
+**Filling a Jira gap explicitly flagged by the selected contract:** read `<root>/shared/jira-source.md` and follow it.
 
 The **work-id** drives every artifact: spec at `<plans>/<work-id>-spec.md`,
 branch `feature/<work-id>-<slug>`, log at `<plans>/<work-id>-execution-log.md`.
@@ -110,7 +105,7 @@ Verify in one round:
 - `git rev-parse --show-toplevel` succeeds (we're in a repo)
 - The current branch is clean; if dirty, ask the developer to stash/commit first
 - **Only if the selected contract explicitly flags a GitHub gap:** `gh auth status` succeeds
-- **Only if the selected contract explicitly flags a Jira gap:** the Atlassian MCP resolves (`getAccessibleAtlassianResources` returns a resource). Otherwise skip it.
+- **Only if the selected contract explicitly flags a Jira gap:** the Atlassian MCP resolves (per `<root>/shared/jira-source.md`). Otherwise skip it.
 
 Do **not** require `gh` for a Jira/file/inline source. If a needed check fails,
 STOP and tell the developer what to fix.
@@ -171,10 +166,7 @@ Ask: **"Is my reading correct? Anything to add before the technical grill?"** WA
 
 Goal of the grill: **surface every technical consequence and map every business
 rule to a command-line check**, so the plan is executable without further human
-input. Pick the best available interview approach, in order:
-
-1. **`pocock:grill-with-docs`** if installed AND `CONTEXT.md`/`docs/adr/` exist.
-2. **`pocock:grill-me`** if installed.
+input. Pick the best available interview approach: read `<root>/shared/grill-approach.md`, then:
 3. **Inlined baseline** (below) — always works.
 
 ### Inlined baseline questions (fallback)

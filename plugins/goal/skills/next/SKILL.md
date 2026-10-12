@@ -7,7 +7,7 @@ description: Checkpoint between two /goal iterations — verify the finished ite
 
 This skill degrades gracefully outside Claude Code:
 
-- No `AskUserQuestion` tool → ask the question in plain text and wait for the reply.
+- Shared fallbacks: read `<root>/shared/portability.md`.
 - No `pbcopy` → print the content instead of copying it to the clipboard.
 
 ## Host
@@ -60,8 +60,7 @@ use the returned default; location selection belongs to `/goal:spec`.
 
 Plan: `$ARGUMENTS`
 - A full path → use exactly it; fail clearly if missing or unreadable.
-- An identifier → look only for `<plans>/<work-id>-spec.md`; on a miss ask for
-  the full path and wait. Never substitute a plan from another directory.
+- An identifier → resolve it as `<root>/shared/plan-argument.md` words it.
 - Empty → find it: the `<plans>/*-spec.md` most recently modified, or the one
   referenced by the active goal. Ambiguous (several candidates) → list them and ASK.
   None → ask for the full path and wait.

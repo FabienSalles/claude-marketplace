@@ -60,8 +60,7 @@ use the returned default; location selection belongs to `/goal:spec`.
 Argument: `$ARGUMENTS`
 
 - A full path ending in `.md` → that is the plan; fail clearly if missing or unreadable.
-- An identifier → look only for `<plans>/<work-id>-spec.md`; on a miss ask for
-  the full path and wait. Never substitute a plan from another directory.
+- An identifier → resolve it as `<root>/shared/plan-argument.md` words it.
 - Empty → the `<plans>/*-spec.md` most recently modified, excluding
   `*-cleanup-spec.md`. Several equally plausible candidates → list them
   and ASK. None → ask for the full path and wait.

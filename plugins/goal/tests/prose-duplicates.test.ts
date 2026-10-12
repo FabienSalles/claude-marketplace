@@ -64,3 +64,23 @@ test('the handoff routing and clipboard offer are written once, in shared/handof
     assert.doesNotMatch(text, /\| `commit\+pr` \| all gateable \|/, skill);
   }
 });
+
+const families: { name: string; file: string; marker: RegExp; skills: string[] }[] = [
+  { name: 'portability', file: 'portability.md', marker: /No `AskUserQuestion` tool/, skills: ['plan', 'spec', 'tickets', 'next'] },
+  { name: 'grill approach', file: 'grill-approach.md', marker: /pocock:grill-with-docs/, skills: ['plan', 'spec'] },
+  { name: 'jira source', file: 'jira-source.md', marker: /getAccessibleAtlassianResources/, skills: ['plan', 'spec'] },
+  { name: 'plan argument', file: 'plan-argument.md', marker: /Never substitute a plan from another directory/, skills: ['next', 'supervise'] },
+];
+
+for (const { name, file, marker, skills } of families) {
+  // rule: R2 R3 R10 the family marker lives only in its shared file and each reader names it
+  test(`the ${name} rule is written once, in shared/${file}`, () => {
+    assert.match(readFileSync(join(root, 'shared', file), 'utf8'), marker);
+    for (const skill of readdirSync(join(root, 'skills'))) {
+      if (skill === 'grill-adversarial') continue;
+      const text = readFileSync(join(root, 'skills', skill, 'SKILL.md'), 'utf8');
+      assert.doesNotMatch(text, marker, skill);
+      if (skills.includes(skill)) assert.match(text, new RegExp(`<root>/shared/${file.replace('.', '\\.')}`), skill);
+    }
+  });
+}
