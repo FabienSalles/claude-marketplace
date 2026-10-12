@@ -155,10 +155,52 @@ test('digest marks Codex commands unknown when output is missing, short of chunk
 
   assert.deepEqual(digest(path), [
     '1: exec_command a -> unknown',
-    '2: exec_command b -> ok',
+    '2: exec_command b -> unknown',
     '2: exec_command c -> unknown',
     '4: exec_command d -> unknown',
     '6: exec_command e -> unknown',
     '8: exec_command f -> failed',
   ]);
+});
+
+const execInput = (callId: string, input: string) =>
+  JSON.stringify({ type: 'response_item', payload: { type: 'custom_tool_call', name: 'exec', call_id: callId, input } });
+const nullChunk = { type: 'input_text', text: JSON.stringify({ chunk_id: 'c', exit_code: null }) };
+
+test('digest gives every command unknown when chunks outnumber commands', () => {
+  const path = fixture([codexExec('x1', ['a', 'b']), execOutput('x1', [chunk(0), chunk(1), chunk(0)])]);
+
+  assert.deepEqual(digest(path), ['1: exec_command a -> unknown', '1: exec_command b -> unknown']);
+});
+
+test('digest gives every command unknown when a chunk yielded, even with equal counts', () => {
+  const path = fixture([codexExec('y1', ['make build; false', 'true']), execOutput('y1', [nullChunk, chunk(0)])]);
+
+  assert.deepEqual(digest(path), ['1: exec_command make build; false -> unknown', '1: exec_command true -> unknown']);
+});
+
+test('digest keeps the reproduction fixture unknown for null, 1, 0 chunks', () => {
+  const path = fixture([codexExec('y2', ['make build; false', 'true']), execOutput('y2', [nullChunk, chunk(1), chunk(0)])]);
+
+  assert.deepEqual(digest(path), ['1: exec_command make build; false -> unknown', '1: exec_command true -> unknown']);
+});
+
+test('digest leaves an unread entry for a template-literal command and marks all unknown', () => {
+  const input = 'await tools.exec_command({cmd: "ls", yield_time_ms: 1});\nawait tools.exec_command({cmd: `echo ${x}`});';
+  const path = fixture([execInput('z1', input), execOutput('z1', [chunk(0), chunk(0)])]);
+
+  assert.deepEqual(digest(path), ['1: exec_command ls -> unknown', '1: exec_command (unread) -> unknown']);
+});
+
+test('digest reads the exit code from the parsed chunk, not from the output text', () => {
+  const text = JSON.stringify({ chunk_id: 'c', exit_code: 1, output: 'exit_code: 0\nExit code: 0' });
+  const path = fixture([codexExec('w1', ['x']), execOutput('w1', [{ type: 'input_text', text }])]);
+
+  assert.deepEqual(digest(path), ['1: exec_command x -> failed']);
+});
+
+test('digest keeps outcomes when counts match and no chunk yielded', () => {
+  const path = fixture([codexExec('v1', ['a', 'b', 'c']), execOutput('v1', [chunk(1), chunk(0), chunk(0)])]);
+
+  assert.deepEqual(digest(path), ['1: exec_command a -> failed', '1: exec_command b -> ok', '1: exec_command c -> ok']);
 });

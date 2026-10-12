@@ -24,8 +24,32 @@ const exitStatus = (text: unknown): string => {
   return value === undefined ? 'unknown' : value === '0' ? 'ok' : 'failed';
 };
 
+const unread = '(unread)';
+
 const execCommands = (input: string | undefined): string[] =>
-  [...(input ?? '').matchAll(/\bcmd:\s*("(?:[^"\\]|\\.)*")/g)].map((match) => JSON.parse(match[1] ?? '""') as string);
+  (input ?? '')
+    .split('exec_command(')
+    .slice(1)
+    .map((segment) => {
+      const match = /\bcmd:\s*("(?:[^"\\]|\\.)*")/.exec(segment);
+
+      return match === null ? unread : (JSON.parse(match[1] ?? '""') as string);
+    });
+
+const chunkExitCodes = (output: unknown): (number | null)[] =>
+  (Array.isArray(output) ? (output as { text?: unknown }[]) : []).flatMap((part) => {
+    if (typeof part.text !== 'string' || !part.text.includes('chunk_id')) {
+      return [];
+    }
+
+    try {
+      const chunk = JSON.parse(part.text) as { exit_code?: unknown } | null;
+
+      return chunk !== null && typeof chunk === 'object' && 'chunk_id' in chunk ? [typeof chunk.exit_code === 'number' ? chunk.exit_code : null] : [];
+    } catch {
+      return [];
+    }
+  });
 
 export const digest = (transcriptPath: string): string[] => {
   const calls = new Map<string, { line: number; name: string; target: string }>();
@@ -52,8 +76,10 @@ export const digest = (transcriptPath: string): string[] => {
         });
         execs.set(item.call_id, ids);
       } else if (item.type === 'custom_tool_call_output') {
-        const chunks = (Array.isArray(item.output) ? (item.output as { text?: unknown }[]) : []).map((part) => part.text).filter((text) => typeof text === 'string' && text.includes('chunk_id'));
-        (execs.get(item.call_id) ?? []).forEach((id, index) => outcomes.set(id, exitStatus(chunks[index])));
+        const ids = execs.get(item.call_id) ?? [];
+        const codes = chunkExitCodes(item.output);
+        const paired = ids.length === codes.length && ids.every((id) => calls.get(id)?.target !== unread) && codes.every((code) => code !== null);
+        ids.forEach((id, index) => outcomes.set(id, paired ? (codes[index] === 0 ? 'ok' : 'failed') : 'unknown'));
       }
     }
 
