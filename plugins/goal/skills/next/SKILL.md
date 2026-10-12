@@ -202,11 +202,7 @@ machine-verifiable** line carrying the slice's core deliverable. `/goal:supervis
 first of these rather than run, so naming them now saves a run that would stop at iteration
 one.
 
-| `Policy:` | Remaining iterations | Emit |
-|---|---|---|
-| `manual` | any | the per-iteration handoff **only** — `/goal:supervise` refuses `manual` |
-| `commit+pr` | all gateable | the **`/goal:supervise <plan path>` line only** — no per-iteration block |
-| `commit+pr` | one or more not gateable | the per-iteration handoff first, and name the iterations that block a clean autonomous run |
+Read `<root>/shared/handoff.md` for the routing table and follow it.
 
 **Always pass the plan path explicitly** in the `/goal:supervise` line. Bare `/goal:supervise`
 resolves the most recently modified `*-spec.md`, which is whichever plan was last touched —
@@ -238,9 +234,7 @@ exceeds 4000, and print the count with the block. **That file is only a counter*
 goes to the model and not reliably to the developer. The filled block goes **in full into
 your final message**, as one copy-paste block.
 
-**Under `manual`, offer the clipboard before printing.** The counter file already holds
-the exact block, so ask with `AskUserQuestion`: _"Copy the `/goal` handoff to the
-clipboard?"_
+**Under `manual`, offer the clipboard before printing**, as `<root>/shared/handoff.md` words it.
 
 - **yes** (recommended) → `pbcopy < <file>` (macOS; `xclip -selection clipboard` or
   `wl-copy` where `pbcopy` does not exist). The block is in the clipboard, so do **not**

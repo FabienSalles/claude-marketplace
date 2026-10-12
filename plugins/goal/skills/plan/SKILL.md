@@ -914,13 +914,9 @@ Tell the developer where the plan now lives, and read the branch name back.
 ## Phase 5 — Hand off to Session 2 (one /goal per iteration)
 
 Read `Policy:` from the spec header and check every iteration for a `gate` block with a
-`gate1` — this mirrors `/goal:next`'s Phase 5 routing table verbatim:
+`gate1`:
 
-| `Policy:` | Iterations | Emit |
-|---|---|---|
-| `manual` | any | the per-iteration handoff **only** — `/goal:supervise` refuses `manual` |
-| `commit+pr` | all gateable | the **`/goal:supervise <plan path>` line only** — no per-iteration block |
-| `commit+pr` | one or more not gateable | the per-iteration handoff first, and name the iterations that block a clean autonomous run |
+Read `<root>/shared/handoff.md` for the routing table and follow it.
 
 **Always pass the plan path explicitly** in the `/goal:supervise` line, and state in one
 line what it will do: how many iterations it covers, and that it halts hard on the first
@@ -950,9 +946,7 @@ copy-paste block. The
 developer pastes it once per iteration — it always picks the **next unchecked**
 iteration, so the same text works every round.
 
-**Under `manual`, offer the clipboard before printing.** The counter file already holds
-the exact block, so ask with `AskUserQuestion`: _"Copy the `/goal` handoff to the
-clipboard?"_
+**Under `manual`, offer the clipboard before printing**, as `<root>/shared/handoff.md` words it.
 
 - **yes** (recommended) → `pbcopy < <file>` (macOS; `xclip -selection clipboard` or
   `wl-copy` where `pbcopy` does not exist). The block is in the clipboard, so do **not**

@@ -44,10 +44,12 @@ test('Phase 5 orders the per-iteration /goal block withheld under commit+pr when
     /do not build the per-iteration `\/goal`\s+block and do not print it/,
     phase5,
   );
+  assert.match(phase5, /<root>\/shared\/handoff\.md/, phase5);
+  const shared = readFileSync(join(import.meta.dirname, '..', 'shared', 'handoff.md'), 'utf8');
   assert.match(
-    phase5,
+    shared,
     /\| `commit\+pr` \| all gateable \| the \*\*`\/goal:supervise <plan path>` line only\*\* — no per-iteration block \|/,
-    phase5,
+    shared,
   );
 });
 

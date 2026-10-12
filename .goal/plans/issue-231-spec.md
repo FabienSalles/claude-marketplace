@@ -228,7 +228,7 @@ gate2=printf '%b\n' '.PHONY: all types lint' 'all: types lint' 'types:\n\tnode n
 ```
 
 ### Iteration 3 — Handoff routing lives once, and a new copy fails the suite
-- [ ] Not done yet
+- [x] Not done yet
 - **Goal:** The handoff routing shared by plan and next moves to `shared/handoff.md`, and a new copied block in two goal files fails the suite.
 - **Shippable after it:** no exact duplicate remains in goal skills outside the allowlist, and the next copy-paste is caught before merge.
 - **Files to touch:** `plugins/goal/shared/handoff.md` (new), `plugins/goal/skills/plan/SKILL.md`, `plugins/goal/skills/next/SKILL.md` (+ `plugins/goal/tests/prose-duplicates.test.ts` (new test), `plugins/goal/tests/plan-closing.test.ts` (test))
