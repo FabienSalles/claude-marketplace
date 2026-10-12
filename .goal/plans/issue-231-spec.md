@@ -180,7 +180,7 @@ Fixed at plan time; folded into the PR body as `### Duplication audit` once the 
 ## Functional iterations
 
 ### Iteration 1 — The Host rules live in one shared file
-- [ ] Not done yet
+- [x] Not done yet
 - **Goal:** Each goal skill keeps only the root bootstrap inline and reads the rest of its Host rules from `shared/host.md`.
 - **Shippable after it:** a Host rule change is a one-file edit; every skill behaves as before under both hosts.
 - **Files to touch:** `plugins/goal/shared/host.md` (new), the 6 `plugins/goal/skills/*/SKILL.md` (+ `plugins/goal/tests/skill-host.test.ts` (test))

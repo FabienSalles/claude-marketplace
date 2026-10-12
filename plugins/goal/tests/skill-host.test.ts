@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import test from 'node:test';
 
@@ -8,6 +8,8 @@ const names = ['spec', 'plan', 'next', 'tickets', 'supervise', 'grill-adversaria
 const read = (path: string): string => readFileSync(resolve(plugin, path), 'utf8');
 const skill = (name: string): string => read(`skills/${name}/SKILL.md`);
 const hostBlock = (source: string): string => /^## Host\n[\s\S]*?(?=\n## |\n# )/m.exec(source)?.[0] ?? '';
+
+const shared = read('shared/host.md');
 
 test('every goal skill carries the same Host block', () => {
   const blocks = names.map((name) => hostBlock(skill(name)));
@@ -29,22 +31,18 @@ test('the Host block sits right after Portability, or after the frontmatter', ()
   }
 });
 
-test('R1 R2 the block resolves the root and the argument when they stay literal', () => {
+test('R6 the bootstrap resolves the root and the argument when they stay literal', () => {
   const block = hostBlock(skill('spec'));
-  assert.match(block, /Claude Code substitutes `\$\{CLAUDE_PLUGIN_ROOT\}` and `\$ARGUMENTS`/);
+  assert.match(block, /`<root>` is Claude Code's substituted `\$\{CLAUDE_PLUGIN_ROOT\}`/);
   assert.match(block, /Copilot CLI/);
   assert.match(block, /two levels above `Base directory for this skill:`/);
-  assert.match(block, /text typed after the command \(empty when none\)/);
+  assert.match(block, /`\$ARGUMENTS`[^\n]*text typed after the command \(empty when none\)/);
+  assert.match(block, /read `<root>\/shared\/host\.md`/);
 });
 
-test('R5 the first output line names skill, host and manifest version', () => {
+test('R6 R9 a missing script root or shared file stops with the host and the install commands', () => {
   const block = hostBlock(skill('spec'));
-  assert.match(block, /`goal <skill> · <host> · v<version from <root>\/\.claude-plugin\/plugin\.json>`/);
-});
-
-test('R4 R6 a missing script root stops with the host and the install commands', () => {
-  const block = hostBlock(skill('spec'));
-  assert.match(block, /<root>\/src\/artifacts\.ts/);
+  assert.match(block, /<root>\/src\/artifacts\.ts` or a shared file/);
   assert.match(block, /`cannot locate the goal plugin scripts`/);
   assert.match(block, /`copilot plugin marketplace add <repository>`/);
   assert.match(block, /`copilot plugin install goal@fabien-claude-marketplace`/);
@@ -52,8 +50,25 @@ test('R4 R6 a missing script root stops with the host and the install commands',
   assert.match(block, /run nothing and write nothing/);
 });
 
-test('R15 a skill with no one to answer stops at its question', () => {
-  assert.match(hostBlock(skill('spec')), /non-interactive[^\n]*stops at that question/);
+test('R7 shared files name <root>, never ${CLAUDE_PLUGIN_ROOT}', () => {
+  for (const file of readdirSync(resolve(plugin, 'shared')).filter((entry) => entry.endsWith('.md'))) {
+    assert.doesNotMatch(read(`shared/${file}`), /CLAUDE_PLUGIN_ROOT/, file);
+  }
+});
+
+test('R8 the version line lives in shared/host.md and in no skill', () => {
+  const line = /`goal <skill> · <host> · v<version from <root>\/\.claude-plugin\/plugin\.json>`/;
+  assert.match(shared, line);
+  for (const name of names) {
+    assert.doesNotMatch(skill(name), /goal <skill> · <host>/, name);
+  }
+});
+
+test('R2 the non-interactive stop lives in shared/host.md and in no skill', () => {
+  assert.match(shared, /non-interactive[^\n]*stops at that question/);
+  for (const name of names) {
+    assert.doesNotMatch(skill(name), /non-interactive[^\n]*stops at that question/, name);
+  }
 });
 
 test('R12 plan and next refuse manual mode under Copilot', () => {

@@ -12,19 +12,18 @@ This skill degrades gracefully outside Claude Code:
 
 ## Host
 
-Claude Code substitutes `${CLAUDE_PLUGIN_ROOT}` and `$ARGUMENTS`. A host that leaves them literal
-(Copilot CLI) reads the root as two levels above `Base directory for this skill:`, and the argument
-as the text typed after the command (empty when none). Use that root wherever a command below
-says `${CLAUDE_PLUGIN_ROOT}`.
+`<root>` is Claude Code's substituted `${CLAUDE_PLUGIN_ROOT}`. A host that leaves it literal
+(Copilot CLI) reads `<root>` as two levels above `Base directory for this skill:`.
+`$ARGUMENTS` left literal is the text typed after the command (empty when none).
+Use `<root>` wherever a command below says `${CLAUDE_PLUGIN_ROOT}`.
 
-The first output line is `goal <skill> · <host> · v<version from <root>/.claude-plugin/plugin.json>`.
-
-When `<root>/src/artifacts.ts` is missing, print `cannot locate the goal plugin scripts`, the host,
-and the install commands, run nothing and write nothing: `copilot plugin marketplace add <repository>`
-then `copilot plugin install goal@fabien-claude-marketplace` under Copilot,
+When `<root>/src/artifacts.ts` or a shared file this skill names is missing, print
+`cannot locate the goal plugin scripts`, the host, and the install commands, run nothing and write nothing:
+`copilot plugin marketplace add <repository>` then
+`copilot plugin install goal@fabien-claude-marketplace` under Copilot,
 `/plugin install goal@fabien-claude-marketplace` under Claude Code.
 
-A skill with no one to answer its question (non-interactive session) stops at that question.
+Then read `<root>/shared/host.md`.
 
 # /goal:next — Iteration checkpoint + next-/goal handoff
 
