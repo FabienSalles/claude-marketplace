@@ -174,15 +174,15 @@ test('digest gives every command unknown when chunks outnumber commands', () => 
 });
 
 test('digest gives every command unknown when a chunk yielded, even with equal counts', () => {
-  const path = fixture([codexExec('y1', ['sleep 40; false', 'true']), execOutput('y1', [nullChunk, chunk(0)])]);
+  const path = fixture([codexExec('y1', ['make build; false', 'true']), execOutput('y1', [nullChunk, chunk(0)])]);
 
-  assert.deepEqual(digest(path), ['1: exec_command sleep 40; false -> unknown', '1: exec_command true -> unknown']);
+  assert.deepEqual(digest(path), ['1: exec_command make build; false -> unknown', '1: exec_command true -> unknown']);
 });
 
 test('digest keeps the reproduction fixture unknown for null, 1, 0 chunks', () => {
-  const path = fixture([codexExec('y2', ['sleep 40; false', 'true']), execOutput('y2', [nullChunk, chunk(1), chunk(0)])]);
+  const path = fixture([codexExec('y2', ['make build; false', 'true']), execOutput('y2', [nullChunk, chunk(1), chunk(0)])]);
 
-  assert.deepEqual(digest(path), ['1: exec_command sleep 40; false -> unknown', '1: exec_command true -> unknown']);
+  assert.deepEqual(digest(path), ['1: exec_command make build; false -> unknown', '1: exec_command true -> unknown']);
 });
 
 test('digest leaves an unread entry for a template-literal command and marks all unknown', () => {
