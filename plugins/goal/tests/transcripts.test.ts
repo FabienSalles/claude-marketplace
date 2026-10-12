@@ -126,8 +126,10 @@ test('default history excludes old records and explicit history selects only the
     writeFileSync(join(history, 'run-1', '.run.session'), `${id}\n`);
   }
 
-  assert.deepEqual(runTranscripts(cwd, 'demo-spec.md', '', join(cwd, '.goal', 'runs'), root), [join(dir, 'new.jsonl')]);
-  assert.deepEqual(runTranscripts(cwd, 'demo-spec.md', '', join(cwd, '.goal', 'runs'), root, old), [join(dir, 'old.jsonl')]);
+  const copilot = tmpDir('copilot-');
+
+  assert.deepEqual(runTranscripts(cwd, 'demo-spec.md', '', join(cwd, '.goal', 'runs'), root, undefined, copilot), [join(dir, 'new.jsonl')]);
+  assert.deepEqual(runTranscripts(cwd, 'demo-spec.md', '', join(cwd, '.goal', 'runs'), root, old, copilot), [join(dir, 'old.jsonl')]);
   assert.equal(readFileSync(join(old, 'run-1', '.run.session'), 'utf8'), 'old\n');
 });
 
@@ -157,4 +159,44 @@ test('the history CLI accepts an absolute directory without consulting the curre
 
   assert.equal(result.status, 0, result.stderr);
   assert.equal(result.stdout, '');
+});
+
+test('runTranscripts resolves a recorded id to a Copilot events.jsonl and scans Copilot sessions naming the plan', () => {
+  const root = projectRoot();
+  const copilot = tmpDir('copilot-');
+  const repoDir = tmpDir('transcripts-repo-');
+  const dir = join(root, repoDir.replace(/[/.]/g, '-'));
+  const plan = join(repoDir, '.claude', 'plans', 'my-plan-spec.md');
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(join(dir, 'claude.jsonl'), 'Implement iteration 3 of my-plan-spec.md\n');
+
+  for (const id of ['recorded', 'scanned', 'other']) {
+    mkdirSync(join(copilot, id), { recursive: true });
+  }
+
+  writeFileSync(join(copilot, 'recorded', 'events.jsonl'), '{"type":"session.start"}\n');
+  writeFileSync(join(copilot, 'scanned', 'events.jsonl'), '{"data":{"content":"Refute my-plan-spec.md"}}\n');
+  writeFileSync(join(copilot, 'other', 'events.jsonl'), '{"type":"session.start"}\n');
+
+  const runDir = join(repoDir, '.goal', 'runs', 'my-plan', 'run-1');
+  mkdirSync(runDir, { recursive: true });
+  writeFileSync(join(runDir, '.run.session'), 'recorded\nclaude\n');
+
+  const found = runTranscripts(repoDir, plan, '', join(repoDir, '.goal', 'runs'), root, undefined, copilot);
+
+  assert.deepEqual(
+    found.sort(),
+    [join(dir, 'claude.jsonl'), join(copilot, 'recorded', 'events.jsonl'), join(copilot, 'scanned', 'events.jsonl')].sort(),
+  );
+});
+
+test('runTranscripts finds Copilot sessions even when no Claude project dir exists', () => {
+  const copilot = tmpDir('copilot-');
+  mkdirSync(join(copilot, 's1'), { recursive: true });
+  writeFileSync(join(copilot, 's1', 'events.jsonl'), 'my-plan-spec.md\n');
+
+  assert.deepEqual(
+    runTranscripts('/Users/dev/never-ran', 'my-plan-spec.md', '', join('/unused', 'runs'), projectRoot(), undefined, copilot),
+    [join(copilot, 's1', 'events.jsonl')],
+  );
 });

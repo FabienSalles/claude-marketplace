@@ -14,7 +14,8 @@ beats a complete one that costs more than the work it audits.
 ## Find the transcripts
 
 `node ${CLAUDE_PLUGIN_ROOT}/src/transcripts.ts <cwd> <plan>` prints, one per line, every
-transcript under `~/.claude/projects/` whose own content names the plan you were given. No
+transcript whose own content names the plan you were given — Claude sessions under
+`~/.claude/projects/` and Copilot sessions (`events.jsonl`) under `~/.copilot/session-state/`. No
 session id is recorded anywhere for this — every session that ever worked on this run, including
 your own, opened with a prompt that names the plan, so that is the only anchor there is.
 

@@ -12,6 +12,15 @@ export const digest = (transcriptPath: string): string[] => {
   const order: string[] = [];
 
   for (const { line, event } of parseEvents(fs.readFile(transcriptPath))) {
+    const { data } = event;
+
+    if (event.type === 'tool.execution_start' && data?.toolCallId !== undefined && data.toolName !== undefined) {
+      calls.set(data.toolCallId, { line, name: data.toolName, target: data.arguments?.command ?? data.arguments?.path ?? '' });
+      order.push(data.toolCallId);
+    } else if (event.type === 'tool.execution_complete' && data?.toolCallId !== undefined) {
+      outcomes.set(data.toolCallId, data.success === false);
+    }
+
     for (const block of event.message?.content ?? []) {
       if (block.type === 'tool_use' && block.id !== undefined && block.id !== '' && block.name !== undefined && block.name !== '') {
         const target = block.input?.file_path ?? block.input?.command ?? '';

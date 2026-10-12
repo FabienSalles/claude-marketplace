@@ -190,7 +190,7 @@ gate2=printf '%b\n' '.PHONY: all types lint' 'all: types lint' 'types:\n\tnode n
 ```
 
 ### Iteration 2 — The session audit reads Copilot sessions
-- [ ] Not done yet
+- [x] Not done yet
 - **Goal:** The session audit finds and digests every Copilot session a run produced or that supervised it, beside the Claude ones
 - **Shippable after it:** `/goal:supervise` hosted in Claude Code audits a run whose roles ran on Copilot (`GOAL_RUN_PROVIDER=copilot`) instead of silently skipping those sessions.
 - **Files to touch:** `plugins/goal/src/transcripts.ts`, `plugins/goal/src/digest.ts`, `plugins/goal/src/core/events.ts` (event type only, if `digest.ts` needs the Copilot fields typed), `plugins/goal/agents/goal-session-auditor.md` (+ `plugins/goal/tests/transcripts.test.ts`, `plugins/goal/tests/digest.test.ts` (tests))
