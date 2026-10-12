@@ -123,7 +123,7 @@ Also true, and not expressible as a command of its own:
 ## Functional iterations
 
 ### Iteration 1 — A Codex command's outcome is its own exit code or unknown
-- [ ] Not done yet
+- [x] Not done yet
 - **Goal:** A Codex command in the session digest carries its own exit code or reads unknown: never a neighbour's, never a phrase from its output, and every exec call leaves a visible entry even when its commands cannot be read.
 - **Shippable after it:** the session audit of a Codex-hosted run can no longer report a command with a borrowed outcome.
 - **Files to touch:** `plugins/goal/src/digest.ts`, `plugins/goal/.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json` (+ `plugins/goal/tests/digest.test.ts` (test))
