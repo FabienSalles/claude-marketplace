@@ -47,13 +47,13 @@ test('R13 pinned supervise texts stay', () => {
   assert.match(supervise, /Unknown stops\./);
 });
 
-test('goal plugin 3.9.2 in both manifests', () => {
+test('goal plugin 3.9.3 in both manifests', () => {
   const manifest = JSON.parse(read('.claude-plugin/plugin.json')) as { version: string };
   const market = JSON.parse(readFileSync(resolve(plugin, '../../.claude-plugin/marketplace.json'), 'utf8')) as {
     plugins: { name: string; version: string }[];
   };
-  assert.equal(manifest.version, '3.9.2');
-  assert.equal(market.plugins.find((p) => p.name === 'goal')?.version, '3.9.2');
+  assert.equal(manifest.version, '3.9.3');
+  assert.equal(market.plugins.find((p) => p.name === 'goal')?.version, '3.9.3');
 });
 
 test('R6 the Codex host never sets the provider or the implementer', () => {

@@ -17,37 +17,34 @@ const codexTarget = (raw: string | undefined): string => {
   }
 };
 
-const exitStatus = (text: unknown): string => {
-  const code = typeof text === 'string' ? /"?exit_code"?\s*[:=]\s*(-?\d+)|Exit code:\s*(-?\d+)/i.exec(text) : null;
-  const value = code?.[1] ?? code?.[2];
-
-  return value === undefined ? 'unknown' : value === '0' ? 'ok' : 'failed';
-};
-
 const unread = '(unread)';
 
 const execCommands = (input: string | undefined): string[] =>
-  (input ?? '')
+  (typeof input === 'string' ? input : '')
     .split('exec_command(')
     .slice(1)
     .map((segment) => {
       const match = /\bcmd:\s*("(?:[^"\\]|\\.)*")/.exec(segment);
 
-      return match === null ? unread : (JSON.parse(match[1] ?? '""') as string);
+      try {
+        return match === null ? unread : (JSON.parse(match[1] ?? '""') as string);
+      } catch {
+        return unread;
+      }
     });
 
 const chunkExitCodes = (output: unknown): (number | null)[] =>
   (Array.isArray(output) ? (output as { text?: unknown }[]) : []).flatMap((part) => {
-    if (typeof part.text !== 'string' || !part.text.includes('chunk_id')) {
+    if (typeof part?.text !== 'string' || !part.text.includes('chunk_id')) {
       return [];
     }
 
     try {
       const chunk = JSON.parse(part.text) as { exit_code?: unknown } | null;
 
-      return chunk !== null && typeof chunk === 'object' && 'chunk_id' in chunk ? [typeof chunk.exit_code === 'number' ? chunk.exit_code : null] : [];
+      return [chunk !== null && typeof chunk === 'object' && 'chunk_id' in chunk && typeof chunk.exit_code === 'number' ? chunk.exit_code : null];
     } catch {
-      return [];
+      return [null];
     }
   });
 
@@ -66,7 +63,9 @@ export const digest = (transcriptPath: string): string[] => {
         calls.set(item.call_id, { line, name: item.name, target: codexTarget(item.arguments) });
         order.push(item.call_id);
       } else if (item.type === 'function_call_output') {
-        outcomes.set(item.call_id, exitStatus(item.output));
+        const codes = chunkExitCodes(typeof item.output === 'string' ? [{ text: item.output }] : item.output);
+        const code = codes.length === 1 ? codes[0] : null;
+        outcomes.set(item.call_id, code === null || code === undefined ? 'unknown' : code === 0 ? 'ok' : 'failed');
       } else if (item.type === 'custom_tool_call' && item.name === 'exec') {
         const ids = execCommands(item.input).map((cmd, index) => {
           const id = `${item.call_id}#${index}`;
