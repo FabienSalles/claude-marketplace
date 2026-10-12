@@ -71,11 +71,11 @@ test('R2 the non-interactive stop lives in shared/host.md and in no skill', () =
   }
 });
 
-test('R12 plan and next refuse manual mode under Copilot', () => {
+test('R12 plan and next refuse manual mode under Copilot or Codex', () => {
   for (const name of ['plan', 'next']) {
     assert.match(skill(name), /Hosted in Copilot[^\n]*manual[^\n]*Claude Code's `\/goal`/, name);
   }
-  assert.match(skill('plan'), /Hosted in Copilot, `manual` is not offered/);
+  assert.match(skill('plan'), /Hosted in Copilot or Codex, `manual` is not offered/);
   assert.match(skill('next'), /manual plan stops `\/goal:next`/);
 });
 
@@ -87,4 +87,46 @@ test('R3 R4 README documents the Copilot install and its limit', () => {
   assert.match(section, /copilot plugin install goal@fabien-claude-marketplace/);
   assert.match(section, /live/i);
   assert.match(section, /manual/);
+});
+
+test('R1 R2 the bootstrap derives the root from the SKILL.md a Codex host reads', () => {
+  for (const name of names) {
+    const block = hostBlock(skill(name));
+    assert.match(block, /injects no base-directory line and reads `SKILL\.md` itself \(Codex CLI\) takes `<root>` as two levels\nabove that file's directory/, name);
+  }
+});
+
+test('R3 shared/host.md names Codex CLI among the hosts', () => {
+  assert.match(shared, /Codex CLI/);
+});
+
+test('R4 the stop gives the Codex install commands', () => {
+  for (const name of names) {
+    const block = hostBlock(skill(name));
+    assert.match(block, /`codex plugin marketplace add <repository>`/, name);
+    assert.match(block, /`codex plugin add goal@fabien-claude-marketplace`[^\n]*Codex/, name);
+  }
+});
+
+test('R12 plan and next refuse manual mode under Codex too', () => {
+  for (const name of ['plan', 'next']) {
+    assert.match(skill(name), /Hosted in Copilot or Codex[^\n]*manual[^\n]*Claude Code's `\/goal`/, name);
+  }
+});
+
+test('R13 the host rules name Codex user-input tool and keep the non-interactive stop', () => {
+  assert.match(shared, /Codex[^\n]*request_user_input/);
+  assert.match(shared, /non-interactive[^\n]*stops at that question/);
+});
+
+test('R5 README documents the Codex install, refresh, invocation and launch', () => {
+  const readme = read('README.md');
+  const section = /### Codex hosts the goal sessions\n[\s\S]*?(?=\n##? |$)/.exec(readme)?.[0] ?? '';
+  assert.notEqual(section, '');
+  assert.match(section, /codex plugin marketplace add FabienSalles\/claude-marketplace/);
+  assert.match(section, /codex plugin add goal@fabien-claude-marketplace/);
+  assert.match(section, /codex plugin marketplace upgrade[^\n]*Git marketplaces only/);
+  assert.match(section, /re-running `codex plugin add goal@fabien-claude-marketplace`/);
+  assert.match(section, /\$goal:spec|\$goal/);
+  assert.match(section, /codex -s workspace-write -c sandbox_workspace_write\.network_access=true --add-dir "\$HOME\/\.claude"/);
 });

@@ -162,7 +162,7 @@ Also true, and not expressible as a command of its own:
 ## Functional iterations
 
 ### Iteration 1 — The goal skills run from a Codex session
-- [ ] Not done yet
+- [x] Not done yet
 - **Goal:** Every goal skill finds its plugin root, names Codex, gives the Codex install commands and refuses manual mode when hosted in Codex, and the README says how to install, refresh, invoke and launch it there.
 - **Shippable after it:** spec, plan, next, tickets and grill-adversarial are usable from Codex; supervise still needs iteration 3.
 - **Files to touch:** the 6 `plugins/goal/skills/*/SKILL.md`, `plugins/goal/shared/host.md`, `plugins/goal/README.md` (+ `plugins/goal/tests/skill-host.test.ts`, `plugins/goal/tests/prose-duplicates.test.ts` (test))

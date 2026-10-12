@@ -14,6 +14,8 @@ This skill degrades gracefully outside Claude Code:
 
 `<root>` is Claude Code's substituted `${CLAUDE_PLUGIN_ROOT}`. A host that leaves it literal
 (Copilot CLI) reads `<root>` as two levels above `Base directory for this skill:`.
+A host that injects no base-directory line and reads `SKILL.md` itself (Codex CLI) takes `<root>` as two levels
+above that file's directory.
 `$ARGUMENTS` left literal is the text typed after the command (empty when none).
 Use `<root>` wherever a command below says `${CLAUDE_PLUGIN_ROOT}`.
 
@@ -21,6 +23,8 @@ When `<root>/src/artifacts.ts` or a shared file this skill names is missing, pri
 `cannot locate the goal plugin scripts`, the host, and the install commands, run nothing and write nothing:
 `copilot plugin marketplace add <repository>` then
 `copilot plugin install goal@fabien-claude-marketplace` under Copilot,
+`codex plugin marketplace add <repository>` then
+`codex plugin add goal@fabien-claude-marketplace` under Codex,
 `/plugin install goal@fabien-claude-marketplace` under Claude Code.
 
 Then read `<root>/shared/host.md`.
@@ -65,7 +69,7 @@ Plan: `$ARGUMENTS`
   referenced by the active goal. Ambiguous (several candidates) → list them and ASK.
   None → ask for the full path and wait.
 
-Hosted in Copilot, a manual plan stops `/goal:next`: say manual mode needs Claude Code's `/goal`, and change nothing.
+Hosted in Copilot or Codex, a manual plan stops `/goal:next`: say manual mode needs Claude Code's `/goal`, and change nothing.
 
 Read the plan and locate:
 - **the finished iteration** = the last `[x]` before the first `[ ]`.
