@@ -16,6 +16,8 @@ This skill degrades gracefully outside Claude Code:
 
 `<root>` is Claude Code's substituted `${CLAUDE_PLUGIN_ROOT}`. A host that leaves it literal
 (Copilot CLI) reads `<root>` as two levels above `Base directory for this skill:`.
+A host that injects no base-directory line and reads `SKILL.md` itself (Codex CLI) takes `<root>` as two levels
+above that file's directory.
 `$ARGUMENTS` left literal is the text typed after the command (empty when none).
 Use `<root>` wherever a command below says `${CLAUDE_PLUGIN_ROOT}`.
 
@@ -23,6 +25,8 @@ When `<root>/src/artifacts.ts` or a shared file this skill names is missing, pri
 `cannot locate the goal plugin scripts`, the host, and the install commands, run nothing and write nothing:
 `copilot plugin marketplace add <repository>` then
 `copilot plugin install goal@fabien-claude-marketplace` under Copilot,
+`codex plugin marketplace add <repository>` then
+`codex plugin add goal@fabien-claude-marketplace` under Codex,
 `/plugin install goal@fabien-claude-marketplace` under Claude Code.
 
 Then read `<root>/shared/host.md`.
@@ -257,7 +261,7 @@ Ask (this controls what an execution session is allowed to do, and how big a sli
 >   for the end. It goes ready for review at the last iteration. This is what
 >   `/goal:supervise` needs.
 
-Hosted in Copilot, `manual` is not offered: present `commit+pr` only and say manual mode needs Claude Code's `/goal`.
+Hosted in Copilot or Codex, `manual` is not offered: present `commit+pr` only and say manual mode needs Claude Code's `/goal`.
 
 WAIT for the answer. Then **write it into the spec's `Policy:` header line**, and use the
 same value as `<policy>` in the handoff verbatim.

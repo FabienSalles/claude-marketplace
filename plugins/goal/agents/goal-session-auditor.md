@@ -15,7 +15,8 @@ beats a complete one that costs more than the work it audits.
 
 `node ${CLAUDE_PLUGIN_ROOT}/src/transcripts.ts <cwd> <plan>` prints, one per line, every
 transcript whose own content names the plan you were given — Claude sessions under
-`~/.claude/projects/` and Copilot sessions (`events.jsonl`) under `~/.copilot/session-state/`. No
+`~/.claude/projects/` and Copilot sessions (`events.jsonl`) under `~/.copilot/session-state/`, and Codex rollouts (`rollout-*.jsonl`) under
+`~/.codex/sessions/`. No
 session id is recorded anywhere for this — every session that ever worked on this run, including
 your own, opened with a prompt that names the plan, so that is the only anchor there is.
 

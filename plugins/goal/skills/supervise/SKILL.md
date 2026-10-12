@@ -17,6 +17,8 @@ launched with the developer's provider settings untouched.
 
 `<root>` is Claude Code's substituted `${CLAUDE_PLUGIN_ROOT}`. A host that leaves it literal
 (Copilot CLI) reads `<root>` as two levels above `Base directory for this skill:`.
+A host that injects no base-directory line and reads `SKILL.md` itself (Codex CLI) takes `<root>` as two levels
+above that file's directory.
 `$ARGUMENTS` left literal is the text typed after the command (empty when none).
 Use `<root>` wherever a command below says `${CLAUDE_PLUGIN_ROOT}`.
 
@@ -24,6 +26,8 @@ When `<root>/src/artifacts.ts` or a shared file this skill names is missing, pri
 `cannot locate the goal plugin scripts`, the host, and the install commands, run nothing and write nothing:
 `copilot plugin marketplace add <repository>` then
 `copilot plugin install goal@fabien-claude-marketplace` under Copilot,
+`codex plugin marketplace add <repository>` then
+`codex plugin add goal@fabien-claude-marketplace` under Codex,
 `/plugin install goal@fabien-claude-marketplace` under Claude Code.
 
 Then read `<root>/shared/host.md`.
@@ -40,6 +44,23 @@ implementer's real work for nothing, or ships a plan quietly rewritten to stop r
 
 **This is a hypothesis, not a proven procedure.** The classification rule below was written from
 two cases. Read the report at the end as evidence for or against it, not as a verdict on this run.
+
+## Under Codex
+
+Claude stays the implementer: `goal-run.ts` runs `claude` as under any host, and the host never sets or unsets `GOAL_RUN_PROVIDER` or `GOAL_RUN_IMPLEMENTER`.
+The background shell is `exec_command`, read with `write_stdin`. There is no agent tool.
+
+Before Phase 1 launches anything, run a one-line network probe and a write probe into `$HOME/.claude`.
+When either fails, print `codex -s workspace-write -c sandbox_workspace_write.network_access=true --add-dir "$HOME/.claude"`
+and launch nothing.
+
+Phase 7 runs `claude -p --agent goal:goal-session-auditor` from the shell, passing the plan's path and `$(pwd)`.
+A failed audit is reported with its error instead of an audit, and folds no `### Session audit`.
+
+The supervising row is read from the rollout: sum `token_usage_record.payload.usage` once per `response_id` over the run's window
+(input = `input_tokens` minus `cached_input_tokens`, cache read = `cached_input_tokens`, cache write = `cache_write_input_tokens`,
+output = `output_tokens`), take `model_context_window` from the `event_msg` `token_count` as the window, and show cost `—`.
+`Total` names which rows its sums cover.
 
 ## Project artifact root
 
