@@ -210,7 +210,7 @@ gate2=printf '%b\n' '.PHONY: all types lint' 'all: types lint' 'types:\n\tnode n
 ```
 
 ### Iteration 3 — supervise watches a run from Copilot
-- [ ] Not done yet
+- [x] Not done yet
 - **Goal:** /goal:supervise runs hosted in Copilot CLI: it launches and watches the run with the developer's provider settings, audits it through the session-auditor agent, and attributes Copilot sessions by what they record
 - **Shippable after it:** priority 1 closes: a goal goes from backlog to merged PR from Copilot sessions alone (`GOAL_RUN_PROVIDER=copilot`).
 - **Files to touch:** `plugins/goal/skills/supervise/SKILL.md`, `plugins/goal/.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json` (+ `plugins/goal/tests/supervise-host.test.ts` (test))

@@ -6,10 +6,12 @@ disable-model-invocation: true
 
 ## Outside Claude Code
 
-This skill is Claude Code only, not portable prose: it launches `node goal-run.ts`, which
-spawns `claude -p` and plugin agents (`goal:goal-session-auditor`) to drive the run. Outside
-Claude Code there is no `claude -p` to spawn and no agent to invoke. State that reason and
-STOP before Phase 0 runs.
+This skill needs a background shell and an agent tool. Claude Code: background `Bash`, `Agent`.
+Copilot CLI: async `bash` read with `read_bash`, `task` with `goal:goal-session-auditor`. A host with neither a shell nor an agent tool cannot launch or audit a
+run: state that reason and STOP before Phase 0 runs.
+
+The host never sets or unsets `GOAL_RUN_PROVIDER` or `GOAL_RUN_IMPLEMENTER`: `goal-run.ts` is
+launched with the developer's provider settings untouched.
 
 ## Host
 
@@ -279,7 +281,7 @@ failed; a row that landed carries no exit code at all. `Total` sums the displaye
 re-scan of every `duration_ms` in the file — a step this table does not show never enters the
 total.
 
-**Attribution**, one row per Claude-session stage — `implementer` per iteration, `lens`,
+**Attribution**, one row per session stage — `implementer` per iteration, `lens`,
 `reviewer`, `auditor` — read off that stage's own `RUN tokens stage=<name> input_tokens=<n>
 output_tokens=<n> cache_creation_input_tokens=<n> cache_read_input_tokens=<n>` line, right after
 its `stage=` line:
@@ -308,6 +310,14 @@ transcript. The rates themselves never appear under the table — the column alr
 applied, and the window-and-compactions line is the attribution table's only note. The
 `Runner subtotal` row sums the `implementer` rows above it — what driving the
 plan itself cost — and is not summed again into `Total`, which sums every other displayed row.
+
+**A Copilot row** (a role or the supervising session that ran under Copilot) shows its duration,
+its model and what the Copilot session records. Its Cost cell holds the premium-request count or `—`,
+never a Claude-priced figure. `Total` names which rows its sums cover (token sum, cost sum).
+
+**A Copilot supervising session** is read from `~/.copilot/session-state/<id>/events.jsonl`
+instead: sum `session.usage_record` events by token class, read `cost` as premium requests and
+`maxPromptTokens` as the effective window.
 
 **The supervising session counts itself.** Everything above measures what `goal-run.ts` spawned;
 it never measures the session reading this skill and watching it. After the run ends, locate
