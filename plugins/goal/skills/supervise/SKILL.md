@@ -15,19 +15,18 @@ launched with the developer's provider settings untouched.
 
 ## Host
 
-Claude Code substitutes `${CLAUDE_PLUGIN_ROOT}` and `$ARGUMENTS`. A host that leaves them literal
-(Copilot CLI) reads the root as two levels above `Base directory for this skill:`, and the argument
-as the text typed after the command (empty when none). Use that root wherever a command below
-says `${CLAUDE_PLUGIN_ROOT}`.
+`<root>` is Claude Code's substituted `${CLAUDE_PLUGIN_ROOT}`. A host that leaves it literal
+(Copilot CLI) reads `<root>` as two levels above `Base directory for this skill:`.
+`$ARGUMENTS` left literal is the text typed after the command (empty when none).
+Use `<root>` wherever a command below says `${CLAUDE_PLUGIN_ROOT}`.
 
-The first output line is `goal <skill> · <host> · v<version from <root>/.claude-plugin/plugin.json>`.
-
-When `<root>/src/artifacts.ts` is missing, print `cannot locate the goal plugin scripts`, the host,
-and the install commands, run nothing and write nothing: `copilot plugin marketplace add <repository>`
-then `copilot plugin install goal@fabien-claude-marketplace` under Copilot,
+When `<root>/src/artifacts.ts` or a shared file this skill names is missing, print
+`cannot locate the goal plugin scripts`, the host, and the install commands, run nothing and write nothing:
+`copilot plugin marketplace add <repository>` then
+`copilot plugin install goal@fabien-claude-marketplace` under Copilot,
 `/plugin install goal@fabien-claude-marketplace` under Claude Code.
 
-A skill with no one to answer its question (non-interactive session) stops at that question.
+Then read `<root>/shared/host.md`.
 
 # /goal:supervise — Watch a run, classify a halt, repair or relaunch once
 
@@ -51,39 +50,17 @@ project="$(git rev-parse --show-toplevel)"
 node "${CLAUDE_PLUGIN_ROOT}/src/artifacts.ts" "$project"
 ```
 
-Use the returned absolute `root`, `plans` and `runs` as `<artifact-root>`, `<plans>`
-and `<runs>` in every destination and handoff. Stop on resolver errors. The priority
-is process/container `GOAL_ROOT_PATH`, project-root `.env.local`, project-root `.env`,
-then `.goal/` only on absence. Relative values resolve from the Git project root;
-absolute values and spaces remain intact. Never read unrelated environment values.
+Then read `<root>/shared/artifact-root.md`.
 
 Use the effective value without asking for a location. If no value is supplied,
 use the returned default; location selection belongs to `/goal:spec`.
-
-Discover identifiers only in `<plans>`. On a miss, ask for the full path and wait;
-never search an old provider directory or fetch a substitute source. Explicit paths
-select exactly that file; missing or unreadable files fail clearly. Existing selected
-plans stay in place and are updated there. New associated documents go in `<plans>`
-and include `Source plan: <absolute selected plan path>`. Preserve every command and
-path embedded in locked plans; never migrate artifacts or rewrite historical documents.
-Old history requires `--runs-path <absolute work-id history directory>`.
-
-Git ignore rules determine planning-document versioning. Tracked, ignored and external
-plans are supported; a tracked plan must be clean at launch and the gate owns its ticks.
-Before launching, prepare exact exclusions in project `.gitignore` for the resolved
-in-repository `<runs>/`.
-Do not ignore the whole artifact root or require plans to be ignored. External paths
-need no repository exclusion. Write project-relative, root-anchored ignore entries,
-escaping Git pattern characters so the exclusions name only those exact paths.
-Never write `.git/info/exclude`.
 
 ## Phase 0 — Resolve the plan
 
 Argument: `$ARGUMENTS`
 
 - A full path ending in `.md` → that is the plan; fail clearly if missing or unreadable.
-- An identifier → look only for `<plans>/<work-id>-spec.md`; on a miss ask for
-  the full path and wait. Never substitute a plan from another directory.
+- An identifier → resolve it as `<root>/shared/plan-argument.md` words it.
 - Empty → the `<plans>/*-spec.md` most recently modified, excluding
   `*-cleanup-spec.md`. Several equally plausible candidates → list them
   and ASK. None → ask for the full path and wait.
