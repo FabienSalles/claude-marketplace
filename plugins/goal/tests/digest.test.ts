@@ -109,7 +109,7 @@ test('digest renders a Copilot events.jsonl in the same line form, anchored on t
 
 const codexCall = (callId: string, name: string, args: Record<string, string>) =>
   JSON.stringify({ type: 'response_item', payload: { type: 'function_call', name, arguments: JSON.stringify(args), call_id: callId } });
-const codexOutput = (callId: string) => JSON.stringify({ type: 'response_item', payload: { type: 'function_call_output', call_id: callId, output: 'Exit code: 0\nOutput: x' } });
+const codexOutput = (callId: string) => JSON.stringify({ type: 'response_item', payload: { type: 'function_call_output', call_id: callId, output: JSON.stringify({ chunk_id: 'c', exit_code: 0, output: 'x' }) } });
 
 test('digest renders a Codex rollout function_call items, anchored on the call line', () => {
   const path = fixture([
@@ -150,7 +150,7 @@ test('digest marks Codex commands unknown when output is missing, short of chunk
     codexCall('f1', 'exec_command', { cmd: 'e' }),
     JSON.stringify({ type: 'response_item', payload: { type: 'function_call_output', call_id: 'f1', output: 'no code here' } }),
     codexCall('f2', 'exec_command', { cmd: 'f' }),
-    JSON.stringify({ type: 'response_item', payload: { type: 'function_call_output', call_id: 'f2', output: 'Exit code: 2' } }),
+    JSON.stringify({ type: 'response_item', payload: { type: 'function_call_output', call_id: 'f2', output: JSON.stringify({ chunk_id: 'c', exit_code: 2 }) } }),
   ]);
 
   assert.deepEqual(digest(path), [
@@ -203,4 +203,42 @@ test('digest keeps outcomes when counts match and no chunk yielded', () => {
   const path = fixture([codexExec('v1', ['a', 'b', 'c']), execOutput('v1', [chunk(1), chunk(0), chunk(0)])]);
 
   assert.deepEqual(digest(path), ['1: exec_command a -> failed', '1: exec_command b -> ok', '1: exec_command c -> ok']);
+});
+
+test('digest voids the pairing when a chunk is unreadable', () => {
+  const garbled = { type: 'input_text', text: '{"chunk_id": oops' };
+  const path = fixture([codexExec('g1', ['false', 'true']), execOutput('g1', [garbled, chunk(1), chunk(0)])]);
+
+  assert.deepEqual(digest(path), ['1: exec_command false -> unknown', '1: exec_command true -> unknown']);
+});
+
+test('digest reads an undecodable cmd as unread and keeps the readable call', () => {
+  const path = fixture([
+    execInput('u1', 'await tools.exec_command({cmd: "echo \\x41"});\nawait tools.exec_command({cmd: "ls"});'),
+    execOutput('u1', [chunk(0), chunk(0)]),
+  ]);
+
+  assert.deepEqual(digest(path), ['1: exec_command (unread) -> unknown', '1: exec_command ls -> unknown']);
+});
+
+test('digest takes a function_call outcome from the parsed chunk only', () => {
+  const path = fixture([
+    codexCall('p1', 'exec_command', { cmd: 'echo' }),
+    JSON.stringify({ type: 'response_item', payload: { type: 'function_call_output', call_id: 'p1', output: 'printed: Exit code: 0' } }),
+    codexCall('w1', 'wait', {}),
+    JSON.stringify({ type: 'response_item', payload: { type: 'function_call_output', call_id: 'w1', output: [chunk(1)] } }),
+  ]);
+
+  assert.deepEqual(digest(path), ['1: exec_command echo -> unknown', '3: wait -> failed']);
+});
+
+test('digest finishes on a rollout mixing garbled chunk, undecodable cmd and malformed arguments', () => {
+  const path = fixture([
+    codexExec('r1', ['a']),
+    execOutput('r1', [{ type: 'input_text', text: 'chunk_id {' }]),
+    execInput('r2', 'tools.exec_command({cmd: "\\q"})'),
+    JSON.stringify({ type: 'response_item', payload: { type: 'function_call', name: 'exec_command', arguments: '{nope', call_id: 'r3' } }),
+  ]);
+
+  assert.deepEqual(digest(path), ['1: exec_command a -> unknown', '3: exec_command (unread) -> unknown', '4: exec_command -> pending']);
 });

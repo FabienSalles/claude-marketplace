@@ -120,7 +120,7 @@ Also true, and not expressible as a command of its own:
 ## Functional iterations
 
 ### Iteration 1 — The digest finishes on any Codex rollout and never reports an outcome it cannot prove
-- [ ] Not done yet
+- [x] Not done yet
 - **Goal:** Whatever a Codex rollout contains, the session digest finishes, and every Codex outcome it reports is a tool-emitted exit code belonging to its own command, otherwise unknown.
 - **Shippable after it:** the session audit of a Codex-hosted run neither crashes on an odd command line nor reports a borrowed or printed outcome.
 - **Files to touch:** `plugins/goal/src/digest.ts`, `plugins/goal/.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json` (+ `plugins/goal/tests/digest.test.ts`, `plugins/goal/tests/supervise-host.test.ts` (test))
