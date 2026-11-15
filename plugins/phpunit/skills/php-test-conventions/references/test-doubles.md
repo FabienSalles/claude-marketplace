@@ -104,6 +104,13 @@ private function stubRepository(): void
 }
 ```
 
+**Exception — a stub that dispatches on its argument.** When the same method is stubbed several times with different literal arguments to return different values, the argument selects the data, it verifies nothing. Keep the literals:
+
+```php
+$exchangeRates->rate('USD')->willReturn(1.1);
+$exchangeRates->rate('GBP')->willReturn(0.9);
+```
+
 **Full example**:
 
 ```php
