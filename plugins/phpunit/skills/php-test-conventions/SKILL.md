@@ -25,6 +25,54 @@ public function itThrowsMissingBuyerBirthDateWhenBirthDateIsMissing(): void
 
 Pattern: `itThrows{ExceptionClassName}When{Condition}`
 
+### No try-catch in a Test Body
+
+Declare the exception with `expectException*()`, never catch it: a `try`/`catch` test stays
+green when nothing is thrown, because the assertions in the `catch` never run. When the
+exception carries data the `expectException*()` methods cannot reach (a list of violations),
+end the `try` block with `self::fail()` so a missing exception fails the test. `try`/`finally`
+without `catch` stays allowed for cleanup.
+
+```php
+// ❌ Green when parse() stops throwing
+try {
+    $parser->parse('ten');
+} catch (InvalidAmount $exception) {
+    self::assertSame('ten', $exception->input);
+}
+
+// ✅ The expectation fails the test when nothing is thrown
+$this->expectExceptionObject(new InvalidAmount('ten'));
+
+$parser->parse('ten');
+
+// ✅ Data out of reach of expectException*(): fail() closes the try
+try {
+    $validator->validate($order);
+    self::fail('Expected InvalidOrder');
+} catch (InvalidOrder $exception) {
+    self::assertSame(['amount', 'currency'], $exception->fields());
+}
+```
+
+### The Act Is the Last Line After expectException
+
+The statement right after the last `expectException*()` is the act; it throws, and PHPUnit ends
+the test there. Anything after it is dead code that reads as a check. A second behaviour gets
+its own test.
+
+```php
+// ❌ The assertion after the throwing act never runs
+$this->expectException(AccountAlreadyClosed::class);
+$account->close();
+self::assertSame('CLOSED', $account->status());
+
+// ✅ The act is the last statement
+$this->expectException(AccountAlreadyClosed::class);
+
+$account->close();
+```
+
 ## PHP-specific: Test Method Naming
 
 Check the project's convention:
@@ -34,6 +82,43 @@ Check the project's convention:
 public function buyerWith100PercentProfileIsEligible(): void   // @test annotation
 
 public function testBuyerWith100PercentProfileIsEligible(): void // test prefix
+```
+
+### Test Class Suffix
+
+Every concrete `TestCase` subclass ends with `Test` (or the suffix the project configures):
+PHPUnit collects the files ending with `Test.php`, so `CartChecks` never runs. Abstract base
+classes (`OrderTestCase`) are exempt.
+
+```php
+// ❌ Skipped by the suite without a word
+final class CartChecks extends TestCase
+
+// ✅
+final class CartTest extends TestCase
+```
+
+### Every Assertion Method Is Discoverable
+
+A method holding assertions either is a test (`test` prefix, `#[Test]`, or `@test` before
+PHPUnit 12) or is reached by one: called from a test, a hook such as `setUp()`, or named as a
+data provider. Renaming `testSumsThePrices()` to `sumsThePrices()` without `#[Test]`, or
+moving to PHPUnit 12, which no longer reads `@test`, silently disables the test. An
+assertion helper called by a test is fine.
+
+```php
+// ❌ Looks like a test, never runs
+public function sumsThePrices(): void
+{
+    self::assertSame(30, (new Cart([10, 20]))->total());
+}
+
+// ✅ Marked, or a helper that a test calls
+#[Test]
+public function sumsThePrices(): void
+{
+    $this->assertTotal(30, new Cart([10, 20]));
+}
 ```
 
 ## PHP-specific: Spy Pattern (Prophecy)
@@ -139,6 +224,33 @@ private function createBuyerWithProfile(int $percentage): Buyer
 }
 ```
 
+## PHP-specific: No TestCase Constructor
+
+Never declare `__construct()` in a `TestCase`. PHPUnit instantiates the class once per test
+and data set, at collection time, outside `setUp()`/`tearDown()`; whatever the constructor
+builds is a hidden fixture shared by every test. PHPUnit 12 makes the constructor final; on
+PHPUnit 11 the override is silently accepted. Build the scenario in each test's Arrange, the
+environment in `setUp()`.
+
+```php
+// ❌ Runs at collection time, shared by every test
+public function __construct(string $name)
+{
+    parent::__construct($name);
+    $this->cart = new Cart();
+}
+
+// ✅ Built where the test reads it
+public function testAddsAPrice(): void
+{
+    $cart = new Cart();
+
+    $cart->add(10);
+
+    self::assertSame(10, $cart->total());
+}
+```
+
 ## PHP-specific: Assertion Patterns
 
 Use `assertEquals` with a complete expected object rather than multiple property assertions. For advanced patterns (computed properties, guard assertions), see [references/assertion-patterns.md](references/assertion-patterns.md).
@@ -160,3 +272,6 @@ When a test checks what an API client deserializes, use a **real serializer**, b
 | Anything needing a Symfony kernel | `symfony:symfony-test-conventions` — `WebTestCase` / `KernelTestCase` / `TypeTestCase`, crawler, container doubles |
 | Advanced assertions | See [references/assertion-patterns.md](references/assertion-patterns.md) |
 | Exception test naming | `itThrows{ExceptionClassName}When{Condition}` |
+| Exception test body | `expectException*()` then the act as the last line; no `try`/`catch` unless the `try` ends with `self::fail()` |
+| Test discovery | Class ends with `Test`; every method with assertions is a test or reached by one |
+| TestCase constructor | Never; scenario in the Arrange, environment in `setUp()` |

@@ -62,6 +62,23 @@ edit moves is printed by a command, or dated where it is written; it is never pi
 re-checked by a test. During TDD the same defect shows up as the "Tests That Don't Survive
 Refactor" warning sign of `craft:tdd-workflow-principles`.
 
+### Logging and Monitoring
+
+Don't verify log or monitoring calls. A log is a side channel: rewording a message or changing its level breaks the test while no user sees a difference, and the log check sits next to the real outcome as a second intention.
+
+**Exception:** the log is a business requirement, an audit trace or a monitored metric (a compliance record, an alert someone pages on). Then verifying it is the point of the test.
+
+```
+// ❌ The log line rides along with the real outcome
+processOrder(order)
+assertEquals('CONFIRMED', order.status)
+expect(logger.info).toHaveBeenCalledWith('Order processed')
+
+// ✅ Assert the behaviour; the logger is a null object
+processOrder(order, nullLogger)
+assertEquals('CONFIRMED', order.status)
+```
+
 ## 3. Pre-Test Checklist
 
 Before writing a new test, confront it to these **3 questions**. If you can't answer "yes" to all three, do not write the test.
@@ -78,9 +95,36 @@ Prefer **Descriptive And Meaningful Phrases** over **Don't Repeat Yourself** in 
 - Read each test top-to-bottom and understand it without scrolling.
 - Tests are read more often than refactored — clarity > terseness.
 
+### No Dependency Between Tests
+
+Each test builds its own world, acts and asserts, and runs alone, in any order. Never make a test consume what another test produced (PHPUnit `@depends` / `#[Depends]`, a shared variable filled by a previous test). A dependent test cannot run on its own or in parallel, and when the first one fails the others are skipped, so their behaviours go unchecked.
+
+```
+// ❌ The second test asserts on what the first one did
+test pushesAnItem():          stack.push(1); assertEquals(1, stack.size()); return stack
+test popsAnItem(stack) depends on pushesAnItem: assertEquals(1, stack.pop())
+
+// ✅ Each test arranges its own stack, through a shared factory if needed
+test popsAnItem():            stack = stackWith(1); assertEquals(1, stack.pop())
+```
+
 ## 5. AAA / GWT Pattern
 
 **Arrange — Act — Assert** (or **Given — When — Then**), separated by **blank lines, no comments**.
+
+### No Control Flow in a Test Body
+
+A test reads top to bottom and runs the same path every time: no `if`, `for`, `foreach`, `while` or `switch` in its body. When the condition is false, the assertions under it silently do not run; a loop over an empty list asserts nothing, and a failure says "at iteration 3" instead of naming the case. One case per test, or one data-provider row per case (§7). A loop that only walks a structure belongs in a helper outside the test body.
+
+```
+// ❌ Assertions hidden behind a loop and a branch
+for (case in cases):
+    if (case.valid): assertTrue(validate(case.input))
+
+// ✅ One row per case, the body is a straight line
+@dataProvider validInputs
+test acceptsAValidInput(input): assertTrue(validate(input))
+```
 
 ## 6. Spy Over Mock (verify AFTER act)
 
@@ -95,6 +139,21 @@ Mocks set expectations **before** the act (violates AAA). Spies verify **after**
 *mock functions* by their own documentation, and Prophecy hands back what it calls a mock — but a
 bare double carries no expectation until you arm it with one. Created in Arrange and asserted after
 the act, it is a **spy**, whatever the library named it.
+
+### One Verified Double per Test
+
+Verify at most one double per test. Each verified double is an intention about an outgoing interaction; two of them make a test whose name cannot say which one broke, and every extra interaction check is another way to break when the implementation changes without the behaviour changing. The other collaborators are stubs or null objects. Stubs do not count.
+
+```
+// ❌ One test, two intentions
+confirmOrder(order)
+expect(mailer.send).toHaveBeenCalled()
+expect(audit.record).toHaveBeenCalled()
+
+// ✅ One verified double each
+test emailsTheCustomer():       confirmOrder(order); expect(mailer.send).toHaveBeenCalled()
+test recordsTheConfirmation():  confirmOrder(order); expect(audit.record).toHaveBeenCalled()
+```
 
 ## 7. Parameterized Tests (data provider / it.each)
 
@@ -200,6 +259,19 @@ exists only for tests** — a concrete subclass of a production abstraction, a f
 a test-only implementation used as the SUT. The fixture for an abstract class's behavior is
 the **real concrete class** that carries the business rule. (Doubles for *collaborators* —
 §10/§11 — remain legitimate; this rule is about the thing under test.)
+
+### No Reflection on the Code Under Test
+
+Drive the code through its public interface. Never reach private methods or properties through reflection or closure binding: the test then breaks when a private step is renamed, merged or inlined, although every caller sees the same behaviour, and it pins a choice the class is free to change. A private step that seems to need its own test wants to be a public method of a smaller class. Reading metadata (a class name, attributes) is fine.
+
+```
+// ❌ Invokes a private step by name
+hashed = reflect(password).method('hashed').invoke('secret')
+assertEquals(sha256('secret'), hashed)
+
+// ✅ Asserts the public contract
+assertTrue(Password.fromPlain('secret').matches('secret'))
+```
 
 ## 13. Interface Tests — Couple to Perceivable Function, Not Wiring
 
@@ -321,6 +393,37 @@ If code was already modified before a net existed, the net is recorded against t
 - Each part is retired once the change is done and that behaviour has an owning test at its proper level.
 - A part with no other owner stays, and becomes that behaviour's owner.
 
+## 17. Repeatable Inputs
+
+A test gives the same result on every run. Inputs that move on their own (the clock, a random generator) make it flaky and force loose or computed assertions.
+
+### Freeze the Clock
+
+Never read the system clock in a test: no "now", no relative date (`'tomorrow'`, `'+29 days'`), in the test, its helpers or its data providers. Inject a clock into the code and give it a fixed instant in the test; an absolute date literal is fine. A test built on "now" fails at midnight, on the 31st or on a daylight saving change, and the value it asserts has to be computed from "now" too.
+
+```
+// ❌ Depends on today
+subscription = Subscription.start(now())
+assertEquals(now() + 30 days, subscription.renewsAt())
+
+// ✅ A fixed instant in, a literal out
+subscription = Subscription.start(fixedClock('2026-11-01 09:00'))
+assertEquals('2026-12-01 09:00', subscription.renewsAt())
+```
+
+### No Randomness
+
+No random values in a test: no random number, shuffled list, random UUID or unseeded fake-data generator. A random input explores a different case on each run, the rare failure cannot be reproduced, and the assertion becomes loose. Use literals. When generated data helps (many fields nobody cares about), **seed** the generator so the data is the same every time. Property-based testing is a different, deliberate technique with a tool that records and shrinks the failing case.
+
+```
+// ❌ A different order on every run
+order = Order.create(id: uuid4(), amount: randomInt(1, 1000))
+
+// ✅ Literal inputs, or a seeded generator
+order = Order.create(id: 'b7f1c2e0-0000-4000-8000-000000000001', amount: 250)
+faker.seed(1234)
+```
+
 ## Quick Reference
 
 | Rule | Principle |
@@ -350,4 +453,10 @@ If code was already modified before a net existed, the net is recorded against t
 | Change detector | A test re-stating counts, line numbers, copied lists or checksums breaks on every edit and catches nothing — rewrite it against behaviour, or delete it |
 | Test-only classes | No production-shaped class living only for tests — the fixture is the real concrete class |
 | Characterization net | Before changing unpinned behaviour: freeze inputs, pin today's output (bugs included), prove it can fail, land it first; a temporary, marked exception to one owner per rule (§16) |
+| Logging | Don't verify logs or monitoring calls, unless the log is a business requirement, an audit trace or a monitored metric |
+| Independent tests | No test consumes what another produced; each runs alone, in any order |
+| No control flow | No `if`/loop/`switch` in a test body: one case per test or per data-provider row |
+| One verified double | At most one verified double per test; the other collaborators are stubs or null objects |
+| No reflection | Drive the code through its public interface, never reflection on private members |
+| Repeatable inputs | Fixed clock, literal or seeded data: never "now", never unseeded randomness |
 | Vocabulary | Identifiers reuse the codebase's exact terms — no synonyms ("client" for `Subscriber`), no reserved-term collisions ("offered" vs `Offer`) |
