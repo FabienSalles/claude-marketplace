@@ -55,8 +55,9 @@ Prefer an existing real / null implementation when it reads cleaner (an unverifi
 **Prophecy is the rule, not a statistic.** A double that needs scripting or verification is
 `prophesize()` — not `createMock()` + `willReturnCallback()`. Never arbitrate by counting
 existing usages in the repo ("15 files use createMock"): a convention is a rule, not a
-majority vote. `createMock` survives only where Prophecy technically cannot (final class
-without an interface).
+majority vote. When Prophecy is not installed, or cannot double the class (final class
+without an interface), a hand-written double comes first; `createMock()` +
+`willReturnCallback()` is the last resort, never an error to report by itself.
 
 > For the full hierarchy and examples, see [references/test-doubles.md](references/test-doubles.md).
 
@@ -144,7 +145,7 @@ Use `assertEquals` with a complete expected object rather than multiple property
 
 ## PHP-specific: HTTP Client Testing
 
-When testing API clients, always use a **real serializer** to catch deserialization issues. For detailed patterns and SerializerRegistry setup, see [references/http-testing.md](references/http-testing.md).
+When a test checks what an API client deserializes, use a **real serializer**, built in the test or fetched from the container, to catch deserialization issues. Mock it only when serialization is tested elsewhere, and never expect what the stub returns. For detailed patterns and SerializerRegistry setup, see [references/http-testing.md](references/http-testing.md).
 
 ## Quick Reference (PHP-specific)
 
@@ -154,7 +155,7 @@ When testing API clients, always use a **real serializer** to catch deserializat
 | Complex dependencies | Prophecy — see [references/test-doubles.md](references/test-doubles.md) |
 | HTTP client testing | Guzzle MockHandler — see [references/http-testing.md](references/http-testing.md) |
 | Verify method called (Prophecy) | `$dep->method($args)->shouldHaveBeenCalled()` |
-| Double needing scripting/verification | Prophecy (`prophesize`) — never `createMock`; never arbitrate by usage counts |
+| Double needing scripting/verification | Prophecy (`prophesize`); without Prophecy, a hand-written double first, `createMock` + callback last resort; never arbitrate by usage counts |
 | Provider over a contract enum | Derive datasets from `::cases()` with a named exclusion; `assertSame` on enum lists |
 | Anything needing a Symfony kernel | `symfony:symfony-test-conventions` — `WebTestCase` / `KernelTestCase` / `TypeTestCase`, crawler, container doubles |
 | Advanced assertions | See [references/assertion-patterns.md](references/assertion-patterns.md) |

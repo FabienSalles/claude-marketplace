@@ -57,6 +57,9 @@ Always pass a **readable failure message** built from the actual error messages,
 a `formatErrors()` helper — otherwise a failure prints an opaque
 `Failed asserting that 0 is identical to 1` with no clue what went wrong.
 
+Walking a nested error path takes a loop: keep it in a `fieldAt()` helper, since a test
+body holds no control flow (`if`, `for`, `foreach`, `while`).
+
 ```php
 /**
  * @test
@@ -68,11 +71,7 @@ public function formIsInvalid(array $options, array $submitted, array $errorPath
 
     $form->submit($submitted);
 
-    $field = $form;
-    foreach ($errorPath as $key) {
-        $field = $field->get($key);
-    }
-    $errors = $field->getErrors();
+    $errors = $this->fieldAt($form, $errorPath)->getErrors();
 
     self::assertCount(1, $errors, sprintf('Expected one validation error but got: %s', $this->formatErrors($errors)));
 }
@@ -90,6 +89,16 @@ public static function provideInvalidSubmissions(): \Generator
         'submitted' => [/* … account_ownership=professional, siret='' … */],
         'errorPath' => ['professional', 'siret'],    // nested sub-form field
     ];
+}
+
+/** @param list<string> $path */
+private function fieldAt(\Symfony\Component\Form\FormInterface $form, array $path): \Symfony\Component\Form\FormInterface
+{
+    foreach ($path as $key) {
+        $form = $form->get($key);
+    }
+
+    return $form;
 }
 
 /** @param iterable<\Symfony\Component\Form\FormError> $errors */

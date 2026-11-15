@@ -73,6 +73,8 @@ public function expectToCallApiToCreateOrder(): void
 }
 ```
 
+Mocking the serializer is fine here: deserialization is tested elsewhere and the test is about the API call. When the transformation is what the test checks, use a real serializer (see [http-testing.md](http-testing.md)). Never assert that the result equals what the serializer stub returns: that assertion passes by construction.
+
 ## Prophecy Best Practices: Permissive Arrange, Strict Assert
 
 When testing with Prophecy, **stay permissive in arrange** (stubs) and **strict in assert** (spies).
@@ -102,6 +104,13 @@ private function stubRepository(): void
     $repository->get(Argument::any())->willReturn($data);        // single param → any()
     $repository->save(Argument::cetera())->willReturn($response); // multiple params → cetera()
 }
+```
+
+**Exception — a stub that dispatches on its argument.** When the same method is stubbed several times with different literal arguments to return different values, the argument selects the data, it verifies nothing. Keep the literals:
+
+```php
+$exchangeRates->rate('USD')->willReturn(1.1);
+$exchangeRates->rate('GBP')->willReturn(0.9);
 ```
 
 **Full example**:

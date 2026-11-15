@@ -1,6 +1,8 @@
 # Testing API/HTTP Client Returns
 
-**CRITICAL**: When testing code that deserializes API responses, always use a **real serializer** to catch deserialization issues.
+**CRITICAL**: When the deserialized result is what the test checks, use a **real serializer** to catch deserialization issues: built in the test (see [SerializerRegistry Pattern](#serializerregistry-pattern)) or fetched from the container (`self::getContainer()->get(SerializerInterface::class)`, which gives the production configuration). Both are accepted.
+
+Mocking the serializer is fine when serialization is tested elsewhere and the transformation is not the object of the test. Then never assert that the result equals what the stub returns: that assertion passes by construction.
 
 ## Test Naming for HTTP Clients
 
