@@ -37,6 +37,7 @@ Never write tests coupled to implementation without behavior. Only test classes 
 | Calculations / transformations | Value objects without logic |
 | State machines / workflows | Entities with only getters/setters |
 | Serialization / deserialization | Tests re-verifying what a higher-level test already covers |
+| Logs required by the business, audit traces, monitored metrics | Other log / monitoring calls |
 
 **Rule:** if the test only verifies that a getter returns what was passed to the constructor, delete it.
 
