@@ -19,6 +19,23 @@ $logger = $this->prophesize(LoggerInterface::class)->reveal();
 $logger = new NullLogger();
 ```
 
+### No Unused Double
+
+Every double a test creates is used: passed to the code under test, called, or captured. A
+double nothing reads makes the reader look for a role it does not have, and often means it
+was meant to reach the code under test and was forgotten, so the test checks something else
+than intended.
+
+```php
+// ❌ $clock is created and never passed
+$clock = $this->prophesize(ClockInterface::class);
+$sut = new InvoiceNumberer($this->prophesize(InvoiceRepository::class)->reveal());
+
+// ✅ Only the doubles the scenario needs, all wired
+$invoices = $this->prophesize(InvoiceRepository::class);
+$sut = new InvoiceNumberer($invoices->reveal());
+```
+
 ## 1. Manual Stubs (Preferred)
 
 Use manual stubs when the class is simple:
