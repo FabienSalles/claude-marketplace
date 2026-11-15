@@ -145,7 +145,7 @@ Use `assertEquals` with a complete expected object rather than multiple property
 
 ## PHP-specific: HTTP Client Testing
 
-When testing API clients, always use a **real serializer** to catch deserialization issues. For detailed patterns and SerializerRegistry setup, see [references/http-testing.md](references/http-testing.md).
+When a test checks what an API client deserializes, use a **real serializer**, built in the test or fetched from the container, to catch deserialization issues. Mock it only when serialization is tested elsewhere, and never expect what the stub returns. For detailed patterns and SerializerRegistry setup, see [references/http-testing.md](references/http-testing.md).
 
 ## Quick Reference (PHP-specific)
 
