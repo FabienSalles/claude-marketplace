@@ -74,7 +74,7 @@ Before writing a new test, confront it to these **3 questions**. If you can't an
 
 Prefer **Descriptive And Meaningful Phrases** over **Don't Repeat Yourself** in tests.
 
-- Avoid `setUp()` / `beforeEach()` for anything non-trivial. Keep the full Arrange-Act-Assert in each test.
+- `setUp()` / `beforeEach()` prepares the environment (kernel, container, clock). Avoid it for fixtures and test doubles: they belong in each test's Arrange. Keep the full Arrange-Act-Assert in each test.
 - Read each test top-to-bottom and understand it without scrolling.
 - Tests are read more often than refactored — clarity > terseness.
 
@@ -330,7 +330,7 @@ If code was already modified before a net existed, the net is recorded against t
 | Tautological assertion | Expected value comes from an independent source, never recomputed like the code |
 | Name over-promises | A test named for a rule but only echoing its input back proves nothing — assert what the code exposes/withholds as a function of inputs & context |
 | Pre-test checklist | Valid state? Not covered already? Behavior, not impl? |
-| DAMP > DRY | Full AAA in each test, no `setUp`/`beforeEach` for non-trivial logic |
+| DAMP > DRY | Full AAA in each test; `setUp`/`beforeEach` for the environment (kernel, container, clock), avoided for fixtures and doubles |
 | AAA / GWT | Blank lines between Arrange/Act/Assert, no comments |
 | Spy > Mock | Verify after act, not before |
 | Parameterized tests | Same structure + different data → data provider / it.each |
