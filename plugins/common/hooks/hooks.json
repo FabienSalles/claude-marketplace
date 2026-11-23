@@ -22,7 +22,7 @@
           },
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/git-add-untracked.sh",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/git-add-untracked.sh\"",
             "timeout": 10
           }
         ]
