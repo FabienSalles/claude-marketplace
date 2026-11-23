@@ -1,5 +1,5 @@
 {
-  "description": "Shared hooks for development workflow: git tracking, skill reminders, command audit trail, CI reminders, test-file edit warnings, clock-bypass detection, git mv enforcement, and AI-coauthor commit blocking",
+  "description": "Shared hooks for development workflow: git tracking (Write and Bash-created files), skill reminders, command audit trail, CI reminders, test-file edit warnings, clock-bypass detection, git mv enforcement, and AI-coauthor commit blocking",
   "hooks": {
     "PostToolUse": [
       {
@@ -18,6 +18,11 @@
           {
             "type": "command",
             "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/audit-trail.sh\"",
+            "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/git-add-untracked.sh",
             "timeout": 10
           }
         ]
