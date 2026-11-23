@@ -3,12 +3,13 @@
 **Product delivery discipline**: how a functional spec becomes a sequence of thin
 slices, and how each slice reaches production without waiting for the others.
 
-Two skills, one decision split in half:
+Three skills:
 
 | Skill | Answers | Read it when |
 |---|---|---|
 | [`vertical-slice`](skills/vertical-slice/SKILL.md) | *What goes in each iteration?* | you are about to write a list of iterations |
 | [`delivery`](skills/delivery/SKILL.md) | *How does this iteration ship while the rest is unfinished?* | an iteration touches behaviour that already exists |
+| [`story-writing`](skills/story-writing/SKILL.md) | *How does it read, for the PO and for the developer?* | you write or rewrite a story, an epic or an analysis |
 
 They are deliberately separate and mutually referential: a slice you cannot ship is not a
 slice, and a delivery strategy with nothing to deliver is theatre.
@@ -53,6 +54,17 @@ Separating **deploy** from **release**, then the four moves that make it real:
 - **Adapt to the mode**: in an autonomous run the flag defaults to off and the agent
   never flips it, additive and removal never share a slice, and cleanup moves to a
   follow-up plan because its trigger depends on production evidence no agent can observe.
+
+## story-writing
+
+One document, two readers. A **business part** a PO reads in two minutes, in a fixed order
+(status, problem, expected outcome, functional solution as numbered rules, one acceptance
+criterion per rule, out of scope, dependencies), with no technical name in it. Below a
+separator, a **technical annex** that keeps every finding of the analysis (where it lives,
+who writes what and when, the evidence with its date) so nobody redoes the investigation.
+Works at coarse grain (epic, deferred subject) without splitting, and reuses the
+conjunction and acceptance-criteria rules of `vertical-slice` to keep rules and criteria
+one-to-one. Template: [`references/template.md`](skills/story-writing/references/template.md).
 
 ## Typical uses
 
