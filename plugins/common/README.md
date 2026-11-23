@@ -35,12 +35,13 @@ Shared hooks, agents, slash commands, and meta skills used across every project.
 |---|---|
 | [`ui-engineer`](agents/ui-engineer.md) | Frontend / UI specialist agent (component design, responsive layouts, code review for modern best practices) |
 
-## Hooks (9)
+## Hooks (10)
 
 | Hook | Event | Purpose |
 |---|---|---|
 | [`audit-trail.sh`](hooks/audit-trail.sh) | PostToolUse | Append every tool call to a local audit log |
 | [`git-add-empty.sh`](hooks/git-add-empty.sh) | PostToolUse | `git add -N` newly created files so diffs are visible |
+| [`git-add-untracked.sh`](hooks/git-add-untracked.sh) | PostToolUse | `git add -N` every untracked, non-ignored file after a Bash call, so files created by heredocs or scripts show in the diff too |
 | [`notify-sound.sh`](hooks/notify-sound.sh) | Notification / Stop | Play a sound on notifications and turn-end |
 | [`block-claude-coauthor.sh`](hooks/block-claude-coauthor.sh) | PreToolUse | Block any `git commit` whose message contains an AI-assistant `Co-Authored-By` trailer (Claude / ChatGPT / Copilot / …) |
 | [`remind-ci-before-commit.sh`](hooks/remind-ci-before-commit.sh) | PreToolUse | Reminder before `git commit`: run full quality pipeline first (coding style, static analysis, tests) |
