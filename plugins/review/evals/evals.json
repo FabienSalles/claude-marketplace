@@ -1,0 +1,73 @@
+{
+  "$comment": "One object per case; `skills` names what should load, `expected_behavior` lists what a passing run must do.",
+  "routing": [
+    {
+      "query": "Review PR #42 on this repo",
+      "skills": [
+        "review:conventional-review"
+      ],
+      "expected_behavior": [
+        "reads the change with gh pr diff 42 and gh pr view 42",
+        "reports only findings anchored on added or modified lines",
+        "tags every finding with a conventional comment label and a blocking or non-blocking decoration",
+        "posts nothing on the PR"
+      ]
+    },
+    {
+      "query": "Relis ce diff avant que je l'envoie, c'est un patch Mercurial",
+      "skills": [
+        "review:conventional-review"
+      ],
+      "expected_behavior": [
+        "reviews the pasted patch without asking for a git branch",
+        "writes the report in French and keeps the labels in English",
+        "lists what could not be verified"
+      ]
+    },
+    {
+      "query": "Write the review comments for points 1 and 3, I'll paste them in Bitbucket",
+      "skills": [
+        "review:conventional-review"
+      ],
+      "expected_behavior": [
+        "writes one comment per point, each in a four-backtick raw Markdown block",
+        "starts each comment with a subject line like issue (blocking, errors): ...",
+        "puts any code fix in a fenced block tagged with its language"
+      ]
+    },
+    {
+      "query": "Publie les commentaires 1, 2 et 4 sur la MR !318",
+      "skills": [
+        "review:conventional-review"
+      ],
+      "expected_behavior": [
+        "lists the three comments with their target and subject line before posting anything",
+        "waits for an explicit approval of that list",
+        "checks the MR head commit is still the one reviewed",
+        "creates them as draft notes, not published comments, and publishes only on a second go"
+      ]
+    },
+    {
+      "query": "Review high de la PR #57 sur le dépôt open source d'un client, c'est une MR externe",
+      "skills": [
+        "review:conventional-review"
+      ],
+      "expected_behavior": [
+        "runs at level high and states Level: high · Scope: external in the header",
+        "passes high explicitly to /code-review when it is available",
+        "does not load the user's craft or language convention skills",
+        "still cites the project's own CLAUDE.md or CONTRIBUTING rules on the conventions axis"
+      ]
+    },
+    {
+      "query": "Fais une review low de ma branche avant que je pousse",
+      "skills": [
+        "review:conventional-review"
+      ],
+      "expected_behavior": [
+        "reports blocking findings only",
+        "covers business fit, errors, security and tests of the changed behaviour"
+      ]
+    }
+  ]
+}

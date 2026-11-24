@@ -1,0 +1,9 @@
+{
+  "name": "review",
+  "version": "1.0.0",
+  "description": "Code review on any VCS and any language: diff-only findings, each written as a Conventional Comment whose decoration says whether it blocks, with a concrete fix. Reuses Claude Code's /code-review and installed convention skills when present, runs standalone on Codex and Copilot. Read-only until asked to post.",
+  "author": { "name": "FabienSalles" },
+  "repository": "https://github.com/FabienSalles/claude-marketplace",
+  "license": "MIT",
+  "keywords": ["code-review", "conventional-comments", "pull-request", "merge-request", "review"]
+}

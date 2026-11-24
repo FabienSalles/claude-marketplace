@@ -322,6 +322,16 @@
       "keywords": ["cv", "resume", "linkedin", "ats", "freelance", "france", "dossier-de-competences"]
     },
     {
+      "name": "review",
+      "source": "./plugins/review",
+      "description": "Code review on any VCS and any language: diff-only findings, each written as a Conventional Comment whose decoration says whether it blocks, with a concrete fix. Reuses Claude Code's /code-review and installed convention skills when present, runs standalone on Codex and Copilot. Read-only until asked to post.",
+      "version": "1.0.0",
+      "author": { "name": "FabienSalles" },
+      "category": "development",
+      "license": "MIT",
+      "keywords": ["code-review", "conventional-comments", "pull-request", "merge-request", "review"]
+    },
+    {
       "name": "skills",
       "source": "./plugins/skills",
       "description": "Certifies any skill directory against the agentskills spec (level 2), hard platform limits from VS Code Copilot and the Codex loader (level 3), and non-blocking authoring advisories (level 4) — sourced, precise, fail-closed verdicts. Ships the skill/agent/plugin authoring conventions themselves. Run with `node plugins/skills/scripts/certify.ts <skill-dir>`.",
