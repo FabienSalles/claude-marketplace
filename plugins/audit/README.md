@@ -29,6 +29,7 @@ Upstream can ship 100 updates, your overlay stays untouched. Run `claude plugin 
 |---|---|
 | `security-overrides` | ✓ shipped (cross-language overlay on netresearch/security-audit) |
 | `ts-security` | ✓ shipped (TS/NestJS code patterns) |
+| `verify-findings` | ✓ shipped (reproduce candidate findings on a running instance, kill false positives, score real criticality) |
 | `php-security` | _planned (PHP/Symfony code patterns, currently covered by netresearch)_ |
 | `dependency-audit` | _planned (overrides for SCA / npm audit / composer audit)_ |
 | `accessibility-audit` | _planned (a11y / WCAG overrides)_ |
