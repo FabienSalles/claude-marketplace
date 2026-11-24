@@ -14,7 +14,7 @@ The upstream marketplace ships 14 skills. Two are pulled here; the others are de
 | `brainstorming` | ❌ skipped | Generative divergent→convergent ideation is a deliberate non-goal here (this marketplace is critique/planning). No internal 1:1; the closest planning tools are `/spec-first-dev` + the grill family. (BMAD is an external, non-marketplace install.) |
 | `test-driven-development` | ❌ skipped | Would be a 4th TDD framework alongside `php-tdd-workflow`, `vitest-tdd-workflow`, `common:feature-tdd-dev` → Claude hesitates |
 | `subagent-driven-development` | ❌ skipped | Hands-off subagent orchestration is a deliberate non-goal (human-as-controller). Nearest internal workflow: `goal`. (`audit-trail.sh` is only a Bash-command logger, not an orchestrator.) |
-| `requesting-code-review` / `receiving-code-review` | ❌ skipped | `common:deep-review` covers the reviewer/producer axis, not these: `requesting-code-review` is requester-side (feed the plan so silent omissions / scope-creep are caught), `receiving-code-review` is triage/pushback + no performative agreement. Both are tracked gaps in `self-audit`, not yet ported. |
+| `requesting-code-review` / `receiving-code-review` | ❌ skipped | `review:conventional-review` covers the reviewer axis and its plan-alignment check catches silent omissions and scope creep, which was `requesting-code-review`'s point; `receiving-code-review` is triage/pushback + no performative agreement, a tracked gap in `self-audit`, not yet ported. |
 | `dispatching-parallel-agents` / `using-git-worktrees` / `finishing-a-development-branch` / `executing-plans` / `using-superpowers` / `writing-skills` | ❌ skipped | Out of scope (orthogonal workflows) |
 
 ## Upstream

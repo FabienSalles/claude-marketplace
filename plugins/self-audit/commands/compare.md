@@ -46,8 +46,8 @@ recommendation. Posture: **adversarial, anti home-team bias.** Do not rubber-sta
 concrete quoted detail or it is dropped.
 
 **How to run it, by tier:**
-- `quick` / `standard` — **Agent tool** fan-out: launch the subagents in parallel (like
-  `common:deep-review`). Model-driven orchestration, no ceremony.
+- `quick` / `standard` — **Agent tool** fan-out: launch the subagents in parallel.
+  Model-driven orchestration, no ceremony.
 - `deep` — **Workflow tool**: author and run a Workflow that replicates the two-pass
   `obra/superpowers` audit. A slash command whose instructions tell you to call Workflow is an
   explicitly-sanctioned opt-in, so calling it here is legitimate — do not hesitate. Shape:

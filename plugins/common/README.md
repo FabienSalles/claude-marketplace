@@ -18,13 +18,12 @@ Shared hooks, agents, slash commands, and meta skills used across every project.
 | [`expert-persona-skills`](skills/expert-persona-skills/SKILL.md) | Short persona prompts for non-code expert analysis (security audits, product, competitive, vendor evaluation, architecture review) |
 | [`product-research`](skills/product-research/SKILL.md) | 2-phase workflow (gather cheap, synthesize expensive) for market/competitive/technology research before BMAD product briefs |
 
-## Slash commands (4)
+## Slash commands (3)
 
 | Command | Purpose |
 |---|---|
 | [`/spec-first-dev`](commands/spec-first-dev.md) | 5-phase spec-driven feature workflow: lock a validated specification before any code (business intent, scope, command-line acceptance criteria), then implement with iterative checkpoints. Use when the requirement is fuzzy or the domain is unfamiliar. Can be chained into [`/goal:spec`](../goal/skills/spec/SKILL.md) to materialize the spec as a GitHub issue. |
 | [`/feature-tdd-dev`](commands/feature-tdd-dev.md) | Guided feature development with TDD workflow and architecture focus |
-| [`/deep-review`](commands/deep-review.md) | Adversarial 3-agent code review producing ~2 high-impact comments per PR |
 | [`/research`](commands/research.md) | Objective research separating investigation from implementation to avoid confirmation bias |
 
 > The autonomous issue→PR workflow (`/goal:plan`, `/goal:spec`, execution log Stop hook) has moved to its own [`goal`](../goal/) plugin. Install it alongside this one to use the chain `spec-first-dev → /goal:spec → /goal:plan → /goal → PR`.
