@@ -19,6 +19,52 @@ $logger = $this->prophesize(LoggerInterface::class)->reveal();
 $logger = new NullLogger();
 ```
 
+### Verified Logger: a Recording Logger, Not a Mock
+
+When the log is the behaviour under test (a rule says "traced", "logged", "warned"), pass a
+logger that records, act, then assert the whole record: level, message and context in one
+assertion. Never `prophesize(LoggerInterface::class)` + `shouldHaveBeenCalled()` for this, and
+never extend `AbstractLogger` by hand: a recording logger already ships with what the project
+installs. Pick the one the project already uses; otherwise, by what `composer.lock` holds:
+
+| Installed | Recording logger | Read the records |
+|---|---|---|
+| `psr/log` 1.x | `Psr\Log\Test\TestLogger` | `$logger->records`: list of `['level', 'message', 'context']` |
+| `symfony/error-handler` (any Symfony app) | `Symfony\Component\ErrorHandler\BufferingLogger` | `$logger->cleanLogs()`: list of `[$level, $message, $context]` |
+| `monolog/monolog` | `Monolog\Handler\TestHandler` in `new Logger('test', [$handler])` | `$handler->hasRecord(['message' => …, 'context' => …], Level::Warning)` (Monolog 3), `getRecords()` |
+
+`Psr\Log\Test\TestLogger` is gone from `psr/log` 2.0 on: in a project on `psr/log` 2 or 3, use
+one of the other two.
+
+```php
+// ❌ Logger mocked to verify a call
+$logger = $this->prophesize(LoggerInterface::class);
+$handler = new PricingChangedMessageHandler($repository, $logger->reveal());
+$handler(new PricingChangedMessage('UNKNOWN-CODE'));
+$logger->warning(Argument::cetera())->shouldHaveBeenCalled();
+
+// ✅ Recording logger, whole record asserted after the act (psr/log 1.x)
+$logger = new TestLogger();
+$handler = new PricingChangedMessageHandler($repository, $logger);
+
+$handler(new PricingChangedMessage('UNKNOWN-CODE'));
+
+self::assertSame([[
+    'level' => 'warning',
+    'message' => '[PRICING] Announced product unknown to the PIM, nothing exported.',
+    'context' => ['productCode' => 'UNKNOWN-CODE'],
+]], $logger->records);
+
+// ✅ Same with BufferingLogger (any Symfony project)
+$logger = new BufferingLogger();
+// … act …
+self::assertSame([
+    ['warning', '[PRICING] Announced product unknown to the PIM, nothing exported.', ['productCode' => 'UNKNOWN-CODE']],
+], $logger->cleanLogs());
+```
+
+A logger that nobody asserts stays a `NullLogger`.
+
 ### No Unused Double
 
 Every double a test creates is used: passed to the code under test, called, or captured. A
