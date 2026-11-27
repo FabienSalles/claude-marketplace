@@ -1,6 +1,6 @@
 ---
 name: php-test-conventions
-description: "ACTIVATE when writing or modifying PHPUnit tests, creating test classes, using Prophecy, test doubles, test factories, or data providers. ACTIVATE for 'test naming', 'test doubles', 'spy vs mock', 'serialization tests', 'deserialization tests', 'data provider', 'MockHandler' in PHP. Provides framework-agnostic PHPUnit/Prophecy patterns; cross-language testing principles (DAMP, AAA, spy over mock, what NOT to test, factories) live in craft:testing-principles. DO NOT use for: tests that boot Symfony — WebTestCase, KernelTestCase, TypeTestCase, crawler assertions, container doubles (see symfony:symfony-test-conventions), TDD workflow/iteration process (see phpunit:php-tdd-workflow)."
+description: "ACTIVATE when writing or modifying PHPUnit tests, creating test classes, using Prophecy, test doubles, test factories, or data providers. ACTIVATE for 'test naming', 'test doubles', 'spy vs mock', 'assert a log', 'TestLogger', 'serialization tests', 'deserialization tests', 'data provider', 'MockHandler' in PHP. Provides framework-agnostic PHPUnit/Prophecy patterns; cross-language testing principles (DAMP, AAA, spy over mock, what NOT to test, factories) live in craft:testing-principles. DO NOT use for: tests that boot Symfony — WebTestCase, KernelTestCase, TypeTestCase, crawler assertions, container doubles (see symfony:symfony-test-conventions), TDD workflow/iteration process (see phpunit:php-tdd-workflow)."
 ---
 
 # Test Conventions — PHP
@@ -135,7 +135,7 @@ $service->call($arg)->shouldHaveBeenCalled();
 
 ## PHP-specific: Test Doubles
 
-Prefer an existing real / null implementation when it reads cleaner (an unverified logger → `new NullLogger()`, not a mocked interface). Otherwise: **manual stubs** for simple cases, **Prophecy** for complex dependencies, **Guzzle MockHandler** for HTTP clients.
+Prefer an existing real / null implementation when it reads cleaner (an unverified logger → `new NullLogger()`, not a mocked interface; a verified logger → a recording logger already installed, `TestLogger`, `BufferingLogger` or Monolog `TestHandler`, never a mock nor a hand-written `AbstractLogger`). Otherwise: **manual stubs** for simple cases, **Prophecy** for complex dependencies, **Guzzle MockHandler** for HTTP clients.
 
 **Prophecy is the rule, not a statistic.** A double that needs scripting or verification is
 `prophesize()` — not `createMock()` + `willReturnCallback()`. Never arbitrate by counting
